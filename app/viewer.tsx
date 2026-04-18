@@ -1,11 +1,11 @@
 import { StyleSheet, View, Image, Text, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Ionicons } from '@expo/vector-icons';
 import { getMimeType } from '@/utils/files';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as Sharing from 'expo-sharing';
 
 const { width, height } = Dimensions.get('window');
 
@@ -17,12 +17,14 @@ export default function ViewerScreen() {
     try {
       const cacheDir = FileSystem.Paths.cache.uri;
       const isPng = (name as string).toLowerCase().endsWith('.png');
-      const cacheName = isPng ? (name as string).replace(/\.png$/i, '.jpg') : (name as string);
+      const cacheName = isPng
+        ? (name as string).replace(/\.png$/i, '.jpg')
+        : (name as string);
       const cacheUri = cacheDir + cacheName;
       const cacheFile = new FileSystem.File(cacheUri);
-
+  
       if (cacheFile.exists) cacheFile.delete();
-
+  
       if (isPng) {
         const result = await ImageManipulator.manipulate(uri as string)
           .renderAsync()
@@ -33,7 +35,7 @@ export default function ViewerScreen() {
         const sourceFile = new FileSystem.File(uri as string);
         sourceFile.copy(cacheFile);
       }
-
+  
       await Sharing.shareAsync(cacheUri, {
         dialogTitle: name as string,
         mimeType: isPng ? 'image/jpeg' : getMimeType(name as string),

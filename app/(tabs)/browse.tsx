@@ -6,6 +6,8 @@ import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getMimeType, isImageFile } from '@/utils/files';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { addRecent } from '@/hooks/useRecents';
 
 interface FileItem {
   name: string;
@@ -67,6 +69,8 @@ export default function BrowseScreen() {
   }
 
   async function openFile(item: FileItem) {
+    await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+  
     if (isImageFile(item.name)) {
       router.push({ pathname: '/viewer', params: { uri: item.uri, name: item.name } });
       return;
