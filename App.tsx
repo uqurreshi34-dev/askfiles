@@ -1,15 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useStorage } from './hooks/useStorage';
 
-const QUICK_ACCESS = [
-  { id: '1', label: 'Images', count: '0 files', color: '#E6F1FB', iconColor: '#185FA5' },
-  { id: '2', label: 'Videos', count: '0 files', color: '#FAECE7', iconColor: '#993C1D' },
-  { id: '3', label: 'Documents', count: '0 files', color: '#EEEDFE', iconColor: '#534AB7' },
-  { id: '4', label: 'Downloads', count: '0 files', color: '#EAF3DE', iconColor: '#3B6D11' },
-];
 
 export default function App() {
+  const { storageInfo, fileCounts, loading } = useStorage();
+  const QUICK_ACCESS = [
+    { id: '1', label: 'Images', count: `${fileCounts.images.toLocaleString()} files`, color: '#E6F1FB', iconColor: '#185FA5' },
+    { id: '2', label: 'Videos', count: `${fileCounts.videos.toLocaleString()} files`, color: '#FAECE7', iconColor: '#993C1D' },
+    { id: '3', label: 'Documents', count: `${fileCounts.documents.toLocaleString()} files`, color: '#EEEDFE', iconColor: '#534AB7' },
+    { id: '4', label: 'Downloads', count: `${fileCounts.downloads.toLocaleString()} files`, color: '#EAF3DE', iconColor: '#3B6D11' },
+  ];
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="auto" />
@@ -49,10 +51,12 @@ export default function App() {
         <View style={styles.storageWrap}>
           <View style={styles.storageRow}>
             <Text style={styles.storageLabel}>Internal storage</Text>
-            <Text style={styles.storageVal}>Calculating...</Text>
+            <Text style={styles.storageVal}>
+              {loading ? 'Calculating...' : `${storageInfo?.usedReadable} / ${storageInfo?.totalReadable}`}
+            </Text>
           </View>
           <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: '0%' }]} />
+            <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
           </View>
         </View>
 
