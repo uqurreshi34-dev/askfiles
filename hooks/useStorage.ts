@@ -24,9 +24,47 @@ function formatBytes(bytes: number): string {
   return (bytes / 1024).toFixed(1) + ' KB';
 }
 
+export function pluralise(count: number, word: string): string {
+  return `${count.toLocaleString()} ${word}${count === 1 ? '' : 's'}`;
+}
+
+const DOCUMENT_EXTENSIONS = [
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+  '.ppt', '.pptx', '.txt', '.csv', '.rtf',
+  '.odt', '.ods', '.odp', '.pages', '.numbers',
+];
+
+async function countFilesInDir(path: string, extensions?: string[]): Promise<number> {
+    try {
+      const dir = new FileSystem.Directory(path);
+      const contents = dir.list();
+      let count = 0;
+      for (const item of contents) {
+        if (item instanceof FileSystem.File) {
+          if (!extensions) {
+            count++;
+          } else {
+            const lower = item.name.toLowerCase();
+            if (extensions.some(ext => lower.endsWith(ext))) count++;
+          }
+        } else if (item instanceof FileSystem.Directory) {
+          count += await countFilesInDir(item.uri, extensions);
+        }
+      }
+      return count;
+    } catch {
+      return 0;
+    }
+  }
+
 export function useStorage() {
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
-  const [fileCounts, setFileCounts] = useState<FileCounts>({ images: 0, videos: 0, documents: 0, downloads: 0 });
+  const [fileCounts, setFileCounts] = useState<FileCounts>({
+    images: 0,
+    videos: 0,
+    documents: 0,
+    downloads: 0,
+  });
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +77,17 @@ export function useStorage() {
           return;
         }
         setPermissionGranted(true);
+
+        try {
+            const dl = new FileSystem.Directory('file:///storage/emulated/0/Download/');
+            const dlContents = dl.list();
+            console.log('DOWNLOAD CONTENTS:', dlContents.length);
+            for (const item of dlContents) {
+            console.log(item instanceof FileSystem.File ? 'FILE: ' + item.name : 'DIR: ' + item.uri);
+            }
+        } catch (e) {
+            console.log('DOWNLOAD ERROR:', e);
+        }
 
         const total = FileSystem.Paths.totalDiskSpace;
         const free = FileSystem.Paths.availableDiskSpace;
@@ -58,20 +107,20 @@ export function useStorage() {
           MediaLibrary.getAssetsAsync({ mediaType: 'video', first: 1 }),
         ]);
 
-        let downloadCount = 0;
-        try {
-        const dlDir = new FileSystem.Directory('file:///storage/emulated/0/Download/');
-        const dlContents = dlDir.list();
-        downloadCount = dlContents.length;
-        } catch {
-        downloadCount = 0;
-        }
+        const [docCount, dlCount] = await Promise.all([
+          Promise.all([
+                countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
+                countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
+                countFilesInDir('file:///storage/emulated/0/Android/media/', DOCUMENT_EXTENSIONS),
+          ]).then(counts => counts.reduce((a, b) => a + b, 0)),
+            countFilesInDir('file:///storage/emulated/0/Download/'),
+        ]);
 
         setFileCounts({
           images: images.totalCount,
           videos: videos.totalCount,
-          documents: 0,
-          downloads: downloadCount,
+          documents: docCount,
+          downloads: dlCount,
         });
 
       } catch (e) {
