@@ -18,6 +18,46 @@ interface FileCounts {
   downloads: number;
 }
 
+export interface FolderSizes {
+  pictures: string;
+  videos: string;
+  downloads: string;
+  documents: string;
+  music: string;
+  dcim: string;
+}
+
+export interface MediaContext {
+  recentImages: string[];
+  recentVideos: string[];
+  screenshotCount: number;
+}
+
+interface StorageCache {
+  storageInfo: StorageInfo | null;
+  fileCounts: FileCounts;
+  folderSizes: FolderSizes;
+  mediaContext: MediaContext;
+  loaded: boolean;
+}
+
+const cache: StorageCache = {
+  storageInfo: null,
+  fileCounts: { images: 0, videos: 0, documents: 0, downloads: 0 },
+  folderSizes: {
+    pictures: '0 MB',
+    videos: '0 MB',
+    downloads: '0 MB',
+    documents: '0 MB',
+    music: '0 MB',
+    dcim: '0 MB',
+  },
+  mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0 },
+  loaded: false,
+};
+
+let loadingPromise: Promise<void> | null = null;
+
 function formatBytes(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
@@ -35,103 +75,170 @@ const DOCUMENT_EXTENSIONS = [
 ];
 
 async function countFilesInDir(path: string, extensions?: string[]): Promise<number> {
-    try {
-      const dir = new FileSystem.Directory(path);
-      const contents = dir.list();
-      let count = 0;
-      for (const item of contents) {
-        if (item instanceof FileSystem.File) {
-          if (!extensions) {
-            count++;
-          } else {
-            const lower = item.name.toLowerCase();
-            if (extensions.some(ext => lower.endsWith(ext))) count++;
-          }
-        } else if (item instanceof FileSystem.Directory) {
-          count += await countFilesInDir(item.uri, extensions);
+  try {
+    const dir = new FileSystem.Directory(path);
+    const contents = dir.list();
+    let count = 0;
+    for (const item of contents) {
+      if (item instanceof FileSystem.File) {
+        if (!extensions) {
+          count++;
+        } else {
+          const lower = item.name.toLowerCase();
+          if (extensions.some(ext => lower.endsWith(ext))) count++;
         }
+      } else if (item instanceof FileSystem.Directory) {
+        count += await countFilesInDir(item.uri, extensions);
       }
-      return count;
-    } catch {
-      return 0;
     }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+async function getFolderSize(path: string): Promise<number> {
+  try {
+    const dir = new FileSystem.Directory(path);
+    const contents = dir.list();
+    let size = 0;
+    for (const item of contents) {
+      if (item instanceof FileSystem.File) {
+        size += item.size ?? 0;
+      } else if (item instanceof FileSystem.Directory) {
+        size += await getFolderSize(item.uri);
+      }
+    }
+    return size;
+  } catch {
+    return 0;
+  }
+}
+
+async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.Asset[]> {
+  const assets: MediaLibrary.Asset[] = [];
+  let after: string | undefined = undefined;
+
+  for (let page = 0; page < 50; page++) {
+    const result = await MediaLibrary.getAssetsAsync({
+      mediaType,
+      first: 100,
+      after,
+    });
+    for (const asset of result.assets) {
+      assets.push(asset);
+    }
+    if (!result.hasNextPage || !result.endCursor) break;
+    after = result.endCursor;
   }
 
-export function useStorage() {
-  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
-  const [fileCounts, setFileCounts] = useState<FileCounts>({
-    images: 0,
-    videos: 0,
-    documents: 0,
-    downloads: 0,
+  return assets.sort((a, b) => {
+    const aTime = a.creationTime > 0 ? a.creationTime : a.modificationTime;
+    const bTime = b.creationTime > 0 ? b.creationTime : b.modificationTime;
+    return bTime - aTime;
   });
-  const [permissionGranted, setPermissionGranted] = useState(false);
-  const [loading, setLoading] = useState(true);
+}
+
+async function doLoad(): Promise<void> {
+  const { status } = await MediaLibrary.requestPermissionsAsync();
+  if (status !== 'granted') return;
+
+  const total = FileSystem.Paths.totalDiskSpace;
+  const free = FileSystem.Paths.availableDiskSpace;
+  const used = total - free;
+
+  cache.storageInfo = {
+    totalBytes: total,
+    freeBytes: free,
+    usedBytes: used,
+    usedPercent: Math.round((used / total) * 100),
+    totalReadable: formatBytes(total),
+    usedReadable: formatBytes(used),
+  };
+
+  const [allImages, allVideos] = await Promise.all([
+    getAllAssets('photo'),
+    getAllAssets('video'),
+  ]);
+
+  const screenshotCount = allImages.filter(a =>
+    a.filename.toLowerCase().startsWith('screenshot')
+  ).length;
+
+  cache.fileCounts.images = allImages.length;
+  cache.fileCounts.videos = allVideos.length;
+
+  cache.mediaContext = {
+    recentImages: allImages.map(a => a.filename),
+    recentVideos: allVideos.map(a => a.filename),
+    screenshotCount,
+  };
+
+  const [docCount, dlCount] = await Promise.all([
+    Promise.all([
+      countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/', DOCUMENT_EXTENSIONS),
+    ]).then(counts => counts.reduce((a, b) => a + b, 0)),
+    countFilesInDir('file:///storage/emulated/0/Download/'),
+  ]);
+
+  cache.fileCounts.documents = docCount;
+  cache.fileCounts.downloads = dlCount;
+
+  const [picturesSize, moviesSize, dcimSize, downloadsSize, documentsSize, musicSize] =
+    await Promise.all([
+      getFolderSize('file:///storage/emulated/0/Pictures/'),
+      getFolderSize('file:///storage/emulated/0/Movies/'),
+      getFolderSize('file:///storage/emulated/0/DCIM/'),
+      getFolderSize('file:///storage/emulated/0/Download/'),
+      getFolderSize('file:///storage/emulated/0/Documents/'),
+      getFolderSize('file:///storage/emulated/0/Music/'),
+    ]);
+
+  cache.folderSizes = {
+    pictures: formatBytes(picturesSize),
+    videos: formatBytes(moviesSize + dcimSize),
+    downloads: formatBytes(downloadsSize),
+    documents: formatBytes(documentsSize),
+    music: formatBytes(musicSize),
+    dcim: formatBytes(dcimSize),
+  };
+
+  cache.loaded = true;
+}
+
+function getLoadingPromise(): Promise<void> {
+  if (!loadingPromise) {
+    loadingPromise = doLoad().catch(e => {
+      console.error('Storage load error:', e);
+      loadingPromise = null;
+    });
+  }
+  return loadingPromise;
+}
+
+export function useStorage() {
+  const [, setTick] = useState(0);
+  const [loading, setLoading] = useState(!cache.loaded);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          setLoading(false);
-          return;
-        }
-        setPermissionGranted(true);
-
-        try {
-            const dl = new FileSystem.Directory('file:///storage/emulated/0/Download/');
-            const dlContents = dl.list();
-            console.log('DOWNLOAD CONTENTS:', dlContents.length);
-            for (const item of dlContents) {
-            console.log(item instanceof FileSystem.File ? 'FILE: ' + item.name : 'DIR: ' + item.uri);
-            }
-        } catch (e) {
-            console.log('DOWNLOAD ERROR:', e);
-        }
-
-        const total = FileSystem.Paths.totalDiskSpace;
-        const free = FileSystem.Paths.availableDiskSpace;
-        const used = total - free;
-
-        setStorageInfo({
-          totalBytes: total,
-          freeBytes: free,
-          usedBytes: used,
-          usedPercent: Math.round((used / total) * 100),
-          totalReadable: formatBytes(total),
-          usedReadable: formatBytes(used),
-        });
-
-        const [images, videos] = await Promise.all([
-          MediaLibrary.getAssetsAsync({ mediaType: 'photo', first: 1 }),
-          MediaLibrary.getAssetsAsync({ mediaType: 'video', first: 1 }),
-        ]);
-
-        const [docCount, dlCount] = await Promise.all([
-          Promise.all([
-                countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
-                countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-                countFilesInDir('file:///storage/emulated/0/Android/media/', DOCUMENT_EXTENSIONS),
-          ]).then(counts => counts.reduce((a, b) => a + b, 0)),
-            countFilesInDir('file:///storage/emulated/0/Download/'),
-        ]);
-
-        setFileCounts({
-          images: images.totalCount,
-          videos: videos.totalCount,
-          documents: docCount,
-          downloads: dlCount,
-        });
-
-      } catch (e) {
-        console.error('Storage load error:', e);
-      } finally {
-        setLoading(false);
-      }
+    if (cache.loaded) {
+      setLoading(false);
+      return;
     }
-
-    load();
+    getLoadingPromise().then(() => {
+      setLoading(false);
+      setTick(t => t + 1);
+    });
   }, []);
 
-  return { storageInfo, fileCounts, permissionGranted, loading };
+  return {
+    storageInfo: cache.storageInfo,
+    fileCounts: { ...cache.fileCounts },
+    folderSizes: { ...cache.folderSizes },
+    mediaContext: { ...cache.mediaContext },
+    permissionGranted: cache.loaded,
+    loading,
+  };
 }
