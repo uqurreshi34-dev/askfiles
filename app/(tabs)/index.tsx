@@ -68,15 +68,6 @@ export default function HomeScreen() {
 
       </ScrollView>
 
-      {/* Nav Bar */}
-      <View style={styles.navBar}>
-        {['Home', 'Browse', 'Search', 'Cloud'].map(tab => (
-          <TouchableOpacity key={tab} style={styles.navItem}>
-            <Text style={[styles.navLabel, tab === 'Home' && styles.navActive]}>{tab}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
     </SafeAreaView>
   );
 }
@@ -103,8 +94,4 @@ const styles = StyleSheet.create({
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 2 },
   recentsList: { paddingHorizontal: 16, paddingBottom: 16 },
   emptyText: { fontSize: 13, color: '#888780', textAlign: 'center', paddingVertical: 20 },
-  navBar: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: '#D3D1C7', backgroundColor: '#fff' },
-  navItem: { alignItems: 'center', paddingHorizontal: 16 },
-  navLabel: { fontSize: 12, color: '#888780' },
-  navActive: { color: '#185FA5', fontWeight: '500' },
 });
