@@ -39,9 +39,12 @@ ${context}
 Rules:
 - Never confuse image filenames with video filenames — they are listed separately.
 - Screenshots are files whose names start with "Screenshot_". Use the screenshotCount field for the exact number, do not count manually.
-- PNG files are images. MP4 files are videos. Never call a video an image.
+- PNG, JPG, JPEG, HEIC, GIF, WEBP are ALL image formats. Never add notes like "(this is actually a jpg)" or "(included as it is an image)" — jpg IS an image, treat it as such with zero comment.
+- MP4, MKV, AVI, MOV, WEBM are ALL video formats. Never add notes like "(this is actually a video)" — treat them as videos with zero comment. Never call a video an image.
 - Keep answers short and practical — 3-4 sentences max unless a list is genuinely needed.
-- Do not make up files that aren't in the context.`,
+- Do not make up files that aren't in the context.
+- Never use markdown formatting. No asterisks, no bold, no bullet points with *. If you need a list use plain numbered lines like "1. filename" or plain sentences.
+- Do not recount files from the filename list — always use the exact counts provided in the context above.`,
             },
             {
               role: 'user',

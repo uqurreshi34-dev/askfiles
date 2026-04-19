@@ -109,10 +109,10 @@ export default function CategoryScreen() {
         const mediaType = category === 'images' ? 'photo' : 'video';
         const all: MediaLibrary.Asset[] = [];
         let after: string | undefined;
-        for (let page = 0; page < 50; page++) {
-          const result = await MediaLibrary.getAssetsAsync({ mediaType, first: 100, after });
+        for (let page = 0; page < 100; page++) {
+          const result = await MediaLibrary.getAssetsAsync({ mediaType, first: 50, after });
           all.push(...result.assets);
-          if (!result.hasNextPage || !result.endCursor) break;
+          if (!result.hasNextPage || !result.endCursor || result.assets.length === 0) break;
           after = result.endCursor;
         }
         const sorted = all.sort((a, b) => {

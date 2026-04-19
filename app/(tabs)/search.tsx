@@ -52,14 +52,33 @@ function buildContext(
   const videoNames = mediaContext.recentVideos.join(', ') || 'none';
   const freeSpace = storageInfo?.freeBytes ? formatBytes(storageInfo.freeBytes) : 'unknown';
 
+  // Pre-count by extension so AI doesn't have to count manually
+  const imageCounts: Record<string, number> = {};
+  for (const name of mediaContext.recentImages) {
+    const ext = name.split('.').pop()?.toLowerCase() ?? 'unknown';
+    imageCounts[ext] = (imageCounts[ext] ?? 0) + 1;
+  }
+  const imageBreakdown = Object.entries(imageCounts)
+    .map(([ext, count]) => `${count} ${ext}`)
+    .join(', ');
+
+  const videoCounts: Record<string, number> = {};
+  for (const name of mediaContext.recentVideos) {
+    const ext = name.split('.').pop()?.toLowerCase() ?? 'unknown';
+    videoCounts[ext] = (videoCounts[ext] ?? 0) + 1;
+  }
+  const videoBreakdown = Object.entries(videoCounts)
+    .map(([ext, count]) => `${count} ${ext}`)
+    .join(', ');
+
   return `
 Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadable} total. ${freeSpace} free.
-File counts: ${fileCounts.images} images (jpg, jpeg, png, gif, webp, heic), ${fileCounts.videos} videos, ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
+File counts: ${fileCounts.images} images (${imageBreakdown}), ${fileCounts.videos} videos (${videoBreakdown}), ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
 Screenshots: exactly ${mediaContext.screenshotCount} files (do not count manually, use this number).
 Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}, Music ${folderSizes.music}.
 All image filenames sorted newest first: ${imageNames}.
 All video filenames sorted newest first: ${videoNames}.
-Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp.
+Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Do not recount files from the filename list — always use the exact counts provided above.
   `.trim();
 }
 
