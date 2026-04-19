@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { usePro } from '@/hooks/usePro';
 
 const PRO_FEATURES = [
   {
@@ -31,30 +32,63 @@ const PRO_FEATURES = [
 ];
 
 export default function CloudScreen() {
-  function handleUpgrade() {
-    // TODO: wire up RevenueCat purchase flow
-    console.log('Upgrade tapped');
+  const { isPro, packages, loading, purchasing, restoring, error, purchasePackage, restorePurchases } = usePro();
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator color="#185FA5" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isPro) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="checkmark-circle" size={40} color="#2E7D32" />
+            </View>
+            <Text style={styles.title}>You're on Pro 🎉</Text>
+            <Text style={styles.subtitle}>All features are unlocked. Thank you for supporting AskFiles!</Text>
+          </View>
+          <View style={styles.featuresList}>
+            {PRO_FEATURES.map((f, i) => (
+              <View key={i} style={[styles.featureRow, i === PRO_FEATURES.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={styles.featureIcon}>
+                  <Ionicons name={f.icon} size={20} color="#185FA5" />
+                </View>
+                <View style={styles.featureText}>
+                  <Text style={styles.featureTitle}>{f.title}</Text>
+                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                </View>
+                <Ionicons name="checkmark" size={18} color="#2E7D32" />
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconWrap}>
             <Ionicons name="cloud-outline" size={36} color="#185FA5" />
           </View>
           <Text style={styles.title}>AskFiles Pro</Text>
-          <Text style={styles.subtitle}>
-            Unlock the full power of your file manager
-          </Text>
+          <Text style={styles.subtitle}>Unlock the full power of your file manager</Text>
         </View>
 
-        {/* Features list */}
         <View style={styles.featuresList}>
           {PRO_FEATURES.map((f, i) => (
-            <View key={i} style={styles.featureRow}>
+            <View key={i} style={[styles.featureRow, i === PRO_FEATURES.length - 1 && { borderBottomWidth: 0 }]}>
               <View style={styles.featureIcon}>
                 <Ionicons name={f.icon} size={20} color="#185FA5" />
               </View>
@@ -66,22 +100,57 @@ export default function CloudScreen() {
           ))}
         </View>
 
-        {/* Pricing */}
-        <View style={styles.pricingCard}>
-          <View style={styles.pricingRow}>
-            <Text style={styles.price}>£2.49</Text>
-            <Text style={styles.pricePer}> / month</Text>
-          </View>
-          <Text style={styles.pricingNote}>or £17.99 / year — save 40%</Text>
-        </View>
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* CTA */}
-        <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgrade} activeOpacity={0.85}>
-          <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+        <TouchableOpacity
+          style={styles.upgradeBtn}
+          onPress={() => packages.monthly && purchasePackage(packages.monthly)}
+          disabled={purchasing || restoring || !packages.monthly}
+          activeOpacity={0.85}
+        >
+          {purchasing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.upgradeBtnText}>Monthly — £2.49 / month</Text>
+              <Text style={styles.upgradeBtnSub}>Billed monthly, cancel anytime</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.upgradeBtn, styles.annualBtn]}
+          onPress={() => packages.annual && purchasePackage(packages.annual)}
+          disabled={purchasing || restoring || !packages.annual}
+          activeOpacity={0.85}
+        >
+          {purchasing ? (
+            <ActivityIndicator color="#185FA5" />
+          ) : (
+            <>
+              <View style={styles.saveBadge}>
+                <Text style={styles.saveBadgeText}>SAVE 40%</Text>
+              </View>
+              <Text style={[styles.upgradeBtnText, { color: '#185FA5' }]}>Annual — £17.99 / year</Text>
+              <Text style={[styles.upgradeBtnSub, { color: '#185FA5' }]}>Best value · £1.50 / month</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={restorePurchases}
+          disabled={purchasing || restoring}
+          style={styles.restoreBtn}
+        >
+          {restoring ? (
+            <ActivityIndicator color="#888780" size="small" />
+          ) : (
+            <Text style={styles.restoreText}>Restore purchases</Text>
+          )}
         </TouchableOpacity>
 
         <Text style={styles.legalNote}>
-          Payment charged to your Google Play account. Cancel anytime.
+          Payment charged to your Google Play account. Cancel anytime in Play Store settings.
         </Text>
 
       </ScrollView>
@@ -92,6 +161,7 @@ export default function CloudScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 28 },
   iconWrap: {
@@ -125,15 +195,7 @@ const styles = StyleSheet.create({
   featureTitle: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
   featureDesc: { fontSize: 12, color: '#888780', lineHeight: 17 },
 
-  pricingCard: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    marginBottom: 16,
-  },
-  pricingRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  price: { fontSize: 36, fontWeight: '700', color: '#111', letterSpacing: -1 },
-  pricePer: { fontSize: 16, color: '#888780', marginBottom: 6 },
-  pricingNote: { fontSize: 13, color: '#888780', marginTop: 4 },
+  errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center', marginBottom: 12 },
 
   upgradeBtn: {
     backgroundColor: '#185FA5',
@@ -142,7 +204,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  annualBtn: {
+    backgroundColor: '#EBF3FC',
+    borderWidth: 1.5,
+    borderColor: '#185FA5',
+    position: 'relative',
+  },
+  saveBadge: {
+    position: 'absolute',
+    top: -10,
+    right: 16,
+    backgroundColor: '#185FA5',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  saveBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
   upgradeBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  upgradeBtnSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
 
-  legalNote: { fontSize: 11, color: '#B8B6AE', textAlign: 'center', lineHeight: 16 },
+  restoreBtn: { alignItems: 'center', paddingVertical: 12 },
+  restoreText: { fontSize: 14, color: '#888780' },
+
+  legalNote: { fontSize: 11, color: '#B8B6AE', textAlign: 'center', lineHeight: 16, marginTop: 8 },
 });
