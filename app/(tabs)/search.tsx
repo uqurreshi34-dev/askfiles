@@ -12,6 +12,8 @@ import { isImageFile, getMimeType } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
+import { usePro } from '@/hooks/usePro';
+import { useAiQueryLimit } from '@/hooks/useAiQueryLimit';
 
 type Mode = 'search' | 'ask';
 
@@ -70,6 +72,8 @@ export default function SearchScreen() {
   const router = useRouter();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { fileCounts, storageInfo, folderSizes, mediaContext } = useStorage();
+  const { isPro } = usePro();
+  const { queriesRemaining, isLimitReached, incrementQuery } = useAiQueryLimit(isPro);
 
   function handleSearchChange(text: string) {
     setQuery(text);
@@ -80,7 +84,9 @@ export default function SearchScreen() {
   async function handleAsk(question?: string) {
     const q = question ?? aiQuery;
     if (q.trim().length < 3) return;
+    if (isLimitReached) return;
     Keyboard.dismiss();
+    await incrementQuery();
     const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext);
     await ask(q, context);
   }
@@ -102,6 +108,7 @@ export default function SearchScreen() {
   }
 
   function handleSuggestion(s: string) {
+    if (isLimitReached) return;
     setAiQuery(s);
     handleAsk(s);
   }
@@ -231,18 +238,49 @@ export default function SearchScreen() {
         </>
       ) : (
         <>
-          <View style={styles.inputWrap}>
+          {/* Query counter badge — only shown to free users */}
+          {!isPro && (
+            <View style={styles.quotaBadge}>
+              <Ionicons name="sparkles-outline" size={12} color={isLimitReached ? '#E24B4A' : '#185FA5'} />
+              <Text style={[styles.quotaText, isLimitReached && styles.quotaTextLimit]}>
+                {isLimitReached
+                  ? 'Daily limit reached'
+                  : `${queriesRemaining} free AI quer${queriesRemaining === 1 ? 'y' : 'ies'} left today`}
+              </Text>
+            </View>
+          )}
+
+          {/* Upgrade banner — shown when limit reached */}
+          {isLimitReached && (
+            <TouchableOpacity
+              style={styles.upgradeBanner}
+              onPress={() => router.push('/(tabs)/cloud')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.upgradeBannerLeft}>
+                <Ionicons name="lock-closed-outline" size={18} color="#185FA5" />
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={styles.upgradeBannerTitle}>Upgrade to Pro</Text>
+                  <Text style={styles.upgradeBannerSub}>Unlimited AI queries, every day</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#185FA5" />
+            </TouchableOpacity>
+          )}
+
+          <View style={[styles.inputWrap, isLimitReached && styles.inputWrapDisabled]}>
             <Ionicons name="sparkles-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
             <TextInput
               style={styles.input}
-              placeholder="Ask anything about your files..."
+              placeholder={isLimitReached ? 'Upgrade to ask more...' : 'Ask anything about your files...'}
               placeholderTextColor="#888780"
               value={aiQuery}
               onChangeText={setAiQuery}
               onSubmitEditing={() => handleAsk()}
               returnKeyType="send"
+              editable={!isLimitReached}
             />
-            {aiQuery.length > 0 && (
+            {aiQuery.length > 0 && !isLimitReached && (
               <TouchableOpacity
                 onPress={() => handleAsk()}
                 disabled={thinking}
@@ -276,41 +314,49 @@ export default function SearchScreen() {
                 <Ionicons name="sparkles-outline" size={14} color="#5F5E5A" style={{ marginRight: 6 }} />
                 <Text style={styles.askAgainText}>Ask something else</Text>
               </TouchableOpacity>
-              <Text style={styles.suggestionsLabel}>Try these</Text>
-              <View style={styles.suggestions}>
-                {SUGGESTIONS.map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    style={styles.suggestion}
-                    onPress={() => handleSuggestion(s)}
-                  >
-                    <Text style={styles.suggestionText}>{s}</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#888780" />
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {!isLimitReached && (
+                <>
+                  <Text style={styles.suggestionsLabel}>Try these</Text>
+                  <View style={styles.suggestions}>
+                    {SUGGESTIONS.map(s => (
+                      <TouchableOpacity
+                        key={s}
+                        style={styles.suggestion}
+                        onPress={() => handleSuggestion(s)}
+                      >
+                        <Text style={styles.suggestionText}>{s}</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#888780" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
             </ScrollView>
           ) : (
             <ScrollView
               contentContainerStyle={styles.suggestionsScroll}
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.centeredContent}>
-                <Ionicons name="sparkles-outline" size={40} color="#D3D1C7" />
-                <Text style={styles.hint}>Ask about your files in plain English</Text>
-              </View>
-              <View style={styles.suggestions}>
-                {SUGGESTIONS.map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    style={styles.suggestion}
-                    onPress={() => handleSuggestion(s)}
-                  >
-                    <Text style={styles.suggestionText}>{s}</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#888780" />
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {!isLimitReached && (
+                <>
+                  <View style={styles.centeredContent}>
+                    <Ionicons name="sparkles-outline" size={40} color="#D3D1C7" />
+                    <Text style={styles.hint}>Ask about your files in plain English</Text>
+                  </View>
+                  <View style={styles.suggestions}>
+                    {SUGGESTIONS.map(s => (
+                      <TouchableOpacity
+                        key={s}
+                        style={styles.suggestion}
+                        onPress={() => handleSuggestion(s)}
+                      >
+                        <Text style={styles.suggestionText}>{s}</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#888780" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
             </ScrollView>
           )}
         </>
@@ -329,6 +375,7 @@ const styles = StyleSheet.create({
   modeBtnText: { fontSize: 13, color: '#888780', fontWeight: '500' },
   modeBtnTextActive: { color: '#185FA5' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12, backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12 },
+  inputWrapDisabled: { opacity: 0.5 },
   input: { flex: 1, fontSize: 14, color: '#111' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   centeredContent: { alignItems: 'center', paddingVertical: 32, gap: 8 },
@@ -355,4 +402,18 @@ const styles = StyleSheet.create({
   suggestions: { gap: 8 },
   suggestion: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F1EFE8', borderRadius: 10, padding: 14 },
   suggestionText: { fontSize: 13, color: '#5F5E5A' },
+
+  // Query limit styles
+  quotaBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 16, marginBottom: 8 },
+  quotaText: { fontSize: 12, color: '#185FA5' },
+  quotaTextLimit: { color: '#E24B4A' },
+  upgradeBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: '#EBF3FC', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#C5DCEF',
+  },
+  upgradeBannerLeft: { flexDirection: 'row', alignItems: 'center' },
+  upgradeBannerTitle: { fontSize: 14, fontWeight: '600', color: '#111' },
+  upgradeBannerSub: { fontSize: 12, color: '#888780', marginTop: 2 },
 });

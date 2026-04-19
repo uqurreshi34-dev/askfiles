@@ -15,7 +15,7 @@ export default function ViewerScreen() {
 
   async function handleShare() {
     try {
-      const cacheDir = FileSystem.Paths.cache.uri;
+      const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
       const isPng = (name as string).toLowerCase().endsWith('.png');
       const cacheName = isPng
         ? (name as string).replace(/\.png$/i, '.jpg')
