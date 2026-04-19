@@ -21,7 +21,7 @@ export interface ProPackages {
 }
 
 export function usePro() {
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsPro] = useState(true);
   const [packages, setPackages] = useState<ProPackages>({ monthly: null, annual: null });
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);

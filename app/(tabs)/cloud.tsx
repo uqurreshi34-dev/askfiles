@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { usePro } from '@/hooks/usePro';
 
 const PRO_FEATURES = [
@@ -8,30 +9,36 @@ const PRO_FEATURES = [
     icon: 'cloud-upload-outline' as const,
     title: 'Cloud Backup',
     desc: 'Auto-backup your files to Google Drive or Dropbox',
+    route: null,
   },
   {
     icon: 'sparkles-outline' as const,
     title: 'Unlimited AI Queries',
     desc: 'Ask AI anything about your files with no daily limit',
+    route: null,
   },
   {
     icon: 'shield-checkmark-outline' as const,
     title: 'Secure Vault',
     desc: 'Lock sensitive files behind biometric authentication',
+    route: '/vault' as const,
   },
   {
     icon: 'sync-outline' as const,
     title: 'Cross-Device Sync',
     desc: 'Access your favourite folders across all your devices',
+    route: null,
   },
   {
     icon: 'duplicate-outline' as const,
     title: 'Duplicate Finder',
     desc: 'Find and remove duplicate files to free up space',
+    route: '/duplicates' as const,
   },
 ];
 
 export default function CloudScreen() {
+  const router = useRouter();
   const { isPro, packages, loading, purchasing, restoring, error, purchasePackage, restorePurchases } = usePro();
 
   if (loading) {
@@ -56,18 +63,31 @@ export default function CloudScreen() {
             <Text style={styles.subtitle}>All features are unlocked. Thank you for supporting AskFiles!</Text>
           </View>
           <View style={styles.featuresList}>
-            {PRO_FEATURES.map((f, i) => (
-              <View key={i} style={[styles.featureRow, i === PRO_FEATURES.length - 1 && { borderBottomWidth: 0 }]}>
-                <View style={styles.featureIcon}>
-                  <Ionicons name={f.icon} size={20} color="#185FA5" />
-                </View>
-                <View style={styles.featureText}>
-                  <Text style={styles.featureTitle}>{f.title}</Text>
-                  <Text style={styles.featureDesc}>{f.desc}</Text>
-                </View>
-                <Ionicons name="checkmark" size={18} color="#2E7D32" />
-              </View>
-            ))}
+            {PRO_FEATURES.map((f, i) => {
+              const isLast = i === PRO_FEATURES.length - 1;
+              const hasRoute = !!f.route;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.featureRow, isLast && { borderBottomWidth: 0 }]}
+                  onPress={() => hasRoute && router.push(f.route as any)}
+                  activeOpacity={hasRoute ? 0.7 : 1}
+                >
+                  <View style={styles.featureIcon}>
+                    <Ionicons name={f.icon} size={20} color="#185FA5" />
+                  </View>
+                  <View style={styles.featureText}>
+                    <Text style={styles.featureTitle}>{f.title}</Text>
+                    <Text style={styles.featureDesc}>{f.desc}</Text>
+                  </View>
+                  {hasRoute ? (
+                    <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                  ) : (
+                    <Ionicons name="checkmark" size={18} color="#2E7D32" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </ScrollView>
       </SafeAreaView>
