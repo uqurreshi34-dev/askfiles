@@ -8,6 +8,13 @@ import { useStorage, pluralise } from '@/hooks/useStorage';
 import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 
+const CATEGORY_ROUTES: Record<string, string> = {
+  '1': 'images',
+  '2': 'videos',
+  '3': 'documents',
+  '4': 'downloads',
+};
+
 export default function HomeScreen() {
   const { storageInfo, fileCounts, loading } = useStorage();
   const { recents, reload } = useRecents();
@@ -39,7 +46,6 @@ export default function HomeScreen() {
       <StatusBar style="auto" />
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.appName}>AskFiles</Text>
           <TouchableOpacity style={styles.menuBtn}>
@@ -49,7 +55,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
         <TouchableOpacity
           style={styles.searchBar}
           onPress={() => router.push('/(tabs)/search')}
@@ -59,7 +64,6 @@ export default function HomeScreen() {
           <Text style={styles.searchText}>Search files, folders...</Text>
         </TouchableOpacity>
 
-        {/* Quick Access */}
         <Text style={styles.sectionLabel}>Quick access</Text>
         <View style={styles.quickGrid}>
           {QUICK_ACCESS.map(item => (
@@ -67,6 +71,10 @@ export default function HomeScreen() {
               key={item.id}
               style={[styles.quickCard, { backgroundColor: item.color }]}
               activeOpacity={0.7}
+              onPress={() => router.push({
+                pathname: '/category',
+                params: { category: CATEGORY_ROUTES[item.id] },
+              })}
             >
               <Ionicons
                 name={item.icon as any}
@@ -80,7 +88,6 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Storage Bar */}
         <View style={styles.storageWrap}>
           <View style={styles.storageRow}>
             <Text style={styles.storageLabel}>Usable storage</Text>
@@ -93,7 +100,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Recents */}
         <Text style={styles.sectionLabel}>Recent</Text>
         <View style={styles.recentsList}>
           {recents.length === 0 ? (

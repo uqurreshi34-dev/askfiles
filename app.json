@@ -22,7 +22,15 @@
     "plugins": [
       "expo-router",
       "expo-media-library",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "permissions": ["MANAGE_EXTERNAL_STORAGE"]
+          }
+        }
+      ]
     ]
   }
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 interface StorageInfo {
   totalBytes: number;
@@ -74,21 +76,25 @@ const DOCUMENT_EXTENSIONS = [
   '.odt', '.ods', '.odp', '.pages', '.numbers',
 ];
 
+function ensureTrailingSlash(uri: string): string {
+  return uri.endsWith('/') ? uri : uri + '/';
+}
+
 async function countFilesInDir(path: string, extensions?: string[]): Promise<number> {
   try {
-    const dir = new FileSystem.Directory(path);
+    const dir = new FileSystem.Directory(ensureTrailingSlash(path));
     const contents = dir.list();
     let count = 0;
     for (const item of contents) {
       if (item instanceof FileSystem.File) {
         if (!extensions) {
-          count++;
+          if (!item.name.startsWith('.')) count++;
         } else {
           const lower = item.name.toLowerCase();
           if (extensions.some(ext => lower.endsWith(ext))) count++;
         }
       } else if (item instanceof FileSystem.Directory) {
-        count += await countFilesInDir(item.uri, extensions);
+        count += await countFilesInDir(ensureTrailingSlash(item.uri), extensions);
       }
     }
     return count;
@@ -99,14 +105,14 @@ async function countFilesInDir(path: string, extensions?: string[]): Promise<num
 
 async function getFolderSize(path: string): Promise<number> {
   try {
-    const dir = new FileSystem.Directory(path);
+    const dir = new FileSystem.Directory(ensureTrailingSlash(path));
     const contents = dir.list();
     let size = 0;
     for (const item of contents) {
       if (item instanceof FileSystem.File) {
         size += item.size ?? 0;
       } else if (item instanceof FileSystem.Directory) {
-        size += await getFolderSize(item.uri);
+        size += await getFolderSize(ensureTrailingSlash(item.uri));
       }
     }
     return size;
@@ -139,9 +145,25 @@ async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.
   });
 }
 
+async function requestManageStoragePermission(): Promise<void> {
+  if (Platform.OS !== 'android' || Platform.Version < 30) return;
+  try {
+    await IntentLauncher.startActivityAsync(
+      'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
+      { data: 'package:com.askfiles.mobile' }
+    );
+  } catch {
+    // Device doesn't support this intent — skip silently
+  }
+}
+
 async function doLoad(): Promise<void> {
   const { status } = await MediaLibrary.requestPermissionsAsync();
   if (status !== 'granted') return;
+
+  // Request full filesystem access (MANAGE_EXTERNAL_STORAGE)
+  // Works properly in signed EAS builds — no-op in dev builds
+  await requestManageStoragePermission();
 
   const total = FileSystem.Paths.totalDiskSpace;
   const free = FileSystem.Paths.availableDiskSpace;
