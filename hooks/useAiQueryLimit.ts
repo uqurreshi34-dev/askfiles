@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const FREE_LIMIT = 20;
+const FREE_LIMIT = 10;
 const STORAGE_KEY = 'ai_query_limit';
 
 interface QueryLimit {
