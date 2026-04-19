@@ -132,10 +132,12 @@ export default function CategoryScreen() {
 
       } else if (category === 'documents') {
         const docPaths = [
-          'file:///storage/emulated/0/Documents/',
-          'file:///storage/emulated/0/Download/',
-          'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-        ];
+            'file:///storage/emulated/0/Documents/',
+            'file:///storage/emulated/0/Download/',
+            'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
+            'file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/',
+            'file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/',
+          ];
         const results = await Promise.all(docPaths.map(p => scanDirForDocs(p)));
         const all = results.flat();
         const unique = all.filter((f, i, arr) => arr.findIndex(x => x.uri === f.uri) === i);

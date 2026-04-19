@@ -200,7 +200,9 @@ async function doLoad(): Promise<void> {
     Promise.all([
       countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
       countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
     ]).then(counts => counts.reduce((a, b) => a + b, 0)),
     countFilesInDir('file:///storage/emulated/0/Download/'),
   ]);
