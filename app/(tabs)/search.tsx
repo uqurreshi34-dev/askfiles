@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
+  Modal, Animated, PanResponder, Platform, Pressable, KeyboardAvoidingView, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,11 @@ import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
 import { usePro } from '@/hooks/usePro';
 import { useAiQueryLimit } from '@/hooks/useAiQueryLimit';
+import { useVault } from '@/hooks/useVault';
+import * as FileSystem from 'expo-file-system/next';
+import * as MediaLibrary from 'expo-media-library';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 type Mode = 'search' | 'ask';
 
@@ -93,6 +99,97 @@ export default function SearchScreen() {
   const { fileCounts, storageInfo, folderSizes, mediaContext } = useStorage();
   const { isPro } = usePro();
   const { queriesRemaining, isLimitReached, incrementQuery } = useAiQueryLimit(isPro);
+  const { addToVault } = useVault();
+  const insets = useSafeAreaInsets();
+
+  // Sheet state
+  const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string } | null>(null);
+  const [showSheet, setShowSheet] = useState(false);
+  const [fileSize, setFileSize] = useState<string | null>(null);
+  const sheetAnim = useRef(new Animated.Value(400)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
+      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.5) {
+          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
+            setShowSheet(false); setSelectedItem(null);
+          });
+        } else {
+          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+        }
+      },
+    })
+  ).current;
+
+  function openSheet(item: { name: string; uri: string }) {
+    setSelectedItem(item);
+    setFileSize(null);
+    setShowSheet(true);
+    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    try {
+      const file = new FileSystem.File(item.uri);
+      setFileSize(formatBytes(file.size ?? 0));
+    } catch { setFileSize('Unknown'); }
+  }
+
+  function closeSheet() {
+    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
+      setShowSheet(false); setSelectedItem(null);
+    });
+  }
+
+  async function handleShare() {
+    if (!selectedItem) return;
+    closeSheet();
+    try {
+      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
+      if (isPng) {
+        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
+        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
+        const cacheUri = cacheDir + cacheName;
+        const cacheFile = new FileSystem.File(cacheUri);
+        if (cacheFile.exists) cacheFile.delete();
+        const result = await ImageManipulator.manipulate(selectedItem.uri)
+          .renderAsync()
+          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
+        const convertedFile = new FileSystem.File(result.uri);
+        convertedFile.copy(cacheFile);
+        await Sharing.shareAsync(cacheUri, { dialogTitle: selectedItem.name, mimeType: 'image/jpeg' });
+      } else {
+        await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
+      }
+    } catch (e) { console.log('Share error:', e); }
+  }
+
+  async function handleMoveToVault() {
+    if (!selectedItem) return;
+    Alert.alert('Move to Vault', `Move "${selectedItem.name}" to your Secure Vault?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move to Vault', onPress: async () => {
+        closeSheet();
+        const ok = await addToVault(selectedItem.uri, selectedItem.name);
+        if (!ok) Alert.alert('Error', 'Could not move file to Vault. Try again.');
+      }},
+    ]);
+  }
+
+  async function handleDelete() {
+    if (!selectedItem) return;
+    Alert.alert('Delete', `Delete "${selectedItem.name}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+          const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
+          if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
+          else { const file = new FileSystem.File(selectedItem.uri); file.delete(); }
+          closeSheet();
+        } catch (e) { console.log('Delete error:', e); }
+      }},
+    ]);
+  }
 
   function handleSearchChange(text: string) {
     setQuery(text);
@@ -229,6 +326,7 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     style={styles.row}
                     onPress={() => !item.isDirectory && openFile(item.name, item.uri)}
+                    onLongPress={() => !item.isDirectory && openSheet(item)}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
@@ -247,7 +345,9 @@ export default function SearchScreen() {
                       </Text>
                     </View>
                     {!item.isDirectory && (
-                      <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                      <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="ellipsis-vertical" size={16} color="#888780" />
+                      </TouchableOpacity>
                     )}
                   </TouchableOpacity>
                 );
@@ -380,6 +480,65 @@ export default function SearchScreen() {
           )}
         </>
       )}
+      <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
+          <Pressable style={styles.overlay} onPress={closeSheet}>
+            <Animated.View
+              style={[styles.sheet, { transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
+              {...panResponder.panHandlers}
+            >
+              <Pressable>
+                <View style={styles.sheetHandle} />
+                <View style={styles.sheetHeader}>
+                  <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22' }]}>
+                    {isImageFile(selectedItem?.name ?? '') ? (
+                      <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
+                    ) : (
+                      <Text style={[styles.extLabel, { color: getFileColor(selectedItem?.name ?? '') }]}>
+                        {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.sheetFileInfo}>
+                    <Text style={styles.sheetFileName} numberOfLines={2}>{selectedItem?.name}</Text>
+                    {fileSize && <Text style={styles.sheetFileMeta}>{fileSize}</Text>}
+                  </View>
+                </View>
+                <View style={styles.sheetDivider} />
+                <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
+                  <Ionicons name="share-outline" size={20} color="#111" />
+                  <Text style={styles.sheetActionText}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
+                  <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                  closeSheet();
+                  const location = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
+                  Alert.alert(selectedItem?.name ?? '', [
+                    fileSize ? `Size: ${fileSize}` : null,
+                    `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
+                    `Location: /${location}`,
+                  ].filter(Boolean).join('\n'));
+                }}>
+                  <Ionicons name="information-circle-outline" size={20} color="#111" />
+                  <Text style={styles.sheetActionText}>Info</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
+                  <Ionicons name="trash-outline" size={20} color="#E24B4A" />
+                  <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete</Text>
+                </TouchableOpacity>
+                <View style={styles.sheetDivider} />
+                <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
+                  <Ionicons name="close-outline" size={20} color="#888780" />
+                  <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Animated.View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -435,4 +594,17 @@ const styles = StyleSheet.create({
   upgradeBannerLeft: { flexDirection: 'row', alignItems: 'center' },
   upgradeBannerTitle: { fontSize: 14, fontWeight: '600', color: '#111' },
   upgradeBannerSub: { fontSize: 12, color: '#888780', marginTop: 2 },
+
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetHandle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  sheetThumb: { width: 44, height: 44 },
+  sheetFileInfo: { flex: 1 },
+  sheetFileName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
+  sheetFileMeta: { fontSize: 12, color: '#888780' },
+  sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
+  sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  sheetActionText: { fontSize: 15, color: '#111' },
 });
