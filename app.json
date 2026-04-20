@@ -25,8 +25,8 @@
         "android.permission.READ_MEDIA_AUDIO"
       ],
       "adaptiveIcon": {
-      "foregroundImage": "./assets/adaptive-icon.png",
-      "backgroundColor": "#185FA5"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#185FA5"
       }
     },
     "plugins": [
@@ -37,10 +37,14 @@
         "expo-build-properties",
         {
           "android": {
-            "permissions": ["MANAGE_EXTERNAL_STORAGE"]
+            "permissions": [
+              "MANAGE_EXTERNAL_STORAGE"
+            ]
           }
         }
-      ]
+      ],
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

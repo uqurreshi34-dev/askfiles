@@ -9,7 +9,7 @@ const PRO_FEATURES = [
     icon: 'cloud-upload-outline' as const,
     title: 'Cloud Backup',
     desc: 'Auto-backup your files to Google Drive or Dropbox',
-    route: null,
+    route: '/backup' as const,
   },
   {
     icon: 'sparkles-outline' as const,
@@ -27,7 +27,7 @@ const PRO_FEATURES = [
     icon: 'sync-outline' as const,
     title: 'Cross-Device Sync',
     desc: 'Access your favourite folders across all your devices',
-    route: null,
+    route: '/backup' as const,
   },
   {
     icon: 'duplicate-outline' as const,

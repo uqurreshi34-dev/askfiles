@@ -6,6 +6,7 @@ export default function RootLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="vault" />
       <Stack.Screen name="duplicates" />
+      <Stack.Screen name="backup" />
     </Stack>
   );
 }
