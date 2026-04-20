@@ -12,14 +12,16 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_REVENUECAT_API_KEY": "secret:EXPO_PUBLIC_REVENUECAT_API_KEY",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "secret:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "secret:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID",
+        "EXPO_PUBLIC_GROQ_API_KEY": "secret:EXPO_PUBLIC_GROQ_API_KEY"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_REVENUECAT_API_KEY": "secret:EXPO_PUBLIC_REVENUECAT_API_KEY",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "secret:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "secret:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID",
+        "EXPO_PUBLIC_GROQ_API_KEY": "secret:EXPO_PUBLIC_GROQ_API_KEY"
       }
     }
   },

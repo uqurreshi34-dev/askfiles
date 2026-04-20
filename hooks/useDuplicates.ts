@@ -88,13 +88,15 @@ export function useDuplicates() {
       for (const file of allFiles) {
         const key = `${file.name.toLowerCase()}__${file.size}`;
         if (!map[key]) map[key] = [];
-        if (!map[key].find(f => f.uri === file.uri)) {
+        const dir = file.uri.substring(0, file.uri.lastIndexOf('/'));
+        if (!map[key].find(f => f.uri === file.uri) && !map[key].find(f => f.uri.substring(0, f.uri.lastIndexOf('/')) === dir)) {
           map[key].push(file);
         }
       }
 
       const dupGroups: DuplicateGroup[] = Object.entries(map)
         .filter(([, files]) => files.length >= 2)
+        .filter(([, files]) => files[0].size > 0)
         .map(([key, files]) => ({
           key,
           name: files[0].name,

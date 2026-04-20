@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useDuplicates, DuplicateGroup, DuplicateFile } from '@/hooks/useDuplicates';
+
+function isImage(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '');
+}
 
 function getFileColor(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase();
@@ -44,12 +49,17 @@ export default function DuplicatesScreen() {
   function renderGroup({ item: group }: { item: DuplicateGroup }) {
     const color = getFileColor(group.name);
     const ext = group.name.split('.').pop()?.toUpperCase() ?? '?';
+    const showThumb = isImage(group.name) && group.files[0]?.uri;
     return (
       <View style={styles.groupCard}>
         <View style={styles.groupHeader}>
-          <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-            <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
-          </View>
+          {showThumb ? (
+            <Image source={{ uri: group.files[0].uri }} style={styles.thumbnail} resizeMode="cover" />
+          ) : (
+            <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
+              <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+            </View>
+          )}
           <View style={styles.groupInfo}>
             <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
             <Text style={styles.groupMeta}>
@@ -58,37 +68,30 @@ export default function DuplicatesScreen() {
           </View>
         </View>
 
-        {group.files.map((file, i) => (
-          <View key={file.uri} style={styles.fileRow}>
-            <Ionicons
-              name={i === 0 ? 'checkmark-circle' : 'copy-outline'}
-              size={16}
-              color={i === 0 ? '#2E7D32' : '#888780'}
-              style={{ marginRight: 8 }}
-            />
-            <Text style={styles.filePath} numberOfLines={1}>
-              {file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '') || '/'}
-            </Text>
-            {i > 0 && (
-              <TouchableOpacity
-                style={[styles.deleteBtn, deleting === file.uri && { opacity: 0.5 }]}
-                onPress={() => handleDelete(group, file)}
-                disabled={deleting === file.uri}
-              >
-                {deleting === file.uri ? (
-                  <ActivityIndicator size="small" color="#E24B4A" />
-                ) : (
-                  <Ionicons name="trash-outline" size={16} color="#E24B4A" />
-                )}
-              </TouchableOpacity>
+        {group.files.map((file) => (
+        <View key={file.uri} style={styles.fileRow}>
+          <Ionicons
+            name="copy-outline"
+            size={16}
+            color="#888780"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.filePath} numberOfLines={1}>
+            {file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '') || '/'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.deleteBtn, deleting === file.uri && { opacity: 0.5 }]}
+            onPress={() => handleDelete(group, file)}
+            disabled={deleting === file.uri}
+          >
+            {deleting === file.uri ? (
+              <ActivityIndicator size="small" color="#E24B4A" />
+            ) : (
+              <Ionicons name="trash-outline" size={16} color="#E24B4A" />
             )}
-            {i === 0 && (
-              <View style={styles.keepBadge}>
-                <Text style={styles.keepBadgeText}>KEEP</Text>
-              </View>
-            )}
-          </View>
-        ))}
+          </TouchableOpacity>
+        </View>
+      ))}
       </View>
     );
   }
@@ -203,6 +206,7 @@ const styles = StyleSheet.create({
 
   groupCard: { backgroundColor: '#FAFAF8', borderRadius: 12, padding: 14, marginBottom: 12 },
   groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  thumbnail: { width: 40, height: 40, borderRadius: 8, marginRight: 12 },
   fileIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   extLabel: { fontSize: 9, fontWeight: '500' },
   groupInfo: { flex: 1 },
