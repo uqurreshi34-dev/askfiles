@@ -9,7 +9,7 @@ let configured = false;
 function configure() {
   if (configured) return;
   if (Platform.OS === 'android') {
-    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+    // Purchases.setLogLevel(LOG_LEVEL.ERROR);
     Purchases.configure({ apiKey: RC_API_KEY });
     configured = true;
   }

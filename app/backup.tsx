@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   },
   restoreBtnText: { fontSize: 15, fontWeight: '600', color: '#185FA5' },
 
-  note: { fontSize: 11, color: '#B8B6AE', textAlign: 'center', lineHeight: 16 },
+  note: { fontSize: 11, color: '#5F5E5A', textAlign: 'center', lineHeight: 16 },
 
   emptyState: { alignItems: 'center', paddingTop: 48, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '500', color: '#111' },
