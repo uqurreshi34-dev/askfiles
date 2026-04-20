@@ -152,7 +152,9 @@ async function requestManageStoragePermission(): Promise<void> {
       'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
       { data: 'package:com.askfiles.mobile' }
     );
-  } catch {
+    console.log('MANAGE STORAGE INTENT COMPLETED');
+  } catch (e) {
+    console.log('MANAGE STORAGE INTENT FAILED:', e);
     // Device doesn't support this intent — skip silently
   }
 }
@@ -164,6 +166,7 @@ async function doLoad(): Promise<void> {
   // Request full filesystem access (MANAGE_EXTERNAL_STORAGE)
   // Works properly in signed EAS builds — no-op in dev builds
   await requestManageStoragePermission();
+  console.log('MANAGE PERMISSION REQUESTED');
 
   const total = FileSystem.Paths.totalDiskSpace;
   const free = FileSystem.Paths.availableDiskSpace;

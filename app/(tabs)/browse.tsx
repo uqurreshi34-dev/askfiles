@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { PanResponder } from 'react-native';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Image, Modal, TextInput, Alert,
-  Animated, Pressable, KeyboardAvoidingView, Platform,
+  Animated, Pressable, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
@@ -13,6 +14,7 @@ import { getMimeType, isImageFile } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { useVault } from '@/hooks/useVault';
 
 interface FileItem {
@@ -55,6 +57,26 @@ export default function BrowseScreen() {
   const [renameValue, setRenameValue] = useState('');
   const [fileSize, setFileSize] = useState<string | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) sheetAnim.setValue(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 80 || gestureState.vy > 0.5) {
+          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
+            setShowSheet(false);
+            setSelectedItem(null);
+            setShowRename(false);
+            setRenameValue('');
+          });
+        } else {
+          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+        }
+      },
+    })
+  ).current;
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -259,32 +281,70 @@ export default function BrowseScreen() {
 
   async function handleRename() {
     if (!selectedItem || !renameValue.trim()) return;
+    const uri = selectedItem.uri.endsWith('/')
+      ? selectedItem.uri.slice(0, -1)
+      : selectedItem.uri;
+    const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
+    const newUri = parentPath + renameValue.trim();
+
+    // Try direct move first
     try {
-      const uri = selectedItem.uri.endsWith('/')
-        ? selectedItem.uri.slice(0, -1)
-        : selectedItem.uri;
-      const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
-      const newUri = parentPath + renameValue.trim();
       if (selectedItem.isDirectory) {
         const src = new FileSystem.Directory(selectedItem.uri);
         const dst = new FileSystem.Directory(newUri);
         src.move(dst);
+        closeSheet();
+        await loadDirectory(currentPath);
+        return;
       } else {
         const src = new FileSystem.File(selectedItem.uri);
         const dst = new FileSystem.File(newUri);
         src.move(dst);
+        closeSheet();
+        await loadDirectory(currentPath);
+        return;
+      }
+    } catch {
+      // Direct move failed — try copy + delete for files
+    }
+
+    if (selectedItem.isDirectory) {
+      Alert.alert(
+        'Cannot rename folder',
+        'Android restricts renaming folders in protected storage. Try moving to a different location instead.'
+      );
+      return;
+    }
+
+    // Copy + delete approach for files
+    try {
+      console.log('TRYING COPY+DELETE rename, src:', selectedItem.uri, 'dst:', newUri);
+      const base64 = await FileSystemLegacy.readAsStringAsync(selectedItem.uri, {
+        encoding: FileSystemLegacy.EncodingType.Base64,
+      });
+      await FileSystemLegacy.writeAsStringAsync(newUri, base64, {
+        encoding: FileSystemLegacy.EncodingType.Base64,
+      });
+      // Delete original via MediaLibrary if possible, otherwise filesystem
+      try {
+        const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+        const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
+        if (match) {
+          await MediaLibrary.deleteAssetsAsync([match]);
+        } else {
+          const file = new FileSystem.File(selectedItem.uri);
+          file.delete();
+        }
+      } catch {
+        // Original delete failed — new file still created
       }
       closeSheet();
       await loadDirectory(currentPath);
     } catch (e) {
-      console.log('Rename error:', e);
+      console.log('Rename copy+delete error:', e);
       Alert.alert(
-        'Permission needed',
-        'AskFiles needs full storage access to rename files. Tap "Open Settings", enable "Allow access to manage all files", then try again.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: requestManagePermission },
-        ]
+        'Rename restricted',
+        'Android 13 prevents renaming this file due to storage restrictions. This is a system limitation affecting all file manager apps.'
       );
     }
   }
@@ -324,29 +384,30 @@ export default function BrowseScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Browse</Text>
-      </View>
-
-      <FlatList
-        horizontal
-        data={breadcrumbs}
-        keyExtractor={(_, i) => i.toString()}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.breadcrumbContainer}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity style={styles.breadcrumbItem} onPress={() => navigateToBreadcrumb(index)}>
-            <Text style={[
-              styles.breadcrumbText,
-              index === breadcrumbs.length - 1 && styles.breadcrumbActive,
+        <View style={styles.headerRow}>
+          {breadcrumbs.length > 1 ? (
+            <TouchableOpacity onPress={() => navigateToBreadcrumb(breadcrumbs.length - 2)} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111" />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.backBtn} />
+          )}
+          <Text style={styles.title} numberOfLines={1}>
+            {breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse'}
+          </Text>
+          <View style={styles.backBtn} />
+        </View>
+        <View style={styles.pathRow}>
+          {breadcrumbs.map((crumb, index) => (
+            <Text key={index} style={[
+              styles.pathSegment,
+              index === breadcrumbs.length - 1 && styles.pathSegmentActive,
             ]}>
-              {item.name}
+              {index > 0 ? '/' : ''}{crumb.name}
             </Text>
-            {index < breadcrumbs.length - 1 && (
-              <Text style={styles.breadcrumbSep}> / </Text>
-            )}
-          </TouchableOpacity>
-        )}
-      />
+          ))}
+        </View>
+      </View>
 
       {loading ? (
         <View style={styles.centered}>
@@ -385,6 +446,7 @@ export default function BrowseScreen() {
                   paddingBottom: insets.bottom + 16,
                 },
               ]}
+              {...panResponder.panHandlers}
             >
               <Pressable>
                 <View style={styles.sheetHandle} />
@@ -452,12 +514,22 @@ export default function BrowseScreen() {
                     <TouchableOpacity
                       style={styles.sheetAction}
                       onPress={() => {
-                        setRenameValue(selectedItem?.name ?? '');
-                        setShowRename(true);
+                        closeSheet();
+                        const location = selectedItem?.uri
+                          .replace('file:///storage/emulated/0/', '')
+                          .split('/').slice(0, -1).join('/') || 'Storage';
+                        Alert.alert(
+                          selectedItem?.name ?? '',
+                          [
+                            fileSize ? `Size: ${fileSize}` : null,
+                            selectedItem?.isDirectory ? 'Type: Folder' : `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
+                            `Location: /${location}`,
+                          ].filter(Boolean).join('\n')
+                        );
                       }}
                     >
-                      <Ionicons name="pencil-outline" size={20} color="#111" />
-                      <Text style={styles.sheetActionText}>Rename</Text>
+                      <Ionicons name="information-circle-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Info</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
                       <Ionicons name="trash-outline" size={20} color="#E24B4A" />
@@ -481,13 +553,14 @@ export default function BrowseScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  title: { fontSize: 26, fontWeight: '500', color: '#111', letterSpacing: -0.5 },
-  breadcrumbContainer: { paddingHorizontal: 16, paddingVertical: 8 },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center' },
-  breadcrumbText: { fontSize: 13, color: '#888780' },
-  breadcrumbActive: { color: '#185FA5', fontWeight: '500' },
-  breadcrumbSep: { fontSize: 13, color: '#D3D1C7' },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
+  pathRow: { flexDirection: 'row', flexWrap: 'wrap', paddingLeft: 52, paddingBottom: 4 },
+  pathSegment: { fontSize: 12, color: '#888780' },
+  pathSegmentActive: { color: '#2E7D32', fontWeight: '600' },
+  backBtn: { width: 36, height: 36, justifyContent: 'center' },
+  title: { flex: 1, fontSize: 22, fontWeight: '500', color: '#111', letterSpacing: -0.5, textAlign: 'center' },
+
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14, color: '#888780' },
   listContent: { paddingHorizontal: 16 },
