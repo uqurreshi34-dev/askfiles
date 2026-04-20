@@ -103,7 +103,7 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
 
   // Sheet state
-  const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
@@ -123,7 +123,7 @@ export default function SearchScreen() {
     })
   ).current;
 
-  function openSheet(item: { name: string; uri: string }) {
+  function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
     setSelectedItem(item);
     setFileSize(null);
     setShowSheet(true);
@@ -170,7 +170,10 @@ export default function SearchScreen() {
       { text: 'Move to Vault', onPress: async () => {
         closeSheet();
         const ok = await addToVault(selectedItem.uri, selectedItem.name);
-        if (ok) { removeResult(selectedItem.uri); }
+        if (ok) {
+          if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
+          else { removeResult(selectedItem.uri); }
+        }
         else Alert.alert('Error', 'Could not move file to Vault. Try again.');
       }},
     ]);
@@ -186,11 +189,48 @@ export default function SearchScreen() {
           const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
           if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
           else { const file = new FileSystem.File(selectedItem.uri); file.delete(); }
-          removeResult(selectedItem.uri);
+          if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
+          else { removeResult(selectedItem.uri); }
           closeSheet();
         } catch (e) { console.log('Delete error:', e); }
       }},
     ]);
+  }
+
+  // Folder drill-down
+  const [folderStack, setFolderStack] = useState<{ name: string; uri: string; items: { name: string; uri: string; isDirectory: boolean }[] }[]>([]);
+  const [folderLoading, setFolderLoading] = useState(false);
+
+  async function openFolder(item: { name: string; uri: string }) {
+    setFolderLoading(true);
+    try {
+      const dir = new FileSystem.Directory(item.uri);
+      const contents = dir.list();
+      const items = contents
+        .map(f => ({
+          name: f instanceof FileSystem.File ? f.name : f.uri.split('/').filter(Boolean).pop() ?? '',
+          uri: f.uri,
+          isDirectory: f instanceof FileSystem.Directory,
+        }))
+        .filter(f => !f.name.startsWith('.'))
+        .sort((a, b) => {
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.localeCompare(b.name);
+        });
+      setFolderStack(prev => [...prev, { name: item.name, uri: item.uri, items }]);
+    } catch (e) { console.log('Folder open error:', e); }
+    finally { setFolderLoading(false); }
+  }
+
+  function popFolder() {
+    setFolderStack(prev => prev.slice(0, -1));
+  }
+
+  function removeFolderItem(uri: string) {
+    setFolderStack(prev => prev.map((f, i) =>
+      i === prev.length - 1 ? { ...f, items: f.items.filter(item => item.uri !== uri) } : f
+    ));
   }
 
   function handleSearchChange(text: string) {
@@ -327,7 +367,7 @@ export default function SearchScreen() {
                 return (
                   <TouchableOpacity
                     style={styles.row}
-                    onPress={() => !item.isDirectory && openFile(item.name, item.uri)}
+                    onPress={() => item.isDirectory ? openFolder(item) : openFile(item.name, item.uri)}
                     onLongPress={() => !item.isDirectory && openSheet(item)}
                     activeOpacity={0.7}
                   >
@@ -482,6 +522,71 @@ export default function SearchScreen() {
           )}
         </>
       )}
+      <Modal visible={folderStack.length > 0} transparent={false} animationType="slide" onRequestClose={popFolder}>
+        <SafeAreaView style={styles.container}>
+          {folderStack.length > 0 && (() => {
+            const current = folderStack[folderStack.length - 1];
+            return (
+              <>
+                <View style={styles.folderHeader}>
+                  <TouchableOpacity onPress={popFolder} style={styles.folderBackBtn}>
+                    <Ionicons name="arrow-back" size={22} color="#111" />
+                  </TouchableOpacity>
+                  <Text style={styles.folderTitle} numberOfLines={1}>{current.name}</Text>
+                  <View style={{ width: 40 }} />
+                </View>
+                {folderLoading ? (
+                  <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+                ) : current.items.length === 0 ? (
+                  <View style={styles.centered}>
+                    <Ionicons name="folder-open-outline" size={40} color="#D3D1C7" />
+                    <Text style={styles.hint}>Folder is empty</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={current.items}
+                    keyExtractor={item => item.uri}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    renderItem={({ item }) => {
+                      const color = item.isDirectory ? '#BA7517' : getFileColor(item.name);
+                      const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
+                      return (
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => item.isDirectory ? openFolder(item) : openFile(item.name, item.uri)}
+                          onLongPress={() => !item.isDirectory && openSheet({ ...item, inFolder: true })}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
+                            {item.isDirectory ? (
+                              <Ionicons name="folder" size={22} color={color} />
+                            ) : isImageFile(item.name) ? (
+                              <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                            ) : (
+                              <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+                            )}
+                          </View>
+                          <View style={styles.fileInfo}>
+                            <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
+                            <Text style={styles.fileMeta}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+                          </View>
+                          {!item.isDirectory && (
+                            <TouchableOpacity onPress={() => openSheet({ ...item, inFolder: true })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                              <Ionicons name="ellipsis-vertical" size={16} color="#888780" />
+                            </TouchableOpacity>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                )}
+              </>
+            );
+          })()}
+        </SafeAreaView>
+      </Modal>
+
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
           <Pressable style={styles.overlay} onPress={closeSheet}>
@@ -609,4 +714,7 @@ const styles = StyleSheet.create({
   sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
   sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
   sheetActionText: { fontSize: 15, color: '#111' },
+  folderHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  folderBackBtn: { width: 40, height: 40, justifyContent: 'center' },
+  folderTitle: { flex: 1, fontSize: 18, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.3 },
 });
