@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Alert, Image, Modal, Animated,
+  Pressable, PanResponder,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
@@ -27,8 +28,38 @@ function getFileColor(name: string): string {
 
 export default function VaultScreen() {
   const router = useRouter();
-  const { files, loading, authenticated, authError, authenticate, removeFromVault, deleteFromVault, lock } = useVault();
+  const { files, loading, authenticated, authError, authenticate, deleteFromVault, lock } = useVault();
   const [busy, setBusy] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<VaultFile | null>(null);
+  const [showSheet, setShowSheet] = useState(false);
+  const sheetAnim = useRef(new Animated.Value(400)).current;
+  const insets = useSafeAreaInsets();
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
+      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.5) {
+          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true })
+            .start(() => { setShowSheet(false); setSelectedFile(null); });
+        } else {
+          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+        }
+      },
+    })
+  ).current;
+
+  function openSheet(file: VaultFile) {
+    setSelectedFile(file);
+    setShowSheet(true);
+    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+  }
+
+  function closeSheet() {
+    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true })
+      .start(() => { setShowSheet(false); setSelectedFile(null); });
+  }
 
   async function handleAuth() {
     await authenticate();
@@ -47,26 +78,8 @@ export default function VaultScreen() {
     } catch {}
   }
 
-  async function handleRemove(file: VaultFile) {
-    Alert.alert(
-      'Move out of Vault',
-      `Move "${file.name}" back to Downloads?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Move Out',
-          onPress: async () => {
-            setBusy(true);
-            const ok = await removeFromVault(file, 'file:///storage/emulated/0/Download/');
-            setBusy(false);
-            if (!ok) Alert.alert('Error', 'Could not move file. Try again.');
-          },
-        },
-      ]
-    );
-  }
-
   async function handleDelete(file: VaultFile) {
+    closeSheet();
     Alert.alert(
       'Delete permanently',
       `Delete "${file.name}" forever? This cannot be undone.`,
@@ -101,15 +114,7 @@ export default function VaultScreen() {
           <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.fileMeta}>{formatSize(item.size)}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.menuBtn}
-          onPress={() => Alert.alert(item.name, undefined, [
-            { text: 'Open', onPress: () => openFile(item) },
-            { text: 'Move out of Vault', onPress: () => handleRemove(item) },
-            { text: 'Delete permanently', style: 'destructive', onPress: () => handleDelete(item) },
-            { text: 'Cancel', style: 'cancel' },
-          ])}
-        >
+        <TouchableOpacity style={styles.menuBtn} onPress={() => openSheet(item)}>
           <Ionicons name="ellipsis-vertical" size={16} color="#888780" />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -184,6 +189,67 @@ export default function VaultScreen() {
           }
         />
       )}
+
+      <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
+        <Pressable style={styles.overlay} onPress={closeSheet}>
+          <Animated.View
+            style={[styles.sheet, { transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
+            {...panResponder.panHandlers}
+          >
+            <Pressable>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHeader}>
+                <View style={[styles.sheetIcon, { backgroundColor: selectedFile ? getFileColor(selectedFile.name) + '22' : '#F1EFE8', overflow: 'hidden' }]}>
+                  {selectedFile && isImageFile(selectedFile.name) ? (
+                    <Image source={{ uri: selectedFile.uri }} style={styles.sheetThumb} resizeMode="cover" />
+                  ) : (
+                    <Text style={[styles.sheetExt, { color: selectedFile ? getFileColor(selectedFile.name) : '#888780' }]}>
+                      {selectedFile?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sheetFileName} numberOfLines={2}>{selectedFile?.name}</Text>
+                  <Text style={styles.sheetFileMeta}>{selectedFile ? formatSize(selectedFile.size) : ''}</Text>
+                </View>
+              </View>
+
+              <View style={styles.sheetDivider} />
+
+              <TouchableOpacity style={styles.sheetAction} onPress={() => { closeSheet(); selectedFile && openFile(selectedFile); }}>
+                <Ionicons name="open-outline" size={20} color="#111" />
+                <Text style={styles.sheetActionText}>Open</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                if (!selectedFile) return;
+                closeSheet();
+                const ext = selectedFile.name.split('.').pop()?.toUpperCase() ?? 'FILE';
+                Alert.alert(
+                  selectedFile.name,
+                  `Size: ${formatSize(selectedFile.size)}\nType: ${ext} file\nLocation: Secure Vault`
+                );
+              }}>
+                <Ionicons name="information-circle-outline" size={20} color="#111" />
+                <Text style={styles.sheetActionText}>Info</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleDelete(selectedFile)}>
+                <Ionicons name="trash-outline" size={20} color="#E24B4A" />
+                <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete permanently</Text>
+              </TouchableOpacity>
+
+              <View style={styles.sheetDivider} />
+
+              <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
+                <Ionicons name="close-outline" size={20} color="#888780" />
+                <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -218,4 +284,16 @@ const styles = StyleSheet.create({
   menuBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 16, fontWeight: '500', color: '#111' },
   emptySub: { fontSize: 13, color: '#888780', textAlign: 'center', lineHeight: 18 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetHandle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  sheetThumb: { width: 44, height: 44 },
+  sheetExt: { fontSize: 9, fontWeight: '500' },
+  sheetFileName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
+  sheetFileMeta: { fontSize: 12, color: '#888780' },
+  sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
+  sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  sheetActionText: { fontSize: 15, color: '#111' },
 });
