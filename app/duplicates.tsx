@@ -19,7 +19,7 @@ function getFileColor(name: string): string {
 
 export default function DuplicatesScreen() {
   const router = useRouter();
-  const { groups, scanning, scanned, totalWasted, scan, deleteFile, formatSize } = useDuplicates();
+  const { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, formatSize } = useDuplicates();
   const [deleting, setDeleting] = useState<string | null>(null);
 
   async function handleDelete(group: DuplicateGroup, file: DuplicateFile) {
@@ -140,6 +140,7 @@ export default function DuplicatesScreen() {
             </View>
           ) : (
             <FlatList
+              key={listVersion}
               data={groups}
               keyExtractor={item => item.key}
               renderItem={renderGroup}

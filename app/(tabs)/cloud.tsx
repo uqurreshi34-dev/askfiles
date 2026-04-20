@@ -8,7 +8,7 @@ const PRO_FEATURES = [
   {
     icon: 'cloud-upload-outline' as const,
     title: 'Cloud Backup',
-    desc: 'Auto-backup your files to Google Drive or Dropbox',
+    desc: 'Auto-backup your vault files to Google Drive',
     route: '/backup' as const,
   },
   {
@@ -22,12 +22,6 @@ const PRO_FEATURES = [
     title: 'Secure Vault',
     desc: 'Lock sensitive files behind biometric authentication',
     route: '/vault' as const,
-  },
-  {
-    icon: 'sync-outline' as const,
-    title: 'Cross-Device Sync',
-    desc: 'Access your favourite folders across all your devices',
-    route: '/backup' as const,
   },
   {
     icon: 'duplicate-outline' as const,

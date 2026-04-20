@@ -8,6 +8,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import { isImageFile, getMimeType } from '@/utils/files';
 
@@ -76,6 +78,30 @@ export default function VaultScreen() {
         dialogTitle: file.name,
       });
     } catch {}
+  }
+
+  async function handleShare(file: VaultFile) {
+    closeSheet();
+    try {
+      const isPng = file.name.toLowerCase().endsWith('.png');
+      if (isPng) {
+        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
+        const cacheName = file.name.replace(/\.png$/i, '.jpg');
+        const cacheUri = cacheDir + cacheName;
+        const cacheFile = new FileSystem.File(cacheUri);
+        if (cacheFile.exists) cacheFile.delete();
+        const result = await ImageManipulator.manipulate(file.uri)
+          .renderAsync()
+          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
+        const convertedFile = new FileSystem.File(result.uri);
+        convertedFile.copy(cacheFile);
+        await Sharing.shareAsync(cacheUri, { dialogTitle: file.name, mimeType: 'image/jpeg' });
+      } else {
+        await Sharing.shareAsync(file.uri, { mimeType: getMimeType(file.name), dialogTitle: file.name });
+      }
+    } catch (e) {
+      console.log('Share error:', e);
+    }
   }
 
   async function handleDelete(file: VaultFile) {
@@ -219,6 +245,11 @@ export default function VaultScreen() {
               <TouchableOpacity style={styles.sheetAction} onPress={() => { closeSheet(); selectedFile && openFile(selectedFile); }}>
                 <Ionicons name="open-outline" size={20} color="#111" />
                 <Text style={styles.sheetActionText}>Open</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleShare(selectedFile)}>
+                <Ionicons name="share-outline" size={20} color="#111" />
+                <Text style={styles.sheetActionText}>Share</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => {

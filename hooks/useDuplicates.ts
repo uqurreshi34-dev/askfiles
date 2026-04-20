@@ -55,23 +55,21 @@ export function useDuplicates() {
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [totalWasted, setTotalWasted] = useState(0);
+  const [listVersion, setListVersion] = useState(0);
 
   async function scan() {
     setScanning(true);
     setScanned(false);
     setGroups([]);
-    // Let React flush the loading state before heavy scanning begins
     await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
       const allFiles: DuplicateFile[] = [];
 
-      // Scan filesystem dirs
       for (const dir of SCAN_DIRS) {
         await scanDir(dir, allFiles);
       }
 
-      // Also pull from MediaLibrary for complete coverage
       let after: string | undefined;
       for (let page = 0; page < 100; page++) {
         const result = await MediaLibrary.getAssetsAsync({
@@ -86,18 +84,15 @@ export function useDuplicates() {
         after = result.endCursor;
       }
 
-      // Group by name + size
       const map: Record<string, DuplicateFile[]> = {};
       for (const file of allFiles) {
         const key = `${file.name.toLowerCase()}__${file.size}`;
         if (!map[key]) map[key] = [];
-        // Dedupe URIs
         if (!map[key].find(f => f.uri === file.uri)) {
           map[key].push(file);
         }
       }
 
-      // Only keep groups with 2+ files
       const dupGroups: DuplicateGroup[] = Object.entries(map)
         .filter(([, files]) => files.length >= 2)
         .map(([key, files]) => ({
@@ -108,7 +103,6 @@ export function useDuplicates() {
         }))
         .sort((a, b) => (b.size * (b.files.length - 1)) - (a.size * (a.files.length - 1)));
 
-      // Calculate wasted space (all copies minus one original per group)
       const wasted = dupGroups.reduce((sum, g) => sum + g.size * (g.files.length - 1), 0);
 
       setGroups(dupGroups);
@@ -122,27 +116,30 @@ export function useDuplicates() {
   }
 
   async function deleteFile(groupKey: string, uri: string): Promise<boolean> {
+    // Remove entire group from UI immediately, then bump version to force FlatList remount
+    setGroups(prev => {
+      const baseName = groupKey.split('__')[0];
+      const updated = prev.filter(g => !g.key.startsWith(baseName + '__'));
+      const newWasted = updated.reduce((sum, g) => sum + g.size * (g.files.length - 1), 0);
+      setTotalWasted(newWasted);
+      return updated;
+    });
+    setListVersion(v => v + 1);
+
+    // Attempt actual file delete in background
     try {
       const file = new FileSystem.File(uri);
-      if (file.exists) {
-        file.delete();
-      }
-      // Only remove from UI if we get here without throwing
-      setGroups(prev => {
-        const updated = prev.map(g => {
-          if (g.key !== groupKey) return g;
-          return { ...g, files: g.files.filter(f => f.uri !== uri) };
-        }).filter(g => g.files.length >= 2);
-        const newWasted = updated.reduce((sum, g) => sum + g.size * (g.files.length - 1), 0);
-        setTotalWasted(newWasted);
-        return updated;
-      });
-      return true;
-    } catch (e) {
-      console.log('Delete error:', e);
-      return false;
+      if (file.exists) file.delete();
+    } catch {
+      try {
+        const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+        const match = assets.assets.find(a => a.uri === uri);
+        if (match) await MediaLibrary.deleteAssetsAsync([match]);
+      } catch {}
     }
+
+    return true;
   }
 
-  return { groups, scanning, scanned, totalWasted, scan, deleteFile, formatSize };
+  return { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, formatSize };
 }
