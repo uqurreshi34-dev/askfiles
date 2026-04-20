@@ -63,5 +63,9 @@ export function useSearch() {
     }
   }, []);
 
-  return { results, searching, search };
+  const removeResult = useCallback((uri: string) => {
+    setResults(prev => prev.filter(r => r.uri !== uri));
+  }, []);
+
+  return { results, searching, search, removeResult };
 }

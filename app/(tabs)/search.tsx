@@ -92,7 +92,7 @@ export default function SearchScreen() {
   const [mode, setMode] = useState<Mode>('search');
   const [query, setQuery] = useState('');
   const [aiQuery, setAiQuery] = useState('');
-  const { results, searching, search } = useSearch();
+  const { results, searching, search, removeResult } = useSearch();
   const { answer, thinking, ask, reset } = useAskAI();
   const router = useRouter();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -170,7 +170,8 @@ export default function SearchScreen() {
       { text: 'Move to Vault', onPress: async () => {
         closeSheet();
         const ok = await addToVault(selectedItem.uri, selectedItem.name);
-        if (!ok) Alert.alert('Error', 'Could not move file to Vault. Try again.');
+        if (ok) { removeResult(selectedItem.uri); }
+        else Alert.alert('Error', 'Could not move file to Vault. Try again.');
       }},
     ]);
   }
@@ -185,6 +186,7 @@ export default function SearchScreen() {
           const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
           if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
           else { const file = new FileSystem.File(selectedItem.uri); file.delete(); }
+          removeResult(selectedItem.uri);
           closeSheet();
         } catch (e) { console.log('Delete error:', e); }
       }},
