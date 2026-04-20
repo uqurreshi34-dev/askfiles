@@ -15,6 +15,7 @@ import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault } from '@/hooks/useVault';
 
 interface FileItem {
@@ -184,10 +185,28 @@ export default function BrowseScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      await Sharing.shareAsync(selectedItem.uri, {
-        mimeType: getMimeType(selectedItem.name),
-        dialogTitle: selectedItem.name,
-      });
+      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
+      if (isPng) {
+        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
+        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
+        const cacheUri = cacheDir + cacheName;
+        const cacheFile = new FileSystem.File(cacheUri);
+        if (cacheFile.exists) cacheFile.delete();
+        const result = await ImageManipulator.manipulate(selectedItem.uri)
+          .renderAsync()
+          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
+        const convertedFile = new FileSystem.File(result.uri);
+        convertedFile.copy(cacheFile);
+        await Sharing.shareAsync(cacheUri, {
+          dialogTitle: selectedItem.name,
+          mimeType: 'image/jpeg',
+        });
+      } else {
+        await Sharing.shareAsync(selectedItem.uri, {
+          mimeType: getMimeType(selectedItem.name),
+          dialogTitle: selectedItem.name,
+        });
+      }
     } catch (e) {
       console.log('Share error:', e);
     }
@@ -374,8 +393,16 @@ export default function BrowseScreen() {
           <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.fileMeta}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
         </View>
-        {item.isDirectory && (
+        {item.isDirectory ? (
           <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+        ) : (
+          <TouchableOpacity
+            style={styles.dotsBtn}
+            onPress={() => openSheet(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={16} color="#888780" />
+          </TouchableOpacity>
         )}
       </TouchableOpacity>
     );
@@ -399,12 +426,19 @@ export default function BrowseScreen() {
         </View>
         <View style={styles.pathRow}>
           {breadcrumbs.map((crumb, index) => (
-            <Text key={index} style={[
-              styles.pathSegment,
-              index === breadcrumbs.length - 1 && styles.pathSegmentActive,
-            ]}>
-              {index > 0 ? '/' : ''}{crumb.name}
-            </Text>
+            <TouchableOpacity
+              key={index}
+              onPress={() => index < breadcrumbs.length - 1 ? navigateToBreadcrumb(index) : undefined}
+              activeOpacity={index < breadcrumbs.length - 1 ? 0.6 : 1}
+              disabled={index === breadcrumbs.length - 1}
+            >
+              <Text style={[
+                styles.pathSegment,
+                index === breadcrumbs.length - 1 && styles.pathSegmentActive,
+              ]}>
+                {index > 0 ? '/' : ''}{crumb.name}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
       </View>
@@ -568,6 +602,7 @@ const styles = StyleSheet.create({
   fileIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12, overflow: 'hidden' },
   thumbnail: { width: 40, height: 40, borderRadius: 10 },
   extLabel: { fontSize: 9, fontWeight: '500' },
+  dotsBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   fileInfo: { flex: 1 },
   fileName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
   fileMeta: { fontSize: 11, color: '#888780' },
