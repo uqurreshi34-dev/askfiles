@@ -16,13 +16,14 @@ const CATEGORY_ROUTES: Record<string, string> = {
 };
 
 export default function HomeScreen() {
-  const { storageInfo, fileCounts, loading } = useStorage();
+  const { storageInfo, fileCounts, loading, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const router = useRouter();
 
   useFocusEffect(useCallback(() => {
     reload();
-  }, [reload]));
+    reloadStorage();
+  }, [reload, reloadStorage]));
 
   const QUICK_ACCESS = [
     { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: '#E6F1FB', iconColor: '#185FA5', icon: 'image-outline' },

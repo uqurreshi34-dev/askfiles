@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
@@ -59,6 +59,7 @@ const cache: StorageCache = {
 };
 
 let loadingPromise: Promise<void> | null = null;
+let permissionRequested = false;
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -152,9 +153,7 @@ async function requestManageStoragePermission(): Promise<void> {
       'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
       { data: 'package:com.askfiles.mobile' }
     );
-    console.log('MANAGE STORAGE INTENT COMPLETED');
   } catch (e) {
-    console.log('MANAGE STORAGE INTENT FAILED:', e);
     // Device doesn't support this intent — skip silently
   }
 }
@@ -163,10 +162,11 @@ async function doLoad(): Promise<void> {
   const { status } = await MediaLibrary.requestPermissionsAsync();
   if (status !== 'granted') return;
 
-  // Request full filesystem access (MANAGE_EXTERNAL_STORAGE)
-  // Works properly in signed EAS builds — no-op in dev builds
-  await requestManageStoragePermission();
-  console.log('MANAGE PERMISSION REQUESTED');
+  // Request full filesystem access once per app session only
+  if (!permissionRequested) {
+    permissionRequested = true;
+    await requestManageStoragePermission();
+  }
 
   const total = FileSystem.Paths.totalDiskSpace;
   const free = FileSystem.Paths.availableDiskSpace;
@@ -260,6 +260,15 @@ export function useStorage() {
     });
   }, []);
 
+  const reload = useCallback(async () => {
+    cache.loaded = false;
+    loadingPromise = null;
+    setLoading(true);
+    await doLoad();
+    setLoading(false);
+    setTick(t => t + 1);
+  }, []);
+
   return {
     storageInfo: cache.storageInfo,
     fileCounts: { ...cache.fileCounts },
@@ -267,5 +276,6 @@ export function useStorage() {
     mediaContext: { ...cache.mediaContext },
     permissionGranted: cache.loaded,
     loading,
+    reload,
   };
 }
