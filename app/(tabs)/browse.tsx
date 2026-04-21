@@ -366,18 +366,27 @@ export default function BrowseScreen() {
     try {
       const src = toPath(item.uri);
       const dst = toPath(destUri);
-      console.log('PASTE src:', src);
-      console.log('PASTE dst:', dst);
+      // console.log('PASTE src:', src);
+      // console.log('PASTE dst:', dst);
 
       if (pickerMode === 'copy') {
         await RNFS.copyFile(src, dst);
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
+        //console.log('MOVE attempting:', src, '->', dst);
         await RNFS.moveFile(src, dst);
+        //console.log('MOVE success');
+        const exists = await RNFS.exists(dst);
+        //console.log('DST exists after move:', exists);
+        try { await RNFS.scanFile(dst); } catch {}
         try {
-          const result = await MediaLibrary.getAssetsAsync({ first: 1000 });
-          const ghost = result.assets.find(a => item.uri.includes(a.filename));
+          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
+          const sourcePath = toPath(item.uri);
+          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+          const ghost = allAssets.assets.find(a =>
+            a.filename === sourceFilename && toPath(a.uri) === sourcePath
+          );
           if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
         } catch {}
         setShowPicker(false);
@@ -390,6 +399,7 @@ export default function BrowseScreen() {
           { name: destName, path: destFolder },
         ]);
         await loadDirectory(destFolder);
+        //console.log('DEST FOLDER loaded:', destFolder);
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
