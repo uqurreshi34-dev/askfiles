@@ -44,6 +44,10 @@ function formatSize(bytes: number): string {
   return bytes + ' B';
 }
 
+function decodeName(name: string): string {
+  try { return decodeURIComponent(name); } catch { return name; }
+}
+
 export default function BrowseScreen() {
   const [currentPath, setCurrentPath] = useState(ROOT_PATH);
   const [items, setItems] = useState<FileItem[]>([]);
@@ -57,6 +61,11 @@ export default function BrowseScreen() {
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
+  const [pickerPath, setPickerPath] = useState(ROOT_PATH);
+  const [pickerItems, setPickerItems] = useState<FileItem[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -127,9 +136,9 @@ export default function BrowseScreen() {
       const contents = dir.list();
       const fileItems: FileItem[] = contents
         .map(item => ({
-          name: item instanceof FileSystem.File
+          name: decodeName(item instanceof FileSystem.File
             ? item.name
-            : item.uri.split('/').filter(Boolean).pop() ?? '',
+            : item.uri.split('/').filter(Boolean).pop() ?? ''),
           uri: item.uri,
           isDirectory: item instanceof FileSystem.Directory,
         }))
@@ -298,72 +307,120 @@ export default function BrowseScreen() {
     );
   }
 
+  async function loadPickerDir(path: string) {
+    setPickerLoading(true);
+    try {
+      const dir = new FileSystem.Directory(path);
+      const contents = dir.list();
+      const folders: FileItem[] = contents
+        .filter(item => item instanceof FileSystem.Directory)
+        .map(item => ({
+          name: decodeName(item.uri.split('/').filter(Boolean).pop() ?? ''),
+          uri: item.uri,
+          isDirectory: true,
+        }))
+        .filter(f => !f.name.startsWith('.'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setPickerItems(folders);
+    } catch { setPickerItems([]); }
+    finally { setPickerLoading(false); }
+  }
+
+  function openPicker(mode: 'copy' | 'move') {
+    setPickerMode(mode);
+    setPickerPath(ROOT_PATH);
+    loadPickerDir(ROOT_PATH);
+    setShowPicker(true);
+    closeSheet();
+  }
+
+  async function handlePaste() {
+    if (!selectedItem) return;
+    const destUri = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+    const destFile = destUri + selectedItem.name;
+
+    const PROTECTED = [
+      '/Pictures/', '/DCIM/', '/Movies/', '/Music/', '/Ringtones/',
+      '/Alarms/', '/Notifications/', '/Podcasts/',
+    ];
+    const srcProtected = PROTECTED.some(p => selectedItem.uri.includes(p));
+    const dstProtected = PROTECTED.some(p => destUri.includes(p));
+
+    if (srcProtected || dstProtected) {
+      setShowPicker(false);
+      Alert.alert(
+        'Cannot copy/move here',
+        'Android protects media folders (Pictures, DCIM, etc.) from being modified by third-party apps. Try files in Downloads or Documents instead.'
+      );
+      return;
+    }
+    try {
+      // Use legacy copy which works on external storage
+      await FileSystemLegacy.copyAsync({ from: selectedItem.uri, to: destFile });
+      if (pickerMode === 'move') {
+        // Delete original after copy
+        try {
+          const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+          const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
+          if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
+          else { const f = new FileSystem.File(selectedItem.uri); f.delete(); }
+        } catch {}
+        await loadDirectory(currentPath);
+      }
+      setShowPicker(false);
+      Alert.alert('Success', `"${selectedItem.name}" ${pickerMode === 'copy' ? 'copied' : 'moved'} successfully.`);
+    } catch (e) {
+      console.log('Paste error:', e);
+      Alert.alert('Error', `Could not ${pickerMode} file. Try again.`);
+    }
+  }
+
   async function handleRename() {
     if (!selectedItem || !renameValue.trim()) return;
+
+    const PROTECTED = [
+      '/Pictures/', '/DCIM/', '/Movies/', '/Music/', '/Ringtones/',
+      '/Alarms/', '/Notifications/', '/Podcasts/',
+    ];
+    const isProtected = PROTECTED.some(p => selectedItem.uri.includes(p));
+    if (isProtected) {
+      Alert.alert(
+        'Cannot rename here',
+        'Android protects media folders (Pictures, DCIM, etc.) from being renamed by third-party apps. Try files in Downloads or Documents instead.'
+      );
+      return;
+    }
     const uri = selectedItem.uri.endsWith('/')
       ? selectedItem.uri.slice(0, -1)
       : selectedItem.uri;
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
 
-    // Try direct move first
     try {
-      if (selectedItem.isDirectory) {
-        const src = new FileSystem.Directory(selectedItem.uri);
-        const dst = new FileSystem.Directory(newUri);
-        src.move(dst);
-        closeSheet();
-        await loadDirectory(currentPath);
-        return;
-      } else {
-        const src = new FileSystem.File(selectedItem.uri);
-        const dst = new FileSystem.File(newUri);
-        src.move(dst);
-        closeSheet();
-        await loadDirectory(currentPath);
-        return;
-      }
-    } catch {
-      // Direct move failed — try copy + delete for files
-    }
-
-    if (selectedItem.isDirectory) {
-      Alert.alert(
-        'Cannot rename folder',
-        'Android restricts renaming folders in protected storage. Try moving to a different location instead.'
-      );
+      await FileSystemLegacy.moveAsync({ from: selectedItem.uri, to: newUri });
+      closeSheet();
+      await loadDirectory(currentPath);
       return;
+    } catch (e) {
+      console.log('Move rename failed:', e);
     }
 
-    // Copy + delete approach for files
+    // Fallback: copy + delete
     try {
-      console.log('TRYING COPY+DELETE rename, src:', selectedItem.uri, 'dst:', newUri);
-      const base64 = await FileSystemLegacy.readAsStringAsync(selectedItem.uri, {
-        encoding: FileSystemLegacy.EncodingType.Base64,
-      });
-      await FileSystemLegacy.writeAsStringAsync(newUri, base64, {
-        encoding: FileSystemLegacy.EncodingType.Base64,
-      });
-      // Delete original via MediaLibrary if possible, otherwise filesystem
+      await FileSystemLegacy.copyAsync({ from: selectedItem.uri, to: newUri });
       try {
         const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
         const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
-        if (match) {
-          await MediaLibrary.deleteAssetsAsync([match]);
-        } else {
-          const file = new FileSystem.File(selectedItem.uri);
-          file.delete();
-        }
-      } catch {
-        // Original delete failed — new file still created
-      }
+        if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
+        else { const file = new FileSystem.File(selectedItem.uri); file.delete(); }
+      } catch {}
       closeSheet();
       await loadDirectory(currentPath);
     } catch (e) {
       console.log('Rename copy+delete error:', e);
       Alert.alert(
-        'Rename restricted',
-        'Android 13 prevents renaming this file due to storage restrictions. This is a system limitation affecting all file manager apps.'
+        'Rename failed',
+        'Android restricts renaming this file. This is a system limitation affecting all file manager apps.'
       );
     }
   }
@@ -581,6 +638,71 @@ export default function BrowseScreen() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+      <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (pickerPath === ROOT_PATH) { setShowPicker(false); }
+                  else {
+                    const parent = pickerPath.endsWith('/') ? pickerPath.slice(0, -1) : pickerPath;
+                    const up = parent.substring(0, parent.lastIndexOf('/') + 1);
+                    setPickerPath(up);
+                    loadPickerDir(up);
+                  }
+                }}
+                style={styles.backBtn}
+              >
+                <Ionicons name="arrow-back" size={22} color="#111" />
+              </TouchableOpacity>
+              <Text style={styles.title} numberOfLines={1}>
+                {pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}
+              </Text>
+              <View style={styles.backBtn} />
+            </View>
+            <Text style={[styles.pathSegment, { paddingLeft: 52, paddingBottom: 4 }]}>
+              {pickerPath.replace('file:///storage/emulated/0/', 'Storage/')}
+            </Text>
+          </View>
+          {pickerLoading ? (
+            <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+          ) : pickerItems.length === 0 ? (
+            <View style={styles.centered}><Text style={styles.emptyText}>No folders here</Text></View>
+          ) : (
+            <FlatList
+              data={pickerItems}
+              keyExtractor={item => item.uri}
+              contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.fileIcon, { backgroundColor: '#BA751722' }]}>
+                    <Ionicons name="folder" size={22} color="#BA7517" />
+                  </View>
+                  <View style={styles.fileInfo}>
+                    <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <View style={styles.pickerFooter}>
+            <TouchableOpacity style={styles.pickerCancelBtn} onPress={() => setShowPicker(false)}>
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pickerPasteBtn} onPress={handlePaste}>
+              <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.pickerPasteText}>{pickerMode === 'copy' ? 'Copy here' : 'Move here'}</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -625,4 +747,9 @@ const styles = StyleSheet.create({
   renameCancelText: { fontSize: 14, color: '#5F5E5A' },
   renameConfirmBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#185FA5', alignItems: 'center' },
   renameConfirmText: { fontSize: 14, color: '#fff', fontWeight: '500' },
+  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5, borderTopColor: '#F1EFE8' },
+  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1EFE8', alignItems: 'center' },
+  pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
+  pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
+  pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 });

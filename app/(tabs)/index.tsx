@@ -89,17 +89,26 @@ export default function HomeScreen() {
           ))}
         </View>
 
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => router.push('/(tabs)/browse')}
+        >
         <View style={styles.storageWrap}>
           <View style={styles.storageRow}>
-            <Text style={styles.storageLabel}>Usable storage</Text>
-            <Text style={styles.storageVal}>
-              {loading ? 'Calculating...' : `${storageInfo?.usedReadable} / ${storageInfo?.totalReadable}`}
-            </Text>
+            <Text style={styles.storageLabel}>Internal storage</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.storageVal}>
+                {loading ? 'Calculating...' : `${storageInfo?.usedReadable} / ${storageInfo?.totalReadable}`}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color="#888780" />
+            </View>
           </View>
           <View style={styles.barTrack}>
             <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
           </View>
+          <Text style={styles.storageNote}>Reflects app-accessible storage. System partition not included.</Text>
         </View>
+        </TouchableOpacity>
 
         <Text style={styles.sectionLabel}>Recent</Text>
         <View style={styles.recentsList}>
@@ -160,6 +169,7 @@ const styles = StyleSheet.create({
   storageRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   storageLabel: { fontSize: 13, color: '#5F5E5A' },
   storageVal: { fontSize: 13, fontWeight: '500', color: '#111' },
+  storageNote: { fontSize: 10, color: '#9A9890', marginTop: 6 },
   barTrack: { height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 2 },
   recentsList: { paddingHorizontal: 16, paddingBottom: 24 },
