@@ -110,6 +110,23 @@ export default function HomeScreen() {
         </View>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.largeFilesCard}
+          onPress={() => router.push('/large-files')}
+        >
+          <View style={styles.largeFilesLeft}>
+            <View style={styles.largeFilesIcon}>
+              <Ionicons name="folder-open-outline" size={22} color="#993C1D" />
+            </View>
+            <View>
+              <Text style={styles.largeFilesTitle}>Large Files</Text>
+              <Text style={styles.largeFilesSub}>Find files taking up the most space</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#888780" />
+        </TouchableOpacity>
+
         <Text style={styles.sectionLabel}>Recent</Text>
         <View style={styles.recentsList}>
           {recents.length === 0 ? (
@@ -172,6 +189,11 @@ const styles = StyleSheet.create({
   storageNote: { fontSize: 10, color: '#9A9890', marginTop: 6 },
   barTrack: { height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 2 },
+  largeFilesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, backgroundColor: '#FAECE7', borderRadius: 12, padding: 14 },
+  largeFilesLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  largeFilesIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F5D5CB', alignItems: 'center', justifyContent: 'center' },
+  largeFilesTitle: { fontSize: 14, fontWeight: '600', color: '#111', marginBottom: 2 },
+  largeFilesSub: { fontSize: 11, color: '#5F5E5A' },
   recentsList: { paddingHorizontal: 16, paddingBottom: 24 },
   emptyText: { fontSize: 13, color: '#888780', textAlign: 'center', paddingVertical: 20 },
   recentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
