@@ -91,10 +91,31 @@ async function scanDirForDownloads(path: string): Promise<FileItem[]> {
   return found;
 }
 
+const DOC_TABS = ['All', 'PDF', 'Word', 'Excel', 'Other'] as const;
+const DL_TABS  = ['All', 'APK', 'PDF', 'Docs', 'Other'] as const;
+
+function getDocTab(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'pdf') return 'PDF';
+  if (['doc', 'docx', 'txt', 'rtf', 'odt', 'pages'].includes(ext)) return 'Word';
+  if (['xls', 'xlsx', 'csv', 'ods', 'numbers'].includes(ext)) return 'Excel';
+  if (['ppt', 'pptx', 'odp'].includes(ext)) return 'Other';
+  return 'Other';
+}
+
+function getDlTab(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'apk') return 'APK';
+  if (ext === 'pdf') return 'PDF';
+  if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'].includes(ext)) return 'Docs';
+  return 'Other';
+}
+
 export default function CategoryScreen() {
   const { category } = useLocalSearchParams<{ category: Category }>();
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('All');
   const router = useRouter();
   const config = CATEGORY_CONFIG[category ?? 'images'];
 
@@ -191,6 +212,15 @@ export default function CategoryScreen() {
     );
   }
 
+  const tabs = category === 'documents' ? DOC_TABS : category === 'downloads' ? DL_TABS : null;
+
+  const filteredItems = tabs && activeTab !== 'All'
+    ? items.filter(item => {
+        const tab = category === 'documents' ? getDocTab(item.name) : getDlTab(item.name);
+        return tab === activeTab;
+      })
+    : items;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -200,24 +230,37 @@ export default function CategoryScreen() {
         <Text style={styles.title}>{config.title}</Text>
         <View style={{ width: 40 }} />
       </View>
+      {tabs && (
+        <View style={styles.tabsRow}>
+          {tabs.map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={config.color} />
         </View>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name={config.icon as any} size={40} color="#D3D1C7" />
-          <Text style={styles.empty}>No {config.title.toLowerCase()} found</Text>
+          <Text style={styles.empty}>No {activeTab === 'All' ? config.title.toLowerCase() : activeTab + ' files'} found</Text>
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={filteredItems}
           keyExtractor={item => item.uri}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={styles.count}>{items.length} {config.title.toLowerCase()}</Text>
+            <Text style={styles.count}>{filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}</Text>
           }
         />
       )}
@@ -233,6 +276,11 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   empty: { fontSize: 14, color: '#888780' },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
+  tabsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
+  tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F1EFE8' },
+  tabActive: { backgroundColor: '#111' },
+  tabText: { fontSize: 12, fontWeight: '500', color: '#5F5E5A' },
+  tabTextActive: { color: '#fff' },
   count: { fontSize: 11, color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
   icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
