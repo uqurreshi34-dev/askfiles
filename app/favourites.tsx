@@ -13,6 +13,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { isImageFile, getMimeType } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { useFavourites, removeFavourite, FavouriteItem } from '@/hooks/useFavourites';
+import { useVault } from '@/hooks/useVault';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -35,6 +36,7 @@ export default function FavouritesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { favourites } = useFavourites();
+  const { addToVault } = useVault();
   const [selectedItem, setSelectedItem] = useState<FavouriteItem | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
@@ -105,6 +107,19 @@ export default function FavouritesScreen() {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
     } catch (e) { console.log('Share error:', e); }
+  }
+
+  async function handleMoveToVault() {
+    if (!selectedItem) return;
+    Alert.alert('Move to Vault', `Move "${selectedItem.name}" to your Secure Vault?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move to Vault', onPress: async () => {
+        closeSheet();
+        const ok = await addToVault(selectedItem.uri, selectedItem.name);
+        if (ok) { await removeFavourite(selectedItem.uri); }
+        else Alert.alert('Error', 'Could not move file to Vault. Try again.');
+      }},
+    ]);
   }
 
   async function handleRemove() {
@@ -219,6 +234,10 @@ export default function FavouritesScreen() {
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color="#111" />
                 <Text style={styles.sheetActionText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
+                <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => {
                 closeSheet();

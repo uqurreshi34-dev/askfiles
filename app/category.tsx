@@ -10,6 +10,7 @@ import { isImageFile, getMimeType } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
+import { useVault } from '@/hooks/useVault';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -141,6 +142,7 @@ export default function CategoryScreen() {
   ).current;
   const router = useRouter();
   const config = CATEGORY_CONFIG[category ?? 'images'];
+  const { addToVault } = useVault();
 
   useEffect(() => {
     loadCategory();
@@ -244,6 +246,19 @@ export default function CategoryScreen() {
         dialogTitle: item.name,
       });
     } catch (e) { console.log('Open error:', e); }
+  }
+
+  async function handleMoveToVault() {
+    if (!selectedItem) return;
+    Alert.alert('Move to Vault', `Move "${selectedItem.name}" to your Secure Vault?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move to Vault', onPress: async () => {
+        closeSheet();
+        const ok = await addToVault(selectedItem.uri, selectedItem.name);
+        if (ok) { setItems(prev => prev.filter(f => f.uri !== selectedItem.uri)); }
+        else Alert.alert('Error', 'Could not move file to Vault. Try again.');
+      }},
+    ]);
   }
 
   async function handleToggleFavourite() {
@@ -393,6 +408,10 @@ export default function CategoryScreen() {
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color="#111" />
                 <Text style={styles.sheetActionText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
+                <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                 <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />

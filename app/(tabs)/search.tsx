@@ -16,6 +16,7 @@ import { useStorage } from '@/hooks/useStorage';
 import { usePro } from '@/hooks/usePro';
 import { useAiQueryLimit } from '@/hooks/useAiQueryLimit';
 import { useVault } from '@/hooks/useVault';
+import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import * as FileSystem from 'expo-file-system/next';
 import * as MediaLibrary from 'expo-media-library';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -106,6 +107,7 @@ export default function SearchScreen() {
   const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [isFav, setIsFav] = useState(false);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -123,10 +125,11 @@ export default function SearchScreen() {
     })
   ).current;
 
-  function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
+  async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
     setSelectedItem(item);
     setFileSize(null);
     setShowSheet(true);
+    setIsFav(await isFavourite(item.uri));
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     try {
       const file = new FileSystem.File(item.uri);
@@ -161,6 +164,19 @@ export default function SearchScreen() {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
     } catch (e) { console.log('Share error:', e); }
+  }
+
+  async function handleToggleFavourite() {
+    if (!selectedItem) return;
+    if (isFav) {
+      await removeFavourite(selectedItem.uri);
+      setIsFav(false);
+      Alert.alert('Removed', `"${selectedItem.name}" removed from Favourites.`);
+    } else {
+      await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
+      setIsFav(true);
+      Alert.alert('Added', `"${selectedItem.name}" added to Favourites.`);
+    }
   }
 
   async function handleMoveToVault() {
@@ -619,6 +635,12 @@ export default function SearchScreen() {
                 <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
                   <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
                   <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
+                  <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
+                  <Text style={[styles.sheetActionText, isFav && { color: '#E24B4A' }]}>
+                    {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={() => {
                   closeSheet();

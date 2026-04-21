@@ -17,6 +17,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault } from '@/hooks/useVault';
+import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 
 interface FileItem {
   name: string;
@@ -61,6 +62,7 @@ export default function BrowseScreen() {
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [isFav, setIsFav] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
@@ -94,12 +96,13 @@ export default function BrowseScreen() {
     loadDirectory(currentPath);
   }, [currentPath]);
 
-  function openSheet(item: FileItem) {
+  async function openSheet(item: FileItem) {
     setSelectedItem(item);
     setFileSize(null);
     setShowRename(false);
     setRenameValue('');
     setShowSheet(true);
+    setIsFav(await isFavourite(item.uri));
     Animated.spring(sheetAnim, {
       toValue: 0,
       useNativeDriver: true,
@@ -218,6 +221,19 @@ export default function BrowseScreen() {
       }
     } catch (e) {
       console.log('Share error:', e);
+    }
+  }
+
+  async function handleToggleFavourite() {
+    if (!selectedItem || selectedItem.isDirectory) return;
+    if (isFav) {
+      await removeFavourite(selectedItem.uri);
+      setIsFav(false);
+      Alert.alert('Removed', `"${selectedItem.name}" removed from Favourites.`);
+    } else {
+      await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
+      setIsFav(true);
+      Alert.alert('Added', `"${selectedItem.name}" added to Favourites.`);
     }
   }
 
@@ -600,6 +616,14 @@ export default function BrowseScreen() {
                       <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
                         <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
                         <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
+                      </TouchableOpacity>
+                    )}
+                    {!selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
+                        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
+                        <Text style={[styles.sheetActionText, isFav && { color: '#E24B4A' }]}>
+                          {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
+                        </Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
