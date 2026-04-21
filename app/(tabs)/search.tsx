@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
@@ -97,6 +98,15 @@ export default function SearchScreen() {
   const { answer, thinking, ask, reset } = useAskAI();
   const router = useRouter();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<any>(null);
+
+  useFocusEffect(
+    useRef(() => {
+      if (mode === 'search') {
+        setTimeout(() => searchInputRef.current?.focus(), 100);
+      }
+    }).current
+  );
   const { fileCounts, storageInfo, folderSizes, mediaContext } = useStorage();
   const { isPro } = usePro();
   const { queriesRemaining, isLimitReached, incrementQuery } = useAiQueryLimit(isPro);
@@ -341,6 +351,7 @@ export default function SearchScreen() {
           <View style={styles.inputWrap}>
             <Ionicons name="search-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
             <TextInput
+              ref={searchInputRef}
               style={styles.input}
               placeholder="Type a filename..."
               placeholderTextColor="#888780"

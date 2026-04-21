@@ -1,17 +1,36 @@
-import { StyleSheet, View, Image, Text, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
+import { StyleSheet, View, Image, Text, TouchableOpacity, Dimensions, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { getMimeType } from '@/utils/files';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
+import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ViewerScreen() {
   const { uri, name } = useLocalSearchParams<{ uri: string; name: string }>();
   const router = useRouter();
+  const [isFav, setIsFav] = useState(false);
+
+  useEffect(() => {
+    isFavourite(uri as string).then(setIsFav);
+  }, [uri]);
+
+  async function handleToggleFavourite() {
+    if (isFav) {
+      await removeFavourite(uri as string);
+      setIsFav(false);
+      Alert.alert('Removed', `"${name}" removed from Favourites.`);
+    } else {
+      await addFavourite({ name: name as string, uri: uri as string });
+      setIsFav(true);
+      Alert.alert('Added', `"${name}" added to Favourites.`);
+    }
+  }
 
   async function handleShare() {
     try {
@@ -55,6 +74,9 @@ export default function ViewerScreen() {
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.fileName} numberOfLines={1}>{name}</Text>
+          <TouchableOpacity onPress={handleToggleFavourite} style={styles.iconBtn}>
+            <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={24} color={isFav ? '#E24B4A' : '#fff'} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
             <Ionicons name="share-outline" size={24} color="#fff" />
           </TouchableOpacity>

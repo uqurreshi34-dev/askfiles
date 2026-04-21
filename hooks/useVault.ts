@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { removeFavourite } from '@/hooks/useFavourites';
 
 const VAULT_DIR = FileSystem.Paths.document.uri.endsWith('/')
   ? FileSystem.Paths.document.uri + 'vault/'
@@ -94,6 +95,7 @@ export function useVault() {
       const src = new FileSystem.File(sourceUri);
       const dst = new FileSystem.File(destUri);
       src.move(dst);
+      await removeFavourite(sourceUri);
       await loadFiles();
       return true;
     } catch {
