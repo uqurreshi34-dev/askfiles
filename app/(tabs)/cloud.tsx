@@ -49,6 +49,11 @@ export default function CloudScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.homeBtn}>
+              <Ionicons name="home-outline" size={22} color="#111" />
+            </TouchableOpacity>
+          </View>
           <View style={styles.header}>
             <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="checkmark-circle" size={40} color="#2E7D32" />
@@ -91,7 +96,11 @@ export default function CloudScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.homeBtn}>
+            <Ionicons name="home-outline" size={22} color="#111" />
+          </TouchableOpacity>
+        </View>
         <View style={styles.header}>
           <View style={styles.iconWrap}>
             <Ionicons name="cloud-outline" size={36} color="#185FA5" />
@@ -176,6 +185,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, marginBottom: -8 },
+  homeBtn: { width: 40, height: 40, justifyContent: 'center' },
 
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 28 },
   iconWrap: {

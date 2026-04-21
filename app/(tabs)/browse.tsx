@@ -490,7 +490,9 @@ export default function BrowseScreen() {
               <Ionicons name="arrow-back" size={22} color="#111" />
             </TouchableOpacity>
           ) : (
-            <View style={styles.backBtn} />
+            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.backBtn}>
+              <Ionicons name="home-outline" size={22} color="#111" />
+            </TouchableOpacity>
           )}
           <Text style={styles.title} numberOfLines={1}>
             {breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse'}

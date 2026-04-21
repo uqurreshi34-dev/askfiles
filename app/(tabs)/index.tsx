@@ -45,11 +45,6 @@ export default function HomeScreen() {
 
         <View style={styles.header}>
           <Text style={styles.appName}>AskFiles</Text>
-          <TouchableOpacity style={styles.menuBtn}>
-            <View style={styles.menuLine} />
-            <View style={styles.menuLine} />
-            <View style={styles.menuLine} />
-          </TouchableOpacity>
         </View>
 
         <TouchableOpacity

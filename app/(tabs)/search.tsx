@@ -296,7 +296,13 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container}>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Search</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)')} style={{ width: 40, height: 40, justifyContent: 'center' }}>
+            <Ionicons name="home-outline" size={22} color="#111" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Search</Text>
+          <View style={{ width: 40 }} />
+        </View>
       </View>
 
       <View style={styles.modeToggle}>
