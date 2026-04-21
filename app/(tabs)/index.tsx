@@ -127,6 +127,23 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={16} color="#888780" />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.breakdownCard}
+          onPress={() => router.push('/storage-breakdown')}
+        >
+          <View style={styles.largeFilesLeft}>
+            <View style={styles.breakdownIcon}>
+              <Ionicons name="pie-chart-outline" size={22} color="#534AB7" />
+            </View>
+            <View>
+              <Text style={styles.largeFilesTitle}>Storage Breakdown</Text>
+              <Text style={styles.largeFilesSub}>See what's using your space</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#888780" />
+        </TouchableOpacity>
+
         <Text style={styles.sectionLabel}>Recent</Text>
         <View style={styles.recentsList}>
           {recents.length === 0 ? (
@@ -194,6 +211,8 @@ const styles = StyleSheet.create({
   largeFilesIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F5D5CB', alignItems: 'center', justifyContent: 'center' },
   largeFilesTitle: { fontSize: 14, fontWeight: '600', color: '#111', marginBottom: 2 },
   largeFilesSub: { fontSize: 11, color: '#5F5E5A' },
+  breakdownCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, backgroundColor: '#EEEDFE', borderRadius: 12, padding: 14 },
+  breakdownIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#D9D8F8', alignItems: 'center', justifyContent: 'center' },
   recentsList: { paddingHorizontal: 16, paddingBottom: 24 },
   emptyText: { fontSize: 13, color: '#888780', textAlign: 'center', paddingVertical: 20 },
   recentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
