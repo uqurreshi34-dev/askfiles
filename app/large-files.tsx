@@ -27,10 +27,9 @@ const SCAN_DIRS = [
 ];
 
 const SIZE_GROUPS = [
-  { label: 'Over 500 MB', min: 500 * 1024 * 1024 },
-  { label: 'Over 100 MB', min: 100 * 1024 * 1024 },
-  { label: 'Over 25 MB',  min: 25  * 1024 * 1024 },
-  { label: 'Over 5 MB',   min: 5   * 1024 * 1024 },
+  { label: 'Over 75 MB',  min: 75 * 1024 * 1024, max: Infinity },
+  { label: '51 – 75 MB',  min: 51 * 1024 * 1024, max: 75 * 1024 * 1024 },
+  { label: '25 – 50 MB',  min: 25 * 1024 * 1024, max: 51 * 1024 * 1024 },
 ];
 
 function formatSize(bytes: number): string {
@@ -83,7 +82,7 @@ export default function LargeFilesScreen() {
     try {
       const results: LargeFile[] = [];
       for (const dir of SCAN_DIRS) {
-        await scanDir(dir, results, 5 * 1024 * 1024);
+        await scanDir(dir, results, 25 * 1024 * 1024);
       }
       results.sort((a, b) => b.size - a.size);
       setFiles(results);
@@ -123,14 +122,24 @@ export default function LargeFilesScreen() {
     );
   }
 
-  // Group files by size bands
   const grouped: { label: string; data: LargeFile[] }[] = [];
-  let remaining = [...files];
   for (const group of SIZE_GROUPS) {
-    const inGroup = remaining.filter(f => f.size >= group.min);
-    remaining = remaining.filter(f => f.size < group.min);
+    const inGroup = files.filter(f => f.size >= group.min && f.size < group.max);
     if (inGroup.length > 0) {
       grouped.push({ label: group.label, data: inGroup });
+    }
+  }
+
+  // Flatten into FlatList-friendly items with section headers
+  type ListItem =
+    | { type: 'header'; label: string; key: string }
+    | { type: 'file'; file: LargeFile; key: string };
+
+  const flatData: ListItem[] = [];
+  for (const group of grouped) {
+    flatData.push({ type: 'header', label: group.label, key: `header-${group.label}` });
+    for (const file of group.data) {
+      flatData.push({ type: 'file', file, key: file.uri });
     }
   }
 
@@ -203,10 +212,11 @@ export default function LargeFilesScreen() {
 
       {scanned && !scanning && (
         <FlatList
-          data={grouped}
-          keyExtractor={item => item.label}
+          data={flatData}
+          keyExtractor={item => item.key}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          getItemLayout={(_, index) => ({ length: 61, offset: 61 * index, index })}
           ListHeaderComponent={
             <View style={styles.summaryCard}>
               <View style={styles.summaryRow}>
@@ -230,12 +240,12 @@ export default function LargeFilesScreen() {
               <Text style={styles.cleanSub}>Your storage looks clean.</Text>
             </View>
           }
-          renderItem={({ item: group }) => (
-            <View>
-              <Text style={styles.groupLabel}>{group.label}</Text>
-              {group.data.map(renderFile)}
-            </View>
-          )}
+          renderItem={({ item }) => {
+            if (item.type === 'header') {
+              return <Text style={styles.groupLabel}>{item.label}</Text>;
+            }
+            return renderFile(item.file);
+          }}
         />
       )}
     </SafeAreaView>
@@ -258,9 +268,9 @@ const styles = StyleSheet.create({
   cleanTitle: { fontSize: 20, fontWeight: '600', color: '#111' },
   cleanSub: { fontSize: 14, color: '#888780' },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
-  summaryCard: { backgroundColor: '#FAFAF8', borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  summaryRow: { alignItems: 'center', flex: 1 },
-  summaryCount: { fontSize: 24, fontWeight: '700', color: '#111', letterSpacing: -0.5 },
+  summaryCard: { backgroundColor: '#FAFAF8', borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  summaryRow: { alignItems: 'center', flex: 1, minWidth: 0 },
+  summaryCount: { fontSize: 22, fontWeight: '700', color: '#111', letterSpacing: -0.5 },
   summaryLabel: { fontSize: 12, color: '#888780', marginTop: 2 },
   summaryDivider: { width: 1, height: 40, backgroundColor: '#F1EFE8' },
   rescanBtn: { paddingVertical: 8, paddingHorizontal: 16 },
