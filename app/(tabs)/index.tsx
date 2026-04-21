@@ -7,17 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStorage, pluralise } from '@/hooks/useStorage';
 import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
-
-const CATEGORY_ROUTES: Record<string, string> = {
-  '1': 'images',
-  '2': 'videos',
-  '3': 'documents',
-  '4': 'downloads',
-};
+import { useFavourites } from '@/hooks/useFavourites';
 
 export default function HomeScreen() {
   const { storageInfo, fileCounts, loading, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
+  const { count: favCount } = useFavourites();
   const router = useRouter();
 
   useFocusEffect(useCallback(() => {
@@ -26,10 +21,11 @@ export default function HomeScreen() {
   }, [reload, reloadStorage]));
 
   const QUICK_ACCESS = [
-    { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: '#E6F1FB', iconColor: '#185FA5', icon: 'image-outline' },
-    { id: '2', label: 'Videos', count: pluralise(fileCounts.videos, 'file'), color: '#FAECE7', iconColor: '#993C1D', icon: 'videocam-outline' },
-    { id: '3', label: 'Documents', count: pluralise(fileCounts.documents, 'file'), color: '#EEEDFE', iconColor: '#534AB7', icon: 'document-outline' },
-    { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: '#EAF3DE', iconColor: '#3B6D11', icon: 'download-outline' },
+    { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: '#E6F1FB', iconColor: '#185FA5', icon: 'image-outline', route: '/category?category=images' },
+    { id: '2', label: 'Videos', count: pluralise(fileCounts.videos, 'file'), color: '#FAECE7', iconColor: '#993C1D', icon: 'videocam-outline', route: '/category?category=videos' },
+    { id: '3', label: 'Documents', count: pluralise(fileCounts.documents, 'file'), color: '#EEEDFE', iconColor: '#534AB7', icon: 'document-outline', route: '/category?category=documents' },
+    { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: '#EAF3DE', iconColor: '#3B6D11', icon: 'download-outline', route: '/category?category=downloads' },
+    { id: '5', label: 'Favourites', count: pluralise(favCount, 'file'), color: '#FEE9E9', iconColor: '#C0392B', icon: 'heart-outline', route: '/favourites' },
   ];
 
   function getFileColor(name: string): string {
@@ -72,10 +68,7 @@ export default function HomeScreen() {
               key={item.id}
               style={[styles.quickCard, { backgroundColor: item.color }]}
               activeOpacity={0.7}
-              onPress={() => router.push({
-                pathname: '/category',
-                params: { category: CATEGORY_ROUTES[item.id] },
-              })}
+              onPress={() => router.push(item.route as any)}
             >
               <Ionicons
                 name={item.icon as any}

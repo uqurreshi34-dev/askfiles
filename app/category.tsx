@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 import { isImageFile, getMimeType } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -120,6 +121,7 @@ export default function CategoryScreen() {
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [isFav, setIsFav] = useState(false);
   const insets = useSafeAreaInsets();
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
@@ -146,14 +148,16 @@ export default function CategoryScreen() {
 
   async function openSheet(item: FileItem) {
     setSelectedItem(item);
-    setFileSize(item.size ? formatSize(item.size) : null);
+    setFileSize(item.size && item.size > 0 ? formatSize(item.size) : 'Calculating...');
+    setIsFav(await isFavourite(item.uri));
     setShowSheet(true);
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-    if (!item.size) {
+    if (!item.size || item.size === 0) {
       try {
         const file = new FileSystem.File(item.uri);
-        if (file.size && file.size > 0) setFileSize(formatSize(file.size));
+        if (file.size && file.size > 0) { setFileSize(formatSize(file.size)); return; }
       } catch {}
+      setFileSize('Unknown');
     }
   }
 
@@ -240,6 +244,19 @@ export default function CategoryScreen() {
         dialogTitle: item.name,
       });
     } catch (e) { console.log('Open error:', e); }
+  }
+
+  async function handleToggleFavourite() {
+    if (!selectedItem) return;
+    if (isFav) {
+      await removeFavourite(selectedItem.uri);
+      setIsFav(false);
+      Alert.alert('Removed from Favourites', `"${selectedItem.name}" removed.`);
+    } else {
+      await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
+      setIsFav(true);
+      Alert.alert('Added to Favourites', `"${selectedItem.name}" added.`);
+    }
   }
 
   async function handleShare() {
@@ -376,6 +393,12 @@ export default function CategoryScreen() {
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color="#111" />
                 <Text style={styles.sheetActionText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
+                <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
+                <Text style={[styles.sheetActionText, isFav && { color: '#E24B4A' }]}>
+                  {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => {
                 closeSheet();
