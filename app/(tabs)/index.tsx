@@ -94,7 +94,9 @@ export default function HomeScreen() {
           <View style={styles.barTrack}>
             <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
           </View>
-          <Text style={styles.storageNote}>Reflects app-accessible storage. System partition not included.</Text>
+          <Text style={styles.storageNote}>
+            {storageInfo ? `${storageInfo.marketedGB} GB device · ${storageInfo.totalReadable} formatted capacity` : ''}
+          </Text>
         </View>
         </TouchableOpacity>
 

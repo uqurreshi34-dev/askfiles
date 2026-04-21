@@ -14,10 +14,10 @@ import { getMimeType, isImageFile } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault } from '@/hooks/useVault';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
+import RNFS from 'react-native-fs';
 
 interface FileItem {
   name: string;
@@ -49,6 +49,11 @@ function decodeName(name: string): string {
   try { return decodeURIComponent(name); } catch { return name; }
 }
 
+// Strip file:// prefix for RNFS which works on raw paths
+function toPath(uri: string): string {
+  return uri.replace('file://', '');
+}
+
 export default function BrowseScreen() {
   const [currentPath, setCurrentPath] = useState(ROOT_PATH);
   const [items, setItems] = useState<FileItem[]>([]);
@@ -68,6 +73,7 @@ export default function BrowseScreen() {
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
   const [pickerItems, setPickerItems] = useState<FileItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const pendingItem = useRef<FileItem | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -343,6 +349,7 @@ export default function BrowseScreen() {
   }
 
   function openPicker(mode: 'copy' | 'move') {
+    pendingItem.current = selectedItem; // save before closeSheet nulls selectedItem
     setPickerMode(mode);
     setPickerPath(ROOT_PATH);
     loadPickerDir(ROOT_PATH);
@@ -351,61 +358,49 @@ export default function BrowseScreen() {
   }
 
   async function handlePaste() {
-    if (!selectedItem) return;
-    const destUri = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
-    const destFile = destUri + selectedItem.name;
+    const item = pendingItem.current;
+    if (!item) return;
+    const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+    const destUri = destDir + item.name;
 
-    const PROTECTED = [
-      '/Pictures/', '/DCIM/', '/Movies/', '/Music/', '/Ringtones/',
-      '/Alarms/', '/Notifications/', '/Podcasts/',
-    ];
-    const srcProtected = PROTECTED.some(p => selectedItem.uri.includes(p));
-    const dstProtected = PROTECTED.some(p => destUri.includes(p));
-
-    if (srcProtected || dstProtected) {
-      setShowPicker(false);
-      Alert.alert(
-        'Cannot copy/move here',
-        'Android protects media folders (Pictures, DCIM, etc.) from being modified by third-party apps. Try files in Downloads or Documents instead.'
-      );
-      return;
-    }
     try {
-      // Use legacy copy which works on external storage
-      await FileSystemLegacy.copyAsync({ from: selectedItem.uri, to: destFile });
-      if (pickerMode === 'move') {
-        // Delete original after copy
+      const src = toPath(item.uri);
+      const dst = toPath(destUri);
+      console.log('PASTE src:', src);
+      console.log('PASTE dst:', dst);
+
+      if (pickerMode === 'copy') {
+        await RNFS.copyFile(src, dst);
+        setShowPicker(false);
+        Alert.alert('Success', `"${item.name}" copied successfully.`);
+      } else {
+        await RNFS.moveFile(src, dst);
         try {
-          const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-          const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
-          if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-          else { const f = new FileSystem.File(selectedItem.uri); f.delete(); }
+          const result = await MediaLibrary.getAssetsAsync({ first: 1000 });
+          const ghost = result.assets.find(a => item.uri.includes(a.filename));
+          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
         } catch {}
-        await loadDirectory(currentPath);
+        setShowPicker(false);
+        // Navigate to destination so user can see the moved file
+        const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+        const destName = destFolder.split('/').filter(Boolean).pop() ?? 'Folder';
+        setCurrentPath(destFolder);
+        setBreadcrumbs([
+          { name: 'Storage', path: ROOT_PATH },
+          { name: destName, path: destFolder },
+        ]);
+        await loadDirectory(destFolder);
+        Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
-      setShowPicker(false);
-      Alert.alert('Success', `"${selectedItem.name}" ${pickerMode === 'copy' ? 'copied' : 'moved'} successfully.`);
-    } catch (e) {
+    } catch (e: any) {
       console.log('Paste error:', e);
-      Alert.alert('Error', `Could not ${pickerMode} file. Try again.`);
+      Alert.alert('Error', `Could not ${pickerMode} file.`);
     }
   }
 
   async function handleRename() {
     if (!selectedItem || !renameValue.trim()) return;
 
-    const PROTECTED = [
-      '/Pictures/', '/DCIM/', '/Movies/', '/Music/', '/Ringtones/',
-      '/Alarms/', '/Notifications/', '/Podcasts/',
-    ];
-    const isProtected = PROTECTED.some(p => selectedItem.uri.includes(p));
-    if (isProtected) {
-      Alert.alert(
-        'Cannot rename here',
-        'Android protects media folders (Pictures, DCIM, etc.) from being renamed by third-party apps. Try files in Downloads or Documents instead.'
-      );
-      return;
-    }
     const uri = selectedItem.uri.endsWith('/')
       ? selectedItem.uri.slice(0, -1)
       : selectedItem.uri;
@@ -413,30 +408,25 @@ export default function BrowseScreen() {
     const newUri = parentPath + renameValue.trim();
 
     try {
-      await FileSystemLegacy.moveAsync({ from: selectedItem.uri, to: newUri });
-      closeSheet();
-      await loadDirectory(currentPath);
-      return;
-    } catch (e) {
-      console.log('Move rename failed:', e);
-    }
-
-    // Fallback: copy + delete
-    try {
-      await FileSystemLegacy.copyAsync({ from: selectedItem.uri, to: newUri });
+      await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
       try {
-        const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-        const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
-        if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-        else { const file = new FileSystem.File(selectedItem.uri); file.delete(); }
-      } catch {}
+        const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
+        const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+        const ghost = allAssets.assets.find(a => a.filename === sourceFilename);
+        console.log('Ghost search — filename:', sourceFilename, 'found:', ghost?.uri ?? 'NONE');
+        if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+      } catch (e) { console.log('Ghost delete error:', e); }
       closeSheet();
       await loadDirectory(currentPath);
-    } catch (e) {
-      console.log('Rename copy+delete error:', e);
+    } catch (e: any) {
+      console.log('Rename error:', e);
       Alert.alert(
         'Rename failed',
-        'Android restricts renaming this file. This is a system limitation affecting all file manager apps.'
+        'Could not rename this file. Make sure "All files access" is enabled in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: requestManagePermission },
+        ]
       );
     }
   }
@@ -614,6 +604,24 @@ export default function BrowseScreen() {
                       <Ionicons name="share-outline" size={20} color="#111" />
                       <Text style={styles.sheetActionText}>Share</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
+                      <Ionicons name="copy-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Copy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
+                      <Ionicons name="arrow-redo-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Move</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.sheetAction}
+                      onPress={() => {
+                        setRenameValue(selectedItem?.name ?? '');
+                        setShowRename(true);
+                      }}
+                    >
+                      <Ionicons name="pencil-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Rename</Text>
+                    </TouchableOpacity>
                     {!selectedItem?.isDirectory && (
                       <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
                         <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
@@ -664,6 +672,7 @@ export default function BrowseScreen() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
       <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
@@ -742,7 +751,6 @@ const styles = StyleSheet.create({
   pathSegmentActive: { color: '#2E7D32', fontWeight: '600' },
   backBtn: { width: 36, height: 36, justifyContent: 'center' },
   title: { flex: 1, fontSize: 22, fontWeight: '500', color: '#111', letterSpacing: -0.5, textAlign: 'center' },
-
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14, color: '#888780' },
   listContent: { paddingHorizontal: 16 },

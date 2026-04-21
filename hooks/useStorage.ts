@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
+import DeviceInfo from 'react-native-device-info';
 
 interface StorageInfo {
   totalBytes: number;
@@ -11,6 +12,7 @@ interface StorageInfo {
   usedPercent: number;
   totalReadable: string;
   usedReadable: string;
+  marketedGB: number;
 }
 
 interface FileCounts {
@@ -168,9 +170,17 @@ async function doLoad(): Promise<void> {
     await requestManageStoragePermission();
   }
 
-  const total = FileSystem.Paths.totalDiskSpace;
-  const free = FileSystem.Paths.availableDiskSpace;
+  // const total = FileSystem.Paths.totalDiskSpace;
+  // const free = FileSystem.Paths.availableDiskSpace;
+  // const used = total - free;
+
+  const [total, free] = await Promise.all([
+    DeviceInfo.getTotalDiskCapacity(),
+    DeviceInfo.getFreeDiskStorage(),
+  ]);
+  
   const used = total - free;
+  const marketedGB = Math.pow(2, Math.round(Math.log2(total / 1073741824)));
 
   cache.storageInfo = {
     totalBytes: total,
@@ -179,6 +189,7 @@ async function doLoad(): Promise<void> {
     usedPercent: Math.round((used / total) * 100),
     totalReadable: formatBytes(total),
     usedReadable: formatBytes(used),
+    marketedGB,
   };
 
   const [allImages, allVideos] = await Promise.all([
