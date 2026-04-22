@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import DeviceInfo from 'react-native-device-info';
+import RNFS from 'react-native-fs';
 
 interface StorageInfo {
   totalBytes: number;
@@ -29,6 +30,7 @@ export interface FolderSizes {
   documents: string;
   music: string;
   dcim: string;
+  other: string;
 }
 
 export interface MediaContext {
@@ -55,6 +57,7 @@ const cache: StorageCache = {
     documents: '0 MB',
     music: '0 MB',
     dcim: '0 MB',
+    other: '0 MB',
   },
   mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0 },
   loaded: false,
@@ -107,15 +110,37 @@ async function countFilesInDir(path: string, extensions?: string[]): Promise<num
 }
 
 async function getFolderSize(path: string): Promise<number> {
+  // Strip file:// prefix — RNFS works on raw paths
+  const rawPath = path.replace('file://', '').replace(/\/$/, '');
   try {
-    const dir = new FileSystem.Directory(ensureTrailingSlash(path));
-    const contents = dir.list();
+    const contents = await RNFS.readDir(rawPath);
     let size = 0;
     for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        size += item.size ?? 0;
-      } else if (item instanceof FileSystem.Directory) {
-        size += await getFolderSize(ensureTrailingSlash(item.uri));
+      if (item.isFile()) {
+        size += Number(item.size) || 0;
+      } else if (item.isDirectory()) {
+        size += await getFolderSize(item.path);
+      }
+    }
+    return size;
+  } catch {
+    return 0;
+  }
+}
+
+async function getFolderSizeByExtension(path: string, extensions: string[]): Promise<number> {
+  const rawPath = path.replace('file://', '').replace(/\/$/, '');
+  try {
+    const contents = await RNFS.readDir(rawPath);
+    let size = 0;
+    for (const item of contents) {
+      if (item.isFile()) {
+        const lower = item.name.toLowerCase();
+        if (extensions.some(ext => lower.endsWith(ext))) {
+          size += Number(item.size) || 0;
+        }
+      } else if (item.isDirectory()) {
+        size += await getFolderSizeByExtension(item.path, extensions);
       }
     }
     return size;
@@ -224,7 +249,9 @@ async function doLoad(): Promise<void> {
   cache.fileCounts.documents = docCount;
   cache.fileCounts.downloads = dlCount;
 
-  const [picturesSize, moviesSize, dcimSize, downloadsSize, documentsSize, musicSize] =
+  const [picturesSize, moviesSize, dcimSize, downloadsSize, documentsSize, musicSize,
+    documentsInDownloadSize, documentsInWhatsappSize, documentsInWhatsappBizSize,
+    documentsInTelegramSize] =
     await Promise.all([
       getFolderSize('file:///storage/emulated/0/Pictures/'),
       getFolderSize('file:///storage/emulated/0/Movies/'),
@@ -232,15 +259,23 @@ async function doLoad(): Promise<void> {
       getFolderSize('file:///storage/emulated/0/Download/'),
       getFolderSize('file:///storage/emulated/0/Documents/'),
       getFolderSize('file:///storage/emulated/0/Music/'),
+      getFolderSizeByExtension('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
+      getFolderSizeByExtension('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
+      getFolderSizeByExtension('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
+      getFolderSizeByExtension('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
     ]);
+
+  const knownBytes = picturesSize + moviesSize + dcimSize + downloadsSize + documentsSize + musicSize;
+  const otherBytes = Math.max(0, (cache.storageInfo?.usedBytes ?? 0) - knownBytes);
 
   cache.folderSizes = {
     pictures: formatBytes(picturesSize),
     videos: formatBytes(moviesSize + dcimSize),
     downloads: formatBytes(downloadsSize),
-    documents: formatBytes(documentsSize),
+    documents: formatBytes(documentsSize + documentsInDownloadSize + documentsInWhatsappSize + documentsInWhatsappBizSize + documentsInTelegramSize),
     music: formatBytes(musicSize),
     dcim: formatBytes(dcimSize),
+    other: formatBytes(otherBytes),
   };
 
   cache.loaded = true;
