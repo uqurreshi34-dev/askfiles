@@ -130,7 +130,20 @@ export default function BackupScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Google Drive connection status */}
+        {/* What gets backed up — always visible at top */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What's backed up</Text>
+          <View style={styles.itemRow}>
+            <Ionicons name="shield-checkmark-outline" size={18} color="#185FA5" style={{ marginRight: 10 }} />
+            <View>
+              <Text style={styles.itemTitle}>Vault files</Text>
+              <Text style={styles.itemDesc}>Your files are stored privately in each cloud provider</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Google Drive */}
+        <Text style={styles.providerLabel}>Google Drive</Text>
         <View style={styles.driveCard}>
           <View style={styles.driveCardLeft}>
             <View style={[styles.driveIcon, { backgroundColor: isConnected ? '#E8F5E9' : '#F1EFE8' }]}>
@@ -158,7 +171,75 @@ export default function BackupScreen() {
           )}
         </View>
 
-        {/* OneDrive connection status */}
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        {isConnected && (
+          <>
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
+              <Text style={styles.infoText}>
+                {lastBackup ? `Last backup: ${lastBackup}` : 'No backup yet'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.backupBtn}
+              onPress={handleBackup}
+              disabled={syncing || restoring}
+              activeOpacity={0.85}
+            >
+              {syncing ? (
+                <>
+                  <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                  <Text style={styles.backupBtnText}>Backing up...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.backupBtnText}>Back Up Now</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.restoreBtn}
+              onPress={handleRestore}
+              disabled={syncing || restoring}
+              activeOpacity={0.85}
+            >
+              {restoring ? (
+                <>
+                  <ActivityIndicator color="#185FA5" size="small" style={{ marginRight: 8 }} />
+                  <Text style={styles.restoreBtnText}>Restoring...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-download-outline" size={18} color="#185FA5" style={{ marginRight: 8 }} />
+                  <Text style={styles.restoreBtnText}>Restore from Drive</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Squeezed container for consistent wrapping */}
+            <View style={{ paddingHorizontal: 20 }}>
+              <Text style={styles.note}>
+              <Text style={{ fontWeight: 'bold' }}>File location:</Text><Text style={{ color: "green"}}> "AskFiles Backup" </Text>folder on your Google Drive. Only you can see them.
+              </Text>
+            </View>
+          </>
+        )}
+
+        {!isConnected && (
+          <Text style={styles.notConnectedHint}>
+            Connect your Google account to back up and restore your vault files.
+          </Text>
+        )}
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* OneDrive */}
+        <Text style={styles.providerLabel}>OneDrive</Text>
         <View style={styles.driveCard}>
           <View style={styles.driveCardLeft}>
             <View style={[styles.driveIcon, { backgroundColor: odConnected ? '#E8F0FE' : '#F1EFE8' }]}>
@@ -193,7 +274,7 @@ export default function BackupScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="time-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
               <Text style={styles.infoText}>
-                {odLastBackup ? `Last OneDrive backup: ${odLastBackup}` : 'No OneDrive backup yet'}
+                {odLastBackup ? `Last backup: ${odLastBackup}` : 'No OneDrive backup yet'}
               </Text>
             </View>
             <TouchableOpacity
@@ -215,7 +296,7 @@ export default function BackupScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.restoreBtn, { marginBottom: 24 }]}
+              style={[styles.restoreBtn]}
               onPress={handleODRestore}
               disabled={odSyncing || odRestoring}
               activeOpacity={0.85}
@@ -232,87 +313,19 @@ export default function BackupScreen() {
                 </>
               )}
             </TouchableOpacity>
-          </>
-        )}
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
-
-        {isConnected && (
-          <>
-            {/* Last backup info */}
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
-              <Text style={styles.infoText}>
-                {lastBackup ? `Last backup: ${lastBackup}` : 'No backup yet'}
+            <View style={{ paddingHorizontal: 20 }}>
+              <Text style={styles.note}>
+              <Text style={{ fontWeight: 'bold' }}>File location:</Text><Text style={{ color: "green"}}> "AskFiles" </Text>folder on your OneDrive. Only you can see them.
               </Text>
             </View>
-
-            {/* What gets backed up */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>What's backed up</Text>
-              <View style={styles.itemRow}>
-                <Ionicons name="shield-checkmark-outline" size={18} color="#185FA5" style={{ marginRight: 10 }} />
-                <View>
-                  <Text style={styles.itemTitle}>Vault files</Text>
-                  <Text style={styles.itemDesc}>Stored in a private AskFiles folder on your Drive</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Backup button */}
-            <TouchableOpacity
-              style={styles.backupBtn}
-              onPress={handleBackup}
-              disabled={syncing || restoring}
-              activeOpacity={0.85}
-            >
-              {syncing ? (
-                <>
-                  <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Backing up...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Back Up Now</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Restore button */}
-            <TouchableOpacity
-              style={styles.restoreBtn}
-              onPress={handleRestore}
-              disabled={syncing || restoring}
-              activeOpacity={0.85}
-            >
-              {restoring ? (
-                <>
-                  <ActivityIndicator color="#185FA5" size="small" style={{ marginRight: 8 }} />
-                  <Text style={styles.restoreBtnText}>Restoring...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="cloud-download-outline" size={18} color="#185FA5" style={{ marginRight: 8 }} />
-                  <Text style={styles.restoreBtnText}>Restore from Drive</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <Text style={styles.note}>
-              Files are stored in "AskFiles Backup" folder on your Google Drive. Only you can see them.
-            </Text>
           </>
         )}
 
-        {!isConnected && (
-          <View style={styles.emptyState}>
-            <Ionicons name="cloud-outline" size={48} color="#D3D1C7" />
-            <Text style={styles.emptyTitle}>Connect Google Drive</Text>
-            <Text style={styles.emptySub}>
-              Connect your Google account to back up your vault files and restore them on any device.
-            </Text>
-          </View>
+        {!odConnected && (
+          <Text style={styles.notConnectedHint}>
+            Connect your Microsoft account to back up and restore your vault files.
+          </Text>
         )}
 
       </ScrollView>
@@ -328,9 +341,11 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
+  providerLabel: { fontSize: 11, fontWeight: '600', color: '#888780', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 },
+
   driveCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FAFAF8', borderRadius: 16, padding: 16, marginTop: 8, marginBottom: 16,
+    backgroundColor: '#FAFAF8', borderRadius: 16, padding: 16, marginBottom: 16,
   },
   driveCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   driveIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
@@ -343,7 +358,7 @@ const styles = StyleSheet.create({
 
   errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center', marginBottom: 12 },
 
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   infoText: { fontSize: 13, color: '#888780' },
 
   section: { backgroundColor: '#FAFAF8', borderRadius: 12, padding: 16, marginBottom: 24 },
@@ -365,9 +380,9 @@ const styles = StyleSheet.create({
   },
   restoreBtnText: { fontSize: 15, fontWeight: '600', color: '#185FA5' },
 
-  note: { fontSize: 11, color: '#5F5E5A', textAlign: 'center', lineHeight: 16 },
+  note: { fontSize: 11, color: '#5F5E5A', textAlign: 'center', lineHeight: 16, marginBottom: 8 },
 
-  emptyState: { alignItems: 'center', paddingTop: 48, gap: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '500', color: '#111' },
-  emptySub: { fontSize: 14, color: '#888780', textAlign: 'center', lineHeight: 20 },
+  notConnectedHint: { fontSize: 13, color: '#888780', textAlign: 'center', lineHeight: 19, marginBottom: 8 },
+
+  divider: { height: 1, backgroundColor: '#F1EFE8', marginVertical: 24 },
 });
