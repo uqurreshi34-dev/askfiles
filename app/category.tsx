@@ -168,7 +168,7 @@ export default function CategoryScreen() {
       const folders = contents
         .filter((item: any) => item instanceof FileSystem.Directory)
         .map((item: any) => ({
-          name: item.uri.split('/').filter(Boolean).pop() ?? '',
+          name: (() => { try { return decodeURIComponent(item.uri.split('/').filter(Boolean).pop() ?? ''); } catch { return item.uri.split('/').filter(Boolean).pop() ?? ''; } })(),
           uri: item.uri,
         }))
         .filter((f: any) => !f.name.startsWith('.'))

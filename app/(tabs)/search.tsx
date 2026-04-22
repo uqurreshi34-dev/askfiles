@@ -167,7 +167,7 @@ export default function SearchScreen() {
       const contents = dir.list();
       const folders = contents
         .filter((item: any) => item instanceof FileSystem.Directory)
-        .map((item: any) => ({ name: item.uri.split('/').filter(Boolean).pop() ?? '', uri: item.uri }))
+        .map((item: any) => { const raw = item.uri.split('/').filter(Boolean).pop() ?? ''; let name = raw; try { name = decodeURIComponent(raw); } catch {} return { name, uri: item.uri }; })
         .filter((f: any) => !f.name.startsWith('.'))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setPickerItems(folders);
@@ -235,6 +235,9 @@ export default function SearchScreen() {
         '/storage/emulated/0/Music/',
         '/storage/emulated/0/DCIM/',
         '/storage/emulated/0/Recordings/',
+        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/',
+        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/',
+        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
       ];
       for (const dir of SEARCH_DIRS_LIST) {
         const siblingPath = dir + oldName;

@@ -15,6 +15,9 @@ const SEARCH_DIRS = [
   'file:///storage/emulated/0/Music/',
   'file:///storage/emulated/0/DCIM/',
   'file:///storage/emulated/0/Recordings/',
+  'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/',
+  'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/',
+  'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
 ];
 
 async function searchDir(path: string, query: string, results: SearchResult[]): Promise<void> {

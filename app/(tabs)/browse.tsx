@@ -336,15 +336,16 @@ export default function BrowseScreen() {
       const contents = dir.list();
       const folders: FileItem[] = contents
         .filter(item => item instanceof FileSystem.Directory)
-        .map(item => ({
-          name: decodeName(item.uri.split('/').filter(Boolean).pop() ?? ''),
-          uri: item.uri,
-          isDirectory: true,
-        }))
+        .map(item => {
+          const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
+          const decoded = decodeName(raw);
+          console.log('PICKER folder raw:', raw, 'decoded:', decoded);
+          return { name: decoded, uri: item.uri, isDirectory: true };
+        })
         .filter(f => !f.name.startsWith('.'))
         .sort((a, b) => a.name.localeCompare(b.name));
       setPickerItems(folders);
-    } catch { setPickerItems([]); }
+    } catch (e) { console.log('loadPickerDir error:', e); setPickerItems([]); }
     finally { setPickerLoading(false); }
   }
 
@@ -707,7 +708,7 @@ export default function BrowseScreen() {
               <View style={styles.backBtn} />
             </View>
             <Text style={[styles.pathSegment, { paddingLeft: 52, paddingBottom: 4 }]}>
-              {pickerPath.replace('file:///storage/emulated/0/', 'Storage/')}
+              {pickerPath.replace('file:///storage/emulated/0/', 'Storage/').split('/').map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } }).join('/')}
             </Text>
           </View>
           {pickerLoading ? (

@@ -103,7 +103,7 @@ export default function FavouritesScreen() {
       const contents = dir.list();
       const folders = contents
         .filter((item: any) => item instanceof FileSystem.Directory)
-        .map((item: any) => ({ name: item.uri.split('/').filter(Boolean).pop() ?? '', uri: item.uri }))
+        .map((item: any) => { const raw = item.uri.split('/').filter(Boolean).pop() ?? ''; let name = raw; try { name = decodeURIComponent(raw); } catch {} return { name, uri: item.uri }; })
         .filter((f: any) => !f.name.startsWith('.'))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setPickerItems(folders);
