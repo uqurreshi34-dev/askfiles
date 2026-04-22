@@ -221,11 +221,14 @@ export default function BackupScreen() {
             </TouchableOpacity>
 
             {/* Squeezed container for consistent wrapping */}
-            <View style={{ paddingHorizontal: 20 }}>
-              <Text style={styles.note}>
-              <Text style={{ fontWeight: 'bold' }}>File location:</Text><Text style={{ color: "green"}}> "AskFiles Backup" </Text>folder on your Google Drive. Only you can see them.
-              </Text>
-            </View>
+              <View style={{ paddingHorizontal: 20 }}>
+                <Text style={styles.note}>
+                  <Text style={{ fontWeight: 'bold' }}>File location:</Text> "AskFiles" folder on your Google Drive.
+                </Text>
+                <Text style={[styles.note, { marginTop: 4, color: '#2E7D32', fontWeight: '500' }]}>
+                  Only you can see these files.
+                </Text>
+              </View>
           </>
         )}
 
@@ -313,10 +316,12 @@ export default function BackupScreen() {
                 </>
               )}
             </TouchableOpacity>
-
             <View style={{ paddingHorizontal: 20 }}>
               <Text style={styles.note}>
-              <Text style={{ fontWeight: 'bold' }}>File location:</Text><Text style={{ color: "green"}}> "AskFiles" </Text>folder on your OneDrive. Only you can see them.
+                <Text style={{ fontWeight: 'bold' }}>File location:</Text> "AskFiles" folder on your OneDrive.
+              </Text>
+              <Text style={[styles.note, { marginTop: 4, color: '#2E7D32', fontWeight: '500' }]}>
+                Only you can see these files.
               </Text>
             </View>
           </>

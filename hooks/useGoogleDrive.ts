@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const LAST_BACKUP_KEY = 'google_drive_last_backup';
-const DRIVE_FOLDER_NAME = 'AskFiles Backup';
+const DRIVE_FOLDER_NAME = 'AskFiles';
 
 GoogleSignin.configure({
   webClientId: WEB_CLIENT_ID,
