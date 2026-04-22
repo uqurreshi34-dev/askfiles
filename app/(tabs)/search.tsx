@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react';
-import { useFocusEffect } from 'expo-router';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
@@ -17,11 +16,11 @@ import { useStorage } from '@/hooks/useStorage';
 import { usePro } from '@/hooks/usePro';
 import { useAiQueryLimit } from '@/hooks/useAiQueryLimit';
 import { useVault } from '@/hooks/useVault';
-import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import * as FileSystem from 'expo-file-system/next';
 import * as MediaLibrary from 'expo-media-library';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import RNFS from 'react-native-fs';
 
 type Mode = 'search' | 'ask';
 
@@ -94,19 +93,10 @@ export default function SearchScreen() {
   const [mode, setMode] = useState<Mode>('search');
   const [query, setQuery] = useState('');
   const [aiQuery, setAiQuery] = useState('');
-  const { results, searching, search, removeResult } = useSearch();
+  const { results, searching, search, removeResult, removeResultsByName } = useSearch();
   const { answer, thinking, ask, reset } = useAskAI();
   const router = useRouter();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchInputRef = useRef<any>(null);
-
-  useFocusEffect(
-    useRef(() => {
-      if (mode === 'search') {
-        setTimeout(() => searchInputRef.current?.focus(), 100);
-      }
-    }).current
-  );
   const { fileCounts, storageInfo, folderSizes, mediaContext } = useStorage();
   const { isPro } = usePro();
   const { queriesRemaining, isLimitReached, incrementQuery } = useAiQueryLimit(isPro);
@@ -117,7 +107,14 @@ export default function SearchScreen() {
   const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
-  const [isFav, setIsFav] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
+  const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
+  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -126,7 +123,7 @@ export default function SearchScreen() {
       onPanResponderRelease: (_, g) => {
         if (g.dy > 80 || g.vy > 0.5) {
           Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-            setShowSheet(false); setSelectedItem(null);
+            setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue(''); setShowRename(false); setRenameValue('');
           });
         } else {
           Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
@@ -135,11 +132,10 @@ export default function SearchScreen() {
     })
   ).current;
 
-  async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
+  function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
     setSelectedItem(item);
     setFileSize(null);
     setShowSheet(true);
-    setIsFav(await isFavourite(item.uri));
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     try {
       const file = new FileSystem.File(item.uri);
@@ -149,8 +145,115 @@ export default function SearchScreen() {
 
   function closeSheet() {
     Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-      setShowSheet(false); setSelectedItem(null);
+      setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue('');
     });
+  }
+
+  const ROOT_PATH = 'file:///storage/emulated/0/';
+  function toPath(uri: string): string { return uri.replace('file://', ''); }
+
+  async function resolveUri(uri: string): Promise<string> {
+    if (!uri.startsWith('content://')) return uri.replace('file://', '');
+    try {
+      const info = await MediaLibrary.getAssetInfoAsync(uri as any);
+      return (info.localUri ?? uri).replace('file://', '');
+    } catch { return uri.replace('file://', ''); }
+  }
+
+  async function loadPickerDir(path: string) {
+    setPickerLoading(true);
+    try {
+      const dir = new FileSystem.Directory(path.endsWith('/') ? path : path + '/');
+      const contents = dir.list();
+      const folders = contents
+        .filter((item: any) => item instanceof FileSystem.Directory)
+        .map((item: any) => ({ name: item.uri.split('/').filter(Boolean).pop() ?? '', uri: item.uri }))
+        .filter((f: any) => !f.name.startsWith('.'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setPickerItems(folders);
+    } catch { setPickerItems([]); }
+    finally { setPickerLoading(false); }
+  }
+
+  function openPicker(mode: 'copy' | 'move') {
+    pendingItem.current = selectedItem;
+    setPickerMode(mode);
+    setPickerPath(ROOT_PATH);
+    loadPickerDir(ROOT_PATH);
+    setShowPicker(true);
+    closeSheet();
+  }
+
+  async function handlePaste() {
+    const item = pendingItem.current;
+    if (!item) return;
+    const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+    const destUri = destDir + item.name;
+    try {
+      const src = await resolveUri(item.uri);
+      const dst = toPath(destUri);
+      if (pickerMode === 'copy') {
+        await RNFS.copyFile(src, dst);
+        setShowPicker(false);
+        Alert.alert('Success', `"${item.name}" copied successfully.`);
+      } else {
+        await RNFS.moveFile(src, dst);
+        try {
+          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
+          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
+          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+        } catch {}
+        if (item.inFolder) { removeFolderItem(item.uri); }
+        else { removeResult(item.uri); }
+        setShowPicker(false);
+        Alert.alert('Success', `"${item.name}" moved successfully.`);
+      }
+    } catch (e: any) {
+      console.log('Paste error:', e);
+      Alert.alert('Error', `Could not ${pickerMode} file.`);
+    }
+  }
+
+  async function handleRename() {
+    if (!selectedItem || !renameValue.trim()) return;
+    const uri = selectedItem.uri.endsWith('/') ? selectedItem.uri.slice(0, -1) : selectedItem.uri;
+    const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
+    const newUri = parentPath + renameValue.trim();
+    try {
+      const srcPath = await resolveUri(selectedItem.uri);
+      await RNFS.moveFile(srcPath, toPath(newUri));
+
+      // Also rename the same filename in all other search dirs (hardlink sibling paths)
+      const oldName = selectedItem.name;
+      const newName = renameValue.trim();
+      const SEARCH_DIRS_LIST = [
+        '/storage/emulated/0/Download/',
+        '/storage/emulated/0/Documents/',
+        '/storage/emulated/0/Pictures/',
+        '/storage/emulated/0/Movies/',
+        '/storage/emulated/0/Music/',
+        '/storage/emulated/0/DCIM/',
+        '/storage/emulated/0/Recordings/',
+      ];
+      for (const dir of SEARCH_DIRS_LIST) {
+        const siblingPath = dir + oldName;
+        if (siblingPath !== srcPath) {
+          try {
+            const exists = await RNFS.exists(siblingPath);
+            if (exists) await RNFS.moveFile(siblingPath, dir + newName);
+          } catch {}
+        }
+      }
+
+      const wasInFolder = selectedItem.inFolder;
+      closeSheet();
+      if (wasInFolder) { removeFolderItem(selectedItem?.uri ?? ''); }
+      else { removeResultsByName(oldName); }
+    } catch (e: any) {
+      console.log('Rename error:', e);
+      Alert.alert('Rename failed', 'Could not rename this file.');
+    }
   }
 
   async function handleShare() {
@@ -174,19 +277,6 @@ export default function SearchScreen() {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
     } catch (e) { console.log('Share error:', e); }
-  }
-
-  async function handleToggleFavourite() {
-    if (!selectedItem) return;
-    if (isFav) {
-      await removeFavourite(selectedItem.uri);
-      setIsFav(false);
-      Alert.alert('Removed', `"${selectedItem.name}" removed from Favourites.`);
-    } else {
-      await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
-      setIsFav(true);
-      Alert.alert('Added', `"${selectedItem.name}" added to Favourites.`);
-    }
   }
 
   async function handleMoveToVault() {
@@ -306,13 +396,7 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container}>
 
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)')} style={{ width: 40, height: 40, justifyContent: 'center' }}>
-            <Ionicons name="home-outline" size={22} color="#111" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Search</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <Text style={styles.title}>Search</Text>
       </View>
 
       <View style={styles.modeToggle}>
@@ -351,7 +435,6 @@ export default function SearchScreen() {
           <View style={styles.inputWrap}>
             <Ionicons name="search-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
             <TextInput
-              ref={searchInputRef}
               style={styles.input}
               placeholder="Type a filename..."
               placeholderTextColor="#888780"
@@ -653,12 +736,6 @@ export default function SearchScreen() {
                   <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
                   <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
-                  <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
-                  <Text style={[styles.sheetActionText, isFav && { color: '#E24B4A' }]}>
-                    {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
-                  </Text>
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={() => {
                   closeSheet();
                   const location = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
@@ -676,14 +753,115 @@ export default function SearchScreen() {
                   <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete</Text>
                 </TouchableOpacity>
                 <View style={styles.sheetDivider} />
-                <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
-                  <Ionicons name="close-outline" size={20} color="#888780" />
-                  <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
-                </TouchableOpacity>
+                {showRename ? (
+                  <View style={styles.renameWrap}>
+                    <TextInput
+                      style={styles.renameInput}
+                      value={renameValue}
+                      onChangeText={setRenameValue}
+                      autoFocus
+                      selectTextOnFocus
+                      placeholder="New name..."
+                      placeholderTextColor="#888780"
+                      returnKeyType="done"
+                      onSubmitEditing={handleRename}
+                    />
+                    <View style={styles.renameActions}>
+                      <TouchableOpacity style={styles.renameCancelBtn} onPress={() => { setShowRename(false); setRenameValue(''); }}>
+                        <Text style={styles.renameCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.renameConfirmBtn} onPress={handleRename}>
+                        <Text style={styles.renameConfirmText}>Rename</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
+                      <Ionicons name="copy-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Copy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
+                      <Ionicons name="arrow-redo-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Move</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
+                      <Ionicons name="pencil-outline" size={20} color="#111" />
+                      <Text style={styles.sheetActionText}>Rename</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
+                      <Ionicons name="close-outline" size={20} color="#888780" />
+                      <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </Pressable>
             </Animated.View>
           </Pressable>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
+        <SafeAreaView style={styles.container}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (pickerPath === ROOT_PATH) { setShowPicker(false); }
+                else {
+                  const parent = pickerPath.endsWith('/') ? pickerPath.slice(0, -1) : pickerPath;
+                  const up = parent.substring(0, parent.lastIndexOf('/') + 1);
+                  setPickerPath(up); loadPickerDir(up);
+                }
+              }}
+              style={{ width: 40, height: 40, justifyContent: 'center' }}
+            >
+              <Ionicons name="arrow-back" size={22} color="#111" />
+            </TouchableOpacity>
+            <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.5 }} numberOfLines={1}>
+              {pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <Text style={{ fontSize: 12, color: '#888780', paddingHorizontal: 16, paddingBottom: 8 }}>
+            {pickerPath.replace('file:///storage/emulated/0/', 'Storage/')}
+          </Text>
+          {pickerLoading ? (
+            <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+          ) : pickerItems.length === 0 ? (
+            <View style={styles.centered}><Text style={styles.hint}>No folders here</Text></View>
+          ) : (
+            <FlatList
+              data={pickerItems}
+              keyExtractor={item => item.uri}
+              contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.fileIcon, { backgroundColor: '#BA751722' }]}>
+                    <Ionicons name="folder" size={22} color="#BA7517" />
+                  </View>
+                  <View style={styles.fileInfo}>
+                    <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <View style={styles.pickerFooter}>
+            <TouchableOpacity style={styles.pickerCancelBtn} onPress={() => setShowPicker(false)}>
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pickerPasteBtn} onPress={handlePaste}>
+              <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.pickerPasteText}>{pickerMode === 'copy' ? 'Copy here' : 'Move here'}</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -756,4 +934,16 @@ const styles = StyleSheet.create({
   folderHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   folderBackBtn: { width: 40, height: 40, justifyContent: 'center' },
   folderTitle: { flex: 1, fontSize: 18, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.3 },
+  renameWrap: { paddingVertical: 12, gap: 12 },
+  renameInput: { backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12, fontSize: 14, color: '#111' },
+  renameActions: { flexDirection: 'row', gap: 8 },
+  renameCancelBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#F1EFE8', alignItems: 'center' },
+  renameCancelText: { fontSize: 14, color: '#5F5E5A' },
+  renameConfirmBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#185FA5', alignItems: 'center' },
+  renameConfirmText: { fontSize: 14, color: '#fff', fontWeight: '500' },
+  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5, borderTopColor: '#F1EFE8' },
+  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1EFE8', alignItems: 'center' },
+  pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
+  pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
+  pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 });
