@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGoogleDrive } from '@/hooks/useGoogleDrive';
+import { useOneDrive } from '@/hooks/useOneDrive';
 import { useVault } from '@/hooks/useVault';
 
 export default function BackupScreen() {
@@ -14,7 +15,52 @@ export default function BackupScreen() {
     isConnected, lastBackup, loading, syncing, restoring, error,
     signIn, disconnect, backupVault, restoreVault,
   } = useGoogleDrive();
+  const {
+    isConnected: odConnected, lastBackup: odLastBackup, loading: odLoading,
+    syncing: odSyncing, restoring: odRestoring, error: odError,
+    signIn: odSignIn, disconnect: odDisconnect,
+    backupVault: odBackupVault, restoreVault: odRestoreVault,
+  } = useOneDrive();
   const { vaultDir } = useVault() as any;
+
+  async function handleODBackup() {
+    const ok = await odBackupVault(vaultDir);
+    if (ok) {
+      Alert.alert('Backup complete', 'Your vault files have been backed up to OneDrive.');
+    }
+  }
+
+  async function handleODRestore() {
+    Alert.alert(
+      'Restore from OneDrive',
+      'This will download your backed-up vault files to this device. Files already in your vault will be skipped.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          onPress: async () => {
+            const count = await odRestoreVault(vaultDir);
+            if (count > 0) {
+              Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
+            } else if (count === 0 && !odError) {
+              Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleODDisconnect() {
+    Alert.alert(
+      'Disconnect OneDrive',
+      'This removes access to OneDrive from AskFiles. Your backed-up files will remain on OneDrive.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Disconnect', style: 'destructive', onPress: odDisconnect },
+      ]
+    );
+  }
 
   async function handleBackup() {
     const ok = await backupVault(vaultDir);
@@ -111,6 +157,83 @@ export default function BackupScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* OneDrive connection status */}
+        <View style={styles.driveCard}>
+          <View style={styles.driveCardLeft}>
+            <View style={[styles.driveIcon, { backgroundColor: odConnected ? '#E8F0FE' : '#F1EFE8' }]}>
+              <Ionicons
+                name={odConnected ? 'cloud-done-outline' : 'cloud-outline'}
+                size={24}
+                color={odConnected ? '#185FA5' : '#888780'}
+              />
+            </View>
+            <View>
+              <Text style={styles.driveTitle}>OneDrive</Text>
+              <Text style={styles.driveStatus}>
+                {odConnected ? 'Connected' : 'Not connected'}
+              </Text>
+            </View>
+          </View>
+          {odConnected ? (
+            <TouchableOpacity onPress={handleODDisconnect} style={styles.disconnectBtn}>
+              <Text style={styles.disconnectText}>Disconnect</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={odSignIn} style={styles.connectBtn}>
+              <Text style={styles.connectText}>Connect</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {odError && <Text style={styles.errorText}>{odError}</Text>}
+
+        {odConnected && (
+          <>
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
+              <Text style={styles.infoText}>
+                {odLastBackup ? `Last OneDrive backup: ${odLastBackup}` : 'No OneDrive backup yet'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.backupBtn}
+              onPress={handleODBackup}
+              disabled={odSyncing || odRestoring}
+              activeOpacity={0.85}
+            >
+              {odSyncing ? (
+                <>
+                  <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                  <Text style={styles.backupBtnText}>Backing up...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.backupBtnText}>Back Up to OneDrive</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.restoreBtn, { marginBottom: 24 }]}
+              onPress={handleODRestore}
+              disabled={odSyncing || odRestoring}
+              activeOpacity={0.85}
+            >
+              {odRestoring ? (
+                <>
+                  <ActivityIndicator color="#185FA5" size="small" style={{ marginRight: 8 }} />
+                  <Text style={styles.restoreBtnText}>Restoring...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-download-outline" size={18} color="#185FA5" style={{ marginRight: 8 }} />
+                  <Text style={styles.restoreBtnText}>Restore from OneDrive</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
