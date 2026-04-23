@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,11 +10,15 @@ import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
 
+const APP_VERSION = '1.0.0';
+const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
+
 export default function HomeScreen() {
   const { storageInfo, fileCounts, loading, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const { count: favCount } = useFavourites();
   const router = useRouter();
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
     reload();
@@ -46,7 +50,64 @@ export default function HomeScreen() {
 
         <View style={styles.header}>
           <Text style={styles.appName}>AskFiles</Text>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => setSettingsVisible(true)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="settings-outline" size={22} color="#5F5E5A" />
+          </TouchableOpacity>
         </View>
+
+        {/* Settings Modal */}
+        <Modal
+          visible={settingsVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSettingsVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setSettingsVisible(false)}
+          >
+            <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+              <Text style={styles.modalTitle}>AskFiles</Text>
+              <Text style={styles.modalVersion}>Version {APP_VERSION}</Text>
+
+              <View style={styles.modalDivider} />
+
+              <TouchableOpacity
+                style={styles.modalRow}
+                activeOpacity={0.7}
+                onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+              >
+                <Ionicons name="shield-checkmark-outline" size={18} color="#534AB7" style={{ marginRight: 10 }} />
+                <Text style={styles.modalRowText}>Privacy Policy</Text>
+                <Ionicons name="open-outline" size={14} color="#888780" style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalRow}
+                activeOpacity={0.7}
+                onPress={() => {/* Play Store link — add later */}}
+              >
+                <Ionicons name="star-outline" size={18} color="#854F0B" style={{ marginRight: 10 }} />
+                <Text style={styles.modalRowText}>Rate App</Text>
+                <Ionicons name="chevron-forward" size={14} color="#888780" style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalClose}
+                activeOpacity={0.7}
+                onPress={() => setSettingsVisible(false)}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <TouchableOpacity
           style={styles.searchBar}
@@ -104,7 +165,7 @@ export default function HomeScreen() {
         </Text>
 
         <Text style={[styles.storageNote, { color: '#8A887F' }]}>
-          Doesn’t include apps or system storage
+          Doesn't include apps or system storage
         </Text>
       </View>
         </TouchableOpacity>
@@ -189,8 +250,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   appName: { fontSize: 26, fontWeight: '500', letterSpacing: -0.5, color: '#111' },
-  menuBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', gap: 4 },
-  menuLine: { width: 18, height: 2, backgroundColor: '#111', borderRadius: 1 },
+  settingsBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 20, backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12 },
   searchText: { fontSize: 14, color: '#888780' },
   sectionLabel: { fontSize: 11, fontWeight: '500', color: '#888780', letterSpacing: 0.5, paddingHorizontal: 16, marginBottom: 8, textTransform: 'uppercase' },
@@ -221,4 +281,14 @@ const styles = StyleSheet.create({
   recentInfo: { flex: 1 },
   recentName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
   recentMeta: { fontSize: 11, color: '#888780' },
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: 280, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8 },
+  modalTitle: { fontSize: 18, fontWeight: '600', color: '#111', textAlign: 'center', letterSpacing: -0.3 },
+  modalVersion: { fontSize: 12, color: '#888780', textAlign: 'center', marginTop: 4, marginBottom: 16 },
+  modalDivider: { height: 0.5, backgroundColor: '#E8E6DF', marginBottom: 8 },
+  modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13 },
+  modalRowText: { fontSize: 14, color: '#111' },
+  modalClose: { marginTop: 12, backgroundColor: '#F1EFE8', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  modalCloseText: { fontSize: 14, fontWeight: '500', color: '#5F5E5A' },
 });
