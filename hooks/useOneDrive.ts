@@ -7,7 +7,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const CLIENT_ID = '63bec70b-9eb9-4324-8853-fb87ebd5ceed';
+const CLIENT_ID = process.env.EXPO_PUBLIC_ONEDRIVE_CLIENT_ID ?? '';
 const TENANT = 'consumers'; // personal Microsoft accounts
 const SCOPES = ['Files.ReadWrite.AppFolder', 'offline_access', 'User.Read'];
 const TOKEN_KEY = 'onedrive_access_token';
@@ -19,8 +19,8 @@ const discovery = {
   tokenEndpoint: `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`,
 };
 
-//const redirectUri = makeRedirectUri({ scheme: 'askfiles', path: 'callback' });
-const redirectUri = 'askfiles://callback';
+const redirectUri = makeRedirectUri({ scheme: 'askfiles', path: 'callback' });
+//const redirectUri = 'askfiles://callback';
 
 function getMimeTypeFromName(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase();

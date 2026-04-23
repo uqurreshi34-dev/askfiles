@@ -223,36 +223,11 @@ export default function SearchScreen() {
     try {
       const srcPath = await resolveUri(selectedItem.uri);
       await RNFS.moveFile(srcPath, toPath(newUri));
-
-      // Also rename the same filename in all other search dirs (hardlink sibling paths)
-      const oldName = selectedItem.name;
-      const newName = renameValue.trim();
-      const SEARCH_DIRS_LIST = [
-        '/storage/emulated/0/Download/',
-        '/storage/emulated/0/Documents/',
-        '/storage/emulated/0/Pictures/',
-        '/storage/emulated/0/Movies/',
-        '/storage/emulated/0/Music/',
-        '/storage/emulated/0/DCIM/',
-        '/storage/emulated/0/Recordings/',
-        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/',
-        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/',
-        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-      ];
-      for (const dir of SEARCH_DIRS_LIST) {
-        const siblingPath = dir + oldName;
-        if (siblingPath !== srcPath) {
-          try {
-            const exists = await RNFS.exists(siblingPath);
-            if (exists) await RNFS.moveFile(siblingPath, dir + newName);
-          } catch {}
-        }
-      }
-
+  
       const wasInFolder = selectedItem.inFolder;
       closeSheet();
       if (wasInFolder) { removeFolderItem(selectedItem?.uri ?? ''); }
-      else { removeResultsByName(oldName); }
+      else { removeResultsByName(selectedItem.name); }
     } catch (e: any) {
       console.log('Rename error:', e);
       Alert.alert('Rename failed', 'Could not rename this file.');
