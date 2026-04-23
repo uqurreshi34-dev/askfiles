@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStorage, pluralise } from '@/hooks/useStorage';
+import { formatBytes } from '@/utils/formatBytes';
 import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
@@ -81,23 +82,31 @@ export default function HomeScreen() {
           activeOpacity={0.8}
           onPress={() => router.push('/(tabs)/browse')}
         >
-        <View style={styles.storageWrap}>
-          <View style={styles.storageRow}>
-            <Text style={styles.storageLabel}>Internal storage</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={styles.storageVal}>
-                {loading ? 'Calculating...' : `${storageInfo?.usedReadable} / ${storageInfo?.totalReadable}`}
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color="#888780" />
-            </View>
+     <View style={styles.storageWrap}>
+        <View style={styles.storageRow}>
+          <Text style={styles.storageLabel}>Internal storage</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={styles.storageVal}>
+              {loading
+                ? 'Calculating...'
+                : `${storageInfo?.usedReadable} of ${storageInfo?.marketedGB} GB used`}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color="#888780" />
           </View>
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
-          </View>
-          <Text style={styles.storageNote}>
-            {storageInfo ? `${storageInfo.marketedGB} GB device · ${storageInfo.totalReadable} formatted capacity` : ''}
-          </Text>
         </View>
+
+        <View style={styles.barTrack}>
+          <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
+        </View>
+
+        <Text style={[styles.storageNote, { color: '#5F5E5A' }]}>
+          {storageInfo ? `${formatBytes(storageInfo.freeBytes)} available` : ''}
+        </Text>
+
+        <Text style={[styles.storageNote, { color: '#8A887F' }]}>
+          Doesn’t include apps or system storage
+        </Text>
+      </View>
         </TouchableOpacity>
 
         <TouchableOpacity

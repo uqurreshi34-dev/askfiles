@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
+import { formatBytes } from '@/utils/formatBytes';
 
 interface Category {
   label: string;
@@ -34,16 +35,10 @@ export default function StorageBreakdownScreen() {
     { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: null },
   ].sort((a, b) => b.bytes - a.bytes);
 
-  const totalCategoryBytes = categories.reduce((sum, c) => sum + c.bytes, 0);
+
   const totalBytes = storageInfo?.totalBytes ?? 1;
-  const usedBytes = storageInfo?.usedBytes ?? 0;
   const freeBytes = storageInfo?.freeBytes ?? 0;
 
-  function formatBytes(bytes: number): string {
-    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-    return (bytes / 1024).toFixed(1) + ' KB';
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,14 +62,14 @@ export default function StorageBreakdownScreen() {
           <View style={styles.overallCard}>
             <View style={styles.overallRow}>
               <Text style={styles.overallLabel}>Internal Storage</Text>
-              <Text style={styles.overallVal}>{storageInfo?.usedReadable} / {storageInfo?.totalReadable}</Text>
+              <Text style={styles.overallVal}>{storageInfo?.usedReadable} / {storageInfo?.marketedGB + ' GB'}</Text>
             </View>
             <View style={styles.barTrack}>
               <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
             </View>
             <View style={styles.overallFooter}>
-              <Text style={styles.overallSub}>{formatBytes(freeBytes)} free</Text>
-              <Text style={styles.overallSub}>{storageInfo?.usedPercent ?? 0}% used</Text>
+              <Text style={styles.overallSub}>{formatBytes(freeBytes)} available</Text>
+              {/* <Text style={styles.overallSub}>{storageInfo?.usedPercent ?? 0}% used</Text> */}
             </View>
           </View>
 
@@ -155,7 +150,7 @@ const styles = StyleSheet.create({
   overallLabel: { fontSize: 13, fontWeight: '500', color: '#5F5E5A' },
   overallVal: { fontSize: 13, fontWeight: '600', color: '#111' },
   overallFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  overallSub: { fontSize: 11, color: '#888780' },
+  overallSub: { fontSize: 11, color: '#8A887F' },
   barTrack: { height: 6, backgroundColor: '#D3D1C7', borderRadius: 3, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 3 },
 

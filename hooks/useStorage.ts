@@ -5,6 +5,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import DeviceInfo from 'react-native-device-info';
 import RNFS from 'react-native-fs';
+import { formatBytes } from '@/utils/formatBytes';
 
 interface StorageInfo {
   totalBytes: number;
@@ -66,10 +67,14 @@ const cache: StorageCache = {
 let loadingPromise: Promise<void> | null = null;
 let permissionRequested = false;
 
-function formatBytes(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  return (bytes / 1024).toFixed(1) + ' KB';
+function getMarketedStorage(bytes: number): number {
+  const gb = bytes / 1e9;
+
+  const commonSizes = [16, 32, 64, 128, 256, 512, 1024, 2048];
+
+  return commonSizes.reduce((prev, curr) =>
+    Math.abs(curr - gb) < Math.abs(prev - gb) ? curr : prev
+  );
 }
 
 export function pluralise(count: number, word: string): string {
@@ -205,7 +210,8 @@ async function doLoad(): Promise<void> {
   ]);
   
   const used = total - free;
-  const marketedGB = Math.pow(2, Math.round(Math.log2(total / 1073741824)));
+  const marketedGB = getMarketedStorage(total);
+  
 
   cache.storageInfo = {
     totalBytes: total,
