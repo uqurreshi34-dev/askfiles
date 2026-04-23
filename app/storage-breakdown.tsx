@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
-import { formatBytes } from '@/utils/formatBytes';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 
 interface Category {
