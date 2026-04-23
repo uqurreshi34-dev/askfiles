@@ -127,35 +127,16 @@ export default function CloudScreen() {
 
         <TouchableOpacity
           style={styles.upgradeBtn}
-          onPress={() => packages.monthly && purchasePackage(packages.monthly)}
-          disabled={purchasing || restoring || !packages.monthly}
+          onPress={() => packages.lifetime && purchasePackage(packages.lifetime)}
+          disabled={purchasing || restoring || !packages.lifetime}
           activeOpacity={0.85}
         >
           {purchasing ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Text style={styles.upgradeBtnText}>Monthly — £2.49 / month</Text>
-              <Text style={styles.upgradeBtnSub}>Billed monthly, cancel anytime</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.upgradeBtn, styles.annualBtn]}
-          onPress={() => packages.annual && purchasePackage(packages.annual)}
-          disabled={purchasing || restoring || !packages.annual}
-          activeOpacity={0.85}
-        >
-          {purchasing ? (
-            <ActivityIndicator color="#185FA5" />
-          ) : (
-            <>
-              <View style={styles.saveBadge}>
-                <Text style={styles.saveBadgeText}>SAVE 40%</Text>
-              </View>
-              <Text style={[styles.upgradeBtnText, { color: '#185FA5' }]}>Annual — £17.99 / year</Text>
-              <Text style={[styles.upgradeBtnSub, { color: '#185FA5' }]}>Best value · £1.50 / month</Text>
+              <Text style={styles.upgradeBtnText}>Lifetime — £2.99</Text>
+              <Text style={styles.upgradeBtnSub}>One-time payment, yours forever</Text>
             </>
           )}
         </TouchableOpacity>
@@ -173,7 +154,7 @@ export default function CloudScreen() {
         </TouchableOpacity>
 
         <Text style={styles.legalNote}>
-          Payment charged to your Google Play account. Cancel anytime in Play Store settings.
+          One-time payment via Google Play. No subscription, no recurring charges.
         </Text>
 
       </ScrollView>
@@ -229,22 +210,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  annualBtn: {
-    backgroundColor: '#EBF3FC',
-    borderWidth: 1.5,
-    borderColor: '#185FA5',
-    position: 'relative',
-  },
-  saveBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 16,
-    backgroundColor: '#185FA5',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  saveBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+
   upgradeBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   upgradeBtnSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
 

@@ -16,13 +16,12 @@ function configure() {
 }
 
 export interface ProPackages {
-  monthly: PurchasesPackage | null;
-  annual: PurchasesPackage | null;
+  lifetime: PurchasesPackage | null;
 }
 
 export function usePro() {
   const [isPro, setIsPro] = useState(true);
-  const [packages, setPackages] = useState<ProPackages>({ monthly: null, annual: null });
+  const [packages, setPackages] = useState<ProPackages>({ lifetime: null });
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -51,9 +50,8 @@ export function usePro() {
       const offerings = await Purchases.getOfferings();
       const current = offerings.current;
       if (!current) return;
-      const monthly = current.availablePackages.find(p => p.identifier === '$rc_monthly') ?? null;
-      const annual = current.availablePackages.find(p => p.identifier === '$rc_annual') ?? null;
-      setPackages({ monthly, annual });
+      const lifetime = current.availablePackages.find(p => p.identifier === '$rc_lifetime') ?? null;
+      setPackages({ lifetime });
     } catch (e) {
       console.log('Offerings error:', e);
     }
