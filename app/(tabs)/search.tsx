@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
   Modal, Animated, PanResponder, Platform, Pressable, KeyboardAvoidingView, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearch } from '@/hooks/useSearch';
 import { useAskAI } from '@/hooks/useAskAI';
@@ -96,7 +96,18 @@ export default function SearchScreen() {
   const { results, searching, search, removeResult, removeResultsByName } = useSearch();
   const { answer, thinking, ask, reset } = useAskAI();
   const router = useRouter();
+  const { autofocus } = useLocalSearchParams<{ autofocus?: string }>();
+  const searchInputRef = useRef<TextInput>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (autofocus === '1') {
+        const t = setTimeout(() => searchInputRef.current?.focus(), 400);
+        return () => clearTimeout(t);
+      }
+    }, [autofocus])
+  );
   const { fileCounts, storageInfo, folderSizes, mediaContext } = useStorage();
   const { isPro } = usePro();
   const { queriesRemaining, isLimitReached, incrementQuery } = useAiQueryLimit(isPro);
@@ -413,8 +424,9 @@ export default function SearchScreen() {
           <View style={styles.inputWrap}>
             <Ionicons name="search-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
             <TextInput
+              ref={searchInputRef}
               style={styles.input}
-              placeholder="Type a filename..."
+              placeholder="Search files, folders..."
               placeholderTextColor="#888780"
               value={query}
               onChangeText={handleSearchChange}

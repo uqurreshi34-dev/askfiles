@@ -111,7 +111,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.searchBar}
-          onPress={() => router.push('/(tabs)/search')}
+          onPress={() => router.push('/(tabs)/search?autofocus=1')}
           activeOpacity={0.7}
         >
           <Ionicons name="search-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
