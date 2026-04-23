@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { formatBytes } from '@/utils/formatBytes';
+import React, { useState } from 'react';
+import { Modal, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { getMarketedStorage } from '@/utils/storage';
 
 interface Props {
   usedBytes: number;
@@ -18,21 +19,28 @@ export default function StorageSummaryCard({
   note,
   showChevron
 }: Props) {
+  const [infoVisible, setInfoVisible] = useState(false);
   const usedPercent = totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
-        <Text style={styles.label}>Internal storage</Text>
+        <View style={styles.left}>
+            <Text style={styles.label}>Internal storage</Text>
+            <TouchableOpacity onPress={() => setInfoVisible(true)}>
+            <Ionicons name="information-circle-outline" size={14} color="#888780" />
+            </TouchableOpacity>
+        </View>
+
         <View style={styles.right}>
-          <Text style={styles.value}>
+            <Text style={styles.value}>
             {formatBytes(usedBytes)} of {formatBytes(totalBytes)} used
-          </Text>
-          {showChevron ? (
+            </Text>
+            {showChevron ? (
             <Ionicons name="chevron-forward" size={14} color="#888780" />
             ) : null}
         </View>
-      </View>
+        </View>
 
       <View style={styles.barTrack}>
         <View style={[styles.barFill, { width: `${usedPercent}%` }]} />
@@ -45,6 +53,27 @@ export default function StorageSummaryCard({
         <Text style={[styles.note, { color: '#8A887F' }]}>
             {note}
         </Text>
+        <Modal
+            visible={infoVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setInfoVisible(false)}
+            >
+            <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setInfoVisible(false)}
+            >
+                <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+                <Text style={styles.modalText}>
+                Your device is sold as {getMarketedStorage(totalBytes)} GB, but usable storage is lower (~{formatBytes(totalBytes)}) due to formatting and system files.
+
+                    {"\n\n"}
+                    Android settings include apps and system data. This app shows only user files, so the used space appears lower.
+                </Text>
+                </View>
+            </TouchableOpacity>
+        </Modal>
     </View>
   );
 }
@@ -61,6 +90,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   right: {
     flexDirection: 'row',
@@ -90,5 +124,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#8A887F',
     marginTop: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    width: 260,
+  },
+  modalText: {
+    fontSize: 13,
+    color: '#111',
+    textAlign: 'center',
   },
 });
