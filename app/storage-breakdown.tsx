@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
 import { formatBytes } from '@/utils/formatBytes';
+import StorageSummaryCard from '@/components/StorageSummaryCard';
 
 interface Category {
   label: string;
@@ -38,7 +39,7 @@ export default function StorageBreakdownScreen() {
 
   const totalBytes = storageInfo?.totalBytes ?? 1;
   const freeBytes = storageInfo?.freeBytes ?? 0;
-
+  const usedBytes = storageInfo?.usedBytes ?? 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,19 +60,13 @@ export default function StorageBreakdownScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
           {/* Overall bar */}
-          <View style={styles.overallCard}>
-            <View style={styles.overallRow}>
-              <Text style={styles.overallLabel}>Internal Storage</Text>
-              <Text style={styles.overallVal}>{storageInfo?.usedReadable} / {storageInfo?.marketedGB + ' GB'}</Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
-            </View>
-            <View style={styles.overallFooter}>
-              <Text style={styles.overallSub}>{formatBytes(freeBytes)} available</Text>
-              {/* <Text style={styles.overallSub}>{storageInfo?.usedPercent ?? 0}% used</Text> */}
-            </View>
-          </View>
+          <StorageSummaryCard
+              usedBytes={usedBytes}
+              totalBytes={totalBytes}
+              freeBytes={freeBytes}
+              note="User-accessible storage only"
+              showChevron={false}
+            />
 
           {/* Segmented colour bar */}
           <View style={styles.segmentCard}>
@@ -174,4 +169,5 @@ const styles = StyleSheet.create({
   catBarFill: { height: '100%', borderRadius: 2 },
 
   note: { fontSize: 10, color: '#AFAEA6', textAlign: 'center', marginTop: 16, marginHorizontal: 16 },
+  storageNote: { fontSize: 10, color: '#9A9890', marginTop: 6 },
 });

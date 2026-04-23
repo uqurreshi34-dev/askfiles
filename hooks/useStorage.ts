@@ -6,6 +6,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import DeviceInfo from 'react-native-device-info';
 import RNFS from 'react-native-fs';
 import { formatBytes } from '@/utils/formatBytes';
+import { getMarketedStorage } from '@/utils/storage';
 
 interface StorageInfo {
   totalBytes: number;
@@ -14,7 +15,6 @@ interface StorageInfo {
   usedPercent: number;
   totalReadable: string;
   usedReadable: string;
-  marketedGB: number;
 }
 
 interface FileCounts {
@@ -66,16 +66,6 @@ const cache: StorageCache = {
 
 let loadingPromise: Promise<void> | null = null;
 let permissionRequested = false;
-
-function getMarketedStorage(bytes: number): number {
-  const gb = bytes / 1e9;
-
-  const commonSizes = [16, 32, 64, 128, 256, 512, 1024, 2048];
-
-  return commonSizes.reduce((prev, curr) =>
-    Math.abs(curr - gb) < Math.abs(prev - gb) ? curr : prev
-  );
-}
 
 export function pluralise(count: number, word: string): string {
   return `${count.toLocaleString()} ${word}${count === 1 ? '' : 's'}`;
@@ -210,8 +200,6 @@ async function doLoad(): Promise<void> {
   ]);
   
   const used = total - free;
-  const marketedGB = getMarketedStorage(total);
-  
 
   cache.storageInfo = {
     totalBytes: total,
@@ -220,7 +208,6 @@ async function doLoad(): Promise<void> {
     usedPercent: Math.round((used / total) * 100),
     totalReadable: formatBytes(total),
     usedReadable: formatBytes(used),
-    marketedGB,
   };
 
   const [allImages, allVideos] = await Promise.all([

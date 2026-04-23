@@ -9,12 +9,14 @@ import { formatBytes } from '@/utils/formatBytes';
 import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
+import { getMarketedStorage } from '@/utils/storage';
+import StorageSummaryCard from '@/components/StorageSummaryCard';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 export default function HomeScreen() {
-  const { storageInfo, fileCounts, loading, reload: reloadStorage } = useStorage();
+  const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const { count: favCount } = useFavourites();
   const router = useRouter();
@@ -75,7 +77,17 @@ export default function HomeScreen() {
             <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
               <Text style={styles.modalTitle}>AskFiles</Text>
               <Text style={styles.modalVersion}>Version {APP_VERSION}</Text>
-
+              <View style={styles.modalRow}>
+                <Ionicons
+                  name="phone-portrait-outline"
+                  size={18}
+                  color="#185FA5"
+                  style={{ marginRight: 10 }}
+                />
+                <Text style={styles.modalRowText}>
+                  Device storage: {getMarketedStorage(storageInfo?.totalBytes ?? 0)} GB
+                </Text>
+              </View>
               <View style={styles.modalDivider} />
 
               <TouchableOpacity
@@ -139,36 +151,35 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        <TouchableOpacity
+        {!loading && !permissionGranted ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.permissionCard}
+            onPress={() => Linking.openSettings()}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="warning-outline" size={18} color="#854F0B" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.permissionTitle}>Storage permission needed</Text>
+                <Text style={styles.permissionSub}>Tap to open Settings and grant access</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={14} color="#888780" />
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.push('/(tabs)/browse')}
         >
-     <View style={styles.storageWrap}>
-        <View style={styles.storageRow}>
-          <Text style={styles.storageLabel}>Internal storage</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={styles.storageVal}>
-              {loading
-                ? 'Calculating...'
-                : `${storageInfo?.usedReadable} of ${storageInfo?.marketedGB} GB used`}
-            </Text>
-            <Ionicons name="chevron-forward" size={14} color="#888780" />
-          </View>
-        </View>
-
-        <View style={styles.barTrack}>
-          <View style={[styles.barFill, { width: `${storageInfo?.usedPercent ?? 0}%` }]} />
-        </View>
-
-        <Text style={[styles.storageNote, { color: '#5F5E5A' }]}>
-          {storageInfo ? `${formatBytes(storageInfo.freeBytes)} available` : ''}
-        </Text>
-
-        <Text style={[styles.storageNote, { color: '#8A887F' }]}>
-          Doesn't include apps or system storage
-        </Text>
-      </View>
+          <StorageSummaryCard
+            usedBytes={storageInfo?.usedBytes ?? 0}
+            totalBytes={storageInfo?.totalBytes ?? 0}
+            freeBytes={storageInfo?.freeBytes ?? 0}
+            note="User-accessible storage only"
+            showChevron={true}
+          />
         </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           activeOpacity={0.8}
@@ -291,4 +302,7 @@ const styles = StyleSheet.create({
   modalRowText: { fontSize: 14, color: '#111' },
   modalClose: { marginTop: 12, backgroundColor: '#F1EFE8', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
   modalCloseText: { fontSize: 14, fontWeight: '500', color: '#5F5E5A' },
+  permissionCard: { marginHorizontal: 16, marginBottom: 20, backgroundColor: '#FEF3E2', borderRadius: 10, padding: 14 },
+  permissionTitle: { fontSize: 13, fontWeight: '600', color: '#111', marginBottom: 2 },
+  permissionSub: { fontSize: 11, color: '#5F5E5A' },
 });
