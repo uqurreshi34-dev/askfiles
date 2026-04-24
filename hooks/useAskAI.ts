@@ -1,8 +1,6 @@
 import { useState, useRef } from 'react';
 
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '';
-// const GROQ_MODEL = 'llama-3.1-8b-instant';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const BACKEND_URL = 'https://askfiles-backend.onrender.com';
 
 export function useAskAI() {
   const [answer, setAnswer] = useState('');
@@ -21,54 +19,22 @@ export function useAskAI() {
     setThinking(true);
     setAnswer('');
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch(`${BACKEND_URL}/api/ask-ai/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
         },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            {
-              role: 'system',
-              content: `You are AskFiles AI, a helpful file manager assistant built into the AskFiles app.
-The user's device file context is below. Read it carefully before answering.
-
-${context}
-
-Rules:
-- Never confuse image filenames with video filenames — they are listed separately.
-- For downloads, only counts and folder sizes are available. Do not say "filenames are not provided" — just answer with what you have and do not mention any limitations - do not repeat download count.
-- Screenshots are files whose names start with "Screenshot_". Use the screenshotCount field for the exact number, do not count manually.
-- PNG, JPG, JPEG, HEIC, GIF, WEBP are ALL image formats. Never add notes like "(this is actually a jpg)" or "(included as it is an image)" — jpg IS an image, treat it as such with zero comment.
-- MP4, MKV, AVI, MOV, WEBM are ALL video formats. Never add notes like "(this is actually a video)" — treat them as videos with zero comment. Never call a video an image.
-- Keep answers short and practical — 3-4 sentences max unless a list is genuinely needed.
-- Do not make up files that aren't in the context.
-- Never use markdown formatting. No asterisks, no bold, no bullet points with *. If you need a list use plain numbered lines like "1. filename" or plain sentences.
-- Do not recount files from the filename list — always use the exact counts provided in the context above. But DO list filenames when the user asks to see them.
-- When a user asks to list files, list ALL of them from the context. Never say filenames are unavailable — they are always provided above.
-- If the user has 50 or fewer files, list ALL of them without any preamble like "here are the first X". Just say "You have X images:" and list them all.
-- Only if the user has more than 50 files, count exactly how many filenames you are about to list, then say "Here are X of your Y total" where X is the exact number you are listing, then list them.`,
-            },
-            {
-              role: 'user',
-              content: question,
-            },
-          ],
-          max_tokens: 4096,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify({ question, context }),
       });
 
       const data = await response.json();
 
       if (data.error) {
-        setAnswer(`Error: ${data.error.message}`);
+        setAnswer(`Error: ${data.error}`);
         return;
       }
 
-      setAnswer(data.choices?.[0]?.message?.content ?? 'No answer received.');
+      setAnswer(data.answer ?? 'No answer received.');
     } catch (e) {
       console.log('GROQ ERROR:', e);
       setAnswer('Could not reach AI. Check your connection and try again.');
