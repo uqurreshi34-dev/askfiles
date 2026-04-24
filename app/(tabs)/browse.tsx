@@ -62,7 +62,7 @@ export default function BrowseScreen() {
   ]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
-  const { addToVault, vaultDir } = useVault();
+  const { addToVault } = useVault();
   const [showSheet, setShowSheet] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
