@@ -654,12 +654,13 @@ export default function BrowseScreen() {
                         const location = selectedItem?.uri
                           .replace('file:///storage/emulated/0/', '')
                           .split('/').slice(0, -1).join('/') || 'Storage';
+                        const locationDecoded = decodeURIComponent(location);
                         Alert.alert(
                           selectedItem?.name ?? '',
                           [
                             fileSize ? `Size: ${fileSize}` : null,
                             selectedItem?.isDirectory ? 'Type: Folder' : `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
-                            `Location: /${location}`,
+                            `Location: /${locationDecoded}`,
                           ].filter(Boolean).join('\n')
                         );
                       }}
