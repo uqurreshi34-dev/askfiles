@@ -51,7 +51,7 @@ function decodeName(name: string): string {
 
 // Strip file:// prefix for RNFS which works on raw paths
 function toPath(uri: string): string {
-  return uri.replace('file://', '');
+  try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
 }
 
 export default function BrowseScreen() {
