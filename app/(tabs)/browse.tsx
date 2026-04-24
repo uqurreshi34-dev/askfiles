@@ -339,7 +339,7 @@ export default function BrowseScreen() {
         .map(item => {
           const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
           const decoded = decodeName(raw);
-          console.log('PICKER folder raw:', raw, 'decoded:', decoded);
+          //console.log('PICKER folder raw:', raw, 'decoded:', decoded);
           return { name: decoded, uri: item.uri, isDirectory: true };
         })
         .filter(f => !f.name.startsWith('.'))
@@ -393,7 +393,7 @@ export default function BrowseScreen() {
         setShowPicker(false);
         // Navigate to destination so user can see the moved file
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
-        const destName = destFolder.split('/').filter(Boolean).pop() ?? 'Folder';
+        const destName = (() => { try { return decodeURIComponent(destFolder.split('/').filter(Boolean).pop() ?? 'Folder'); } catch { return destFolder.split('/').filter(Boolean).pop() ?? 'Folder'; } })();
         setCurrentPath(destFolder);
         setBreadcrumbs([
           { name: 'Storage', path: ROOT_PATH },
@@ -424,7 +424,7 @@ export default function BrowseScreen() {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
         const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
         const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(selectedItem.uri));
-        console.log('Ghost search — filename:', sourceFilename, 'found:', ghost?.uri ?? 'NONE');
+        //console.log('Ghost search — filename:', sourceFilename, 'found:', ghost?.uri ?? 'NONE');
         if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
       } catch (e) { console.log('Ghost delete error:', e); }
       closeSheet();
