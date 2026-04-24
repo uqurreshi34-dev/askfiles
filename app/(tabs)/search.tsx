@@ -20,6 +20,7 @@ import * as FileSystem from 'expo-file-system/next';
 import * as MediaLibrary from 'expo-media-library';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 
 type Mode = 'search' | 'ask';
@@ -125,6 +126,7 @@ export default function SearchScreen() {
   const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
   const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [isFav, setIsFav] = useState(false);
   const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
@@ -143,10 +145,11 @@ export default function SearchScreen() {
     })
   ).current;
 
-  function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
+  async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
     setSelectedItem(item);
     setFileSize(null);
     setShowSheet(true);
+    setIsFav(await isFavourite(item.uri));
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     try {
       const file = new FileSystem.File(item.uri);
@@ -300,6 +303,19 @@ export default function SearchScreen() {
         } catch (e) { console.log('Delete error:', e); }
       }},
     ]);
+  }
+
+  async function handleToggleFavourite() {
+    if (!selectedItem) return;
+    if (isFav) {
+      await removeFavourite(selectedItem.uri);
+      setIsFav(false);
+      Alert.alert('Removed from Favourites', `"${selectedItem.name}" removed.`);
+    } else {
+      await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
+      setIsFav(true);
+      Alert.alert('Added to Favourites', `"${selectedItem.name}" added.`);
+    }
   }
 
   // Folder drill-down
@@ -726,6 +742,12 @@ export default function SearchScreen() {
                   <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
                   <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
+                <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
+                <Text style={[styles.sheetActionText, isFav && { color: '#E24B4A' }]}>
+                  {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
+                </Text>
+              </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={() => {
                   closeSheet();
                   const location = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';

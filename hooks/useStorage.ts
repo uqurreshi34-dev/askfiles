@@ -242,13 +242,18 @@ async function doLoad(): Promise<void> {
   cache.fileCounts.documents = docCount;
   cache.fileCounts.downloads = dlCount;
 
-  const [picturesSize, moviesSize, dcimSize, downloadsSize, documentsSize, musicSize,
+  const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'];
+  const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.3gp', '.m4v', '.ts', '.wmv', '.flv'];
+
+  const [picturesSize, dcimImagesSize, dcimVideosSize, moviesSize,
+    downloadsSize, documentsSize, musicSize,
     documentsInDownloadSize, documentsInWhatsappSize, documentsInWhatsappBizSize,
     documentsInTelegramSize] =
     await Promise.all([
-      getFolderSize('file:///storage/emulated/0/Pictures/'),
+      getFolderSizeByExtension('file:///storage/emulated/0/Pictures/', IMAGE_EXTS),
+      getFolderSizeByExtension('file:///storage/emulated/0/DCIM/', IMAGE_EXTS),
+      getFolderSizeByExtension('file:///storage/emulated/0/DCIM/', VIDEO_EXTS),
       getFolderSize('file:///storage/emulated/0/Movies/'),
-      getFolderSize('file:///storage/emulated/0/DCIM/'),
       getFolderSize('file:///storage/emulated/0/Download/'),
       getFolderSize('file:///storage/emulated/0/Documents/'),
       getFolderSize('file:///storage/emulated/0/Music/'),
@@ -258,16 +263,18 @@ async function doLoad(): Promise<void> {
       getFolderSizeByExtension('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
     ]);
 
-  const knownBytes = picturesSize + moviesSize + dcimSize + downloadsSize + documentsSize + musicSize;
+  const totalImagesSize = picturesSize + dcimImagesSize;
+  const totalVideosSize = dcimVideosSize + moviesSize;
+  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize + musicSize;
   const otherBytes = Math.max(0, (cache.storageInfo?.usedBytes ?? 0) - knownBytes);
 
   cache.folderSizes = {
-    pictures: formatBytes(picturesSize),
-    videos: formatBytes(moviesSize + dcimSize),
+    pictures: formatBytes(totalImagesSize),
+    videos: formatBytes(totalVideosSize),
     downloads: formatBytes(downloadsSize),
     documents: formatBytes(documentsSize + documentsInDownloadSize + documentsInWhatsappSize + documentsInWhatsappBizSize + documentsInTelegramSize),
     music: formatBytes(musicSize),
-    dcim: formatBytes(dcimSize),
+    dcim: formatBytes(dcimImagesSize + dcimVideosSize),
     other: formatBytes(otherBytes),
   };
 
