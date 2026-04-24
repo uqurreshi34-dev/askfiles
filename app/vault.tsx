@@ -69,7 +69,7 @@ export default function VaultScreen() {
 
   async function openFile(file: VaultFile) {
     if (isImageFile(file.name)) {
-      router.push({ pathname: '/viewer', params: { uri: file.uri, name: file.name } });
+      router.push({ pathname: '/viewer', params: { uri: file.uri, name: file.name, fromVault: 'true' } });
       return;
     }
     try {

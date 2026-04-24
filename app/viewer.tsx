@@ -12,7 +12,8 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 const { width, height } = Dimensions.get('window');
 
 export default function ViewerScreen() {
-  const { uri, name } = useLocalSearchParams<{ uri: string; name: string }>();
+  const { uri, name, fromVault } = useLocalSearchParams<{ uri: string; name: string; fromVault?: string }>();
+  // console.log('fromVault param:', fromVault);
   const router = useRouter();
   const [isFav, setIsFav] = useState(false);
 
@@ -74,9 +75,11 @@ export default function ViewerScreen() {
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.fileName} numberOfLines={1}>{name}</Text>
+          {fromVault !== 'true' && (
           <TouchableOpacity onPress={handleToggleFavourite} style={styles.iconBtn}>
             <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={24} color={isFav ? '#E24B4A' : '#fff'} />
           </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
             <Ionicons name="share-outline" size={24} color="#fff" />
           </TouchableOpacity>
