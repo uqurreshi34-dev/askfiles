@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
@@ -11,6 +11,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault, VaultFile } from '@/hooks/useVault';
+import RNFS from 'react-native-fs';
 import { isImageFile, getMimeType } from '@/utils/files';
 
 function formatSize(bytes: number): string {
@@ -34,6 +35,11 @@ export default function VaultScreen() {
   const [busy, setBusy] = useState(false);
   const [selectedFile, setSelectedFile] = useState<VaultFile | null>(null);
   const [showSheet, setShowSheet] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
+  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const pendingFile = useRef<VaultFile | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const insets = useSafeAreaInsets();
 
@@ -51,6 +57,63 @@ export default function VaultScreen() {
       },
     })
   ).current;
+
+  const ROOT_PATH = 'file:///storage/emulated/0/';
+
+  function toPath(uri: string): string {
+    try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
+  }
+
+  async function loadPickerDir(path: string) {
+    setPickerLoading(true);
+    try {
+      const dir = new FileSystem.Directory(path.endsWith('/') ? path : path + '/');
+      const contents = dir.list();
+      const folders = contents
+        .filter((item: any) => item instanceof FileSystem.Directory)
+        .map((item: any) => {
+          const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
+          let name = raw;
+          try { name = decodeURIComponent(raw); } catch {}
+          return { name, uri: item.uri };
+        })
+        .filter((f: any) => !f.name.startsWith('.'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setPickerItems(folders);
+    } catch { setPickerItems([]); }
+    finally { setPickerLoading(false); }
+  }
+
+  function openMovePicker(file: VaultFile) {
+    pendingFile.current = file;
+    setPickerPath(ROOT_PATH);
+    loadPickerDir(ROOT_PATH);
+    setShowPicker(true);
+    closeSheet();
+  }
+
+  async function handleMoveOut() {
+    const file = pendingFile.current;
+    if (!file) return;
+    const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+    const destUri = destDir + file.name;
+    try {
+      const dst = toPath(destUri);
+      const exists = await RNFS.exists(dst);
+      if (exists) {
+        setShowPicker(false);
+        Alert.alert('File already exists', `"${file.name}" already exists in this folder.`);
+        return;
+      }
+      await RNFS.copyFile(toPath(file.uri), dst);
+      setShowPicker(false);
+      await deleteFromVault(file);
+      Alert.alert('Moved', `"${file.name}" moved out of Vault successfully.`);
+    } catch (e) {
+      console.log('Move out error:', e);
+      Alert.alert('Error', 'Could not move file out of Vault.');
+    }
+  }
 
   function openSheet(file: VaultFile) {
     setSelectedFile(file);
@@ -265,6 +328,11 @@ export default function VaultScreen() {
                 <Text style={styles.sheetActionText}>Info</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && openMovePicker(selectedFile)}>
+                <Ionicons name="arrow-redo-outline" size={20} color="#111" />
+                <Text style={styles.sheetActionText}>Move out of Vault</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleDelete(selectedFile)}>
                 <Ionicons name="trash-outline" size={20} color="#E24B4A" />
                 <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete permanently</Text>
@@ -281,6 +349,66 @@ export default function VaultScreen() {
         </Pressable>
       </Modal>
 
+      <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => {
+                if (pickerPath === ROOT_PATH) { setShowPicker(false); }
+                else {
+                  const parent = pickerPath.endsWith('/') ? pickerPath.slice(0, -1) : pickerPath;
+                  const up = parent.substring(0, parent.lastIndexOf('/') + 1);
+                  setPickerPath(up); loadPickerDir(up);
+                }
+              }}
+              style={styles.backBtn}
+            >
+              <Ionicons name="arrow-back" size={22} color="#111" />
+            </TouchableOpacity>
+            <Text style={styles.title} numberOfLines={1}>Move to...</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <Text style={{ fontSize: 12, color: '#888780', paddingHorizontal: 16, paddingBottom: 8 }}>
+            {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
+          </Text>
+          {pickerLoading ? (
+            <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+          ) : pickerItems.length === 0 ? (
+            <View style={styles.centered}><Text style={styles.emptyTitle}>No folders here</Text></View>
+          ) : (
+            <FlatList
+              data={pickerItems}
+              keyExtractor={item => item.uri}
+              contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.icon, { backgroundColor: '#BA751722' }]}>
+                    <Ionicons name="folder" size={22} color="#BA7517" />
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <View style={styles.pickerFooter}>
+            <TouchableOpacity style={styles.pickerCancelBtn} onPress={() => setShowPicker(false)}>
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pickerPasteBtn} onPress={handleMoveOut}>
+              <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.pickerPasteText}>Move here</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -327,4 +455,9 @@ const styles = StyleSheet.create({
   sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
   sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
   sheetActionText: { fontSize: 15, color: '#111' },
+  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5, borderTopColor: '#F1EFE8' },
+  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1EFE8', alignItems: 'center' },
+  pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
+  pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
+  pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 });
