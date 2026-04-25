@@ -228,6 +228,19 @@ async function doLoad(): Promise<void> {
     screenshotCount,
   };
 
+  // Dynamically find non-standard root folders (e.g. Samsung My Files)
+  const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+  let extraDocCount = 0;
+  try {
+    const rootItems = await RNFS.readDir('/storage/emulated/0/');
+    for (const item of rootItems) {
+      if (!item.isDirectory()) continue;
+      if (item.name.startsWith('.')) continue;
+      if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
+      extraDocCount += await countFilesInDir(`file://${item.path}/`, DOCUMENT_EXTENSIONS);
+    }
+  } catch {}
+
   const [docCount, dlCount] = await Promise.all([
     Promise.all([
       countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
@@ -235,7 +248,7 @@ async function doLoad(): Promise<void> {
       countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
       countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
       countFilesInDir('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
-    ]).then(counts => counts.reduce((a, b) => a + b, 0)),
+    ]).then(counts => counts.reduce((a, b) => a + b, 0) + extraDocCount),
     countFilesInDir('file:///storage/emulated/0/Download/'),
   ]);
 

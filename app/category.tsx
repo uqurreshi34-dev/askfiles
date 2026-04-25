@@ -345,6 +345,17 @@ export default function CategoryScreen() {
             'file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/',
             'file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/',
           ];
+        // Dynamically add non-standard root folders (e.g. Samsung My Files)
+        const STANDARD_ROOT = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+        try {
+          const rootItems = await RNFS.readDir('/storage/emulated/0/');
+          for (const item of rootItems) {
+            if (!item.isDirectory()) continue;
+            if (item.name.startsWith('.')) continue;
+            if (STANDARD_ROOT.includes(item.name)) continue;
+            docPaths.push(`file://${item.path}/`);
+          }
+        } catch {}
         const results = await Promise.all(docPaths.map(p => scanDirForDocs(p)));
         const all = results.flat();
         const unique = all.filter((f, i, arr) => arr.findIndex(x => x.uri === f.uri) === i);
