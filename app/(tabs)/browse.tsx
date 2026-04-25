@@ -371,6 +371,12 @@ export default function BrowseScreen() {
       // console.log('PASTE dst:', dst);
 
       if (pickerMode === 'copy') {
+        const alreadyExists = await RNFS.exists(dst);
+        if (alreadyExists) {
+          setShowPicker(false);
+          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+          return;
+        }
         await RNFS.copyFile(src, dst);
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);

@@ -86,7 +86,14 @@ export default function FavouritesScreen() {
   }
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
-  function toPath(uri: string): string { return uri.replace('file://', ''); }
+  function toPath(uri: string): string { 
+    try { 
+      return decodeURIComponent(uri.replace('file://', '')); 
+    } 
+    catch { 
+      return uri.replace('file://', ''); 
+    } 
+  }
 
   async function resolveUri(uri: string): Promise<string> {
     if (!uri.startsWith('content://')) return uri.replace('file://', '');
@@ -129,6 +136,12 @@ export default function FavouritesScreen() {
       const src = await resolveUri(item.uri);
       const dst = toPath(destUri);
       if (pickerMode === 'copy') {
+        const alreadyExists = await RNFS.exists(dst);
+        if (alreadyExists){
+          setShowPicker(false);
+          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+          return;
+        }
         await RNFS.copyFile(src, dst);
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);

@@ -156,7 +156,12 @@ export default function CategoryScreen() {
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
   function toPath(uri: string): string {
-    return uri.replace('file://', '');
+    try { 
+      return decodeURIComponent(uri.replace('file://', '')); 
+    }
+     catch { 
+      return uri.replace('file://', ''); 
+    }
   }
 
 
@@ -196,6 +201,12 @@ export default function CategoryScreen() {
       const src = toPath(item.uri);
       const dst = toPath(destUri);
       if (pickerMode === 'copy') {
+        const alreadyExists = await RNFS.exists(dst);
+        if (alreadyExists){
+          setShowPicker(false);
+          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+          return;
+        }
         await RNFS.copyFile(src, dst);
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
