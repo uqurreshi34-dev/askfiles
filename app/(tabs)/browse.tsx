@@ -435,6 +435,11 @@ export default function BrowseScreen() {
     const newUri = parentPath + renameValue.trim();
 
     try {
+      const destExists = await RNFS.exists(toPath(newUri));
+      if (destExists) {
+        Alert.alert('Name already taken', `A file named "${renameValue.trim()}" already exists in this folder.`);
+        return;
+      }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
