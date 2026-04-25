@@ -535,7 +535,8 @@ export default function CategoryScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => {
                 closeSheet();
-                const location = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
+                const locationRaw = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
+                const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
                 Alert.alert(selectedItem?.name ?? '', [
                   fileSize ? `Size: ${fileSize}` : null,
                   `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
