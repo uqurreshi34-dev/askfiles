@@ -60,14 +60,7 @@ export function useSearch() {
       for (const dir of SEARCH_DIRS) {
         await searchDir(dir, query, found);
       }
-      // Deduplicate by filename — hardlinked files appear at multiple paths
-      const seen = new Set<string>();
-      const deduped = found.filter(r => {
-        if (seen.has(r.name.toLowerCase())) return false;
-        seen.add(r.name.toLowerCase());
-        return true;
-      });
-      setResults(deduped);
+      setResults(found);
     } finally {
       setSearching(false);
     }
@@ -81,5 +74,5 @@ export function useSearch() {
     setResults(prev => prev.filter(r => r.name !== name));
   }, []);
 
-  return { results, searching, search, removeResult, removeResultsByName };
+  return { results, setResults, searching, search, removeResult, removeResultsByName };
 }

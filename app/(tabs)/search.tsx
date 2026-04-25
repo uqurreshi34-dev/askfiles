@@ -94,7 +94,7 @@ export default function SearchScreen() {
   const [mode, setMode] = useState<Mode>('search');
   const [query, setQuery] = useState('');
   const [aiQuery, setAiQuery] = useState('');
-  const { results, searching, search, removeResult, removeResultsByName } = useSearch();
+  const { results, setResults, searching, search, removeResult } = useSearch();
   const { answer, thinking, ask, reset } = useAskAI();
   const router = useRouter();
   const { autofocus } = useLocalSearchParams<{ autofocus?: string }>();
@@ -224,7 +224,7 @@ export default function SearchScreen() {
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-          const moveExists = await RNFS.exists(dst);
+        const moveExists = await RNFS.exists(dst);
           if (moveExists) {
             setShowPicker(false);
             Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
@@ -254,13 +254,23 @@ export default function SearchScreen() {
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
     try {
-      const srcPath = await resolveUri(selectedItem.uri);
-      await RNFS.moveFile(srcPath, toPath(newUri));
-  
-      const wasInFolder = selectedItem.inFolder;
+      await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      try {
+        const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
+        const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+        const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(selectedItem.uri));
+        if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+      } catch {}
+      if (selectedItem.inFolder) {
+        setFolderStack(prev => prev.map((f, i) =>
+          i === prev.length - 1
+            ? { ...f, items: f.items.map(item => item.uri === selectedItem.uri ? { ...item, name: renameValue.trim(), uri: newUri } : item) }
+            : f
+        ));
+      } else {
+        setResults(prev => prev.map(f => f.uri === selectedItem.uri ? { ...f, name: renameValue.trim(), uri: newUri } : f));
+      }
       closeSheet();
-      if (wasInFolder) { removeFolderItem(selectedItem?.uri ?? ''); }
-      else { removeResultsByName(selectedItem.name); }
     } catch (e: any) {
       console.log('Rename error:', e);
       Alert.alert('Rename failed', 'Could not rename this file.');
