@@ -96,7 +96,9 @@ export default function FavouritesScreen() {
   }
 
   async function resolveUri(uri: string): Promise<string> {
-    if (!uri.startsWith('content://')) return uri.replace('file://', '');
+    if (!uri.startsWith('content://')) {
+      try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
+    }
     try {
       const info = await MediaLibrary.getAssetInfoAsync(uri as any);
       return (info.localUri ?? uri).replace('file://', '');

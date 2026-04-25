@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PanResponder } from 'react-native';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
@@ -8,7 +8,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getMimeType, isImageFile } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
@@ -101,6 +101,10 @@ export default function BrowseScreen() {
   useEffect(() => {
     loadDirectory(currentPath);
   }, [currentPath]);
+
+  useFocusEffect(useCallback(() => {
+    loadDirectory(currentPath);
+  }, [currentPath]));
 
   async function openSheet(item: FileItem) {
     setSelectedItem(item);
