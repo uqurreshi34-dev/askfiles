@@ -381,6 +381,12 @@ export default function BrowseScreen() {
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
+          const moveExists = await RNFS.exists(dst);
+          if (moveExists) {
+            setShowPicker(false);
+            Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+            return;
+          }
         //console.log('MOVE attempting:', src, '->', dst);
         await RNFS.moveFile(src, dst);
         //console.log('MOVE success');

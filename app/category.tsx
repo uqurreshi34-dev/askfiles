@@ -159,7 +159,7 @@ export default function CategoryScreen() {
     try { 
       return decodeURIComponent(uri.replace('file://', '')); 
     }
-     catch { 
+    catch { 
       return uri.replace('file://', ''); 
     }
   }
@@ -211,6 +211,12 @@ export default function CategoryScreen() {
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
+          const moveExists = await RNFS.exists(dst);
+          if (moveExists) {
+            setShowPicker(false);
+            Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+            return;
+          }
         await RNFS.moveFile(src, dst);
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
