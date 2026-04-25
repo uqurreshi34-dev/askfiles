@@ -254,6 +254,11 @@ export default function SearchScreen() {
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
     try {
+      const invalidChars = /[*\/\\:?"<>|]/;
+      if (invalidChars.test(renameValue.trim())) {
+        Alert.alert('Invalid name', 'File names cannot contain: * / \\ : ? " < > |');
+        return;
+      }
       const destExists = await RNFS.exists(toPath(newUri));
       if (destExists) {
         Alert.alert('Name already taken', `A file named "${renameValue.trim()}" already exists in this folder.`);
