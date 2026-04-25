@@ -835,7 +835,7 @@ export default function SearchScreen() {
             <View style={{ width: 40 }} />
           </View>
           <Text style={{ fontSize: 12, color: '#888780', paddingHorizontal: 16, paddingBottom: 8 }}>
-            {pickerPath.replace('file:///storage/emulated/0/', 'Storage/')}
+            {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
