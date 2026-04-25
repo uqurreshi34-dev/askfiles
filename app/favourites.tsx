@@ -179,6 +179,11 @@ export default function FavouritesScreen() {
     try {
       const srcPath = await resolveUri(selectedItem.uri);
       const dstPath = toPath(newUri);
+      const destExists = await RNFS.exists(dstPath);
+      if (destExists) {
+        Alert.alert('Name already taken', `A file named "${renameValue.trim()}" already exists in this folder.`);
+        return;
+      }
       await RNFS.moveFile(srcPath, dstPath);
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
