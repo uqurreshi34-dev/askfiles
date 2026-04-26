@@ -3,6 +3,7 @@ import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
   Modal, Animated, PanResponder, Platform, Pressable, KeyboardAvoidingView, Alert,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -22,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 type Mode = 'search' | 'ask';
 
@@ -100,6 +102,7 @@ export default function SearchScreen() {
   const { autofocus } = useLocalSearchParams<{ autofocus?: string }>();
   const searchInputRef = useRef<TextInput>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [listening, setListening] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -144,6 +147,23 @@ export default function SearchScreen() {
       },
     })
   ).current;
+
+  useSpeechRecognitionEvent('result', (e) => {
+    const text = e.results?.[0]?.transcript ?? '';
+    if (text) setAiQuery(text);
+  });
+  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechRecognitionEvent('error', () => setListening(false));
+  
+  async function toggleListening() {
+    if (listening) {
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+    setAiQuery('');
+    setListening(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: true });
+  }
 
   async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
     setSelectedItem(item);
@@ -602,14 +622,22 @@ export default function SearchScreen() {
               returnKeyType="send"
               editable={!isLimitReached}
             />
-            {aiQuery.length > 0 && !isLimitReached && (
-              <TouchableOpacity
-                onPress={() => handleAsk()}
-                disabled={thinking}
-                style={{ opacity: thinking ? 0.4 : 1 }}
-              >
-                <Ionicons name="send" size={16} color="#185FA5" />
-              </TouchableOpacity>
+            {!isLimitReached && (
+              <>
+                {aiQuery.length > 0 ? (
+                  <TouchableOpacity
+                    onPress={() => handleAsk()}
+                    disabled={thinking}
+                    style={{ opacity: thinking ? 0.4 : 1 }}
+                  >
+                    <Ionicons name="send" size={16} color="#185FA5" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={toggleListening} style={{ opacity: thinking ? 0.4 : 1 }} disabled={thinking}>
+                    <Ionicons name={listening ? 'stop-circle' : 'mic-outline'} size={18} color={listening ? '#E24B4A' : '#888780'} />
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
 
