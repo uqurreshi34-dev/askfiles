@@ -3,6 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,7 +82,18 @@ export default function LargeFilesScreen() {
     await new Promise(r => setTimeout(r, 50));
     try {
       const results: LargeFile[] = [];
-      for (const dir of SCAN_DIRS) {
+      const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+      const dynamicDirs = [...SCAN_DIRS];
+      try {
+        const rootItems = await RNFS.readDir('/storage/emulated/0/');
+        for (const item of rootItems) {
+          if (!item.isDirectory()) continue;
+          if (item.name.startsWith('.')) continue;
+          if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
+          dynamicDirs.push(`file://${item.path}/`);
+        }
+      } catch {}
+      for (const dir of dynamicDirs) {
         await scanDir(dir, results, 25 * 1024 * 1024);
       }
       results.sort((a, b) => b.size - a.size);
