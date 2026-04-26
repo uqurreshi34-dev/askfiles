@@ -90,11 +90,13 @@ Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures},
 All image filenames sorted newest first: ${imageNames}.
 All video filenames sorted newest first: ${videoNames}.
 Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Do not recount files from the filename list — always use the exact counts provided above.
-Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
-Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
-Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
-Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
+Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Top 10 largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
+Note: always use the folder name provided in brackets when stating where a file is located — never guess or assume a file's location based on its type.
   `.trim();
 }
 
@@ -432,6 +434,7 @@ export default function SearchScreen() {
     Keyboard.dismiss();
     await incrementQuery();
     const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles);
+    console.log('CONTEXT:', buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles));
     await ask(q, context);
   }
 

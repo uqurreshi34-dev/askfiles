@@ -45,10 +45,11 @@ interface StorageCache {
   folderSizes: FolderSizes;
   mediaContext: MediaContext;
   largestFiles: {
-    images: { name: string; size: string }[];
-    videos: { name: string; size: string }[];
-    documents: { name: string; size: string }[];
-    downloads: { name: string; size: string }[];
+    images: { name: string; size: string; folder: string }[];
+    videos: { name: string; size: string; folder: string }[];
+    documents: { name: string; size: string; folder: string }[];
+    downloads: { name: string; size: string; folder: string }[];
+    overall: { name: string; size: string; folder: string }[];
   };
   loaded: boolean;
 }
@@ -66,7 +67,13 @@ const cache: StorageCache = {
     other: '0 MB',
   },
   mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0 },
-  largestFiles: { images: [], videos: [], documents: [], downloads: [] },
+  largestFiles: {
+    images: [] as { name: string; size: string; folder: string }[],
+    videos: [] as { name: string; size: string; folder: string }[],
+    documents: [] as { name: string; size: string; folder: string }[],
+    downloads: [] as { name: string; size: string; folder: string }[],
+    overall: [] as { name: string; size: string; folder: string }[],
+  },
   loaded: false,
 };
 
@@ -153,11 +160,13 @@ async function getFolderSizeByExtension(path: string, extensions: string[]): Pro
 async function getLargestFiles(
   paths: string[],
   extensions?: string[],
-  topN = 5
-): Promise<{ name: string; size: string }[]> {
-  const files: { name: string; size: number }[] = [];
-  for (const path of paths) {
-    const rawPath = path.replace('file://', '').replace(/\/$/, '');
+  topN = 5,
+  includeNonStandardRoot = false
+): Promise<{ name: string; size: string; folder: string }[]> {
+  const files: { name: string; size: number; folder: string }[] = [];
+
+  const scanDir = async (rawPath: string) => {
+    const folderName = rawPath.split('/').filter(Boolean).pop() ?? 'Storage';
     try {
       const contents = await RNFS.readDir(rawPath);
       for (const item of contents) {
@@ -167,14 +176,36 @@ async function getLargestFiles(
           const lower = item.name.toLowerCase();
           if (!extensions.some(ext => lower.endsWith(ext))) continue;
         }
-        files.push({ name: item.name, size: Number(item.size) || 0 });
+        files.push({ name: item.name, size: Number(item.size) || 0, folder: folderName });
       }
     } catch {}
+  };
+
+  for (const path of paths) {
+    await scanDir(path.replace('file://', '').replace(/\/$/, ''));
   }
+
+  // Also scan non-standard root folders (e.g. Samsung My Files)
+  if (includeNonStandardRoot) {
+    const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+    try {
+      const rootItems = await RNFS.readDir('/storage/emulated/0/');
+      for (const item of rootItems) {
+        if (!item.isDirectory()) continue;
+        if (item.name.startsWith('.')) continue;
+        if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
+        console.log('Non-standard root folder found:', item.name, item.path);
+        await scanDir(item.path);
+      }
+    } catch (e) {
+      console.log('Non-standard root scan error:', e);
+    }
+  }
+
   return files
     .sort((a, b) => b.size - a.size)
     .slice(0, topN)
-    .map(f => ({ name: f.name, size: formatBytes(f.size) }));
+    .map(f => ({ name: f.name, size: formatBytes(f.size), folder: f.folder }));
 }
 
 async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.Asset[]> {
@@ -324,15 +355,22 @@ async function doLoad(): Promise<void> {
     other: formatBytes(otherBytes),
   };
 
-  const [largestImages, largestVideos, largestDocs, largestDownloads] = await Promise.all([
-    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Pictures/'], IMAGE_EXTS),
-    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Movies/'], VIDEO_EXTS),
+  const [largestImages, largestVideos, largestDocs, largestDownloads, largestOverall] = await Promise.all([
+    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Pictures/'], IMAGE_EXTS, 5, true),
+    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Movies/'], VIDEO_EXTS, 5, true),
     getLargestFiles([
       '/storage/emulated/0/Documents/',
       '/storage/emulated/0/Download/',
       '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-    ], DOCUMENT_EXTENSIONS),
-    getLargestFiles(['/storage/emulated/0/Download/']),
+    ], DOCUMENT_EXTENSIONS, 5, true),
+    getLargestFiles(['/storage/emulated/0/Download/'], undefined, 5, false),
+    getLargestFiles([
+      '/storage/emulated/0/Download/',
+      '/storage/emulated/0/DCIM/Camera/',
+      '/storage/emulated/0/Pictures/',
+      '/storage/emulated/0/Movies/',
+      '/storage/emulated/0/Documents/',
+    ], undefined, 10, true),
   ]);
 
   cache.largestFiles = {
@@ -340,6 +378,7 @@ async function doLoad(): Promise<void> {
     videos: largestVideos,
     documents: largestDocs,
     downloads: largestDownloads,
+    overall: largestOverall,
   };
 
   cache.loaded = true;
@@ -384,7 +423,13 @@ export function useStorage() {
     fileCounts: { ...cache.fileCounts },
     folderSizes: { ...cache.folderSizes },
     mediaContext: { ...cache.mediaContext },
-    largestFiles: { ...cache.largestFiles },
+    largestFiles: {
+      images: [...cache.largestFiles.images],
+      videos: [...cache.largestFiles.videos],
+      documents: [...cache.largestFiles.documents],
+      downloads: [...cache.largestFiles.downloads],
+      overall: [...cache.largestFiles.overall],
+    },
     permissionGranted: cache.loaded,
     loading,
     reload,
