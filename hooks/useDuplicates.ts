@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import RNFS from 'react-native-fs';
 
 export interface DuplicateFile {
   name: string;
@@ -66,7 +67,19 @@ export function useDuplicates() {
     try {
       const allFiles: DuplicateFile[] = [];
 
-      for (const dir of SCAN_DIRS) {
+      const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+      const dynamicDirs = [...SCAN_DIRS];
+      try {
+        const rootItems = await RNFS.readDir('/storage/emulated/0/');
+        for (const item of rootItems) {
+          if (!item.isDirectory()) continue;
+          if (item.name.startsWith('.')) continue;
+          if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
+          dynamicDirs.push(`file://${item.path}/`);
+        }
+      } catch {}
+
+      for (const dir of dynamicDirs) {
         await scanDir(dir, allFiles);
       }
 

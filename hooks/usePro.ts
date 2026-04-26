@@ -41,7 +41,7 @@ export function usePro() {
       console.log('Entitlement check error:', e);
     } finally {
       setLoading(false);
-      setIsPro(true); // TEMP: remove before EAS build
+      //setIsPro(true); // TEMP: remove before EAS build
     }
   }
 
