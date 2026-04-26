@@ -194,12 +194,9 @@ async function getLargestFiles(
         if (!item.isDirectory()) continue;
         if (item.name.startsWith('.')) continue;
         if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
-        console.log('Non-standard root folder found:', item.name, item.path);
         await scanDir(item.path);
       }
-    } catch (e) {
-      console.log('Non-standard root scan error:', e);
-    }
+    } catch {}
   }
 
   return files
