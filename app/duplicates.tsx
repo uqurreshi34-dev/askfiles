@@ -77,7 +77,7 @@ export default function DuplicatesScreen() {
             style={{ marginRight: 8 }}
           />
           <Text style={styles.filePath} numberOfLines={1}>
-          {('Internal Storage/' + file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '')) || '/'}
+          {(() => { try { return 'Internal Storage/' + decodeURIComponent(file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '')) || '/'; } catch { return 'Internal Storage/' + file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '') || '/'; } })()}
           </Text>
           <TouchableOpacity
             style={[styles.deleteBtn, deleting === file.uri && { opacity: 0.5 }]}
