@@ -6,7 +6,6 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import DeviceInfo from 'react-native-device-info';
 import RNFS from 'react-native-fs';
 import { formatBytes } from '@/utils/formatBytes';
-import { getMarketedStorage } from '@/utils/storage';
 
 interface StorageInfo {
   totalBytes: number;
@@ -45,6 +44,12 @@ interface StorageCache {
   fileCounts: FileCounts;
   folderSizes: FolderSizes;
   mediaContext: MediaContext;
+  largestFiles: {
+    images: { name: string; size: string }[];
+    videos: { name: string; size: string }[];
+    documents: { name: string; size: string }[];
+    downloads: { name: string; size: string }[];
+  };
   loaded: boolean;
 }
 
@@ -61,6 +66,7 @@ const cache: StorageCache = {
     other: '0 MB',
   },
   mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0 },
+  largestFiles: { images: [], videos: [], documents: [], downloads: [] },
   loaded: false,
 };
 
@@ -142,6 +148,33 @@ async function getFolderSizeByExtension(path: string, extensions: string[]): Pro
   } catch {
     return 0;
   }
+}
+
+async function getLargestFiles(
+  paths: string[],
+  extensions?: string[],
+  topN = 5
+): Promise<{ name: string; size: string }[]> {
+  const files: { name: string; size: number }[] = [];
+  for (const path of paths) {
+    const rawPath = path.replace('file://', '').replace(/\/$/, '');
+    try {
+      const contents = await RNFS.readDir(rawPath);
+      for (const item of contents) {
+        if (!item.isFile()) continue;
+        if (item.name.startsWith('.')) continue;
+        if (extensions) {
+          const lower = item.name.toLowerCase();
+          if (!extensions.some(ext => lower.endsWith(ext))) continue;
+        }
+        files.push({ name: item.name, size: Number(item.size) || 0 });
+      }
+    } catch {}
+  }
+  return files
+    .sort((a, b) => b.size - a.size)
+    .slice(0, topN)
+    .map(f => ({ name: f.name, size: formatBytes(f.size) }));
 }
 
 async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.Asset[]> {
@@ -291,6 +324,24 @@ async function doLoad(): Promise<void> {
     other: formatBytes(otherBytes),
   };
 
+  const [largestImages, largestVideos, largestDocs, largestDownloads] = await Promise.all([
+    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Pictures/'], IMAGE_EXTS),
+    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Movies/'], VIDEO_EXTS),
+    getLargestFiles([
+      '/storage/emulated/0/Documents/',
+      '/storage/emulated/0/Download/',
+      '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
+    ], DOCUMENT_EXTENSIONS),
+    getLargestFiles(['/storage/emulated/0/Download/']),
+  ]);
+
+  cache.largestFiles = {
+    images: largestImages,
+    videos: largestVideos,
+    documents: largestDocs,
+    downloads: largestDownloads,
+  };
+
   cache.loaded = true;
 }
 
@@ -333,6 +384,7 @@ export function useStorage() {
     fileCounts: { ...cache.fileCounts },
     folderSizes: { ...cache.folderSizes },
     mediaContext: { ...cache.mediaContext },
+    largestFiles: { ...cache.largestFiles },
     permissionGranted: cache.loaded,
     loading,
     reload,

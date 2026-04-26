@@ -57,6 +57,7 @@ function buildContext(
   fileCounts: any,
   folderSizes: any,
   mediaContext: any,
+  largestFiles: any,
 ): string {
   const imageNames = mediaContext.recentImages.join(', ') || 'none';
   const videoNames = mediaContext.recentVideos.join(', ') || 'none';
@@ -89,6 +90,11 @@ Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures},
 All image filenames sorted newest first: ${imageNames}.
 All video filenames sorted newest first: ${videoNames}.
 Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Do not recount files from the filename list — always use the exact counts provided above.
+Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
+Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
+Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
+Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size})`).join(', ') || 'none'}.
+Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
   `.trim();
 }
 
@@ -112,7 +118,7 @@ export default function SearchScreen() {
       }
     }, [autofocus])
   );
-  const { fileCounts, storageInfo, folderSizes, mediaContext } = useStorage();
+  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles } = useStorage();
   const { isPro } = usePro();
   const { queriesRemaining, isLimitReached, incrementQuery } = useAiQueryLimit(isPro);
   const { addToVault } = useVault();
@@ -425,7 +431,7 @@ export default function SearchScreen() {
     if (isLimitReached) return;
     Keyboard.dismiss();
     await incrementQuery();
-    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext);
+    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles);
     await ask(q, context);
   }
 
