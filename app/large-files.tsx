@@ -160,7 +160,7 @@ export default function LargeFilesScreen() {
         <View style={styles.fileInfo}>
           <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
           <Text style={styles.fileMeta}>
-            {formatSize(file.size)} · {file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage'}
+            {formatSize(file.size)} · {(() => { try { return decodeURIComponent(file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/')) || 'Storage'; } catch { return file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage'; } })()}
           </Text>
         </View>
         <TouchableOpacity
