@@ -131,15 +131,19 @@ export function useDuplicates() {
   }
 
   async function deleteFile(groupKey: string, uri: string): Promise<boolean> {
-    // Remove entire group from UI immediately, then bump version to force FlatList remount
+    
     setGroups(prev => {
-      const baseName = groupKey.split('__')[0];
-      const updated = prev.filter(g => !g.key.startsWith(baseName + '__'));
+      const updated = prev.map(g => {
+        if (g.key !== groupKey) return g;
+        const remainingFiles = g.files.filter(f => f.uri !== uri);
+        return { ...g, files: remainingFiles };
+      }).filter(g => g.files.length >= 2);
       const newWasted = updated.reduce((sum, g) => sum + g.size * (g.files.length - 1), 0);
       setTotalWasted(newWasted);
       return updated;
     });
-    setListVersion(v => v + 1);
+    // Only force FlatList remount when a group is fully removed (2 copies deleted)
+    // For 3+ copy groups where one file is removed, no remount needed
 
     // Attempt actual file delete in background
     try {
