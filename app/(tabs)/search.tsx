@@ -213,14 +213,6 @@ export default function SearchScreen() {
     } 
   }
 
-  async function resolveUri(uri: string): Promise<string> {
-    if (!uri.startsWith('content://')) return uri.replace('file://', '');
-    try {
-      const info = await MediaLibrary.getAssetInfoAsync(uri as any);
-      return (info.localUri ?? uri).replace('file://', '');
-    } catch { return uri.replace('file://', ''); }
-  }
-
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
@@ -251,7 +243,7 @@ export default function SearchScreen() {
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
     const destUri = destDir + item.name;
     try {
-      const src = await resolveUri(item.uri);
+      const src = toPath(item.uri);
       const dst = toPath(destUri);
       if (pickerMode === 'copy') {
         const alreadyExists = await RNFS.exists(dst);
@@ -270,17 +262,17 @@ export default function SearchScreen() {
             Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
             return;
           }
-        await RNFS.moveFile(src, dst);
-        try {
-          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
-          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
-          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-        } catch {}
-        if (item.inFolder) { removeFolderItem(item.uri); }
-        else { removeResult(item.uri); }
-        setShowPicker(false);
-        Alert.alert('Success', `"${item.name}" moved successfully.`);
+          await RNFS.moveFile(src, dst);
+          try {
+            const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
+            const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+            const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
+            if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+          } catch {}
+          if (item.inFolder) { removeFolderItem(item.uri); }
+          else { removeResult(item.uri); }
+          setShowPicker(false);
+          Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
       console.log('Paste error:', e);

@@ -95,16 +95,6 @@ export default function FavouritesScreen() {
     } 
   }
 
-  async function resolveUri(uri: string): Promise<string> {
-    if (!uri.startsWith('content://')) {
-      try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
-    }
-    try {
-      const info = await MediaLibrary.getAssetInfoAsync(uri as any);
-      return (info.localUri ?? uri).replace('file://', '');
-    } catch { return uri.replace('file://', ''); }
-  }
-
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
@@ -135,7 +125,7 @@ export default function FavouritesScreen() {
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
     const destUri = destDir + item.name;
     try {
-      const src = await resolveUri(item.uri);
+      const src = await toPath(item.uri);
       const dst = toPath(destUri);
       if (pickerMode === 'copy') {
         const alreadyExists = await RNFS.exists(dst);
@@ -177,7 +167,7 @@ export default function FavouritesScreen() {
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
     try {
-      const srcPath = await resolveUri(selectedItem.uri);
+      const srcPath = await toPath(selectedItem.uri);
       const dstPath = toPath(newUri);
       const invalidChars = /[*\/\\:?"<>|]/;
       if (invalidChars.test(renameValue.trim())) {
