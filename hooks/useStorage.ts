@@ -3,7 +3,7 @@ import { Platform, AppState } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import DeviceInfo from 'react-native-device-info';
+import { getStorageStats } from '@/modules/storage-stats';
 import RNFS from 'react-native-fs';
 import { formatBytes } from '@/utils/formatBytes';
 
@@ -256,10 +256,9 @@ async function doLoad(): Promise<void> {
   // const free = FileSystem.Paths.availableDiskSpace;
   // const used = total - free;
 
-  const [total, free] = await Promise.all([
-    DeviceInfo.getTotalDiskCapacity(),
-    DeviceInfo.getFreeDiskStorage(),
-  ]);
+  const stats = await getStorageStats();
+  const total = stats.total;
+  const free = stats.free;
   
   const used = total - free;
 
