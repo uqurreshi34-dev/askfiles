@@ -98,11 +98,10 @@ export default function LargeFilesScreen() {
       }
       results.sort((a, b) => b.size - a.size);
       setFiles(results);
-    } catch (e) {
-      console.log('Scan error:', e);
-    } finally {
-      setScanning(false);
-      setScanned(true);
+    } catch{}
+      finally {
+        setScanning(false);
+        setScanned(true);
     }
   }
 
@@ -122,8 +121,7 @@ export default function LargeFilesScreen() {
               if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
               else { const f = new FileSystem.File(file.uri); f.delete(); }
               setFiles(prev => prev.filter(f => f.uri !== file.uri));
-            } catch (e) {
-              console.log('Delete error:', e);
+            } catch {
               Alert.alert('Error', 'Could not delete file.');
             } finally {
               setDeleting(null);
