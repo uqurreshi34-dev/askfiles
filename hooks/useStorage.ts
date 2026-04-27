@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -79,6 +79,7 @@ const cache: StorageCache = {
 
 let loadingPromise: Promise<void> | null = null;
 let permissionRequested = false;
+let appStateHandling = false;
 
 export function pluralise(count: number, word: string): string {
   return `${count.toLocaleString()} ${word}${count === 1 ? '' : 's'}`;
@@ -232,13 +233,13 @@ async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.
 async function requestManageStoragePermission(): Promise<void> {
   if (Platform.OS !== 'android' || Platform.Version < 30) return;
   try {
+    const hasAccess = await RNFS.exists('/storage/emulated/0/Download/');
+    if (hasAccess) return;
     await IntentLauncher.startActivityAsync(
       'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
       { data: 'package:com.askfiles.mobile' }
     );
-  } catch (e) {
-    // Device doesn't support this intent — skip silently
-  }
+  } catch {}
 }
 
 async function doLoad(): Promise<void> {
@@ -404,6 +405,22 @@ export function useStorage() {
       setLoading(false);
       setTick(t => t + 1);
     });
+  }, []);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && !cache.loaded && !appStateHandling) {
+        appStateHandling = true;
+        permissionRequested = false;
+        loadingPromise = null;
+        getLoadingPromise().then(() => {
+          setLoading(false);
+          setTick(t => t + 1);
+          appStateHandling = false;
+        });
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   const reload = useCallback(async () => {
