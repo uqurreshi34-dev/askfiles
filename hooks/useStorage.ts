@@ -233,13 +233,17 @@ async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.
 async function requestManageStoragePermission(): Promise<void> {
   if (Platform.OS !== 'android' || Platform.Version < 30) return;
   try {
-    const hasAccess = await RNFS.exists('/storage/emulated/0/Download/');
-    if (hasAccess) return;
     await IntentLauncher.startActivityAsync(
       'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
       { data: 'package:com.askfiles.mobile' }
     );
-  } catch {}
+  } catch {
+    try {
+      await IntentLauncher.startActivityAsync(
+        'android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION'
+      );
+    } catch {}
+  }
 }
 
 async function doLoad(): Promise<void> {
