@@ -3,9 +3,9 @@ import { Platform, AppState } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { getStorageStats } from '@/modules/storage-stats';
 import RNFS from 'react-native-fs';
 import { formatBytes } from '@/utils/formatBytes';
+import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 
 interface StorageInfo {
   totalBytes: number;
@@ -78,7 +78,6 @@ const cache: StorageCache = {
 };
 
 let loadingPromise: Promise<void> | null = null;
-let permissionRequested = false;
 let appStateHandling = false;
 
 export function pluralise(count: number, word: string): string {
@@ -232,6 +231,10 @@ async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.
 
 async function requestManageStoragePermission(): Promise<void> {
   if (Platform.OS !== 'android' || Platform.Version < 30) return;
+  
+  const hasPermission = await isStorageManager();
+  if (hasPermission) return;
+
   try {
     await IntentLauncher.startActivityAsync(
       'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
@@ -250,26 +253,13 @@ async function doLoad(): Promise<void> {
   const { status } = await MediaLibrary.requestPermissionsAsync();
   if (status !== 'granted') return;
 
-  // Request full filesystem access once per app session only
-  if (!permissionRequested) {
-    permissionRequested = true;
-    await requestManageStoragePermission();
-  }
-
-  // const total = FileSystem.Paths.totalDiskSpace;
-  // const free = FileSystem.Paths.availableDiskSpace;
-  // const used = total - free;
+// Request full filesystem access if not already granted
+  await requestManageStoragePermission();
 
   const stats = await getStorageStats();
-
-
   const total = stats.total;
   const free = stats.free;
   const used = (stats as any).used ?? (total - free);
-  console.log('total:', stats.total / 1073741824, 'GB');
-  console.log('free:', stats.free / 1073741824, 'GB');
-  console.log('used:', (stats.total - stats.free) / 1073741824, 'GB');
-  console.log('used from module:', (stats as any).used / 1073741824, 'GB');
 
   cache.storageInfo = {
     totalBytes: total,
@@ -419,7 +409,6 @@ export function useStorage() {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active' && !cache.loaded && !appStateHandling) {
         appStateHandling = true;
-        permissionRequested = false;
         loadingPromise = null;
         getLoadingPromise().then(() => {
           setLoading(false);

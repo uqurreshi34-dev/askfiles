@@ -10,22 +10,23 @@ class StorageStatsModule : Module() {
         Name("StorageStats")
 
         AsyncFunction("getStorageStats") {
-          val extPath = Environment.getExternalStorageDirectory().absolutePath
-          val extStat = StatFs(extPath)
-          val rawTotal = extStat.blockCountLong * extStat.blockSizeLong
-          val free = extStat.availableBlocksLong * extStat.blockSizeLong
-          val used = rawTotal - free  // ~30.2 GB — user files only
+            val extPath = Environment.getExternalStorageDirectory().absolutePath
+            val extStat = StatFs(extPath)
+            val rawTotal = extStat.blockCountLong * extStat.blockSizeLong
+            val free = extStat.availableBlocksLong * extStat.blockSizeLong
+            val used = rawTotal - free
+            val GB = 1_073_741_824L
+            val sizes = listOf(128L, 256L, 512L, 1024L, 2048L).map { it * GB }
+            val marketedTotal = sizes.first { it >= rawTotal }
+            mapOf(
+                "total" to marketedTotal.toDouble(),
+                "used" to used.toDouble(),
+                "free" to free.toDouble()
+            )
+        }
 
-          val GB = 1_073_741_824L
-          val sizes = listOf(128L, 256L, 512L, 1024L, 2048L).map { it * GB }
-          val marketedTotal = sizes.first { it >= rawTotal }
-
-          // Return marketed total but honest used/free
-          mapOf(
-              "total" to marketedTotal.toDouble(),
-              "used" to used.toDouble(),
-              "free" to free.toDouble()
-          )
+        AsyncFunction("isStorageManager") {
+            Environment.isExternalStorageManager()
         }
     }
 }
