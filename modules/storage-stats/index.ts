@@ -1,5 +1,7 @@
-import StorageStatsModule from './src/StorageStatsModule';
+import { requireNativeModule } from 'expo-modules-core';
+
+const StorageStats = requireNativeModule('StorageStats');
 
 export function getStorageStats(): Promise<{ total: number; free: number }> {
-  return StorageStatsModule.getStorageStats();
+  return StorageStats.getStorageStats();
 }

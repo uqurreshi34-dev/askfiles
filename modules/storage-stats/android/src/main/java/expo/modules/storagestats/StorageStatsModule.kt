@@ -2,49 +2,30 @@ package expo.modules.storagestats
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.net.URL
+import android.os.Environment
+import android.os.StatFs
 
 class StorageStatsModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
-  override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('StorageStats')` in JavaScript.
-    Name("StorageStats")
+    override fun definition() = ModuleDefinition {
+        Name("StorageStats")
 
-    // Defines constant property on the module.
-    Constant("PI") {
-      Math.PI
+        AsyncFunction("getStorageStats") {
+          val extPath = Environment.getExternalStorageDirectory().absolutePath
+          val extStat = StatFs(extPath)
+          val rawTotal = extStat.blockCountLong * extStat.blockSizeLong
+          val free = extStat.availableBlocksLong * extStat.blockSizeLong
+          val used = rawTotal - free  // ~30.2 GB — user files only
+
+          val GB = 1_073_741_824L
+          val sizes = listOf(128L, 256L, 512L, 1024L, 2048L).map { it * GB }
+          val marketedTotal = sizes.first { it >= rawTotal }
+
+          // Return marketed total but honest used/free
+          mapOf(
+              "total" to marketedTotal.toDouble(),
+              "used" to used.toDouble(),
+              "free" to free.toDouble()
+          )
+        }
     }
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
-    View(StorageStatsView::class) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { view: StorageStatsView, url: URL ->
-        view.webView.loadUrl(url.toString())
-      }
-      // Defines an event that the view can send to JavaScript.
-      Events("onLoad")
-    }
-  }
 }

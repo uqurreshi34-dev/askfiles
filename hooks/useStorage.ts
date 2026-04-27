@@ -257,10 +257,15 @@ async function doLoad(): Promise<void> {
   // const used = total - free;
 
   const stats = await getStorageStats();
+
+
   const total = stats.total;
   const free = stats.free;
-  
-  const used = total - free;
+  const used = (stats as any).used ?? (total - free);
+  console.log('total:', stats.total / 1073741824, 'GB');
+  console.log('free:', stats.free / 1073741824, 'GB');
+  console.log('used:', (stats.total - stats.free) / 1073741824, 'GB');
+  console.log('used from module:', (stats as any).used / 1073741824, 'GB');
 
   cache.storageInfo = {
     totalBytes: total,
