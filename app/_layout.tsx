@@ -4,9 +4,7 @@ import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 export default function RootLayout() {
   useEffect(() => {
-    ExpoSpeechRecognitionModule.requestPermissionsAsync().then(r => 
-      console.log('mic permission:', JSON.stringify(r))
-    );
+    ExpoSpeechRecognitionModule.requestPermissionsAsync();
   }, []);
   return (
     <Stack screenOptions={{ headerShown: false }}>
