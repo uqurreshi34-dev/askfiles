@@ -2,7 +2,6 @@ import { formatBytes } from '@/utils/formatBytes';
 import React, { useState } from 'react';
 import { Modal, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMarketedStorage } from '@/utils/storage';
 
 interface Props {
   usedBytes: number;
