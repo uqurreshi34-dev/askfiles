@@ -66,7 +66,7 @@ export default function StorageSummaryCard({
             >
                 <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
                 <Text style={styles.modalText}>
-                Your device is sold as {getMarketedStorage(totalBytes)} GB, but usable storage is lower (~{formatBytes(totalBytes)}) due to formatting and system files.
+                AskFiles shows your user-accessible storage only — your files, downloads, and app data.{"\n\n"}System files and the Android OS (~16–24 GB depending on device) are excluded as they cannot be accessed or managed by any app.{"\n\n"}This is why the figure may differ from Android Settings.
 
                     {"\n\n"}
                     Android settings include apps and system data. This app shows only user files, so the used space appears lower.

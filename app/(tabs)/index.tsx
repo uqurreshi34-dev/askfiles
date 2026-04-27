@@ -8,7 +8,6 @@ import { useStorage, pluralise } from '@/hooks/useStorage';
 import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
-import { getMarketedStorage } from '@/utils/storage';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 
 const APP_VERSION = '1.0.0';
@@ -84,7 +83,7 @@ export default function HomeScreen() {
                   style={{ marginRight: 10 }}
                 />
                 <Text style={styles.modalRowText}>
-                  Device storage: {getMarketedStorage(storageInfo?.totalBytes ?? 0)} GB
+                  Device storage: {Math.round((storageInfo?.totalBytes ?? 0) / 1_073_741_824)} GB
                 </Text>
               </View>
               <View style={styles.modalDivider} />
