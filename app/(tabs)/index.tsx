@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const { count: favCount } = useFavourites();
   const router = useRouter();
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
 
@@ -33,6 +34,11 @@ export default function HomeScreen() {
       } else {
         setOnboardingChecked(true);
         scheduleDailyReminder(isPro);
+        const seenVersion = await AsyncStorage.getItem(`askfiles-whats-new-${APP_VERSION}`);
+        if (!seenVersion) {
+          setWhatsNewVisible(true);
+          await AsyncStorage.setItem(`askfiles-whats-new-${APP_VERSION}`, 'true');
+        }
       }
     }
     checkOnboarding();
@@ -134,6 +140,44 @@ export default function HomeScreen() {
                 onPress={() => setSettingsVisible(false)}
               >
                 <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* What's New Modal */}
+        <Modal
+          visible={whatsNewVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setWhatsNewVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setWhatsNewVisible(false)}
+          >
+            <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+              <Text style={styles.modalTitle}>What's New</Text>
+              <Text style={styles.modalVersion}>Version {APP_VERSION}</Text>
+              <View style={styles.modalDivider} />
+              {[
+                { icon: 'sparkles-outline', color: '#185FA5', text: 'AI-powered file search — ask in plain English' },
+                { icon: 'shield-checkmark-outline', color: '#534AB7', text: 'Vault — lock your private files securely' },
+                { icon: 'copy-outline', color: '#993C1D', text: 'Duplicate finder — free up storage space' },
+                { icon: 'notifications-outline', color: '#3B6D11', text: 'Daily reminders to keep your storage clean' },
+              ].map((item, i) => (
+                <View key={i} style={styles.modalRow}>
+                  <Ionicons name={item.icon as any} size={18} color={item.color} style={{ marginRight: 10 }} />
+                  <Text style={[styles.modalRowText, { flex: 1 }]}>{item.text}</Text>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={styles.modalClose}
+                activeOpacity={0.7}
+                onPress={() => setWhatsNewVisible(false)}
+              >
+                <Text style={styles.modalCloseText}>Got it</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
