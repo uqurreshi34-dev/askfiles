@@ -1,0 +1,200 @@
+  // Sheet state
+  const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
+  const [showSheet, setShowSheet] = useState(false);
+  const [fileSize, setFileSize] = useState<string | null>(null);
+  const [showRename, setShowRename] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
+  const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
+  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [isFav, setIsFav] = useState(false);
+  const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
+  const sheetAnim = useRef(new Animated.Value(400)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
+      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.5) {
+          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
+            setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue(''); setShowRename(false); setRenameValue('');
+          });
+        } else {
+          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+        }
+      },
+    })
+  ).current;
+
+  useSpeechRecognitionEvent('result', (e) => {
+    const text = e.results?.[0]?.transcript ?? '';
+    if (text) setAiQuery(text);
+  });
+  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechRecognitionEvent('error', () => setListening(false));
+  
+  async function toggleListening() {
+    if (listening) {
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+    setAiQuery('');
+    setListening(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: true });
+  }
+
+  async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
+    setSelectedItem(item);
+    setFileSize(null);
+    setShowSheet(true);
+    setIsFav(await isFavourite(item.uri));
+    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    try {
+      const file = new FileSystem.File(item.uri);
+      setFileSize(formatBytes(file.size ?? 0));
+    } catch { setFileSize('Unknown'); }
+  }
+
+  function closeSheet() {
+    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
+      setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue('');
+    });
+  }
+
+  const ROOT_PATH = 'file:///storage/emulated/0/';
+  function toPath(uri: string): string { 
+    try { 
+      return decodeURIComponent(uri.replace('file://', '')); 
+    }
+    catch { 
+      return uri.replace('file://', '');
+    } 
+  }
+
+  async function loadPickerDir(path: string) {
+    setPickerLoading(true);
+    try {
+      const dir = new FileSystem.Directory(path.endsWith('/') ? path : path + '/');
+      const contents = dir.list();
+      const folders = contents
+        .filter((item: any) => item instanceof FileSystem.Directory)
+        .map((item: any) => { const raw = item.uri.split('/').filter(Boolean).pop() ?? ''; let name = raw; try { name = decodeURIComponent(raw); } catch {} return { name, uri: item.uri }; })
+        .filter((f: any) => !f.name.startsWith('.'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setPickerItems(folders);
+    } catch { setPickerItems([]); }
+    finally { setPickerLoading(false); }
+  }
+
+  function openPicker(mode: 'copy' | 'move') {
+    pendingItem.current = selectedItem;
+    setPickerMode(mode);
+    setPickerPath(ROOT_PATH);
+    loadPickerDir(ROOT_PATH);
+    setShowPicker(true);
+    closeSheet();
+  }
+
+  async function handlePaste() {
+    const item = pendingItem.current;
+    if (!item) return;
+    const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+    const destUri = destDir + item.name;
+    try {
+      const src = toPath(item.uri);
+      const dst = toPath(destUri);
+      if (pickerMode === 'copy') {
+        const alreadyExists = await RNFS.exists(dst);
+        if (alreadyExists){
+          setShowPicker(false);
+          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+          return;
+        }
+        await RNFS.copyFile(src, dst);
+        setShowPicker(false);
+        Alert.alert('Success', `"${item.name}" copied successfully.`);
+      } else {
+        const moveExists = await RNFS.exists(dst);
+          if (moveExists) {
+            setShowPicker(false);
+            Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+            return;
+          }
+          await RNFS.moveFile(src, dst);
+          try {
+            const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
+            const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+            const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
+            if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+          } catch {}
+          if (item.inFolder) { removeFolderItem(item.uri); }
+          else { removeResult(item.uri); }
+          setShowPicker(false);
+          Alert.alert('Success', `"${item.name}" moved successfully.`);
+      }
+    } catch (e: any) {
+      console.log('Paste error:', e);
+      Alert.alert('Error', `Could not ${pickerMode} file.`);
+    }
+  }
+
+  async function handleRename() {
+    if (!selectedItem || !renameValue.trim()) return;
+    const uri = selectedItem.uri.endsWith('/') ? selectedItem.uri.slice(0, -1) : selectedItem.uri;
+    const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
+    const newUri = parentPath + renameValue.trim();
+    try {
+      const invalidChars = /[*\/\\:?"<>|]/;
+      if (invalidChars.test(renameValue.trim())) {
+        Alert.alert('Invalid name', 'File names cannot contain: * / \\ : ? " < > |');
+        return;
+      }
+      const destExists = await RNFS.exists(toPath(newUri));
+      if (destExists) {
+        Alert.alert('Name already taken', `A file named "${renameValue.trim()}" already exists in this folder.`);
+        return;
+      }
+      await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      try {
+        const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
+        const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+        const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(selectedItem.uri));
+        if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+      } catch {}
+      if (selectedItem.inFolder) {
+        setFolderStack(prev => prev.map((f, i) =>
+          i === prev.length - 1
+            ? { ...f, items: f.items.map(item => item.uri === selectedItem.uri ? { ...item, name: renameValue.trim(), uri: newUri } : item) }
+            : f
+        ));
+      } else {
+        setResults(prev => prev.map(f => f.uri === selectedItem.uri ? { ...f, name: renameValue.trim(), uri: newUri } : f));
+      }
+      closeSheet();
+    } catch (e: any) {
+      console.log('Rename error:', e);
+      Alert.alert('Rename failed', 'Could not rename this file.');
+    }
+  }
+
+  async function handleShare() {
+    if (!selectedItem) return;
+    closeSheet();
+    try {
+      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
+      if (isPng) {
+        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
+        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
+        const cacheUri = cacheDir + cacheName;
+        const cacheFile = new FileSystem.File(cacheUri);
+        if (cacheFile.exists) cacheFile.delete();
+        const result = await ImageManipulator.manipulate(selectedItem.uri)
+          .renderAsync()
+          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
+        const convertedFile = new FileSystem.File(result.uri);
+        convertedFile.copy(cacheFile);
+        await Sharing.shareAsync(cacheUri, { dialogTitle: selectedItem.name, mimeType: 'image/jpeg' });
+      } else {
+        await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
