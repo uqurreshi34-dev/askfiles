@@ -101,7 +101,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.modalRow}
                 activeOpacity={0.7}
-                onPress={() => {/* Play Store link — add later */}}
+                onPress={() => Linking.openURL('market://details?id=com.askfiles.mobile')}
               >
                 <Ionicons name="star-outline" size={18} color="#854F0B" style={{ marginRight: 10 }} />
                 <Text style={styles.modalRowText}>Rate App</Text>
