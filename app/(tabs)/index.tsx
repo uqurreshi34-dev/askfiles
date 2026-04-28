@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useRecents, timeAgo } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -19,6 +20,19 @@ export default function HomeScreen() {
   const { count: favCount } = useFavourites();
   const router = useRouter();
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
+  useEffect(() => {
+    async function checkOnboarding() {
+      const done = await AsyncStorage.getItem('askfiles-onboarding-done');
+      if (!done) {
+        router.replace('/onboarding' as any);
+      } else {
+        setOnboardingChecked(true);
+      }
+    }
+    checkOnboarding();
+  }, []);
 
   useFocusEffect(useCallback(() => {
     reload();
@@ -42,6 +56,8 @@ export default function HomeScreen() {
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
     return '#5F5E5A';
   }
+
+  if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
 
   return (
     <SafeAreaView style={styles.container}>
