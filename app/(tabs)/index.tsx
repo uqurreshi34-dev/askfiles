@@ -10,6 +10,8 @@ import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scheduleDailyReminder } from '@/hooks/useNotifications';
+import { usePro } from '@/hooks/usePro';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -21,6 +23,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const { isPro } = usePro();
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -29,10 +32,11 @@ export default function HomeScreen() {
         router.replace('/onboarding' as any);
       } else {
         setOnboardingChecked(true);
+        scheduleDailyReminder(isPro);
       }
     }
     checkOnboarding();
-  }, []);
+  }, [isPro]);
 
   useFocusEffect(useCallback(() => {
     reload();
