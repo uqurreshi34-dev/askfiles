@@ -154,6 +154,9 @@ export default function CategoryScreen() {
   const config = CATEGORY_CONFIG[category ?? 'images'];
   const { addToVault } = useVault();
   const { isPro } = usePro();
+  type SortKey = 'name' | 'size' | 'date';
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [showSortSheet, setShowSortSheet] = useState(false);
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
@@ -467,12 +470,18 @@ export default function CategoryScreen() {
 
   const tabs = category === 'documents' ? DOC_TABS : category === 'downloads' ? DL_TABS : null;
 
-  const filteredItems = tabs && activeTab !== 'All'
+  const filteredItems = (tabs && activeTab !== 'All'
     ? items.filter(item => {
         const tab = category === 'documents' ? getDocTab(item.name) : getDlTab(item.name);
         return tab === activeTab;
       })
-    : items;
+    : items
+  ).slice().sort((a, b) => {
+    if (sortKey === 'name') return a.name.localeCompare(b.name);
+    if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
+    if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
+    return 0;
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -481,7 +490,9 @@ export default function CategoryScreen() {
           <Ionicons name="arrow-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={styles.title}>{config.title}</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => setShowSortSheet(true)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="swap-vertical-outline" size={22} color="#5F5E5A" />
+        </TouchableOpacity>
       </View>
       {tabs && (
         <View style={styles.tabsRow}>
@@ -691,6 +702,28 @@ export default function CategoryScreen() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+      <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8 }}>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
+            {(['name', 'size', 'date'] as SortKey[]).map(key => (
+              <TouchableOpacity
+                key={key}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' }}
+                onPress={() => { setSortKey(key); setShowSortSheet(false); }}
+              >
+                <Text style={{ fontSize: 15, color: sortKey === key ? '#185FA5' : '#111', fontWeight: sortKey === key ? '600' : '400' }}>
+                  {key === 'name' ? 'Name' : key === 'size' ? 'Size (largest first)' : 'Date (newest first)'}
+                </Text>
+                {sortKey === key && <Ionicons name="checkmark" size={18} color="#185FA5" />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14 }} onPress={() => setShowSortSheet(false)}>
+              <Text style={{ fontSize: 14, color: '#888780' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
