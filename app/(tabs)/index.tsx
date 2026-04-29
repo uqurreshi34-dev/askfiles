@@ -13,11 +13,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
+import { useTheme } from '@/hooks/useTheme';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 export default function HomeScreen() {
+  const { colors, dark } = useTheme();
   const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const { count: favCount } = useFavourites();
@@ -58,39 +60,39 @@ export default function HomeScreen() {
   }, []));
 
   const QUICK_ACCESS = [
-    { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: '#E6F1FB', iconColor: '#185FA5', icon: 'image-outline', route: '/category?category=images' },
-    { id: '2', label: 'Videos', count: pluralise(fileCounts.videos, 'file'), color: '#FAECE7', iconColor: '#993C1D', icon: 'videocam-outline', route: '/category?category=videos' },
-    { id: '3', label: 'Documents', count: pluralise(fileCounts.documents, 'file'), color: '#EEEDFE', iconColor: '#534AB7', icon: 'document-outline', route: '/category?category=documents' },
-    { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: '#EAF3DE', iconColor: '#3B6D11', icon: 'download-outline', route: '/category?category=downloads' },
-    { id: '5', label: 'Favourites', count: pluralise(favCount, 'file'), color: '#FEE9E9', iconColor: '#C0392B', icon: 'heart-outline', route: '/favourites' },
+    { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: colors.blueBg, iconColor: colors.blue, icon: 'image-outline', route: '/category?category=images' },
+    { id: '2', label: 'Videos', count: pluralise(fileCounts.videos, 'file'), color: colors.redBrownBg, iconColor: colors.redBrown, icon: 'videocam-outline', route: '/category?category=videos' },
+    { id: '3', label: 'Documents', count: pluralise(fileCounts.documents, 'file'), color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
+    { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
+    { id: '5', label: 'Favourites', count: pluralise(favCount, 'file'), color: colors.favRedBg, iconColor: colors.favRed, icon: 'heart-outline', route: '/favourites' },
   ];
 
   function getFileColor(name: string): string {
     const ext = name.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return '#185FA5';
-    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
-    if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext ?? '')) return '#534AB7';
-    if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
-    return '#5F5E5A';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return colors.blue;
+    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return colors.redBrown;
+    if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext ?? '')) return colors.purple;
+    if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return colors.amber;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return colors.green;
+    return colors.textSecondary;
   }
 
-  if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+  if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="auto" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={dark ? 'light' : 'dark'} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
-          <Text style={styles.appName}>AskFiles</Text>
+          <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
           <TouchableOpacity
             style={styles.settingsBtn}
             onPress={() => setSettingsVisible(true)}
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="settings-outline" size={22} color="#5F5E5A" />
+            <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -106,43 +108,30 @@ export default function HomeScreen() {
             activeOpacity={1}
             onPress={() => setSettingsVisible(false)}
           >
-            <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
-              <Text style={styles.modalTitle}>AskFiles</Text>
-              <Text style={styles.modalVersion}>Version {APP_VERSION}</Text>
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
               <View style={styles.modalRow}>
-                <Ionicons
-                  name="phone-portrait-outline"
-                  size={18}
-                  color="#185FA5"
-                  style={{ marginRight: 10 }}
-                />
-                <Text style={styles.modalRowText}>
+                <Ionicons name="phone-portrait-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>
                   Device storage: {Math.round((storageInfo?.totalBytes ?? 0) / 1_073_741_824)} GB
                 </Text>
               </View>
-              <View style={styles.modalDivider} />
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
 
-              <TouchableOpacity
-                style={styles.modalRow}
-                activeOpacity={0.7}
-                onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
-              >
-                <Ionicons name="shield-checkmark-outline" size={18} color="#534AB7" style={{ marginRight: 10 }} />
-                <Text style={styles.modalRowText}>Privacy Policy</Text>
-                <Ionicons name="open-outline" size={14} color="#888780" style={{ marginLeft: 'auto' }} />
+              <TouchableOpacity style={styles.modalRow} activeOpacity={0.7} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.purple} style={{ marginRight: 10 }} />
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>Privacy Policy</Text>
+                <Ionicons name="open-outline" size={14} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.modalRow}
-                activeOpacity={0.7}
-                onPress={() => Linking.openURL('market://details?id=com.askfiles.mobile')}
-              >
-                <Ionicons name="star-outline" size={18} color="#854F0B" style={{ marginRight: 10 }} />
-                <Text style={styles.modalRowText}>Rate App</Text>
-                <Ionicons name="chevron-forward" size={14} color="#888780" style={{ marginLeft: 'auto' }} />
+              <TouchableOpacity style={styles.modalRow} activeOpacity={0.7} onPress={() => Linking.openURL('market://details?id=com.askfiles.mobile')}>
+                <Ionicons name="star-outline" size={18} color={colors.amber} style={{ marginRight: 10 }} />
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>Rate App</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
               </TouchableOpacity>
 
-              <View style={styles.modalDivider} />
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               <TouchableOpacity
                 style={styles.modalRow}
                 activeOpacity={0.7}
@@ -162,19 +151,15 @@ export default function HomeScreen() {
                   }
                 }}
               >
-                <Ionicons name="lock-closed-outline" size={18} color="#185FA5" style={{ marginRight: 10 }} />
-                <Text style={styles.modalRowText}>App Lock</Text>
-                <View style={{ marginLeft: 'auto', width: 44, height: 26, borderRadius: 13, backgroundColor: appLockEnabled ? '#185FA5' : '#D3D1C7', justifyContent: 'center', paddingHorizontal: 3 }}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>App Lock</Text>
+                <View style={{ marginLeft: 'auto', width: 44, height: 26, borderRadius: 13, backgroundColor: appLockEnabled ? colors.blue : colors.textDisabled, justifyContent: 'center', paddingHorizontal: 3 }}>
                   <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: appLockEnabled ? 'flex-end' : 'flex-start' }} />
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.modalClose}
-                activeOpacity={0.7}
-                onPress={() => setSettingsVisible(false)}
-              >
-                <Text style={styles.modalCloseText}>Close</Text>
+              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => setSettingsVisible(false)}>
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Close</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -192,42 +177,38 @@ export default function HomeScreen() {
             activeOpacity={1}
             onPress={() => setWhatsNewVisible(false)}
           >
-            <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
-              <Text style={styles.modalTitle}>What's New</Text>
-              <Text style={styles.modalVersion}>Version {APP_VERSION}</Text>
-              <View style={styles.modalDivider} />
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>What's New</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               {[
-                { icon: 'sparkles-outline', color: '#185FA5', text: 'AI-powered file search — ask in plain English' },
-                { icon: 'shield-checkmark-outline', color: '#534AB7', text: 'Vault — lock your private files securely' },
-                { icon: 'copy-outline', color: '#993C1D', text: 'Duplicate finder — free up storage space' },
-                { icon: 'notifications-outline', color: '#3B6D11', text: 'Daily reminders to keep your storage clean' },
+                { icon: 'sparkles-outline', color: colors.blue, text: 'AI-powered file search — ask in plain English' },
+                { icon: 'shield-checkmark-outline', color: colors.purple, text: 'Vault — lock your private files securely' },
+                { icon: 'copy-outline', color: colors.redBrown, text: 'Duplicate finder — free up storage space' },
+                { icon: 'notifications-outline', color: colors.green, text: 'Daily reminders to keep your storage clean' },
               ].map((item, i) => (
                 <View key={i} style={styles.modalRow}>
                   <Ionicons name={item.icon as any} size={18} color={item.color} style={{ marginRight: 10 }} />
-                  <Text style={[styles.modalRowText, { flex: 1 }]}>{item.text}</Text>
+                  <Text style={[styles.modalRowText, { flex: 1, color: colors.textPrimary }]}>{item.text}</Text>
                 </View>
               ))}
-              <TouchableOpacity
-                style={styles.modalClose}
-                activeOpacity={0.7}
-                onPress={() => setWhatsNewVisible(false)}
-              >
-                <Text style={styles.modalCloseText}>Got it</Text>
+              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => setWhatsNewVisible(false)}>
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Got it</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
         </Modal>
 
         <TouchableOpacity
-          style={styles.searchBar}
+          style={[styles.searchBar, { backgroundColor: colors.surface }]}
           onPress={() => router.push('/(tabs)/search?autofocus=1')}
           activeOpacity={0.7}
         >
-          <Ionicons name="search-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
-          <Text style={styles.searchText}>Search files, folders...</Text>
+          <Ionicons name="search-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+          <Text style={[styles.searchText, { color: colors.textMuted }]}>Search files, folders...</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionLabel}>Quick access</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Quick access</Text>
         <View style={styles.quickGrid}>
           {QUICK_ACCESS.map(item => (
             <TouchableOpacity
@@ -236,86 +217,66 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               onPress={() => router.push(item.route as any)}
             >
-              <Ionicons
-                name={item.icon as any}
-                size={24}
-                color={item.iconColor}
-                style={{ marginBottom: 8 }}
-              />
-              <Text style={styles.cardName}>{item.label}</Text>
-              <Text style={styles.cardCount}>{item.count}</Text>
+              <Ionicons name={item.icon as any} size={24} color={item.iconColor} style={{ marginBottom: 8 }} />
+              <Text style={[styles.cardName, { color: colors.textPrimary }]}>{item.label}</Text>
+              <Text style={[styles.cardCount, { color: colors.textSecondary }]}>{item.count}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {!loading && !permissionGranted ? (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.permissionCard}
-            onPress={() => Linking.openSettings()}
-          >
+          <TouchableOpacity activeOpacity={0.8} style={[styles.permissionCard, { backgroundColor: colors.amberTint }]} onPress={() => Linking.openSettings()}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="warning-outline" size={18} color="#854F0B" />
+              <Ionicons name="warning-outline" size={18} color={colors.amber} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.permissionTitle}>Storage permission needed</Text>
-                <Text style={styles.permissionSub}>Tap to open Settings and grant access</Text>
+                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Storage permission needed</Text>
+                <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>Tap to open Settings and grant access</Text>
               </View>
-              <Ionicons name="chevron-forward" size={14} color="#888780" />
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
             </View>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push('/(tabs)/browse')}
-        >
-          <StorageSummaryCard
-            usedBytes={storageInfo?.usedBytes ?? 0}
-            totalBytes={storageInfo?.totalBytes ?? 0}
-            freeBytes={storageInfo?.freeBytes ?? 0}
-            note="User-accessible storage only"
-            showChevron={true}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(tabs)/browse')}>
+            <StorageSummaryCard
+              usedBytes={storageInfo?.usedBytes ?? 0}
+              totalBytes={storageInfo?.totalBytes ?? 0}
+              freeBytes={storageInfo?.freeBytes ?? 0}
+              note="User-accessible storage only"
+              showChevron={true}
+            />
+          </TouchableOpacity>
         )}
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.largeFilesCard}
-          onPress={() => router.push('/large-files')}
-        >
+        <TouchableOpacity activeOpacity={0.8} style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} onPress={() => router.push('/large-files')}>
           <View style={styles.largeFilesLeft}>
-            <View style={styles.largeFilesIcon}>
-              <Ionicons name="folder-open-outline" size={22} color="#993C1D" />
+            <View style={[styles.largeFilesIcon, { backgroundColor: colors.redBrownTint }]}>
+              <Ionicons name="folder-open-outline" size={22} color={colors.redBrown} />
             </View>
             <View>
-              <Text style={styles.largeFilesTitle}>Large Files</Text>
-              <Text style={styles.largeFilesSub}>Find files taking up the most space</Text>
+              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Large Files</Text>
+              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Find files taking up the most space</Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#888780" />
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.breakdownCard}
-          onPress={() => router.push('/storage-breakdown')}
-        >
+        <TouchableOpacity activeOpacity={0.8} style={[styles.breakdownCard, { backgroundColor: colors.purpleBg }]} onPress={() => router.push('/storage-breakdown')}>
           <View style={styles.largeFilesLeft}>
-            <View style={styles.breakdownIcon}>
-              <Ionicons name="pie-chart-outline" size={22} color="#534AB7" />
+            <View style={[styles.breakdownIcon, { backgroundColor: colors.purpleTint }]}>
+              <Ionicons name="pie-chart-outline" size={22} color={colors.purple} />
             </View>
             <View>
-              <Text style={styles.largeFilesTitle}>Storage Breakdown</Text>
-              <Text style={styles.largeFilesSub}>See what's using your space</Text>
+              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Storage Breakdown</Text>
+              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>See what's using your space</Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#888780" />
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
 
-        <Text style={styles.sectionLabel}>Recent</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Recent</Text>
         <View style={styles.recentsList}>
           {recents.length === 0 ? (
-            <Text style={styles.emptyText}>No recent files — open something from Browse</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent files — open something from Browse</Text>
           ) : (
             recents.map(file => {
               const color = getFileColor(file.name);
@@ -323,7 +284,7 @@ export default function HomeScreen() {
               return (
                 <TouchableOpacity
                   key={file.uri}
-                  style={styles.recentRow}
+                  style={[styles.recentRow, { borderBottomColor: colors.border }]}
                   onPress={() => {
                     if (isImageFile(file.name)) {
                       router.push({ pathname: '/viewer', params: { uri: file.uri, name: file.name } });
@@ -339,10 +300,10 @@ export default function HomeScreen() {
                     )}
                   </View>
                   <View style={styles.recentInfo}>
-                    <Text style={styles.recentName} numberOfLines={1}>{file.name}</Text>
-                    <Text style={styles.recentMeta}>{ext} · {timeAgo(file.openedAt)}</Text>
+                    <Text style={[styles.recentName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
+                    <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {timeAgo(file.openedAt)}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
               );
             })
@@ -355,51 +316,50 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
-  appName: { fontSize: 26, fontWeight: '500', letterSpacing: -0.5, color: '#111' },
+  appName: { fontSize: 26, fontWeight: '500', letterSpacing: -0.5 },
   settingsBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 20, backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12 },
-  searchText: { fontSize: 14, color: '#888780' },
-  sectionLabel: { fontSize: 11, fontWeight: '500', color: '#888780', letterSpacing: 0.5, paddingHorizontal: 16, marginBottom: 8, textTransform: 'uppercase' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 12 },
+  searchText: { fontSize: 14 },
+  sectionLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 0.5, paddingHorizontal: 16, marginBottom: 8, textTransform: 'uppercase' },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8, marginBottom: 16 },
   quickCard: { width: '48%', borderRadius: 12, padding: 12 },
-  cardName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  cardCount: { fontSize: 11, color: '#5F5E5A' },
-  storageWrap: { marginHorizontal: 16, marginBottom: 20, backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12 },
+  cardName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  cardCount: { fontSize: 11 },
+  storageWrap: { marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 12 },
   storageRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  storageLabel: { fontSize: 13, color: '#5F5E5A' },
-  storageVal: { fontSize: 13, fontWeight: '500', color: '#111' },
-  storageNote: { fontSize: 10, color: '#9A9890', marginTop: 6 },
-  barTrack: { height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, overflow: 'hidden' },
+  storageLabel: { fontSize: 13 },
+  storageVal: { fontSize: 13, fontWeight: '500' },
+  storageNote: { fontSize: 10, marginTop: 6 },
+  barTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 2 },
-  largeFilesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, backgroundColor: '#FAECE7', borderRadius: 12, padding: 14 },
+  largeFilesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, borderRadius: 12, padding: 14 },
   largeFilesLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  largeFilesIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F5D5CB', alignItems: 'center', justifyContent: 'center' },
-  largeFilesTitle: { fontSize: 14, fontWeight: '600', color: '#111', marginBottom: 2 },
-  largeFilesSub: { fontSize: 11, color: '#5F5E5A' },
-  breakdownCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, backgroundColor: '#EEEDFE', borderRadius: 12, padding: 14 },
-  breakdownIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#D9D8F8', alignItems: 'center', justifyContent: 'center' },
+  largeFilesIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  largeFilesTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  largeFilesSub: { fontSize: 11 },
+  breakdownCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, borderRadius: 12, padding: 14 },
+  breakdownIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   recentsList: { paddingHorizontal: 16, paddingBottom: 24 },
-  emptyText: { fontSize: 13, color: '#888780', textAlign: 'center', paddingVertical: 20 },
-  recentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
+  emptyText: { fontSize: 13, textAlign: 'center', paddingVertical: 20 },
+  recentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
   recentIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   recentThumb: { width: 40, height: 40 },
   recentExt: { fontSize: 9, fontWeight: '500' },
   recentInfo: { flex: 1 },
-  recentName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  recentMeta: { fontSize: 11, color: '#888780' },
-  // Modal styles
+  recentName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  recentMeta: { fontSize: 11 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: 280, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8 },
-  modalTitle: { fontSize: 18, fontWeight: '600', color: '#111', textAlign: 'center', letterSpacing: -0.3 },
-  modalVersion: { fontSize: 12, color: '#888780', textAlign: 'center', marginTop: 4, marginBottom: 16 },
-  modalDivider: { height: 0.5, backgroundColor: '#E8E6DF', marginBottom: 8 },
+  modalCard: { borderRadius: 16, padding: 24, width: 280, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8 },
+  modalTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center', letterSpacing: -0.3 },
+  modalVersion: { fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 16 },
+  modalDivider: { height: 0.5, marginBottom: 8 },
   modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13 },
-  modalRowText: { fontSize: 14, color: '#111' },
-  modalClose: { marginTop: 12, backgroundColor: '#F1EFE8', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
-  modalCloseText: { fontSize: 14, fontWeight: '500', color: '#5F5E5A' },
-  permissionCard: { marginHorizontal: 16, marginBottom: 20, backgroundColor: '#FEF3E2', borderRadius: 10, padding: 14 },
-  permissionTitle: { fontSize: 13, fontWeight: '600', color: '#111', marginBottom: 2 },
-  permissionSub: { fontSize: 11, color: '#5F5E5A' },
+  modalRowText: { fontSize: 14 },
+  modalClose: { marginTop: 12, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  modalCloseText: { fontSize: 14, fontWeight: '500' },
+  permissionCard: { marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 14 },
+  permissionTitle: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  permissionSub: { fontSize: 11 },
 });
