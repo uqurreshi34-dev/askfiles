@@ -264,7 +264,7 @@ export default function VaultScreen() {
         <View style={styles.centered}>
           <Ionicons name="shield-checkmark-outline" size={48} color="#D3D1C7" />
           <Text style={styles.emptyTitle}>Vault is empty</Text>
-          <Text style={styles.emptySub}>Move files here from Browse using long press → Move to Vault</Text>
+          <Text style={styles.emptySub}>Long press any file — or tap ⋮ — and select "Move to Vault"</Text>
         </View>
       ) : (
         <FlatList
