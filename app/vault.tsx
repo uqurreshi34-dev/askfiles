@@ -344,7 +344,7 @@ export default function VaultScreen() {
           <Ionicons name="arrow-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={styles.title}>Vault</Text>
-        <TouchableOpacity onPress={lock} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => { lock(); setPinInput(''); setPinError(null); setShowPinEntry(false); }} style={styles.backBtn}>
           <Ionicons name="lock-closed-outline" size={22} color="#185FA5" />
         </TouchableOpacity>
       </View>
