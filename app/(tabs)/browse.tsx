@@ -669,10 +669,12 @@ export default function BrowseScreen() {
                   </View>
                 ) : (
                   <>
-                    <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
-                      <Ionicons name="share-outline" size={20} color="#111" />
-                      <Text style={styles.sheetActionText}>Share</Text>
-                    </TouchableOpacity>
+                    {!selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
+                        <Ionicons name="share-outline" size={20} color="#111" />
+                        <Text style={styles.sheetActionText}>Share</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
                       <Ionicons name="copy-outline" size={20} color="#111" />
                       <Text style={styles.sheetActionText}>Copy</Text>
