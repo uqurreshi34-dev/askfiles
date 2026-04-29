@@ -13,6 +13,7 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 import RNFS from 'react-native-fs';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
+import { useTheme } from '@/hooks/useTheme';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -51,7 +52,6 @@ const DOCUMENT_EXTENSIONS = [
   '.odt', '.ods', '.odp', '.pages', '.numbers',
 ];
 
-// Ensure URI ends with slash so FileSystem.Directory resolves subdirs correctly
 function ensureTrailingSlash(uri: string): string {
   return uri.endsWith('/') ? uri : uri + '/';
 }
@@ -68,7 +68,6 @@ async function scanDirForDocs(path: string): Promise<FileItem[]> {
           found.push({ name: item.name, uri: item.uri, size: item.size ?? 0 });
         }
       } else if (item instanceof FileSystem.Directory) {
-        // Recursive — catches docs in subdirectories
         const subDocs = await scanDirForDocs(ensureTrailingSlash(item.uri));
         found.push(...subDocs);
       }
@@ -117,6 +116,7 @@ function getDlTab(name: string): string {
 }
 
 export default function CategoryScreen() {
+  const { colors } = useTheme();
   const { category } = useLocalSearchParams<{ category: Category }>();
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,14 +161,9 @@ export default function CategoryScreen() {
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
   function toPath(uri: string): string {
-    try { 
-      return decodeURIComponent(uri.replace('file://', '')); 
-    }
-    catch { 
-      return uri.replace('file://', ''); 
-    }
+    try { return decodeURIComponent(uri.replace('file://', '')); }
+    catch { return uri.replace('file://', ''); }
   }
-
 
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
@@ -216,19 +211,17 @@ export default function CategoryScreen() {
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-          const moveExists = await RNFS.exists(dst);
-          if (moveExists) {
-            setShowPicker(false);
-            Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-            return;
-          }
+        const moveExists = await RNFS.exists(dst);
+        if (moveExists) {
+          setShowPicker(false);
+          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+          return;
+        }
         await RNFS.moveFile(src, dst);
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
           const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-          const ghost = allAssets.assets.find((a: any) =>
-            a.filename === sourceFilename && toPath(a.uri) === src
-          );
+          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
           if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
         } catch {}
         setItems(prev => prev.filter(f => f.uri !== item.uri));
@@ -337,20 +330,17 @@ export default function CategoryScreen() {
           uri: a.uri,
           date: a.creationTime > 0 ? a.creationTime : a.modificationTime,
         })));
-
       } else if (category === 'downloads') {
         const dlItems = await scanDirForDownloads('file:///storage/emulated/0/Download/');
         setItems(dlItems.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')));
-
       } else if (category === 'documents') {
         const docPaths = [
-            'file:///storage/emulated/0/Documents/',
-            'file:///storage/emulated/0/Download/',
-            'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-            'file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/',
-            'file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/',
-          ];
-        // Dynamically add non-standard root folders (e.g. Samsung My Files)
+          'file:///storage/emulated/0/Documents/',
+          'file:///storage/emulated/0/Download/',
+          'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
+          'file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/',
+          'file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/',
+        ];
         const STANDARD_ROOT = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
         try {
           const rootItems = await RNFS.readDir('/storage/emulated/0/');
@@ -380,10 +370,7 @@ export default function CategoryScreen() {
       return;
     }
     try {
-      await Sharing.shareAsync(item.uri, {
-        mimeType: getMimeType(item.name),
-        dialogTitle: item.name,
-      });
+      await Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name });
     } catch (e) { console.log('Open error:', e); }
   }
 
@@ -441,7 +428,7 @@ export default function CategoryScreen() {
     const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
       <TouchableOpacity
-        style={styles.row}
+        style={[styles.row, { borderBottomColor: colors.border }]}
         onPress={() => openItem(item)}
         onLongPress={() => openSheet(item)}
         activeOpacity={0.7}
@@ -454,15 +441,15 @@ export default function CategoryScreen() {
           )}
         </View>
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.meta}>
+          <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.meta, { color: colors.textMuted }]}>
             {item.size ? formatSize(item.size) : ''}
             {item.size && item.date ? ' · ' : ''}
             {item.date ? timeAgo(item.date) : ''}
           </Text>
         </View>
         <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+          <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -484,14 +471,14 @@ export default function CategoryScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#111" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>{config.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
         <TouchableOpacity onPress={() => setShowSortSheet(true)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
-          <Ionicons name="swap-vertical-outline" size={22} color="#5F5E5A" />
+          <Ionicons name="swap-vertical-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
       {tabs && (
@@ -499,10 +486,10 @@ export default function CategoryScreen() {
           {tabs.map(tab => (
             <TouchableOpacity
               key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              style={[styles.tab, { backgroundColor: colors.surface }, activeTab === tab && { backgroundColor: colors.textPrimary }]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === tab && { color: colors.background }]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -513,8 +500,8 @@ export default function CategoryScreen() {
         </View>
       ) : filteredItems.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name={config.icon as any} size={40} color="#D3D1C7" />
-          <Text style={styles.empty}>No {activeTab === 'All' ? config.title.toLowerCase() : activeTab + ' files'} found</Text>
+          <Ionicons name={config.icon as any} size={40} color={colors.textDisabled} />
+          <Text style={[styles.empty, { color: colors.textMuted }]}>No {activeTab === 'All' ? config.title.toLowerCase() : activeTab + ' files'} found</Text>
         </View>
       ) : (
         <FlatList
@@ -524,7 +511,7 @@ export default function CategoryScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={styles.count}>{filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}</Text>
+            <Text style={[styles.count, { color: colors.textMuted }]}>{filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}</Text>
           }
         />
       )}
@@ -532,11 +519,11 @@ export default function CategoryScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
           <Animated.View
-            style={[styles.sheet, { transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
+            style={[styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
             {...panResponder.panHandlers}
           >
             <Pressable>
-              <View style={styles.sheetHandle} />
+              <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
                 <View style={[styles.sheetIcon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
                   {isImageFile(selectedItem?.name ?? '') ? (
@@ -548,29 +535,28 @@ export default function CategoryScreen() {
                   )}
                 </View>
                 <View style={styles.sheetInfo}>
-                  <Text style={styles.sheetName} numberOfLines={2}>{selectedItem?.name}</Text>
-                  {fileSize && <Text style={styles.sheetMeta}>{fileSize}</Text>}
+                  <Text style={[styles.sheetName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedItem?.name}</Text>
+                  {fileSize && <Text style={[styles.sheetMeta, { color: colors.textMuted }]}>{fileSize}</Text>}
                 </View>
               </View>
-              <View style={styles.sheetDivider} />
+              <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
-                <Ionicons name="share-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Share</Text>
+                <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : 
+              <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                 () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-                    { text: 'Not now', style: 'cancel' },
-                    { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
-                ])}
-              >
-                <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? '#185FA5' : '#888780'} />
-                <Text style={[styles.sheetActionText, { color: isPro ? '#185FA5' : '#888780' }]}>
+                  { text: 'Not now', style: 'cancel' },
+                  { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                ])}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
+                <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
                   Move to Vault{!isPro ? '  🔒' : ''}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
-                <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
-                <Text style={[styles.sheetActionText, isFav && { color: '#E24B4A' }]}>
+                <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>
                   {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
                 </Text>
               </TouchableOpacity>
@@ -584,30 +570,30 @@ export default function CategoryScreen() {
                   `Location: /${location}`,
                 ].filter(Boolean).join('\n'));
               }}>
-                <Ionicons name="information-circle-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Info</Text>
+                <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={20} color="#E24B4A" />
-                <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete</Text>
+                <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
+                <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
               </TouchableOpacity>
-              <View style={styles.sheetDivider} />
+              <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               {showRename ? (
                 <View style={styles.renameWrap}>
                   <TextInput
-                    style={styles.renameInput}
+                    style={[styles.renameInput, { backgroundColor: colors.surface, color: colors.textPrimary }]}
                     value={renameValue}
                     onChangeText={setRenameValue}
                     autoFocus
                     selectTextOnFocus
                     placeholder="New name..."
-                    placeholderTextColor="#888780"
+                    placeholderTextColor={colors.textMuted}
                     returnKeyType="done"
                     onSubmitEditing={handleRename}
                   />
                   <View style={styles.renameActions}>
-                    <TouchableOpacity style={styles.renameCancelBtn} onPress={() => { setShowRename(false); setRenameValue(''); }}>
-                      <Text style={styles.renameCancelText}>Cancel</Text>
+                    <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowRename(false); setRenameValue(''); }}>
+                      <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.renameConfirmBtn} onPress={handleRename}>
                       <Text style={styles.renameConfirmText}>Rename</Text>
@@ -617,20 +603,20 @@ export default function CategoryScreen() {
               ) : (
                 <>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
-                    <Ionicons name="copy-outline" size={20} color="#111" />
-                    <Text style={styles.sheetActionText}>Copy</Text>
+                    <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
-                    <Ionicons name="arrow-redo-outline" size={20} color="#111" />
-                    <Text style={styles.sheetActionText}>Move</Text>
+                    <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
-                    <Ionicons name="pencil-outline" size={20} color="#111" />
-                    <Text style={styles.sheetActionText}>Rename</Text>
+                    <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
-                    <Ionicons name="close-outline" size={20} color="#888780" />
-                    <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
+                    <Ionicons name="close-outline" size={20} color={colors.textMuted} />
+                    <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -641,8 +627,8 @@ export default function CategoryScreen() {
       </Modal>
 
       <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, { backgroundColor: colors.background }]}>
             <TouchableOpacity
               onPress={() => {
                 if (pickerPath === ROOT_PATH) { setShowPicker(false); }
@@ -655,20 +641,20 @@ export default function CategoryScreen() {
               }}
               style={styles.backBtn}
             >
-              <Ionicons name="arrow-back" size={22} color="#111" />
+              <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
               {pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}
             </Text>
             <View style={{ width: 40 }} />
           </View>
-          <Text style={{ fontSize: 12, color: '#888780', paddingHorizontal: 16, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
             {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
           {pickerLoading ? (
-            <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+            <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={styles.empty}>No folders here</Text></View>
+            <View style={styles.centered}><Text style={[styles.empty, { color: colors.textMuted }]}>No folders here</Text></View>
           ) : (
             <FlatList
               data={pickerItems}
@@ -677,24 +663,24 @@ export default function CategoryScreen() {
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.row}
+                  style={[styles.row, { borderBottomColor: colors.border }]}
                   onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
                   activeOpacity={0.6}
                 >
-                  <View style={[styles.icon, { backgroundColor: '#BA751722' }]}>
-                    <Ionicons name="folder" size={22} color="#BA7517" />
+                  <View style={[styles.icon, { backgroundColor: colors.yellow + '22' }]}>
+                    <Ionicons name="folder" size={22} color={colors.yellow} />
                   </View>
                   <View style={styles.info}>
-                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
               )}
             />
           )}
-          <View style={styles.pickerFooter}>
-            <TouchableOpacity style={styles.pickerCancelBtn} onPress={() => setShowPicker(false)}>
-              <Text style={styles.pickerCancelText}>Cancel</Text>
+          <View style={[styles.pickerFooter, { borderTopColor: colors.border }]}>
+            <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pickerPasteBtn} onPress={handlePaste}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
@@ -703,24 +689,25 @@ export default function CategoryScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
       <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24 }}>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24 }}>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
             {(['name', ...(category === 'documents' || category === 'downloads' ? ['size'] : []), 'date'] as SortKey[]).map(key => (
               <TouchableOpacity
                 key={key}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
                 onPress={() => { setSortKey(key); setShowSortSheet(false); }}
               >
-                <Text style={{ fontSize: 15, color: sortKey === key ? '#185FA5' : '#111', fontWeight: sortKey === key ? '600' : '400' }}>
+                <Text style={{ fontSize: 15, color: sortKey === key ? colors.blue : colors.textPrimary, fontWeight: sortKey === key ? '600' : '400' }}>
                   {key === 'name' ? 'Name' : key === 'size' ? 'Size (largest first)' : 'Date (newest first)'}
                 </Text>
-                {sortKey === key && <Ionicons name="checkmark" size={18} color="#185FA5" />}
+                {sortKey === key && <Ionicons name="checkmark" size={18} color={colors.blue} />}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: '#F1EFE8', borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: '#5F5E5A' }}>Cancel</Text>
+            <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: colors.surface, borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -730,48 +717,46 @@ export default function CategoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.5 },
+  title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  empty: { fontSize: 14, color: '#888780' },
+  empty: { fontSize: 14 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   tabsRow: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-  tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F1EFE8' },
-  tabActive: { backgroundColor: '#111' },
-  tabText: { fontSize: 12, fontWeight: '500', color: '#5F5E5A' },
-  tabTextActive: { color: '#fff' },
-  count: { fontSize: 11, color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
+  tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  tabText: { fontSize: 12, fontWeight: '500' },
+  count: { fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
   icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   thumb: { width: 40, height: 40 },
   ext: { fontSize: 9, fontWeight: '500' },
   info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  meta: { fontSize: 11, color: '#888780' },
+  name: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  meta: { fontSize: 11 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
-  sheetHandle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   sheetThumb: { width: 44, height: 44 },
   sheetInfo: { flex: 1 },
-  sheetName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  sheetMeta: { fontSize: 12, color: '#888780' },
-  sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
+  sheetName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  sheetMeta: { fontSize: 12 },
+  sheetDivider: { height: 0.5, marginVertical: 8 },
   sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
-  sheetActionText: { fontSize: 15, color: '#111' },
+  sheetActionText: { fontSize: 15 },
   renameWrap: { paddingVertical: 12, gap: 12 },
-  renameInput: { backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12, fontSize: 14, color: '#111' },
+  renameInput: { borderRadius: 10, padding: 12, fontSize: 14 },
   renameActions: { flexDirection: 'row', gap: 8 },
-  renameCancelBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#F1EFE8', alignItems: 'center' },
-  renameCancelText: { fontSize: 14, color: '#5F5E5A' },
+  renameCancelBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' },
+  renameCancelText: { fontSize: 14 },
   renameConfirmBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#185FA5', alignItems: 'center' },
   renameConfirmText: { fontSize: 14, color: '#fff', fontWeight: '500' },
-  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5, borderTopColor: '#F1EFE8' },
-  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1EFE8', alignItems: 'center' },
-  pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
+  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5 },
+  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+  pickerCancelText: { fontSize: 14, fontWeight: '500' },
   pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
   pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 });
