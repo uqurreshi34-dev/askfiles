@@ -15,6 +15,7 @@ import RNFS from 'react-native-fs';
 import { isImageFile, getMimeType } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
+import { useTheme } from '@/hooks/useTheme';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -32,6 +33,7 @@ function getFileColor(name: string): string {
 }
 
 export default function VaultScreen() {
+  const { colors } = useTheme();
   const router = useRouter();
   const { files, loading, authenticated, unlockVault, deleteFromVault, lock } = useVault();
   const [busy, setBusy] = useState(false);
@@ -66,7 +68,6 @@ export default function VaultScreen() {
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
-  // On mount: check PIN availability then auto-fire biometric
   useEffect(() => {
     async function init() {
       const pinSet = await isPinSet();
@@ -150,10 +151,7 @@ export default function VaultScreen() {
       return;
     }
     try {
-      await Sharing.shareAsync(file.uri, {
-        mimeType: getMimeType(file.name),
-        dialogTitle: file.name,
-      });
+      await Sharing.shareAsync(file.uri, { mimeType: getMimeType(file.name), dialogTitle: file.name });
     } catch {}
   }
 
@@ -176,9 +174,7 @@ export default function VaultScreen() {
       } else {
         await Sharing.shareAsync(file.uri, { mimeType: getMimeType(file.name), dialogTitle: file.name });
       }
-    } catch (e) {
-      console.log('Share error:', e);
-    }
+    } catch (e) { console.log('Share error:', e); }
   }
 
   async function handleDelete(file: VaultFile) {
@@ -252,7 +248,7 @@ export default function VaultScreen() {
     const color = getFileColor(item.name);
     const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
-      <TouchableOpacity style={styles.row} onPress={() => openFile(item)} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => openFile(item)} activeOpacity={0.7}>
         <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
@@ -261,11 +257,11 @@ export default function VaultScreen() {
           )}
         </View>
         <View style={styles.info}>
-          <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.fileMeta}>{formatSize(item.size)}</Text>
+          <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{formatSize(item.size)}</Text>
         </View>
         <TouchableOpacity style={styles.menuBtn} onPress={() => openSheet(item)}>
-          <Ionicons name="ellipsis-vertical" size={16} color="#888780" />
+          <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -274,38 +270,38 @@ export default function VaultScreen() {
   // Locked state
   if (!authenticated) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#111" />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Vault</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Vault</Text>
           <View style={{ width: 40 }} />
         </View>
         {!showPinEntry ? (
           <View style={styles.lockScreen}>
-            <View style={styles.lockIcon}>
-              <Ionicons name="lock-closed" size={40} color="#185FA5" />
+            <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
+              <Ionicons name="lock-closed" size={40} color={colors.blue} />
             </View>
-            <Text style={styles.lockTitle}>Secure Vault</Text>
-            <Text style={styles.lockSub}>Your files are protected. Authenticate to access your vault.</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Secure Vault</Text>
+            <Text style={[styles.lockSub, { color: colors.textMuted }]}>Your files are protected. Authenticate to access your vault.</Text>
             <TouchableOpacity style={styles.authBtn} onPress={tryVaultBiometric} activeOpacity={0.85}>
               <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.authBtnText}>Unlock with Biometrics</Text>
             </TouchableOpacity>
             {pinAvailable && (
               <TouchableOpacity onPress={() => setShowPinEntry(true)} style={{ marginTop: 16, paddingVertical: 8 }}>
-                <Text style={{ fontSize: 14, color: '#888780' }}>Use PIN instead</Text>
+                <Text style={{ fontSize: 14, color: colors.textMuted }}>Use PIN instead</Text>
               </TouchableOpacity>
             )}
           </View>
         ) : (
           <View style={styles.lockScreen}>
-            <View style={styles.lockIcon}>
-              <Ionicons name="keypad-outline" size={40} color="#185FA5" />
+            <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
+              <Ionicons name="keypad-outline" size={40} color={colors.blue} />
             </View>
-            <Text style={styles.lockTitle}>Enter PIN</Text>
-            <Text style={styles.lockSub}>Enter your AskFiles PIN to access the vault</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Enter PIN</Text>
+            <Text style={[styles.lockSub, { color: colors.textMuted }]}>Enter your AskFiles PIN to access the vault</Text>
             <View style={{ flexDirection: 'row', gap: 16, marginVertical: 24 }}>
               {[0, 1, 2, 3].map(i => (
                 <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
@@ -315,18 +311,18 @@ export default function VaultScreen() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 }}>
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
                 if (key === 'bio') return (
-                  <TouchableOpacity key={i} style={styles.pinKey} onPress={tryVaultBiometric} activeOpacity={0.6}>
-                    <Ionicons name="finger-print-outline" size={24} color="#185FA5" />
+                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={tryVaultBiometric} activeOpacity={0.6}>
+                    <Ionicons name="finger-print-outline" size={24} color={colors.blue} />
                   </TouchableOpacity>
                 );
                 if (key === 'del') return (
-                  <TouchableOpacity key={i} style={styles.pinKey} onPress={handleVaultPinDelete} activeOpacity={0.6}>
-                    <Ionicons name="backspace-outline" size={22} color="#5F5E5A" />
+                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={handleVaultPinDelete} activeOpacity={0.6}>
+                    <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
                   </TouchableOpacity>
                 );
                 return (
-                  <TouchableOpacity key={i} style={styles.pinKey} onPress={() => handleVaultPinDigit(key)} activeOpacity={0.6}>
-                    <Text style={styles.pinKeyText}>{key}</Text>
+                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => handleVaultPinDigit(key)} activeOpacity={0.6}>
+                    <Text style={[styles.pinKeyText, { color: colors.textPrimary }]}>{key}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -338,33 +334,33 @@ export default function VaultScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#111" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Vault</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Vault</Text>
         <TouchableOpacity onPress={() => { lock(); setPinInput(''); setPinError(null); setShowPinEntry(false); }} style={styles.backBtn}>
-          <Ionicons name="lock-closed-outline" size={22} color="#185FA5" />
+          <Ionicons name="lock-closed-outline" size={22} color={colors.blue} />
         </TouchableOpacity>
       </View>
 
       {busy && (
-        <View style={styles.busyBanner}>
-          <ActivityIndicator size="small" color="#185FA5" />
-          <Text style={styles.busyText}>Working...</Text>
+        <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={[styles.busyText, { color: colors.blue }]}>Working...</Text>
         </View>
       )}
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color="#185FA5" />
+          <ActivityIndicator color={colors.blue} />
         </View>
       ) : files.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="shield-checkmark-outline" size={48} color="#D3D1C7" />
-          <Text style={styles.emptyTitle}>Vault is empty</Text>
-          <Text style={styles.emptySub}>Long press any file — or tap ⋮ — and select "Move to Vault"</Text>
+          <Ionicons name="shield-checkmark-outline" size={48} color={colors.textDisabled} />
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Vault is empty</Text>
+          <Text style={[styles.emptySub, { color: colors.textMuted }]}>Long press any file — or tap ⋮ — and select "Move to Vault"</Text>
         </View>
       ) : (
         <FlatList
@@ -374,7 +370,7 @@ export default function VaultScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={styles.count}>{files.length} file{files.length !== 1 ? 's' : ''} secured</Text>
+            <Text style={[styles.count, { color: colors.textMuted }]}>{files.length} file{files.length !== 1 ? 's' : ''} secured</Text>
           }
         />
       )}
@@ -382,55 +378,52 @@ export default function VaultScreen() {
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
           <Animated.View
-            style={[styles.sheet, { transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
+            style={[styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
             {...panResponder.panHandlers}
           >
             <Pressable>
-              <View style={styles.sheetHandle} />
+              <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
-                <View style={[styles.sheetIcon, { backgroundColor: selectedFile ? getFileColor(selectedFile.name) + '22' : '#F1EFE8', overflow: 'hidden' }]}>
+                <View style={[styles.sheetIcon, { backgroundColor: selectedFile ? getFileColor(selectedFile.name) + '22' : colors.surface, overflow: 'hidden' }]}>
                   {selectedFile && isImageFile(selectedFile.name) ? (
                     <Image source={{ uri: selectedFile.uri }} style={styles.sheetThumb} resizeMode="cover" />
                   ) : (
-                    <Text style={[styles.sheetExt, { color: selectedFile ? getFileColor(selectedFile.name) : '#888780' }]}>
+                    <Text style={[styles.sheetExt, { color: selectedFile ? getFileColor(selectedFile.name) : colors.textMuted }]}>
                       {selectedFile?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
                     </Text>
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.sheetFileName} numberOfLines={2}>{selectedFile?.name}</Text>
-                  <Text style={styles.sheetFileMeta}>{selectedFile ? formatSize(selectedFile.size) : ''}</Text>
+                  <Text style={[styles.sheetFileName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedFile?.name}</Text>
+                  <Text style={[styles.sheetFileMeta, { color: colors.textMuted }]}>{selectedFile ? formatSize(selectedFile.size) : ''}</Text>
                 </View>
               </View>
 
-              <View style={styles.sheetDivider} />
+              <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => { closeSheet(); selectedFile && openFile(selectedFile); }}>
-                <Ionicons name="open-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Open</Text>
+                <Ionicons name="open-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Open</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleShare(selectedFile)}>
-                <Ionicons name="share-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Share</Text>
+                <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => {
                 if (!selectedFile) return;
                 closeSheet();
                 const ext = selectedFile.name.split('.').pop()?.toUpperCase() ?? 'FILE';
-                Alert.alert(
-                  selectedFile.name,
-                  `Size: ${formatSize(selectedFile.size)}\nType: ${ext} file\nLocation: Secure Vault`
-                );
+                Alert.alert(selectedFile.name, `Size: ${formatSize(selectedFile.size)}\nType: ${ext} file\nLocation: Secure Vault`);
               }}>
-                <Ionicons name="information-circle-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Info</Text>
+                <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && openMovePicker(selectedFile)}>
-                <Ionicons name="arrow-redo-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Move out of Vault</Text>
+                <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move out of Vault</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleDelete(selectedFile)}>
@@ -438,11 +431,11 @@ export default function VaultScreen() {
                 <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete permanently</Text>
               </TouchableOpacity>
 
-              <View style={styles.sheetDivider} />
+              <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
 
               <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
-                <Ionicons name="close-outline" size={20} color="#888780" />
-                <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
+                <Ionicons name="close-outline" size={20} color={colors.textMuted} />
+                <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
             </Pressable>
           </Animated.View>
@@ -450,7 +443,7 @@ export default function VaultScreen() {
       </Modal>
 
       <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
           <View style={styles.header}>
             <TouchableOpacity
               onPress={() => {
@@ -463,18 +456,18 @@ export default function VaultScreen() {
               }}
               style={styles.backBtn}
             >
-              <Ionicons name="arrow-back" size={22} color="#111" />
+              <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.title} numberOfLines={1}>Move to...</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>Move to...</Text>
             <View style={{ width: 40 }} />
           </View>
-          <Text style={{ fontSize: 12, color: '#888780', paddingHorizontal: 16, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
             {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
           {pickerLoading ? (
-            <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+            <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={styles.emptyTitle}>No folders here</Text></View>
+            <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.textMuted }]}>No folders here</Text></View>
           ) : (
             <FlatList
               data={pickerItems}
@@ -483,24 +476,24 @@ export default function VaultScreen() {
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.row}
+                  style={[styles.row, { borderBottomColor: colors.border }]}
                   onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
                   activeOpacity={0.6}
                 >
-                  <View style={[styles.icon, { backgroundColor: '#BA751722' }]}>
-                    <Ionicons name="folder" size={22} color="#BA7517" />
+                  <View style={[styles.icon, { backgroundColor: colors.yellow + '22' }]}>
+                    <Ionicons name="folder" size={22} color={colors.yellow} />
                   </View>
                   <View style={styles.info}>
-                    <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
               )}
             />
           )}
-          <View style={styles.pickerFooter}>
-            <TouchableOpacity style={styles.pickerCancelBtn} onPress={() => setShowPicker(false)}>
-              <Text style={styles.pickerCancelText}>Cancel</Text>
+          <View style={[styles.pickerFooter, { borderTopColor: colors.border }]}>
+            <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pickerPasteBtn} onPress={handleMoveOut}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
@@ -514,52 +507,52 @@ export default function VaultScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.5 },
+  title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 },
   lockScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
-  lockIcon: { width: 88, height: 88, borderRadius: 24, backgroundColor: '#EBF3FC', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  lockTitle: { fontSize: 22, fontWeight: '600', color: '#111', letterSpacing: -0.5 },
-  lockSub: { fontSize: 14, color: '#888780', textAlign: 'center', lineHeight: 20 },
+  lockIcon: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  lockTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
+  lockSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
   authBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#185FA5', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, marginTop: 8 },
   authBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-  busyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#EBF3FC' },
-  busyText: { fontSize: 13, color: '#185FA5' },
+  busyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  busyText: { fontSize: 13 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
-  count: { fontSize: 11, color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
+  count: { fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
   icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   thumb: { width: 40, height: 40 },
   ext: { fontSize: 9, fontWeight: '500' },
   info: { flex: 1 },
-  fileName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  fileMeta: { fontSize: 11, color: '#888780' },
+  fileName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  fileMeta: { fontSize: 11 },
   menuBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '500', color: '#111' },
-  emptySub: { fontSize: 13, color: '#888780', textAlign: 'center', lineHeight: 18 },
+  emptyTitle: { fontSize: 16, fontWeight: '500' },
+  emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
-  sheetHandle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   sheetThumb: { width: 44, height: 44 },
   sheetExt: { fontSize: 9, fontWeight: '500' },
-  sheetFileName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  sheetFileMeta: { fontSize: 12, color: '#888780' },
-  sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
+  sheetFileName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  sheetFileMeta: { fontSize: 12 },
+  sheetDivider: { height: 0.5, marginVertical: 8 },
   sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
-  sheetActionText: { fontSize: 15, color: '#111' },
-  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5, borderTopColor: '#F1EFE8' },
-  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1EFE8', alignItems: 'center' },
-  pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
-  pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
-  pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  sheetActionText: { fontSize: 15 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#D3D1C7', backgroundColor: 'transparent' },
   dotFilled: { backgroundColor: '#185FA5', borderColor: '#185FA5' },
   dotError: { borderColor: '#E24B4A' },
-  pinKey: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F1EFE8', alignItems: 'center', justifyContent: 'center' },
-  pinKeyText: { fontSize: 24, fontWeight: '500', color: '#111' },
+  pinKey: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
+  pinKeyText: { fontSize: 24, fontWeight: '500' },
+  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5 },
+  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+  pickerCancelText: { fontSize: 14, fontWeight: '500' },
+  pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
+  pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 });

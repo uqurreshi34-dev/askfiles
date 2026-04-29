@@ -17,6 +17,7 @@ import { useFavourites, addFavourite, removeFavourite, FavouriteItem } from '@/h
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import RNFS from 'react-native-fs';
+import { useTheme } from '@/hooks/useTheme';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -36,6 +37,7 @@ function getFileColor(name: string): string {
 }
 
 export default function FavouritesScreen() {
+  const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { favourites } = useFavourites();
@@ -89,12 +91,8 @@ export default function FavouritesScreen() {
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
   function toPath(uri: string): string { 
-    try { 
-      return decodeURIComponent(uri.replace('file://', '')); 
-    } 
-    catch { 
-      return uri.replace('file://', ''); 
-    } 
+    try { return decodeURIComponent(uri.replace('file://', '')); } 
+    catch { return uri.replace('file://', ''); } 
   }
 
   async function loadPickerDir(path: string) {
@@ -140,12 +138,12 @@ export default function FavouritesScreen() {
         setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-          const moveExists = await RNFS.exists(dst);
-          if (moveExists) {
-            setShowPicker(false);
-            Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-            return;
-          }
+        const moveExists = await RNFS.exists(dst);
+        if (moveExists) {
+          setShowPicker(false);
+          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+          return;
+        }
         await RNFS.moveFile(src, dst);
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
@@ -277,7 +275,7 @@ export default function FavouritesScreen() {
     const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
       <TouchableOpacity
-        style={styles.row}
+        style={[styles.row, { borderBottomColor: colors.border }]}
         onPress={() => openItem(item)}
         onLongPress={() => openSheet(item)}
         activeOpacity={0.7}
@@ -290,31 +288,31 @@ export default function FavouritesScreen() {
           )}
         </View>
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.meta}>{ext} file</Text>
+          <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.meta, { color: colors.textMuted }]}>{ext} file</Text>
         </View>
         <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+          <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#111" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Favourites</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Favourites</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {favourites.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="heart-outline" size={48} color="#D3D1C7" />
-          <Text style={styles.emptyTitle}>No favourites yet</Text>
-          <Text style={styles.emptySub}>Long press any file and tap "Add to Favourites"</Text>
+          <Ionicons name="heart-outline" size={48} color={colors.textDisabled} />
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No favourites yet</Text>
+          <Text style={[styles.emptySub, { color: colors.textMuted }]}>Long press any file and tap "Add to Favourites"</Text>
         </View>
       ) : (
         <FlatList
@@ -324,7 +322,7 @@ export default function FavouritesScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={styles.count}>{favourites.length} favourite{favourites.length !== 1 ? 's' : ''}</Text>
+            <Text style={[styles.count, { color: colors.textMuted }]}>{favourites.length} favourite{favourites.length !== 1 ? 's' : ''}</Text>
           }
         />
       )}
@@ -333,11 +331,11 @@ export default function FavouritesScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
           <Animated.View
-            style={[styles.sheet, { transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
+            style={[styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
             {...panResponder.panHandlers}
           >
             <Pressable>
-              <View style={styles.sheetHandle} />
+              <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
                 <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22', overflow: 'hidden' }]}>
                   {isImageFile(selectedItem?.name ?? '') ? (
@@ -349,23 +347,22 @@ export default function FavouritesScreen() {
                   )}
                 </View>
                 <View style={styles.sheetInfo}>
-                  <Text style={styles.sheetName} numberOfLines={2}>{selectedItem?.name}</Text>
-                  <Text style={styles.sheetMeta}>{fileSize}</Text>
+                  <Text style={[styles.sheetName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedItem?.name}</Text>
+                  <Text style={[styles.sheetMeta, { color: colors.textMuted }]}>{fileSize}</Text>
                 </View>
               </View>
-              <View style={styles.sheetDivider} />
+              <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
-                <Ionicons name="share-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Share</Text>
+                <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : 
-                  () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-                      { text: 'Not now', style: 'cancel' },
-                      { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
-                  ])}
-              >
-                <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? '#185FA5' : '#888780'} />
-                <Text style={[styles.sheetActionText, { color: isPro ? '#185FA5' : '#888780' }]}>
+              <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
+                () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
+                  { text: 'Not now', style: 'cancel' },
+                  { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                ])}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
+                <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
                   Move to Vault{!isPro ? '  🔒' : ''}
                 </Text>
               </TouchableOpacity>
@@ -379,34 +376,34 @@ export default function FavouritesScreen() {
                   `Location: /${location}`,
                 ].join('\n'));
               }}>
-                <Ionicons name="information-circle-outline" size={20} color="#111" />
-                <Text style={styles.sheetActionText}>Info</Text>
+                <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleRemove}>
-                <Ionicons name="heart-dislike-outline" size={20} color="#E24B4A" />
-                <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Remove from Favourites</Text>
+                <Ionicons name="heart-dislike-outline" size={20} color={colors.deleteRed} />
+                <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Remove from Favourites</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={20} color="#E24B4A" />
-                <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete file</Text>
+                <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
+                <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete file</Text>
               </TouchableOpacity>
-              <View style={styles.sheetDivider} />
+              <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               {showRename ? (
                 <View style={styles.renameWrap}>
                   <TextInput
-                    style={styles.renameInput}
+                    style={[styles.renameInput, { backgroundColor: colors.surface, color: colors.textPrimary }]}
                     value={renameValue}
                     onChangeText={setRenameValue}
                     autoFocus
                     selectTextOnFocus
                     placeholder="New name..."
-                    placeholderTextColor="#888780"
+                    placeholderTextColor={colors.textMuted}
                     returnKeyType="done"
                     onSubmitEditing={handleRename}
                   />
                   <View style={styles.renameActions}>
-                    <TouchableOpacity style={styles.renameCancelBtn} onPress={() => { setShowRename(false); setRenameValue(''); }}>
-                      <Text style={styles.renameCancelText}>Cancel</Text>
+                    <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowRename(false); setRenameValue(''); }}>
+                      <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.renameConfirmBtn} onPress={handleRename}>
                       <Text style={styles.renameConfirmText}>Rename</Text>
@@ -416,20 +413,20 @@ export default function FavouritesScreen() {
               ) : (
                 <>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
-                    <Ionicons name="copy-outline" size={20} color="#111" />
-                    <Text style={styles.sheetActionText}>Copy</Text>
+                    <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
-                    <Ionicons name="arrow-redo-outline" size={20} color="#111" />
-                    <Text style={styles.sheetActionText}>Move</Text>
+                    <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
-                    <Ionicons name="pencil-outline" size={20} color="#111" />
-                    <Text style={styles.sheetActionText}>Rename</Text>
+                    <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
-                    <Ionicons name="close-outline" size={20} color="#888780" />
-                    <Text style={[styles.sheetActionText, { color: '#888780' }]}>Cancel</Text>
+                    <Ionicons name="close-outline" size={20} color={colors.textMuted} />
+                    <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -438,9 +435,10 @@ export default function FavouritesScreen() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
       <Modal visible={showPicker} transparent={false} animationType="slide" onRequestClose={() => setShowPicker(false)}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, { backgroundColor: colors.background }]}>
             <TouchableOpacity
               onPress={() => {
                 if (pickerPath === ROOT_PATH) { setShowPicker(false); }
@@ -452,18 +450,18 @@ export default function FavouritesScreen() {
               }}
               style={styles.backBtn}
             >
-              <Ionicons name="arrow-back" size={22} color="#111" />
+              <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.title}>{pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}</Text>
             <View style={{ width: 40 }} />
           </View>
-          <Text style={{ fontSize: 12, color: '#888780', paddingHorizontal: 16, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
             {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
           {pickerLoading ? (
-            <View style={styles.centered}><ActivityIndicator color="#185FA5" /></View>
+            <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={styles.emptyTitle}>No folders here</Text></View>
+            <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.textMuted }]}>No folders here</Text></View>
           ) : (
             <FlatList
               data={pickerItems}
@@ -472,24 +470,24 @@ export default function FavouritesScreen() {
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.row}
+                  style={[styles.row, { borderBottomColor: colors.border }]}
                   onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
                   activeOpacity={0.6}
                 >
-                  <View style={[styles.icon, { backgroundColor: '#BA751722' }]}>
-                    <Ionicons name="folder" size={22} color="#BA7517" />
+                  <View style={[styles.icon, { backgroundColor: colors.yellow + '22' }]}>
+                    <Ionicons name="folder" size={22} color={colors.yellow} />
                   </View>
                   <View style={styles.info}>
-                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#D3D1C7" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
               )}
             />
           )}
-          <View style={styles.pickerFooter}>
-            <TouchableOpacity style={styles.pickerCancelBtn} onPress={() => setShowPicker(false)}>
-              <Text style={styles.pickerCancelText}>Cancel</Text>
+          <View style={[styles.pickerFooter, { borderTopColor: colors.border }]}>
+            <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pickerPasteBtn} onPress={handlePaste}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
@@ -503,44 +501,44 @@ export default function FavouritesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.5 },
+  title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 32 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#111' },
-  emptySub: { fontSize: 13, color: '#888780', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '600' },
+  emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
-  count: { fontSize: 11, color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
+  count: { fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
   icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   thumb: { width: 40, height: 40 },
   ext: { fontSize: 9, fontWeight: '500' },
   info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  meta: { fontSize: 11, color: '#888780' },
+  name: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  meta: { fontSize: 11 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
-  sheetHandle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   sheetThumb: { width: 44, height: 44 },
   sheetInfo: { flex: 1 },
-  sheetName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  sheetMeta: { fontSize: 12, color: '#888780' },
-  sheetDivider: { height: 0.5, backgroundColor: '#F1EFE8', marginVertical: 8 },
+  sheetName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  sheetMeta: { fontSize: 12 },
+  sheetDivider: { height: 0.5, marginVertical: 8 },
   sheetAction: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
-  sheetActionText: { fontSize: 15, color: '#111' },
+  sheetActionText: { fontSize: 15 },
   renameWrap: { paddingVertical: 12, gap: 12 },
-  renameInput: { backgroundColor: '#F1EFE8', borderRadius: 10, padding: 12, fontSize: 14, color: '#111' },
+  renameInput: { borderRadius: 10, padding: 12, fontSize: 14 },
   renameActions: { flexDirection: 'row', gap: 8 },
-  renameCancelBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#F1EFE8', alignItems: 'center' },
-  renameCancelText: { fontSize: 14, color: '#5F5E5A' },
+  renameCancelBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' },
+  renameCancelText: { fontSize: 14 },
   renameConfirmBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#185FA5', alignItems: 'center' },
   renameConfirmText: { fontSize: 14, color: '#fff', fontWeight: '500' },
-  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5, borderTopColor: '#F1EFE8' },
-  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1EFE8', alignItems: 'center' },
-  pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
+  pickerFooter: { flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 0.5 },
+  pickerCancelBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+  pickerCancelText: { fontSize: 14, fontWeight: '500' },
   pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
   pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 });
