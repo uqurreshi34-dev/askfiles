@@ -12,6 +12,7 @@ import StorageSummaryCard from '@/components/StorageSummaryCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
+import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
+  const [appLockEnabled, setAppLockEnabled] = useState(false);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -34,6 +36,8 @@ export default function HomeScreen() {
       } else {
         setOnboardingChecked(true);
         scheduleDailyReminder(isPro);
+        const lockEnabled = await isAppLockEnabled();
+        setAppLockEnabled(lockEnabled);
         const seenVersion = await AsyncStorage.getItem(`askfiles-whats-new-${APP_VERSION}`);
         if (!seenVersion) {
           setWhatsNewVisible(true);
@@ -48,6 +52,10 @@ export default function HomeScreen() {
     reload();
     reloadStorage();
   }, [reload, reloadStorage]));
+
+  useFocusEffect(useCallback(() => {
+    isAppLockEnabled().then(enabled => setAppLockEnabled(enabled));
+  }, []));
 
   const QUICK_ACCESS = [
     { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: '#E6F1FB', iconColor: '#185FA5', icon: 'image-outline', route: '/category?category=images' },
@@ -132,6 +140,33 @@ export default function HomeScreen() {
                 <Ionicons name="star-outline" size={18} color="#854F0B" style={{ marginRight: 10 }} />
                 <Text style={styles.modalRowText}>Rate App</Text>
                 <Ionicons name="chevron-forward" size={14} color="#888780" style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+
+              <View style={styles.modalDivider} />
+              <TouchableOpacity
+                style={styles.modalRow}
+                activeOpacity={0.7}
+                onPress={async () => {
+                  if (appLockEnabled) {
+                    await disableAppLock();
+                    setAppLockEnabled(false);
+                  } else {
+                    const pinSet = await isPinSet();
+                    setSettingsVisible(false);
+                    if (pinSet) {
+                      await enableAppLock();
+                      setAppLockEnabled(true);
+                    } else {
+                      router.push('/setpin' as any);
+                    }
+                  }
+                }}
+              >
+                <Ionicons name="lock-closed-outline" size={18} color="#185FA5" style={{ marginRight: 10 }} />
+                <Text style={styles.modalRowText}>App Lock</Text>
+                <View style={{ marginLeft: 'auto', width: 44, height: 26, borderRadius: 13, backgroundColor: appLockEnabled ? '#185FA5' : '#D3D1C7', justifyContent: 'center', paddingHorizontal: 3 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: appLockEnabled ? 'flex-end' : 'flex-start' }} />
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity
