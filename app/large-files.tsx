@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { isImageFile } from '@/utils/files';
+import { useTheme } from '@/hooks/useTheme';
 
 interface LargeFile {
   name: string;
@@ -69,6 +70,7 @@ async function scanDir(path: string, results: LargeFile[], minSize: number) {
 }
 
 export default function LargeFilesScreen() {
+  const { colors } = useTheme();
   const router = useRouter();
   const [files, setFiles] = useState<LargeFile[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -98,10 +100,10 @@ export default function LargeFilesScreen() {
       }
       results.sort((a, b) => b.size - a.size);
       setFiles(results);
-    } catch{}
-      finally {
-        setScanning(false);
-        setScanned(true);
+    } catch {}
+    finally {
+      setScanning(false);
+      setScanned(true);
     }
   }
 
@@ -140,7 +142,6 @@ export default function LargeFilesScreen() {
     }
   }
 
-  // Flatten into FlatList-friendly items with section headers
   type ListItem =
     | { type: 'header'; label: string; key: string }
     | { type: 'file'; file: LargeFile; key: string };
@@ -159,7 +160,7 @@ export default function LargeFilesScreen() {
     const color = getFileColor(file.name);
     const ext = file.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
-      <View key={file.uri} style={styles.row}>
+      <View key={file.uri} style={[styles.row, { borderBottomColor: colors.border }]}>
         <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(file.name) ? (
             <Image source={{ uri: file.uri }} style={styles.thumbnail} resizeMode="cover" />
@@ -168,8 +169,8 @@ export default function LargeFilesScreen() {
           )}
         </View>
         <View style={styles.fileInfo}>
-          <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
-          <Text style={styles.fileMeta}>
+          <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
+          <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
             {formatSize(file.size)} · {(() => { try { return decodeURIComponent(file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/')) || 'Storage'; } catch { return file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage'; } })()}
           </Text>
         </View>
@@ -189,22 +190,22 @@ export default function LargeFilesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#111" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Large Files</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Large Files</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {!scanned && !scanning && (
         <View style={styles.centered}>
-          <View style={styles.startIcon}>
-            <Ionicons name="folder-open-outline" size={40} color="#993C1D" />
+          <View style={[styles.startIcon, { backgroundColor: colors.redBrownBg }]}>
+            <Ionicons name="folder-open-outline" size={40} color={colors.redBrown} />
           </View>
-          <Text style={styles.startTitle}>Find large files</Text>
-          <Text style={styles.startSub}>Scans your storage for files over 5 MB, sorted by size.</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Find large files</Text>
+          <Text style={[styles.startSub, { color: colors.textMuted }]}>Scans your storage for files over 5 MB, sorted by size.</Text>
           <TouchableOpacity style={styles.scanBtn} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.scanBtnText}>Start Scan</Text>
@@ -214,9 +215,9 @@ export default function LargeFilesScreen() {
 
       {scanning && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#993C1D" />
-          <Text style={styles.scanningText}>Scanning your storage...</Text>
-          <Text style={styles.scanningSubText}>This may take a moment</Text>
+          <ActivityIndicator size="large" color={colors.redBrown} />
+          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>Scanning your storage...</Text>
+          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>This may take a moment</Text>
         </View>
       )}
 
@@ -228,31 +229,31 @@ export default function LargeFilesScreen() {
           contentContainerStyle={styles.listContent}
           getItemLayout={(_, index) => ({ length: 61, offset: 61 * index, index })}
           ListHeaderComponent={
-            <View style={styles.summaryCard}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.surfaceAlt }]}>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryCount}>{files.length}</Text>
-                <Text style={styles.summaryLabel}>large files</Text>
+                <Text style={[styles.summaryCount, { color: colors.textPrimary }]}>{files.length}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>large files</Text>
               </View>
-              <View style={styles.summaryDivider} />
+              <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryCount, { color: '#993C1D' }]}>{formatSize(totalSize)}</Text>
-                <Text style={styles.summaryLabel}>total size</Text>
+                <Text style={[styles.summaryCount, { color: colors.redBrown }]}>{formatSize(totalSize)}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>total size</Text>
               </View>
               <TouchableOpacity style={styles.rescanBtn} onPress={scan}>
-                <Text style={styles.rescanText}>Scan again</Text>
+                <Text style={[styles.rescanText, { color: colors.redBrown }]}>Scan again</Text>
               </TouchableOpacity>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.centered}>
               <Ionicons name="checkmark-circle-outline" size={56} color="#2E7D32" />
-              <Text style={styles.cleanTitle}>No large files found!</Text>
-              <Text style={styles.cleanSub}>Your storage looks clean.</Text>
+              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>No large files found!</Text>
+              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>Your storage looks clean.</Text>
             </View>
           }
           renderItem={({ item }) => {
             if (item.type === 'header') {
-              return <Text style={styles.groupLabel}>{item.label}</Text>;
+              return <Text style={[styles.groupLabel, { color: colors.textMuted }]}>{item.label}</Text>;
             }
             return renderFile(item.file);
           }}
@@ -263,35 +264,35 @@ export default function LargeFilesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.5 },
+  title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
-  startIcon: { width: 88, height: 88, borderRadius: 24, backgroundColor: '#FAECE7', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  startTitle: { fontSize: 22, fontWeight: '600', color: '#111', letterSpacing: -0.5 },
-  startSub: { fontSize: 14, color: '#888780', textAlign: 'center', lineHeight: 20 },
+  startIcon: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  startTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
+  startSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   scanBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#993C1D', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
   scanBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-  scanningText: { fontSize: 16, fontWeight: '500', color: '#111', marginTop: 16 },
-  scanningSubText: { fontSize: 13, color: '#888780' },
-  cleanTitle: { fontSize: 20, fontWeight: '600', color: '#111' },
-  cleanSub: { fontSize: 14, color: '#888780' },
+  scanningText: { fontSize: 16, fontWeight: '500', marginTop: 16 },
+  scanningSubText: { fontSize: 13 },
+  cleanTitle: { fontSize: 20, fontWeight: '600' },
+  cleanSub: { fontSize: 14 },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
-  summaryCard: { backgroundColor: '#FAFAF8', borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  summaryCard: { borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
   summaryRow: { alignItems: 'center', flex: 1, minWidth: 0 },
-  summaryCount: { fontSize: 22, fontWeight: '700', color: '#111', letterSpacing: -0.5 },
-  summaryLabel: { fontSize: 12, color: '#888780', marginTop: 2 },
-  summaryDivider: { width: 1, height: 40, backgroundColor: '#F1EFE8' },
+  summaryCount: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  summaryLabel: { fontSize: 12, marginTop: 2 },
+  summaryDivider: { width: 1, height: 40 },
   rescanBtn: { paddingVertical: 8, paddingHorizontal: 16 },
-  rescanText: { fontSize: 13, color: '#993C1D' },
-  groupLabel: { fontSize: 11, fontWeight: '600', color: '#888780', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
+  rescanText: { fontSize: 13 },
+  groupLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
   fileIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   thumbnail: { width: 40, height: 40 },
   extLabel: { fontSize: 9, fontWeight: '500' },
   fileInfo: { flex: 1 },
-  fileName: { fontSize: 14, fontWeight: '500', color: '#111', marginBottom: 2 },
-  fileMeta: { fontSize: 11, color: '#888780' },
+  fileName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
+  fileMeta: { fontSize: 11 },
   deleteBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

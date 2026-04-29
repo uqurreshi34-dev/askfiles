@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/hooks/useTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ const SLIDES = [
 ];
 
 export default function OnboardingScreen() {
+  const { colors } = useTheme();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,7 +60,7 @@ export default function OnboardingScreen() {
   const isLast = currentIndex === SLIDES.length - 1;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -72,23 +74,18 @@ export default function OnboardingScreen() {
             <View style={[styles.iconWrap, { backgroundColor: slide.iconBg }]}>
               <Ionicons name={slide.icon} size={52} color={slide.iconColor} />
             </View>
-            <Text style={styles.title}>{slide.title}</Text>
-            <Text style={styles.body}>{slide.body}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{slide.title}</Text>
+            <Text style={[styles.body, { color: colors.textSecondary }]}>{slide.body}</Text>
           </View>
         ))}
       </ScrollView>
 
-      {/* Dots */}
       <View style={styles.dots}>
         {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === currentIndex && styles.dotActive]}
-          />
+          <View key={i} style={[styles.dot, { backgroundColor: colors.textDisabled }, i === currentIndex && styles.dotActive]} />
         ))}
       </View>
 
-      {/* Buttons */}
       <View style={styles.footer}>
         {isLast ? (
           <TouchableOpacity style={styles.btnPrimary} onPress={finish} activeOpacity={0.8}>
@@ -97,7 +94,7 @@ export default function OnboardingScreen() {
         ) : (
           <View style={styles.footerRow}>
             <TouchableOpacity onPress={finish} activeOpacity={0.7}>
-              <Text style={styles.skip}>Skip</Text>
+              <Text style={[styles.skip, { color: colors.textMuted }]}>Skip</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnPrimary} onPress={goNext} activeOpacity={0.8}>
               <Text style={styles.btnPrimaryText}>Next</Text>
@@ -111,64 +108,17 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  slide: {
-    width,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 36,
-    paddingBottom: 40,
-  },
-  iconWrap: {
-    width: 110,
-    height: 110,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 36,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '600',
-    color: '#111',
-    textAlign: 'center',
-    letterSpacing: -0.4,
-    marginBottom: 14,
-  },
-  body: {
-    fontSize: 15,
-    color: '#5F5E5A',
-    textAlign: 'center',
-    lineHeight: 23,
-  },
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: 24,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#D3D1C7',
-  },
-  dotActive: {
-    width: 20,
-    backgroundColor: '#185FA5',
-    borderRadius: 3,
-  },
+  container: { flex: 1 },
+  slide: { width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 40 },
+  iconWrap: { width: 110, height: 110, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 36 },
+  title: { fontSize: 26, fontWeight: '600', textAlign: 'center', letterSpacing: -0.4, marginBottom: 14 },
+  body: { fontSize: 15, textAlign: 'center', lineHeight: 23 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 24 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  dotActive: { width: 20, backgroundColor: '#185FA5', borderRadius: 3 },
   footer: { paddingHorizontal: 24, paddingBottom: 16 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  skip: { fontSize: 14, color: '#888780', paddingVertical: 14, paddingHorizontal: 4 },
-  btnPrimary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#185FA5',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-  },
+  skip: { fontSize: 14, paddingVertical: 14, paddingHorizontal: 4 },
+  btnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#185FA5', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24 },
   btnPrimaryText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });
