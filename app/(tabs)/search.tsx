@@ -796,10 +796,10 @@ export default function SearchScreen() {
                   <Text style={styles.sheetActionText}>Share</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : 
-                () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-                    { text: 'Not now', style: 'cancel' },
-                    { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
-                ])}
+                  () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
+                      { text: 'Not now', style: 'cancel' },
+                      { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                  ])}
               >
                   <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? '#185FA5' : '#888780'} />
                   <Text style={[styles.sheetActionText, { color: isPro ? '#185FA5' : '#888780' }]}>
