@@ -65,6 +65,9 @@ export default function BrowseScreen() {
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
   const { addToVault } = useVault();
   const { isPro } = usePro();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
+  const searchRef = useRef<TextInput>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -510,6 +513,10 @@ export default function BrowseScreen() {
     );
   }
 
+  const displayItems = searchActive && searchQuery.length > 0
+  ? items.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  : items;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -526,8 +533,31 @@ export default function BrowseScreen() {
           <Text style={styles.title} numberOfLines={1}>
             {breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse'}
           </Text>
-          <View style={styles.backBtn} />
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => { setSearchActive(true); setTimeout(() => searchRef.current?.focus(), 100); }}
+          >
+            <Ionicons name="search-outline" size={22} color="#5F5E5A" />
+          </TouchableOpacity>
         </View>
+        {searchActive && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: '#F1EFE8', borderRadius: 10, paddingHorizontal: 12 }}>
+            <Ionicons name="search-outline" size={16} color="#888780" style={{ marginRight: 8 }} />
+            <TextInput
+              ref={searchRef}
+              style={{ flex: 1, fontSize: 14, color: '#111', paddingVertical: 10 }}
+              placeholder="Search in this folder..."
+              placeholderTextColor="#888780"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            <TouchableOpacity onPress={() => { setSearchActive(false); setSearchQuery(''); }}>
+              <Ionicons name="close-circle" size={18} color="#888780" />
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={styles.pathRow}>
           {breadcrumbs.map((crumb, index) => (
             <TouchableOpacity
@@ -557,7 +587,7 @@ export default function BrowseScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={displayItems}
           keyExtractor={item => item.uri}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
@@ -661,6 +691,12 @@ export default function BrowseScreen() {
                       <Ionicons name="pencil-outline" size={20} color="#111" />
                       <Text style={styles.sheetActionText}>Rename</Text>
                     </TouchableOpacity>
+                    {!selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
+                        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
+                        <Text style={[styles.sheetActionText, { color: isFav ? '#E24B4A' : '#111' }]}>{isFav ? 'Remove from Favourites' : 'Add to Favourites'}</Text>
+                      </TouchableOpacity>
+                    )}
                     {!selectedItem?.isDirectory && (
                       <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : 
                         () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
