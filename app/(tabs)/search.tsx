@@ -795,9 +795,11 @@ export default function SearchScreen() {
                   <Ionicons name="share-outline" size={20} color="#111" />
                   <Text style={styles.sheetActionText}>Share</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
-                  <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
+                <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [{ text: 'Not now', style: 'cancel' }])}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? '#185FA5' : '#888780'} />
+                  <Text style={[styles.sheetActionText, { color: isPro ? '#185FA5' : '#888780' }]}>
+                    Move to Vault{!isPro ? '  🔒' : ''}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                 <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#E24B4A' : '#111'} />
