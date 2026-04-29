@@ -1,0 +1,6 @@
+<TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : 
+                  () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
+                      { text: 'Not now', style: 'cancel' },
+                      { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                  ])}
+              >
