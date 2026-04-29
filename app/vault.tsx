@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
@@ -13,6 +13,8 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
 import { isImageFile, getMimeType } from '@/utils/files';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { verifyPin, isPinSet } from '@/hooks/usePin';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -31,8 +33,12 @@ function getFileColor(name: string): string {
 
 export default function VaultScreen() {
   const router = useRouter();
-  const { files, loading, authenticated, authError, authenticate, deleteFromVault, lock } = useVault();
+  const { files, loading, authenticated, unlockVault, deleteFromVault, lock } = useVault();
   const [busy, setBusy] = useState(false);
+  const [showPinEntry, setShowPinEntry] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinAvailable, setPinAvailable] = useState(false);
   const [selectedFile, setSelectedFile] = useState<VaultFile | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -59,6 +65,18 @@ export default function VaultScreen() {
   ).current;
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
+
+  // On mount: check PIN availability then auto-fire biometric
+  useEffect(() => {
+    async function init() {
+      const pinSet = await isPinSet();
+      setPinAvailable(pinSet);
+      if (!authenticated) {
+        tryVaultBiometric();
+      }
+    }
+    init();
+  }, []);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
@@ -126,10 +144,6 @@ export default function VaultScreen() {
       .start(() => { setShowSheet(false); setSelectedFile(null); });
   }
 
-  async function handleAuth() {
-    await authenticate();
-  }
-
   async function openFile(file: VaultFile) {
     if (isImageFile(file.name)) {
       router.push({ pathname: '/viewer', params: { uri: file.uri, name: file.name, fromVault: 'true' } });
@@ -187,6 +201,53 @@ export default function VaultScreen() {
     );
   }
 
+  async function tryVaultBiometric() {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !isEnrolled) {
+        setShowPinEntry(true);
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Unlock Vault',
+        cancelLabel: 'Use PIN',
+        disableDeviceFallback: true,
+      });
+      if (result.success) {
+        await unlockVault();
+      } else {
+        setShowPinEntry(true);
+      }
+    } catch {
+      setShowPinEntry(true);
+    }
+  }
+
+  function handleVaultPinDigit(digit: string) {
+    if (pinInput.length < 4) {
+      const newPin = pinInput + digit;
+      setPinInput(newPin);
+      setPinError(null);
+      if (newPin.length === 4) handleVaultPinVerify(newPin);
+    }
+  }
+
+  function handleVaultPinDelete() {
+    setPinInput(prev => prev.slice(0, -1));
+    setPinError(null);
+  }
+
+  async function handleVaultPinVerify(entered: string) {
+    const correct = await verifyPin(entered);
+    if (correct) {
+      await unlockVault();
+    } else {
+      setPinError('Incorrect PIN. Try again.');
+      setPinInput('');
+    }
+  }
+
   function renderFile({ item }: { item: VaultFile }) {
     const color = getFileColor(item.name);
     const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
@@ -221,18 +282,57 @@ export default function VaultScreen() {
           <Text style={styles.title}>Vault</Text>
           <View style={{ width: 40 }} />
         </View>
-        <View style={styles.lockScreen}>
-          <View style={styles.lockIcon}>
-            <Ionicons name="lock-closed" size={40} color="#185FA5" />
+        {!showPinEntry ? (
+          <View style={styles.lockScreen}>
+            <View style={styles.lockIcon}>
+              <Ionicons name="lock-closed" size={40} color="#185FA5" />
+            </View>
+            <Text style={styles.lockTitle}>Secure Vault</Text>
+            <Text style={styles.lockSub}>Your files are protected. Authenticate to access your vault.</Text>
+            <TouchableOpacity style={styles.authBtn} onPress={tryVaultBiometric} activeOpacity={0.85}>
+              <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.authBtnText}>Unlock with Biometrics</Text>
+            </TouchableOpacity>
+            {pinAvailable && (
+              <TouchableOpacity onPress={() => setShowPinEntry(true)} style={{ marginTop: 16, paddingVertical: 8 }}>
+                <Text style={{ fontSize: 14, color: '#888780' }}>Use PIN instead</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <Text style={styles.lockTitle}>Secure Vault</Text>
-          <Text style={styles.lockSub}>Your files are protected. Authenticate to access your vault.</Text>
-          {authError && <Text style={styles.errorText}>{authError}</Text>}
-          <TouchableOpacity style={styles.authBtn} onPress={handleAuth} activeOpacity={0.85}>
-            <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.authBtnText}>Unlock with Biometrics</Text>
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.lockScreen}>
+            <View style={styles.lockIcon}>
+              <Ionicons name="keypad-outline" size={40} color="#185FA5" />
+            </View>
+            <Text style={styles.lockTitle}>Enter PIN</Text>
+            <Text style={styles.lockSub}>Enter your AskFiles PIN to access the vault</Text>
+            <View style={{ flexDirection: 'row', gap: 16, marginVertical: 24 }}>
+              {[0, 1, 2, 3].map(i => (
+                <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
+              ))}
+            </View>
+            {pinError && <Text style={styles.errorText}>{pinError}</Text>}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 }}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
+                if (key === 'bio') return (
+                  <TouchableOpacity key={i} style={styles.pinKey} onPress={tryVaultBiometric} activeOpacity={0.6}>
+                    <Ionicons name="finger-print-outline" size={24} color="#185FA5" />
+                  </TouchableOpacity>
+                );
+                if (key === 'del') return (
+                  <TouchableOpacity key={i} style={styles.pinKey} onPress={handleVaultPinDelete} activeOpacity={0.6}>
+                    <Ionicons name="backspace-outline" size={22} color="#5F5E5A" />
+                  </TouchableOpacity>
+                );
+                return (
+                  <TouchableOpacity key={i} style={styles.pinKey} onPress={() => handleVaultPinDigit(key)} activeOpacity={0.6}>
+                    <Text style={styles.pinKeyText}>{key}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     );
   }
@@ -419,7 +519,6 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, fontWeight: '500', color: '#111', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 },
-
   lockScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
   lockIcon: { width: 88, height: 88, borderRadius: 24, backgroundColor: '#EBF3FC', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   lockTitle: { fontSize: 22, fontWeight: '600', color: '#111', letterSpacing: -0.5 },
@@ -427,10 +526,8 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
   authBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#185FA5', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, marginTop: 8 },
   authBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-
   busyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#EBF3FC' },
   busyText: { fontSize: 13, color: '#185FA5' },
-
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   count: { fontSize: 11, color: '#888780', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F1EFE8' },
@@ -460,4 +557,9 @@ const styles = StyleSheet.create({
   pickerCancelText: { fontSize: 14, color: '#5F5E5A', fontWeight: '500' },
   pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
   pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#D3D1C7', backgroundColor: 'transparent' },
+  dotFilled: { backgroundColor: '#185FA5', borderColor: '#185FA5' },
+  dotError: { borderColor: '#E24B4A' },
+  pinKey: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F1EFE8', alignItems: 'center', justifyContent: 'center' },
+  pinKeyText: { fontSize: 24, fontWeight: '500', color: '#111' },
 });

@@ -33,36 +33,41 @@ export function useVault() {
     } catch {}
   }
 
-  async function authenticate(): Promise<boolean> {
-    setAuthError(null);
-    try {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+  // async function authenticate(): Promise<boolean> {
+  //   setAuthError(null);
+  //   try {
+  //     const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  //     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
-      if (!hasHardware || !isEnrolled) {
-        setAuthError('Biometrics not available on this device.');
-        return false;
-      }
+  //     if (!hasHardware || !isEnrolled) {
+  //       setAuthError('Biometrics not available on this device.');
+  //       return false;
+  //     }
 
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to access your Vault',
-        cancelLabel: 'Cancel',
-        fallbackLabel: 'Use PIN',
-        disableDeviceFallback: false,
-      });
+  //     const result = await LocalAuthentication.authenticateAsync({
+  //       promptMessage: 'Authenticate to access your Vault',
+  //       cancelLabel: 'Cancel',
+  //       fallbackLabel: 'Use PIN',
+  //       disableDeviceFallback: false,
+  //     });
 
-      if (result.success) {
-        setAuthenticated(true);
-        await loadFiles();
-        return true;
-      } else {
-        setAuthError('Authentication failed. Try again.');
-        return false;
-      }
-    } catch (e) {
-      setAuthError('Authentication error. Try again.');
-      return false;
-    }
+  //     if (result.success) {
+  //       setAuthenticated(true);
+  //       await loadFiles();
+  //       return true;
+  //     } else {
+  //       setAuthError('Authentication failed. Try again.');
+  //       return false;
+  //     }
+  //   } catch (e) {
+  //     setAuthError('Authentication error. Try again.');
+  //     return false;
+  //   }
+  // }
+
+  async function unlockVault(): Promise<void> {
+    setAuthenticated(true);
+    await loadFiles();
   }
 
   async function loadFiles() {
@@ -140,7 +145,7 @@ export function useVault() {
     loading,
     authenticated,
     authError,
-    authenticate,
+    unlockVault,
     addToVault,
     removeFromVault,
     deleteFromVault,
