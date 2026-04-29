@@ -15,6 +15,7 @@ import { isImageFile, getMimeType } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { useFavourites, addFavourite, removeFavourite, FavouriteItem } from '@/hooks/useFavourites';
 import { useVault } from '@/hooks/useVault';
+import { usePro } from '@/hooks/usePro';
 import RNFS from 'react-native-fs';
 
 function formatSize(bytes: number): string {
@@ -39,6 +40,7 @@ export default function FavouritesScreen() {
   const insets = useSafeAreaInsets();
   const { favourites } = useFavourites();
   const { addToVault } = useVault();
+  const { isPro } = usePro();
   const [selectedItem, setSelectedItem] = useState<FavouriteItem | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
@@ -356,9 +358,11 @@ export default function FavouritesScreen() {
                 <Ionicons name="share-outline" size={20} color="#111" />
                 <Text style={styles.sheetActionText}>Share</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetAction} onPress={handleMoveToVault}>
-                <Ionicons name="shield-checkmark-outline" size={20} color="#185FA5" />
-                <Text style={[styles.sheetActionText, { color: '#185FA5' }]}>Move to Vault</Text>
+              <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault : () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [{ text: 'Not now', style: 'cancel' }])}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? '#185FA5' : '#888780'} />
+                <Text style={[styles.sheetActionText, { color: isPro ? '#185FA5' : '#888780' }]}>
+                  Move to Vault{!isPro ? '  🔒' : ''}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => {
                 closeSheet();
