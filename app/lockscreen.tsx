@@ -9,45 +9,29 @@ import { verifyPin, isPinSet } from '@/hooks/usePin';
 export default function LockScreen() {
   const router = useRouter();
   const [pin, setPin] = useState('');
-  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pinAvailable, setPinAvailable] = useState(false);
 
   useEffect(() => {
-    checkPinAndBiometric();
-  }, []);
-
-  async function checkPinAndBiometric() {
-    const pinSet = await isPinSet();
-    setPinAvailable(pinSet);
     tryBiometric();
-  }
+  }, []);
 
   async function tryBiometric() {
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!hasHardware || !isEnrolled) {
-        setShowPin(true);
-        return;
-      }
+      if (!hasHardware || !isEnrolled) return; // just show PIN
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Unlock AskFiles',
         cancelLabel: 'Use PIN',
         disableDeviceFallback: true,
       });
       if (result.success) {
-        unlock();
-      } else {
-        setShowPin(true);
+        router.replace('/(tabs)');
       }
+      // if cancelled/failed — PIN keypad is already showing, nothing to do
     } catch {
-      setShowPin(true);
+      // PIN keypad already showing
     }
-  }
-
-  function unlock() {
-    router.replace('/(tabs)');
   }
 
   function handleDigit(digit: string) {
@@ -55,9 +39,7 @@ export default function LockScreen() {
       const newPin = pin + digit;
       setPin(newPin);
       setError(null);
-      if (newPin.length === 4) {
-        handleVerify(newPin);
-      }
+      if (newPin.length === 4) handleVerify(newPin);
     }
   }
 
@@ -69,46 +51,21 @@ export default function LockScreen() {
   async function handleVerify(entered: string) {
     const correct = await verifyPin(entered);
     if (correct) {
-      unlock();
+      router.replace('/(tabs)');
     } else {
       setError('Incorrect PIN. Try again.');
       setPin('');
     }
   }
 
-  // Biometric prompt screen
-  if (!showPin) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="lock-closed" size={40} color="#185FA5" />
-          </View>
-          <Text style={styles.title}>AskFiles is locked</Text>
-          <Text style={styles.sub}>Authenticate to continue</Text>
-          <TouchableOpacity style={styles.biometricBtn} onPress={tryBiometric} activeOpacity={0.8}>
-            <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.biometricBtnText}>Unlock with Biometrics</Text>
-          </TouchableOpacity>
-          {pinAvailable && (
-            <TouchableOpacity onPress={() => setShowPin(true)} style={styles.pinLink}>
-              <Text style={styles.pinLinkText}>Use PIN instead</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // PIN entry screen
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.body}>
         <View style={styles.iconWrap}>
-          <Ionicons name="keypad-outline" size={36} color="#185FA5" />
+          <Ionicons name="lock-closed" size={36} color="#185FA5" />
         </View>
-        <Text style={styles.title}>Enter PIN</Text>
-        <Text style={styles.sub}>Enter your PIN to unlock AskFiles</Text>
+        <Text style={styles.title}>AskFiles is locked</Text>
+        <Text style={styles.sub}>Enter your PIN to continue</Text>
 
         <View style={styles.dots}>
           {[0, 1, 2, 3].map(i => (
@@ -147,15 +104,10 @@ export default function LockScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
   body: { flex: 1, alignItems: 'center', paddingTop: 48, paddingHorizontal: 24 },
   iconWrap: { width: 88, height: 88, borderRadius: 24, backgroundColor: '#EBF3FC', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   title: { fontSize: 22, fontWeight: '600', color: '#111', letterSpacing: -0.4 },
   sub: { fontSize: 14, color: '#888780', textAlign: 'center', lineHeight: 20, marginBottom: 8 },
-  biometricBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#185FA5', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, marginTop: 16 },
-  biometricBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-  pinLink: { marginTop: 16, paddingVertical: 8 },
-  pinLinkText: { fontSize: 14, color: '#888780' },
   dots: { flexDirection: 'row', gap: 16, marginTop: 32, marginBottom: 12 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#D3D1C7', backgroundColor: 'transparent' },
   dotFilled: { backgroundColor: '#185FA5', borderColor: '#185FA5' },
