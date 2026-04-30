@@ -16,7 +16,7 @@ class StorageStatsModule : Module() {
             val free = extStat.availableBlocksLong * extStat.blockSizeLong
             val used = rawTotal - free
             val GB = 1_073_741_824L
-            val sizes = listOf(128L, 256L, 512L, 1024L, 2048L).map { it * GB }
+            val sizes = listOf(32L, 64L, 128L, 256L, 512L, 1024L, 2048L).map { it * GB }
             val marketedTotal = sizes.first { it >= rawTotal }
             mapOf(
                 "total" to marketedTotal.toDouble(),
