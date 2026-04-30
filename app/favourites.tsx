@@ -231,7 +231,10 @@ export default function FavouritesScreen() {
 
   async function handleMoveToVault() {
     if (!selectedItem) return;
-    Alert.alert('Move to Vault', `Move "${selectedItem.name}" to your Secure Vault?`, [
+    Alert.alert(
+      'Move to Vault',
+      `Move "${selectedItem.name}" to your Secure Vault? The original file will be removed from its current location.`,
+      [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move to Vault', onPress: async () => {
         closeSheet();

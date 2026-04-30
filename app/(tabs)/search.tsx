@@ -336,17 +336,20 @@ export default function SearchScreen() {
 
   async function handleMoveToVault() {
     if (!selectedItem) return;
-    Alert.alert('Move to Vault', `Move "${selectedItem.name}" to your Secure Vault?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Vault', onPress: async () => {
-        closeSheet();
-        const ok = await addToVault(selectedItem.uri, selectedItem.name);
-        if (ok) {
-          if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
-          else { removeResult(selectedItem.uri); }
-        }
-        else Alert.alert('Error', 'Could not move file to Vault. Try again.');
-      }},
+    Alert.alert(
+      'Move to Vault',
+      `Move "${selectedItem.name}" to your Secure Vault? The original file will be removed from its current location.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Move to Vault', onPress: async () => {
+          closeSheet();
+          const ok = await addToVault(selectedItem.uri, selectedItem.name);
+          if (ok) {
+            if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
+            else { removeResult(selectedItem.uri); }
+          }
+          else Alert.alert('Error', 'Could not move file to Vault. Try again.');
+        }},
     ]);
   }
 
