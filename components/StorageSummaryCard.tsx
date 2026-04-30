@@ -17,7 +17,7 @@ export default function StorageSummaryCard({
   totalBytes,
   freeBytes,
   note,
-  showChevron
+  showChevron,
 }: Props) {
   const { colors } = useTheme();
   const [infoVisible, setInfoVisible] = useState(false);
@@ -67,7 +67,7 @@ export default function StorageSummaryCard({
         >
           <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
             <Text style={[styles.modalText, { color: colors.textPrimary }]}>
-              AskFiles shows your user-accessible storage only — your files, downloads, and app data.{"\n\n"}System files and the Android OS (~16–24 GB depending on device) are excluded as they cannot be accessed or managed by any app.{"\n\n"}This is why the figure may differ from Android Settings.{"\n\n"}Android settings include apps and system data. This app shows only user files, so the used space appears lower.
+            {`Your device has ${formatBytes(totalBytes)} of storage in total. AskFiles shows ${formatBytes(usedBytes)} used by your personal files — photos, videos, documents and downloads. Android may show a higher figure for used storage because it also includes Android and system files, which AskFiles cannot access.`}
             </Text>
           </View>
         </TouchableOpacity>
