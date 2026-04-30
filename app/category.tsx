@@ -376,17 +376,17 @@ export default function CategoryScreen() {
 
   async function handleMoveToVault() {
     if (!selectedItem) return;
-    Alert.alert(
+     Alert.alert(
       'Move to Vault',
-      `Move "${selectedItem.name}" to your Secure Vault? The original file will be removed from its current location.`, 
+      `Move "${selectedItem.name}" to your Secure Vault? The original file will be removed from its current location.`,
       [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Vault', onPress: async () => {
-        closeSheet();
-        const ok = await addToVault(selectedItem.uri, selectedItem.name);
-        if (ok) { setItems(prev => prev.filter(f => f.uri !== selectedItem.uri)); }
-        else Alert.alert('Error', 'Could not move file to Vault. Try again.');
-      }},
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Move to Vault', onPress: async () => {
+          closeSheet();
+          const ok = await addToVault(selectedItem.uri, selectedItem.name);
+          if (ok) { setItems(prev => prev.filter(f => f.uri !== selectedItem.uri)); }
+          else Alert.alert('Error', 'Could not move file to Vault. Try again.');
+        }},
     ]);
   }
 

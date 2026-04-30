@@ -607,24 +607,6 @@ export default function BrowseScreen() {
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
-                      <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
-                      <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
-                      <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
-                    </TouchableOpacity>
-                    {!selectedItem?.isDirectory && (
-                      <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
-                        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
-                        <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>{isFav ? 'Remove from Favourites' : 'Add to Favourites'}</Text>
-                      </TouchableOpacity>
-                    )}
                     {!selectedItem?.isDirectory && (
                       <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                         () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
@@ -635,6 +617,12 @@ export default function BrowseScreen() {
                         <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
                           Move to Vault{!isPro ? '  🔒' : ''}
                         </Text>
+                      </TouchableOpacity>
+                    )}
+                    {!selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
+                        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>{isFav ? 'Remove from Favourites' : 'Add to Favourites'}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -661,6 +649,18 @@ export default function BrowseScreen() {
                       <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
                     </TouchableOpacity>
                     <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
+                      <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
+                      <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
+                      <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                       <Ionicons name="close-outline" size={20} color={colors.textMuted} />
                       <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
