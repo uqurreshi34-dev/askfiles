@@ -186,6 +186,8 @@ export default function BrowseScreen() {
     if (item.isDirectory) {
       setCurrentPath(item.uri);
       setBreadcrumbs(prev => [...prev, { name: item.name, path: item.uri }]);
+      setSearchQuery('');
+      setSearchActive(false);
     } else {
       openFile(item);
     }
@@ -195,6 +197,8 @@ export default function BrowseScreen() {
     const crumb = breadcrumbs[index];
     setBreadcrumbs(prev => prev.slice(0, index + 1));
     setCurrentPath(crumb.path);
+    setSearchQuery('');
+    setSearchActive(false);
   }
 
   async function handleShare() {
@@ -544,6 +548,7 @@ export default function BrowseScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         />
       )}
 
