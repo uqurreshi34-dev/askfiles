@@ -95,7 +95,7 @@ export default function BackupScreen() {
   async function handleDisconnect() {
     Alert.alert(
       'Disconnect Google Drive',
-      'This removes access to Google Drive from AskFiles. Your backed-up files will remain on Drive.',
+      'This removes access to Google Drive from AskFiles. Your backed-up files will remain on Google Drive.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Disconnect', style: 'destructive', onPress: disconnect },
