@@ -21,7 +21,6 @@ export default function StorageSummaryCard({
 }: Props) {
   const { colors } = useTheme();
   const [infoVisible, setInfoVisible] = useState(false);
-  const usedPercent = totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0;
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.surface }]}>
@@ -42,15 +41,11 @@ export default function StorageSummaryCard({
         </View>
       </View>
 
-      <View style={[styles.barTrack, { backgroundColor: colors.textDisabled }]}>
-        <View style={[styles.barFill, { width: `${usedPercent}%` }]} />
-      </View>
-
       <Text style={[styles.note, { color: colors.textMuted }]}>
         {formatBytes(freeBytes)} available
       </Text>
 
-      <Text style={[styles.note, { color: colors.textMuted }]}>
+      <Text style={[styles.note, { color: colors.successGreen }]}>
         {note}
       </Text>
 

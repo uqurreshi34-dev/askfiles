@@ -53,6 +53,8 @@ export function useTheme() {
       // Busy banner
       busyBg: dark ? '#0D2A47' : '#EBF3FC',
       busyText: '#185FA5',
+
+      successGreen: dark ? '#4CAF50' : '#3B6D11',
     },
   };
 }
