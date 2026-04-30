@@ -73,7 +73,7 @@ export default function VaultScreen() {
       const pinSet = await isPinSet();
       setPinAvailable(pinSet);
       if (!authenticated) {
-        tryVaultBiometric();
+        tryVaultBiometric(pinSet);
       }
     }
     init();
@@ -197,12 +197,13 @@ export default function VaultScreen() {
     );
   }
 
-  async function tryVaultBiometric() {
+  async function tryVaultBiometric(pinSet?: boolean) {
+    const hasPinAvailable = pinSet ?? pinAvailable;
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!hasHardware || !isEnrolled) {
-        setShowPinEntry(true);
+        if (hasPinAvailable) setShowPinEntry(true);
         return;
       }
       const result = await LocalAuthentication.authenticateAsync({
@@ -213,10 +214,10 @@ export default function VaultScreen() {
       if (result.success) {
         await unlockVault();
       } else {
-        setShowPinEntry(true);
+        if (hasPinAvailable) setShowPinEntry(true);
       }
     } catch {
-      setShowPinEntry(true);
+      if (hasPinAvailable) setShowPinEntry(true);
     }
   }
 
@@ -285,14 +286,18 @@ export default function VaultScreen() {
             </View>
             <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Secure Vault</Text>
             <Text style={[styles.lockSub, { color: colors.textMuted }]}>Your files are protected. Authenticate to access your vault.</Text>
-            <TouchableOpacity style={styles.authBtn} onPress={tryVaultBiometric} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.authBtn} onPress={() => tryVaultBiometric()} activeOpacity={0.85}>
               <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.authBtnText}>Unlock with Biometrics</Text>
             </TouchableOpacity>
-            {pinAvailable && (
+            {pinAvailable ? (
               <TouchableOpacity onPress={() => setShowPinEntry(true)} style={{ marginTop: 16, paddingVertical: 8 }}>
                 <Text style={{ fontSize: 14, color: colors.textMuted }}>Use PIN instead</Text>
               </TouchableOpacity>
+            ) : (
+              <Text style={{ fontSize: 12, color: colors.deleteRed, textAlign: 'center', marginTop: 16, paddingHorizontal: 32 }}>
+                No PIN set. Go to Settings → App Lock to set one.
+              </Text>
             )}
           </View>
         ) : (
@@ -311,7 +316,7 @@ export default function VaultScreen() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 }}>
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
                 if (key === 'bio') return (
-                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={tryVaultBiometric} activeOpacity={0.6}>
+                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => tryVaultBiometric()} activeOpacity={0.6}>
                     <Ionicons name="finger-print-outline" size={24} color={colors.blue} />
                   </TouchableOpacity>
                 );

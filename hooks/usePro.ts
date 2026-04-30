@@ -20,7 +20,7 @@ export interface ProPackages {
 }
 
 export function usePro() {
-  const [isPro, setIsPro] = useState(true);
+  const [isPro, setIsPro] = useState(false);
   const [packages, setPackages] = useState<ProPackages>({ lifetime: null });
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
