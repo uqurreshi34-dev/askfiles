@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -115,6 +115,106 @@ function getDlTab(name: string): string {
   if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'].includes(ext)) return 'Docs';
   return 'Other';
 }
+
+const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
+const GRID_COLS = 3;
+const GRID_ITEM_SIZE = (SCREEN_WIDTH - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
+
+interface MediaItemProps {
+  item: FileItem;
+  isVid: boolean;
+  config: { title: string; icon: string; color: string };
+  colors: any;
+  openSheet: (item: FileItem) => void;
+  openItem: (item: FileItem) => void;
+}
+
+const ListItem = React.memo(({ item, isVid, config, colors, openSheet, openItem }: MediaItemProps) => {
+  const isImg = isImageFile(item.name);
+  const [thumb, setThumb] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isVid && !isImg) {
+      (async () => {
+        try {
+          const result = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 5010 });
+          setThumb(result.uri);
+        } catch {}
+      })();
+    }
+  }, [item.uri]);
+
+  const thumbUri = isImg ? item.uri : thumb;
+  const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
+
+  return (
+    <TouchableOpacity
+      style={[styles.row, { borderBottomColor: colors.border }]}
+      onPress={() => openItem(item)}
+      onLongPress={() => openSheet(item)}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.icon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
+        {thumbUri ? (
+          <Image source={{ uri: thumbUri }} style={styles.thumb} resizeMode="cover" />
+        ) : (
+          <Text style={[styles.ext, { color: config.color }]}>{ext.slice(0, 4)}</Text>
+        )}
+      </View>
+      <View style={styles.info}>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.meta, { color: colors.textMuted }]}>
+          {item.size ? formatSize(item.size) : ''}
+          {item.size && item.date ? ' · ' : ''}
+          {item.date ? timeAgo(item.date) : ''}
+        </Text>
+      </View>
+      <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+});
+
+const GridItem = React.memo(({ item, isVid, config, openSheet }: MediaItemProps) => {
+  const isImg = isImageFile(item.name);
+  const [thumb, setThumb] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isVid && !isImg) {
+      (async () => {
+        try {
+          const result = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 5010 });
+          setThumb(result.uri);
+        } catch {}
+      })();
+    }
+  }, [item.uri]);
+
+  const thumbUri = isImg ? item.uri : thumb;
+
+  return (
+    <TouchableOpacity
+      style={[styles.gridItem, { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE }]}
+      onPress={() => Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name }).catch(() => {})}
+      onLongPress={() => openSheet(item)}
+      activeOpacity={0.8}
+    >
+      {thumbUri ? (
+        <Image source={{ uri: thumbUri }} style={styles.gridThumb} resizeMode="cover" />
+      ) : (
+        <View style={[styles.gridThumb, { backgroundColor: config.color + '22', alignItems: 'center', justifyContent: 'center' }]}>
+          <Ionicons name="videocam" size={32} color={config.color} />
+        </View>
+      )}
+      {isVid && (
+        <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
+          <Ionicons name="play" size={10} color="#fff" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
 
 export default function CategoryScreen() {
   const { colors } = useTheme();
@@ -429,108 +529,7 @@ export default function CategoryScreen() {
     } catch (e) { console.log('Share error:', e); }
   }
 
-  function ListItem({ item }: { item: FileItem }) {
-    const isImg = isImageFile(item.name);
-    const isVid = category === 'videos';
-    const [thumb, setThumb] = useState<string | null>(null);
-
-    useEffect(() => {
-      if (isVid && !isImg) {
-        (async () => {
-          const times = [500, 1000, 2000, 100];
-          for (const t of times) {
-            try {
-              const result = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 5010});
-              setThumb(result.uri);
-              break;
-            } catch {}
-          }
-        })();
-      }
-    }, [item.uri]);
-
-    const thumbUri = isImg ? item.uri : thumb;
-    const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
-
-    return (
-      <TouchableOpacity
-        style={[styles.row, { borderBottomColor: colors.border }]}
-        onPress={() => openItem(item)}
-        onLongPress={() => openSheet(item)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.icon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
-          {thumbUri ? (
-            <Image source={{ uri: thumbUri }} style={styles.thumb} resizeMode="cover" />
-          ) : (
-            <Text style={[styles.ext, { color: config.color }]}>{ext.slice(0, 4)}</Text>
-          )}
-        </View>
-        <View style={styles.info}>
-          <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.meta, { color: colors.textMuted }]}>
-            {item.size ? formatSize(item.size) : ''}
-            {item.size && item.date ? ' · ' : ''}
-            {item.date ? timeAgo(item.date) : ''}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  }
-
   const tabs = category === 'documents' ? DOC_TABS : category === 'downloads' ? DL_TABS : null;
-
-  const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
-  const GRID_COLS = 3;
-  const GRID_ITEM_SIZE = (SCREEN_WIDTH - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
-
-  function GridItem({ item }: { item: FileItem }) {
-    const isImg = isImageFile(item.name);
-    const isVid = category === 'videos';
-    const [thumb, setThumb] = useState<string | null>(null);
-
-    useEffect(() => {
-      if (isVid && !isImg) {
-        (async () => {
-          const times = [500, 1000, 2000, 100];
-          for (const t of times) {
-            try {
-              const result = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 5010 });
-              setThumb(result.uri);
-              break;
-            } catch {}
-          }
-        })();
-      }
-    }, [item.uri]);
-
-    const thumbUri = isImg ? item.uri : thumb;
-
-    return (
-      <TouchableOpacity
-        style={[styles.gridItem, { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE }]}
-        onPress={() => Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name }).catch(() => {})}
-        onLongPress={() => openSheet(item)}
-        activeOpacity={0.8}
-      >
-        {thumbUri ? (
-          <Image source={{ uri: thumbUri }} style={styles.gridThumb} resizeMode="cover" />
-        ) : (
-          <View style={[styles.gridThumb, { backgroundColor: config.color + '22', alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="videocam" size={32} color={config.color} />
-          </View>
-        )}
-        {isVid && (
-          <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
-            <Ionicons name="play" size={10} color="#fff" />
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  }
 
   const filteredItems = (tabs && activeTab !== 'All'
     ? items.filter(item => {
@@ -591,7 +590,10 @@ export default function CategoryScreen() {
           keyExtractor={item => item.uri}
           key={isMediaCategory && gridView ? 'grid' : 'list'}
           numColumns={isMediaCategory && gridView ? 3 : 1}
-          renderItem={isMediaCategory && gridView ? ({ item }) => <GridItem item={item} /> : ({ item }) => <ListItem item={item} />}
+          renderItem={isMediaCategory && gridView
+            ? ({ item }) => <GridItem item={item} isVid={category === 'videos'} config={config} colors={colors} openSheet={openSheet} openItem={openItem} />
+            : ({ item }) => <ListItem item={item} isVid={category === 'videos'} config={config} colors={colors} openSheet={openSheet} openItem={openItem} />
+          }
           contentContainerStyle={isMediaCategory && gridView ? styles.gridContainer : styles.list}
           columnWrapperStyle={isMediaCategory && gridView ? styles.gridRow : undefined}
           showsVerticalScrollIndicator={false}
