@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PanResponder } from 'react-native';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Image, Modal, TextInput, Alert,
@@ -55,6 +56,25 @@ function decodeName(name: string): string {
 
 function toPath(uri: string): string {
   try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
+}
+
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function BrowseScreen() {
@@ -554,6 +574,8 @@ export default function BrowseScreen() {
             <Ionicons name="folder" size={22} color={color} />
           ) : isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+          ) : isVideoFile(item.name) ? (
+            <VideoThumb uri={item.uri} style={styles.thumbnail} />
           ) : (
             <Text style={[styles.extLabel, { color }]}>{ext?.slice(0, 4)}</Text>
           )}
