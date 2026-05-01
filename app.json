@@ -62,7 +62,8 @@
           "sounds": []
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./modules/storage-widget/app.plugin.js"
     ],
     "extra": {
       "router": {},
