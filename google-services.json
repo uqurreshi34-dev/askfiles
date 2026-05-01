@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "742437737318-sandm5lmosnkr33c1t2aokq2k04e4jbp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.askfiles.mobile",
+            "certificate_hash": "c891050a1a6914f965de2380a7f9fb012b7fc6b7"
+          }
+        },
+        {
           "client_id": "742437737318-cf3n02j03onq6ech51nkcup47q35jctm.apps.googleusercontent.com",
           "client_type": 3
         }
