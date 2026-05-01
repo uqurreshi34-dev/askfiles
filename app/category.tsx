@@ -42,6 +42,25 @@ function timeAgo(ts: number): string {
   return `${days} days ago`;
 }
 
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
+}
+
 const CATEGORY_CONFIG: Record<Category, { title: string; icon: string; color: string }> = {
   images: { title: 'Images', icon: 'image-outline', color: '#185FA5' },
   videos: { title: 'Videos', icon: 'videocam-outline', color: '#993C1D' },
@@ -632,15 +651,17 @@ export default function CategoryScreen() {
             <Pressable>
               <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
-                <View style={[styles.sheetIcon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
-                  {isImageFile(selectedItem?.name ?? '') ? (
-                    <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
-                  ) : (
-                    <Text style={[styles.ext, { color: config.color }]}>
-                      {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                    </Text>
-                  )}
-                </View>
+              <View style={[styles.sheetIcon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
+                {isImageFile(selectedItem?.name ?? '') ? (
+                  <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
+                ) : isVideoFile(selectedItem?.name ?? '') ? (
+                  <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
+                ) : (
+                  <Text style={[styles.ext, { color: config.color }]}>
+                    {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
+                  </Text>
+                )}
+              </View>
                 <View style={styles.sheetInfo}>
                   <Text style={[styles.sheetName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedItem?.name}</Text>
                   {fileSize && <Text style={[styles.sheetMeta, { color: colors.textMuted }]}>{fileSize}</Text>}

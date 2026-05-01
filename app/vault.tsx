@@ -17,6 +17,8 @@ import { isImageFile, getMimeType } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -166,13 +168,16 @@ export default function VaultScreen() {
   }
 
   async function openFile(file: VaultFile) {
-    if (isImageFile(file.name)) {
-      router.push({ pathname: '/viewer', params: { uri: file.uri, name: file.name, fromVault: 'true' } });
-      return;
-    }
     try {
-      await Sharing.shareAsync(file.uri, { mimeType: getMimeType(file.name), dialogTitle: file.name });
-    } catch {}
+      const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+      await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
+      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        flags: 1,
+        type: getMimeType(file.name),
+      });
+    } catch (e) { console.log('Open error:', e); }
   }
 
   async function handleShare(file: VaultFile) {
@@ -411,15 +416,17 @@ export default function VaultScreen() {
             <Pressable>
               <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
-                <View style={[styles.sheetIcon, { backgroundColor: selectedFile ? getFileColor(selectedFile.name) + '22' : colors.surface, overflow: 'hidden' }]}>
-                  {selectedFile && isImageFile(selectedFile.name) ? (
-                    <Image source={{ uri: selectedFile.uri }} style={styles.sheetThumb} resizeMode="cover" />
-                  ) : (
-                    <Text style={[styles.sheetExt, { color: selectedFile ? getFileColor(selectedFile.name) : colors.textMuted }]}>
-                      {selectedFile?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                    </Text>
-                  )}
-                </View>
+              <View style={[styles.sheetIcon, { backgroundColor: selectedFile ? getFileColor(selectedFile.name) + '22' : colors.surface, overflow: 'hidden' }]}>
+                {selectedFile && isImageFile(selectedFile.name) ? (
+                  <Image source={{ uri: selectedFile.uri }} style={styles.sheetThumb} resizeMode="cover" />
+                ) : selectedFile && isVideoFile(selectedFile.name) ? (
+                  <VideoThumb uri={selectedFile.uri} style={styles.sheetThumb} />
+                ) : (
+                  <Text style={[styles.sheetExt, { color: selectedFile ? getFileColor(selectedFile.name) : colors.textMuted }]}>
+                    {selectedFile?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
+                  </Text>
+                )}
+              </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sheetFileName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedFile?.name}</Text>
                   <Text style={[styles.sheetFileMeta, { color: colors.textMuted }]}>{selectedFile ? formatSize(selectedFile.size) : ''}</Text>

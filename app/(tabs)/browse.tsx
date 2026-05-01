@@ -23,6 +23,7 @@ import RNFS from 'react-native-fs';
 import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
 import ZipIcon from '@/components/ZipIcon';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 
 interface FileItem {
   name: string;
@@ -194,17 +195,18 @@ export default function BrowseScreen() {
 
   async function openFile(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
-    if (isImageFile(item.name)) {
-      router.push({ pathname: '/viewer', params: { uri: item.uri, name: item.name } });
-      return;
-    }
     try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name });
-      }
+      const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+      const srcPath = item.uri.replace('file://', '');
+      await RNFS.copyFile(srcPath, cachePath);
+      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        flags: 1,
+        type: getMimeType(item.name),
+      });
     } catch (e) {
-      console.log('Cannot open file:', e);
+      console.log('Open error:', e);
     }
   }
 

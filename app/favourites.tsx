@@ -1,4 +1,7 @@
-import { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, Image,
   ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput,
@@ -34,6 +37,25 @@ function getFileColor(name: string): string {
   if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
   return '#5F5E5A';
+}
+
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function FavouritesScreen() {
@@ -197,12 +219,13 @@ export default function FavouritesScreen() {
 
   async function openItem(item: FavouriteItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
-    if (isImageFile(item.name)) {
-      router.push({ pathname: '/viewer', params: { uri: item.uri, name: item.name } });
-      return;
-    }
     try {
-      await Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name });
+      const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+      await RNFS.copyFile(item.uri.replace('file://', ''), cachePath);
+      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri, flags: 1, type: getMimeType(item.name),
+      });
     } catch (e) { console.log('Open error:', e); }
   }
 
@@ -286,6 +309,8 @@ export default function FavouritesScreen() {
         <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+          ) : isVideoFile(item.name) ? (
+            <VideoThumb uri={item.uri} style={styles.thumb} />
           ) : (
             <Text style={[styles.ext, { color }]}>{ext.slice(0, 4)}</Text>
           )}
@@ -340,9 +365,11 @@ export default function FavouritesScreen() {
             <Pressable>
               <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
-                <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22', overflow: 'hidden' }]}>
+              <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22', overflow: 'hidden' }]}>
                   {isImageFile(selectedItem?.name ?? '') ? (
                     <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
+                  ) : isVideoFile(selectedItem?.name ?? '') ? (
+                    <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
                   ) : (
                     <Text style={[styles.ext, { color: getFileColor(selectedItem?.name ?? '') }]}>
                       {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}

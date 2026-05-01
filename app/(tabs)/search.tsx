@@ -15,7 +15,8 @@ import { addRecent } from '@/hooks/useRecents';
 import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
 import { usePro } from '@/hooks/usePro';
-
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { useVault } from '@/hooks/useVault';
 import * as FileSystem from 'expo-file-system/next';
 import * as MediaLibrary from 'expo-media-library';
@@ -455,13 +456,17 @@ export default function SearchScreen() {
 
   async function openFile(name: string, uri: string) {
     await addRecent({ name, uri, openedAt: Date.now() });
-    if (isImageFile(name)) {
-      router.push({ pathname: '/viewer', params: { uri, name } });
-      return;
-    }
     try {
-      await Sharing.shareAsync(uri, { mimeType: getMimeType(name), dialogTitle: name });
-    } catch (e) { console.log('Cannot open file:', e); }
+      const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
+      const srcPath = uri.replace('file://', '');
+      await RNFS.copyFile(srcPath, cachePath);
+      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        flags: 1,
+        type: getMimeType(name),
+      });
+    } catch (e) { console.log('Open error:', e); }
   }
 
   function handleSuggestion(s: string) {
@@ -739,15 +744,17 @@ export default function SearchScreen() {
               <Pressable>
                 <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
                 <View style={styles.sheetHeader}>
-                  <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22' }]}>
-                    {isImageFile(selectedItem?.name ?? '') ? (
-                      <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
-                    ) : (
-                      <Text style={[styles.extLabel, { color: getFileColor(selectedItem?.name ?? '') }]}>
-                        {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                      </Text>
-                    )}
-                  </View>
+                <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22' }]}>
+                  {isImageFile(selectedItem?.name ?? '') ? (
+                    <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
+                  ) : isVideoFile(selectedItem?.name ?? '') ? (
+                    <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
+                  ) : (
+                    <Text style={[styles.extLabel, { color: getFileColor(selectedItem?.name ?? '') }]}>
+                      {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
+                    </Text>
+                  )}
+                </View>
                   <View style={styles.sheetFileInfo}>
                     <Text style={[styles.sheetFileName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedItem?.name}</Text>
                     {fileSize && <Text style={[styles.sheetFileMeta, { color: colors.textMuted }]}>{fileSize}</Text>}
