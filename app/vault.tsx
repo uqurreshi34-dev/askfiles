@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
@@ -30,6 +31,25 @@ function getFileColor(name: string): string {
   if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
   if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext ?? '')) return '#534AB7';
   return '#5F5E5A';
+}
+
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function VaultScreen() {
@@ -253,6 +273,8 @@ export default function VaultScreen() {
         <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+          ) : isVideoFile(item.name) ? (
+            <VideoThumb uri={item.uri} style={styles.thumb} />
           ) : (
             <Text style={[styles.ext, { color }]}>{ext.slice(0, 4)}</Text>
           )}
