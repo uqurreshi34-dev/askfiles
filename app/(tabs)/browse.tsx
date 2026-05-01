@@ -19,6 +19,7 @@ import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
+import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
 
 interface FileItem {
@@ -74,6 +75,7 @@ export default function BrowseScreen() {
   const [renameValue, setRenameValue] = useState('');
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
+  const [zipping, setZipping] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
@@ -318,6 +320,90 @@ export default function BrowseScreen() {
     );
   }
 
+
+  async function handleZip() {
+    if (!selectedItem) return;
+    try {
+      const file = new FileSystem.File(selectedItem.uri);
+      const size = file.size ?? 0;
+      if (size > 20 * 1024 * 1024) {
+        Alert.alert('File too large', 'Compress to ZIP only supports files under 20 MB. Large files cannot be compressed on mobile due to memory limits.');
+        return;
+      }
+    } catch {}
+    closeSheet();
+    setZipping(true);
+    try {
+      const zip = new JSZip();
+      const srcPath = toPath(selectedItem.uri);
+      if (selectedItem.isDirectory) {
+        const addFolder = async (dirPath: string, zipFolder: JSZip) => {
+          const items = await RNFS.readDir(dirPath);
+          for (const item of items) {
+            if (item.isDirectory()) {
+              await addFolder(item.path, zipFolder.folder(item.name)!);
+            } else {
+              const content = await RNFS.readFile(item.path, 'base64');
+              zipFolder.file(item.name, content, { base64: true });
+            }
+          }
+        };
+        await addFolder(srcPath, zip.folder(selectedItem.name)!);
+      } else {
+        const content = await RNFS.readFile(srcPath, 'base64');
+        zip.file(selectedItem.name, content, { base64: true });
+      }
+      const zipName = selectedItem.name.replace(/\.[^/.]+$/, '') + '.zip';
+      const parentPath = srcPath.endsWith('/') ? srcPath.slice(0, -1) : srcPath;
+      const destDir = parentPath.substring(0, parentPath.lastIndexOf('/') + 1);
+      const destPath = destDir + zipName;
+      const zipContent = await zip.generateAsync({ type: 'base64' });
+      await RNFS.writeFile(destPath, zipContent, 'base64');
+      await loadDirectory(currentPath);
+      Alert.alert('Zipped', `"${zipName}" created successfully.`);
+    } catch (e) {
+      console.log('Zip error:', e);
+      Alert.alert('Error', 'Could not create zip file.');
+    } finally {
+      setZipping(false);
+    }
+  }
+
+  async function handleUnzip() {
+    if (!selectedItem) return;
+    closeSheet();
+    setZipping(true);
+    try {
+      const srcPath = toPath(selectedItem.uri);
+      const content = await RNFS.readFile(srcPath, 'base64');
+      const zip = await JSZip.loadAsync(content, { base64: true });
+      const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1);
+      const folderName = selectedItem.name.replace(/\.zip$/i, '');
+      const extractDir = destDir + folderName + '/';
+      await RNFS.mkdir(extractDir);
+      const promises: Promise<void>[] = [];
+      zip.forEach((relativePath, file) => {
+        if (!file.dir) {
+          const p = file.async('base64').then(async (data) => {
+            const filePath = extractDir + relativePath;
+            const fileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1);
+            await RNFS.mkdir(fileDir);
+            await RNFS.writeFile(filePath, data, 'base64');
+          });
+          promises.push(p);
+        }
+      });
+      await Promise.all(promises);
+      await loadDirectory(currentPath);
+      Alert.alert('Extracted', `Files extracted to "${folderName}" folder.`);
+    } catch (e) {
+      console.log('Unzip error:', e);
+      Alert.alert('Error', 'Could not extract zip file.');
+    } finally {
+      setZipping(false);
+    }
+  }
+
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
@@ -533,6 +619,13 @@ export default function BrowseScreen() {
         </View>
       </View>
 
+      {zipping && (
+        <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={[styles.busyText, { color: colors.blue }]}>Processing...</Text>
+        </View>
+      )}
+
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />
@@ -653,6 +746,18 @@ export default function BrowseScreen() {
                       <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
                       <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
                     </TouchableOpacity>
+                    {!selectedItem?.isDirectory && selectedItem?.name.toLowerCase().endsWith('.zip') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleUnzip}>
+                        <Ionicons name="archive-outline" size={20} color={colors.green} />
+                        <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract ZIP</Text>
+                      </TouchableOpacity>
+                    )}
+                    {!selectedItem?.isDirectory && !selectedItem?.name.toLowerCase().endsWith('.zip') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleZip}>
+                        <Ionicons name="archive-outline" size={20} color={colors.green} />
+                        <Text style={[styles.sheetActionText, { color: colors.green }]}>Compress to ZIP</Text>
+                      </TouchableOpacity>
+                    )}
                     <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
                     <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
                       <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
@@ -791,4 +896,6 @@ const styles = StyleSheet.create({
   pickerCancelText: { fontSize: 14, fontWeight: '500' },
   pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
   pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  busyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  busyText: { fontSize: 13 },
 });
