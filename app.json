@@ -51,7 +51,7 @@
         "@react-native-google-signin/google-signin",
         {
           "googleServicesFile": "./google-services.json",
-          "iosUrlScheme": "com.askfiles.mobile"
+          "iosUrlScheme": "com.googleusercontent.apps.742437737318-cf3n02j03onq6ech51nkcup47q35jctm"
         }
       ],
       [
