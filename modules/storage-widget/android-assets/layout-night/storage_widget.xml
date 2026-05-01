@@ -31,7 +31,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0%"
-            android:textColor="#A0A09A"
+            android:textColor="#F5F5F5"
             android:textSize="12sp"/>
     </LinearLayout>
 
@@ -56,7 +56,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=" of 0 GB"
-            android:textColor="#A0A09A"
+            android:textColor="#F5F5F5"
             android:textSize="13sp"
             android:layout_marginStart="4dp"/>
     </LinearLayout>
