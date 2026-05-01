@@ -15,6 +15,8 @@ import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -196,7 +198,19 @@ const GridItem = React.memo(({ item, isVid, config, openSheet }: MediaItemProps)
   return (
     <TouchableOpacity
       style={[styles.gridItem, { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE }]}
-      onPress={() => Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name }).catch(() => {})}
+      onPress={async () => {
+        try {
+          const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+          const srcPath = item.uri.replace('file://', '');
+          await RNFS.copyFile(srcPath, cachePath);
+          const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+          await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+            data: contentUri,
+            flags: 1,
+            type: getMimeType(item.name),
+          });
+        } catch (e) { console.log('Open error:', e); }
+      }}
       onLongPress={() => openSheet(item)}
       activeOpacity={0.8}
     >
@@ -468,13 +482,19 @@ export default function CategoryScreen() {
 
   async function openItem(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
-    if (isImageFile(item.name)) {
-      router.push({ pathname: '/viewer', params: { uri: item.uri, name: item.name } });
-      return;
-    }
     try {
-      await Sharing.shareAsync(item.uri, { mimeType: getMimeType(item.name), dialogTitle: item.name });
-    } catch (e) { console.log('Open error:', e); }
+      const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+      const srcPath = item.uri.replace('file://', '');
+      await RNFS.copyFile(srcPath, cachePath);
+      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        flags: 1,
+        type: getMimeType(item.name),
+      });
+    } catch (e) {
+      console.log('Open error:', e);
+    }
   }
 
   async function handleMoveToVault() {
