@@ -703,6 +703,8 @@ export default function SearchScreen() {
                               <Ionicons name="folder" size={22} color={color} />
                             ) : isImageFile(item.name) ? (
                               <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                            ) : isVideoFile(item.name) ? (
+                              <VideoThumb uri={item.uri} style={styles.thumbnail} />
                             ) : (
                               <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
                             )}
