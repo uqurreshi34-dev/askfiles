@@ -764,7 +764,7 @@ export default function BrowseScreen() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {!selectedItem?.isDirectory && (
+                    {!selectedItem?.isDirectory && !selectedItem?.name.toLowerCase().endsWith('.zip') && (
                       <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                         <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
                         <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>{isFav ? 'Remove from Favourites' : 'Add to Favourites'}</Text>
