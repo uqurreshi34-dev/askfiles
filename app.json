@@ -47,7 +47,12 @@
         }
       ],
       "expo-web-browser",
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "googleServicesFile": "./google-services.json"
+        }
+      ],
       [
         "expo-speech-recognition",
         {
