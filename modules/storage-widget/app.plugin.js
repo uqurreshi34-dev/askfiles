@@ -16,6 +16,8 @@ module.exports = function withStorageWidget(config) {
       { src: path.join(srcDir, 'drawable', 'widget_progress_drawable.xml'), dst: path.join(resDir, 'drawable', 'widget_progress_drawable.xml') },
       { src: path.join(srcDir, 'xml', 'storage_widget_info.xml'), dst: path.join(resDir, 'xml', 'storage_widget_info.xml') },
       { src: path.join(srcDir, 'java', 'StorageWidget.kt'), dst: path.join(javaDir, 'StorageWidget.kt') },
+      { src: path.join(srcDir, 'drawable-night', 'widget_background.xml'), dst: path.join(resDir, 'drawable-night', 'widget_background.xml') },
+      { src: path.join(srcDir, 'layout-night', 'storage_widget.xml'), dst: path.join(resDir, 'layout-night', 'storage_widget.xml') },
     ];
 
     for (const { src, dst } of copies) {
