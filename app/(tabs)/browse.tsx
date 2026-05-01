@@ -569,25 +569,18 @@ export default function BrowseScreen() {
           if (selectMode) {
             const newSet = new Set(selectedUris);
             if (isSelected) newSet.delete(item.uri);
-            else if (!item.isDirectory) newSet.add(item.uri);
+            else if (!item.isDirectory && !item.name.toLowerCase().endsWith('.zip')) newSet.add(item.uri);
             setSelectedUris(newSet);
           } else {
             navigateTo(item);
           }
         }}
-        onLongPress={() => {
-          if (!selectMode && !item.isDirectory) {
-            setSelectMode(true);
-            setSelectedUris(new Set([item.uri]));
-          } else {
-            openSheet(item);
-          }
-        }}
+        onLongPress={() => openSheet(item)}
         delayLongPress={400}
         activeOpacity={0.6}
       >
         <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-          {selectMode && !item.isDirectory ? (
+          {selectMode && !item.isDirectory && !item.name.toLowerCase().endsWith('.zip') ? (
             <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
           ) : item.isDirectory ? (
             <Ionicons name="folder" size={22} color={color} />
@@ -634,12 +627,20 @@ export default function BrowseScreen() {
           <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
             {breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse'}
           </Text>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => { setSearchActive(true); setTimeout(() => searchRef.current?.focus(), 100); }}
-          >
-            <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => { setSelectMode(true); setSelectedUris(new Set()); }}
+            >
+              <Ionicons name="checkmark-circle-outline" size={22} color={selectMode ? colors.blue : colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => { setSearchActive(true); setTimeout(() => searchRef.current?.focus(), 100); }}
+            >
+              <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
         {searchActive && (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 12 }}>
