@@ -78,6 +78,7 @@ export default function BrowseScreen() {
   const [zipping, setZipping] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
+  const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
@@ -322,55 +323,6 @@ export default function BrowseScreen() {
     );
   }
 
-
-  async function handleZip() {
-    if (!selectedItem) return;
-    try {
-      const file = new FileSystem.File(selectedItem.uri);
-      const size = file.size ?? 0;
-      if (size > 20 * 1024 * 1024) {
-        Alert.alert('File too large', 'Compress to ZIP only supports files under 20 MB. Large files cannot be compressed on mobile due to memory limits.');
-        return;
-      }
-    } catch {}
-    closeSheet();
-    setZipping(true);
-    try {
-      const zip = new JSZip();
-      const srcPath = toPath(selectedItem.uri);
-      if (selectedItem.isDirectory) {
-        const addFolder = async (dirPath: string, zipFolder: JSZip) => {
-          const items = await RNFS.readDir(dirPath);
-          for (const item of items) {
-            if (item.isDirectory()) {
-              await addFolder(item.path, zipFolder.folder(item.name)!);
-            } else {
-              const content = await RNFS.readFile(item.path, 'base64');
-              zipFolder.file(item.name, content, { base64: true });
-            }
-          }
-        };
-        await addFolder(srcPath, zip.folder(selectedItem.name)!);
-      } else {
-        const content = await RNFS.readFile(srcPath, 'base64');
-        zip.file(selectedItem.name, content, { base64: true });
-      }
-      const zipName = selectedItem.name.replace(/\.[^/.]+$/, '') + '.zip';
-      const parentPath = srcPath.endsWith('/') ? srcPath.slice(0, -1) : srcPath;
-      const destDir = parentPath.substring(0, parentPath.lastIndexOf('/') + 1);
-      const destPath = destDir + zipName;
-      const zipContent = await zip.generateAsync({ type: 'base64' });
-      await RNFS.writeFile(destPath, zipContent, 'base64');
-      await loadDirectory(currentPath);
-      Alert.alert('Zipped', `"${zipName}" created successfully.`);
-    } catch (e) {
-      console.log('Zip error:', e);
-      Alert.alert('Error', 'Could not create zip file.');
-    } finally {
-      setZipping(false);
-    }
-  }
-
   async function handleUnzip() {
     if (!selectedItem) return;
     closeSheet();
@@ -407,8 +359,8 @@ export default function BrowseScreen() {
   }
 
   async function handleMultiZip() {
-    if (selectedUris.size === 0) return;
-    const selectedFiles = items.filter(item => selectedUris.has(item.uri) && !item.isDirectory);
+    if (selectedItemsMap.size === 0) return;
+    const selectedFiles = Array.from(selectedItemsMap.values());
     let totalSize = 0;
     for (const file of selectedFiles) {
       try {
@@ -422,12 +374,23 @@ export default function BrowseScreen() {
     }
     setSelectMode(false);
     setSelectedUris(new Set());
+    setSelectedItemsMap(new Map());
     setZipping(true);
     try {
       const zip = new JSZip();
+      const nameCount: Record<string, number> = {};
+      for (const file of selectedFiles) {
+        nameCount[file.name] = (nameCount[file.name] ?? 0) + 1;
+      }
       for (const file of selectedFiles) {
         const content = await RNFS.readFile(toPath(file.uri), 'base64');
-        zip.file(file.name, content, { base64: true });
+        let zipPath = file.name;
+        if (nameCount[file.name] > 1) {
+          const parts = toPath(file.uri).replace('/storage/emulated/0/', '').split('/');
+          const folder = parts.length > 1 ? parts[parts.length - 2] : 'File';
+          zipPath = `${folder}/${file.name}`;
+        }
+        zip.file(zipPath, content, { base64: true });
       }
       const zipName = `AskFiles_${Date.now()}.zip`;
       const destPath = toPath(currentPath) + zipName;
@@ -566,11 +529,15 @@ export default function BrowseScreen() {
       <TouchableOpacity
         style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
         onPress={() => {
-          if (selectMode) {
+          if (selectMode && item.isDirectory) {
+            navigateTo(item);
+          } else if (selectMode) {
             const newSet = new Set(selectedUris);
-            if (isSelected) newSet.delete(item.uri);
-            else if (!item.isDirectory && !item.name.toLowerCase().endsWith('.zip')) newSet.add(item.uri);
+            const newMap = new Map(selectedItemsMap);
+            if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
+            else if (!item.name.toLowerCase().endsWith('.zip')) { newSet.add(item.uri); newMap.set(item.uri, item); }
             setSelectedUris(newSet);
+            setSelectedItemsMap(newMap);
           } else {
             navigateTo(item);
           }
@@ -630,7 +597,7 @@ export default function BrowseScreen() {
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity
               style={styles.backBtn}
-              onPress={() => { setSelectMode(true); setSelectedUris(new Set()); }}
+              onPress={() => { setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }}
             >
               <Ionicons name="checkmark-circle-outline" size={22} color={selectMode ? colors.blue : colors.textSecondary} />
             </TouchableOpacity>
@@ -662,7 +629,7 @@ export default function BrowseScreen() {
         )}
         {selectMode && (
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 }}>
-            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
+            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
             <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected</Text>
@@ -819,12 +786,6 @@ export default function BrowseScreen() {
                       <TouchableOpacity style={styles.sheetAction} onPress={handleUnzip}>
                         <Ionicons name="archive-outline" size={20} color={colors.green} />
                         <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract ZIP</Text>
-                      </TouchableOpacity>
-                    )}
-                    {!selectedItem?.isDirectory && !selectedItem?.name.toLowerCase().endsWith('.zip') && (
-                      <TouchableOpacity style={styles.sheetAction} onPress={handleZip}>
-                        <Ionicons name="archive-outline" size={20} color={colors.green} />
-                        <Text style={[styles.sheetActionText, { color: colors.green }]}>Compress to ZIP</Text>
                       </TouchableOpacity>
                     )}
                     <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
