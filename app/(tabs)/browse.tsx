@@ -76,6 +76,8 @@ export default function BrowseScreen() {
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const [zipping, setZipping] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
@@ -404,6 +406,43 @@ export default function BrowseScreen() {
     }
   }
 
+  async function handleMultiZip() {
+    if (selectedUris.size === 0) return;
+    const selectedFiles = items.filter(item => selectedUris.has(item.uri) && !item.isDirectory);
+    let totalSize = 0;
+    for (const file of selectedFiles) {
+      try {
+        const f = new FileSystem.File(file.uri);
+        totalSize += f.size ?? 0;
+      } catch {}
+    }
+    if (totalSize > 20 * 1024 * 1024) {
+      Alert.alert('Too large', `Selected files total ${formatSize(totalSize)} which exceeds the 20 MB limit. Deselect some files and try again.`);
+      return;
+    }
+    setSelectMode(false);
+    setSelectedUris(new Set());
+    setZipping(true);
+    try {
+      const zip = new JSZip();
+      for (const file of selectedFiles) {
+        const content = await RNFS.readFile(toPath(file.uri), 'base64');
+        zip.file(file.name, content, { base64: true });
+      }
+      const zipName = `AskFiles_${Date.now()}.zip`;
+      const destPath = toPath(currentPath) + zipName;
+      const zipContent = await zip.generateAsync({ type: 'base64' });
+      await RNFS.writeFile(destPath, zipContent, 'base64');
+      await loadDirectory(currentPath);
+      Alert.alert('Zipped', `"${zipName}" created with ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}.`);
+    } catch (e) {
+      console.log('Multi-zip error:', e);
+      Alert.alert('Error', 'Could not create zip file.');
+    } finally {
+      setZipping(false);
+    }
+  }
+
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
@@ -522,16 +561,35 @@ export default function BrowseScreen() {
   function renderItem({ item }: { item: FileItem }) {
     const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
     const ext = item.isDirectory ? null : (item.name.split('.').pop()?.toUpperCase() ?? '?');
+    const isSelected = selectedUris.has(item.uri);
     return (
       <TouchableOpacity
-        style={[styles.row, { borderBottomColor: colors.border }]}
-        onPress={() => navigateTo(item)}
-        onLongPress={() => openSheet(item)}
+        style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
+        onPress={() => {
+          if (selectMode) {
+            const newSet = new Set(selectedUris);
+            if (isSelected) newSet.delete(item.uri);
+            else if (!item.isDirectory) newSet.add(item.uri);
+            setSelectedUris(newSet);
+          } else {
+            navigateTo(item);
+          }
+        }}
+        onLongPress={() => {
+          if (!selectMode && !item.isDirectory) {
+            setSelectMode(true);
+            setSelectedUris(new Set([item.uri]));
+          } else {
+            openSheet(item);
+          }
+        }}
         delayLongPress={400}
         activeOpacity={0.6}
       >
         <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-          {item.isDirectory ? (
+          {selectMode && !item.isDirectory ? (
+            <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
+          ) : item.isDirectory ? (
             <Ionicons name="folder" size={22} color={color} />
           ) : isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
@@ -543,12 +601,14 @@ export default function BrowseScreen() {
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
         </View>
-        {item.isDirectory ? (
-          <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-        ) : (
-          <TouchableOpacity style={styles.dotsBtn} onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
-          </TouchableOpacity>
+        {!selectMode && (
+          item.isDirectory ? (
+            <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+          ) : (
+            <TouchableOpacity style={styles.dotsBtn} onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          )
         )}
       </TouchableOpacity>
     );
@@ -597,6 +657,14 @@ export default function BrowseScreen() {
             <TouchableOpacity onPress={() => { setSearchActive(false); setSearchQuery(''); }}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
+          </View>
+        )}
+        {selectMode && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 }}>
+            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected</Text>
           </View>
         )}
         <View style={styles.pathRow}>
@@ -848,6 +916,17 @@ export default function BrowseScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+      {selectMode && selectedUris.size > 0 && (
+        <View style={{ flexDirection: 'row', padding: 16, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background }}>
+          <TouchableOpacity
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue, borderRadius: 12, paddingVertical: 14 }}
+            onPress={handleMultiZip}
+          >
+            <Ionicons name="archive-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Zip {selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
