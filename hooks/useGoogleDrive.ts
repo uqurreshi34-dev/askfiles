@@ -215,6 +215,8 @@ export function useGoogleDrive() {
 
       let restored = 0;
       for (const driveFile of driveFiles) {
+        // Skip folders
+        if (driveFile.mimeType === 'application/vnd.google-apps.folder') continue;
         const destUri = vaultDir + driveFile.name;
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;

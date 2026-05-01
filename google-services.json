@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "374487697947",
+    "project_id": "askfiles-2713d",
+    "storage_bucket": "askfiles-2713d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:374487697947:android:ec4d95b95a826bdbc046be",
+        "android_client_info": {
+          "package_name": "com.askfiles.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvRbRF4ChM3pnjMCcCxnxIF5q06XD8jO8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

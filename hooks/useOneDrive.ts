@@ -232,6 +232,8 @@ export function useOneDrive() {
 
       let restored = 0;
       for (const driveFile of oneDriveFiles) {
+         // Skip folders
+        if (driveFile.folder) continue;
         const destUri = vaultDir + driveFile.name;
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
