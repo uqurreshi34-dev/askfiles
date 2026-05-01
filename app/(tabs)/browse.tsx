@@ -21,6 +21,7 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 import RNFS from 'react-native-fs';
 import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
+import ZipIcon from '@/components/ZipIcon';
 
 interface FileItem {
   name: string;
@@ -595,11 +596,21 @@ export default function BrowseScreen() {
             {breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse'}
           </Text>
           <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => { setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }}
+          <TouchableOpacity
+              style={[styles.backBtn, { flexDirection: 'row', alignItems: 'center', width: 'auto', paddingHorizontal: 8 }]}
+              onPress={() => { 
+                if (selectMode) {
+                  setSelectMode(false);
+                  setSelectedUris(new Set());
+                  setSelectedItemsMap(new Map());
+                } else {
+                  setSelectMode(true);
+                  setSelectedUris(new Set());
+                  setSelectedItemsMap(new Map());
+                }
+              }}
             >
-              <Ionicons name="checkmark-circle-outline" size={22} color={selectMode ? colors.blue : colors.textSecondary} />
+              <ZipIcon size={22} color={selectMode ? colors.blue : colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.backBtn}
