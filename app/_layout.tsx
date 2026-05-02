@@ -2,6 +2,9 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { isAppLockEnabled } from '@/hooks/usePin';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const router = useRouter();
@@ -11,13 +14,10 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    async function checkLock() {
-      const enabled = await isAppLockEnabled();
-      if (enabled) {
-        router.replace('/lockscreen');
-      }
-    }
-    checkLock();
+    isAppLockEnabled().then(enabled => {
+      if (enabled) router.replace('/lockscreen');
+      SplashScreen.hideAsync();
+    });
   }, []);
 
   return (
