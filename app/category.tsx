@@ -263,7 +263,6 @@ export default function CategoryScreen() {
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
-      console.log('Paste error:', e);
       Alert.alert('Error', `Could not ${pickerMode} file.`);
     }
   }
@@ -294,7 +293,6 @@ export default function CategoryScreen() {
       setItems(prev => prev.map(f => f.uri === selectedItem.uri ? { ...f, name: renameValue.trim(), uri: newUri } : f));
       closeSheet();
     } catch (e: any) {
-      console.log('Rename error:', e);
       Alert.alert('Rename failed', 'Could not rename this file.');
     }
   }
@@ -391,7 +389,6 @@ export default function CategoryScreen() {
         setItems(unique.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')));
       }
     } catch (e) {
-      console.log('Category load error:', e);
     } finally {
       setLoading(false);
     }
@@ -409,7 +406,7 @@ export default function CategoryScreen() {
         flags: 1,
         type: getMimeType(item.name),
       });
-    } catch (e) { console.log('Open error:', e); }
+    } catch (e) {}
   }
 
   async function handleMoveToVault() {
@@ -461,7 +458,7 @@ export default function CategoryScreen() {
       } else {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
-    } catch (e) { console.log('Share error:', e); }
+    } catch (e) {}
   }
 
   async function handleMultiShare() {
@@ -493,7 +490,7 @@ export default function CategoryScreen() {
       }
       const mimeType = files.length === 1 ? getMimeType(files[0].name) : '*/*';
       await shareFiles(paths, mimeType);
-    } catch (e) { console.log('Multi share error:', e); }
+    } catch (e) {}
     finally { sharingRef.current = false; setSharing(false); }
   }
 

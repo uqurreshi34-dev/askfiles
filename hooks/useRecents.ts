@@ -19,7 +19,6 @@ export async function addRecent(file: RecentFile): Promise<void> {
     const updated = [file, ...filtered].slice(0, MAX_RECENTS);
     await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.log('addRecent error:', e);
   }
 }
 
@@ -54,7 +53,6 @@ export function useRecents() {
 
       setRecents(valid);
     } catch (e) {
-      console.log('useRecents error:', e);
     } finally {
       setLoading(false);
     }

@@ -97,7 +97,6 @@ export function useOneDrive() {
       const lastBackupVal = await AsyncStorage.getItem(LAST_BACKUP_KEY);
       setLastBackup(lastBackupVal);
     } catch (e) {
-      console.log('Token exchange error:', e);
       setError('Microsoft sign-in failed. Try again.');
     }
   }
@@ -208,7 +207,6 @@ export function useOneDrive() {
       setLastBackup(now);
       return true;
     } catch (e) {
-      console.log('Backup error:', e instanceof Error ? e.message : String(e));
       setError('Backup failed. Check your connection and try again.');
       return false;
     } finally {
@@ -254,7 +252,6 @@ export function useOneDrive() {
       }
       return restored;
     } catch (e) {
-      console.log('Restore error:', e instanceof Error ? e.message : String(e));
       setError('Restore failed. Check your connection and try again.');
       return 0;
     } finally {

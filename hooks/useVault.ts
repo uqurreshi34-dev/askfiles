@@ -119,7 +119,6 @@ export function useVault() {
       await loadFiles();
       return true;
     } catch (e) {
-      console.log('removeFromVault error:', e);
       return false;
     }
   }

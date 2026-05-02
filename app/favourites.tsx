@@ -178,7 +178,6 @@ export default function FavouritesScreen() {
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
-      console.log('Paste error:', e);
       Alert.alert('Error', `Could not ${pickerMode} file.`);
     }
   }
@@ -212,7 +211,6 @@ export default function FavouritesScreen() {
       await addFavourite({ name: renameValue.trim(), uri: newUri });
       closeSheet();
     } catch (e: any) {
-      console.log('Rename error:', e);
       Alert.alert('Rename failed', 'Could not rename this file.');
     }
   }
@@ -226,7 +224,7 @@ export default function FavouritesScreen() {
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
         data: contentUri, flags: 1, type: getMimeType(item.name),
       });
-    } catch (e) { console.log('Open error:', e); }
+    } catch (e) {}
   }
 
   async function handleShare() {
@@ -249,7 +247,7 @@ export default function FavouritesScreen() {
       } else {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
-    } catch (e) { console.log('Share error:', e); }
+    } catch (e) {}
   }
 
   async function handleMoveToVault() {

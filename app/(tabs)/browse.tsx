@@ -206,7 +206,6 @@ export default function BrowseScreen() {
         type: getMimeType(item.name),
       });
     } catch (e) {
-      console.log('Open error:', e);
     }
   }
 
@@ -250,7 +249,6 @@ export default function BrowseScreen() {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
     } catch (e) {
-      console.log('Share error:', e);
     }
   }
 
@@ -297,7 +295,6 @@ export default function BrowseScreen() {
       try {
         await IntentLauncher.startActivityAsync('android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION');
       } catch (e) {
-        console.log('Permission intent error:', e);
       }
     }
   }
@@ -330,7 +327,6 @@ export default function BrowseScreen() {
               closeSheet();
               await loadDirectory(currentPath);
             } catch (e) {
-              console.log('Delete error:', e);
               Alert.alert(
                 'Permission needed',
                 'AskFiles needs full storage access to delete files. Tap "Open Settings", enable "Allow access to manage all files", then try again.',
@@ -374,7 +370,6 @@ export default function BrowseScreen() {
       await loadDirectory(currentPath);
       Alert.alert('Extracted', `Files extracted to "${folderName}" folder.`);
     } catch (e) {
-      console.log('Unzip error:', e);
       Alert.alert('Error', 'Could not extract zip file.');
     } finally {
       setZipping(false);
@@ -422,7 +417,6 @@ export default function BrowseScreen() {
       await loadDirectory(currentPath);
       Alert.alert('Zipped', `"${zipName}" created with ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}.`);
     } catch (e) {
-      console.log('Multi-zip error:', e);
       Alert.alert('Error', 'Could not create zip file.');
     } finally {
       setZipping(false);
@@ -444,7 +438,7 @@ export default function BrowseScreen() {
         .filter(f => !f.name.startsWith('.'))
         .sort((a, b) => a.name.localeCompare(b.name));
       setPickerItems(folders);
-    } catch (e) { console.log('loadPickerDir error:', e); setPickerItems([]); }
+    } catch (e) {}
     finally { setPickerLoading(false); }
   }
 
@@ -501,7 +495,6 @@ export default function BrowseScreen() {
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
-      console.log('Paste error:', e);
       Alert.alert('Error', `Could not ${pickerMode} file.`);
     }
   }
@@ -528,11 +521,10 @@ export default function BrowseScreen() {
         const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
         const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(selectedItem.uri));
         if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-      } catch (e) { console.log('Ghost delete error:', e); }
+      } catch (e) {}
       closeSheet();
       await loadDirectory(currentPath);
     } catch (e: any) {
-      console.log('Rename error:', e);
       Alert.alert(
         'Rename failed',
         'Could not rename this file. Make sure "All files access" is enabled in Settings.',

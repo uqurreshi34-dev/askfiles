@@ -38,7 +38,6 @@ export function usePro() {
       const info = await Purchases.getCustomerInfo();
       setIsPro(typeof info.entitlements.active['pro'] !== 'undefined');
     } catch (e) {
-      console.log('Entitlement check error:', e);
     } finally {
       setLoading(false);
     }
@@ -52,7 +51,6 @@ export function usePro() {
       const lifetime = current.availablePackages.find(p => p.identifier === '$rc_lifetime') ?? null;
       setPackages({ lifetime });
     } catch (e) {
-      console.log('Offerings error:', e);
     }
   }
 

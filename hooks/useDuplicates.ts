@@ -123,7 +123,6 @@ export function useDuplicates() {
       setGroups(dupGroups);
       setTotalWasted(wasted);
     } catch (e) {
-      console.log('Scan error:', e);
     } finally {
       setScanning(false);
       setScanned(true);

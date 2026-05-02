@@ -188,7 +188,6 @@ export function useGoogleDrive() {
       setLastBackup(now);
       return true;
     } catch (e) {
-      console.log('Backup error:', e instanceof Error ? e.message : String(e));
       setError('Backup failed. Check your connection and try again.');
       return false;
     } finally {
@@ -240,7 +239,6 @@ export function useGoogleDrive() {
       }
       return restored;
     } catch (e) {
-      console.log('Restore error:', e instanceof Error ? e.message : String(e));
       setError('Restore failed. Check your connection and try again.');
       return 0;
     } finally {

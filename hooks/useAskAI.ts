@@ -36,7 +36,6 @@ export function useAskAI() {
 
       setAnswer(data.answer ?? 'No answer received.');
     } catch (e) {
-      console.log('GROQ ERROR:', e);
       setAnswer('Could not reach AI. Check your connection and try again.');
     } finally {
       setThinking(false);
