@@ -37,6 +37,8 @@ export interface MediaContext {
   recentImages: string[];
   recentVideos: string[];
   screenshotCount: number;
+  allDocuments: string[];
+  allDownloads: string[];
 }
 
 interface StorageCache {
@@ -66,7 +68,7 @@ const cache: StorageCache = {
     dcim: '0 MB',
     other: '0 MB',
   },
-  mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0 },
+  mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0, allDocuments: [], allDownloads: [] },
   largestFiles: {
     images: [] as { name: string; size: string; folder: string }[],
     videos: [] as { name: string; size: string; folder: string }[],
@@ -205,6 +207,33 @@ async function getLargestFiles(
     .map(f => ({ name: f.name, size: formatBytes(f.size), folder: f.folder }));
 }
 
+async function getAllFilenames(paths: string[], extensions?: string[]): Promise<string[]> {
+  const names: string[] = [];
+  
+  async function scanDir(rawPath: string) {
+    try {
+      const contents = await RNFS.readDir(rawPath);
+      for (const item of contents) {
+        if (item.name.startsWith('.')) continue;
+        if (item.isDirectory()) {
+          await scanDir(item.path);
+        } else if (item.isFile()) {
+          if (extensions) {
+            const lower = item.name.toLowerCase();
+            if (!extensions.some(ext => lower.endsWith(ext))) continue;
+          }
+          names.push(item.name);
+        }
+      }
+    } catch {}
+  }
+
+  for (const path of paths) {
+    await scanDir(path.replace('file://', '').replace(/\/$/, ''));
+  }
+  return names;
+}
+
 async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.Asset[]> {
   const assets: MediaLibrary.Asset[] = [];
   let after: string | undefined = undefined;
@@ -286,6 +315,8 @@ async function doLoad(): Promise<void> {
     recentImages: allImages.map(a => a.filename),
     recentVideos: allVideos.map(a => a.filename),
     screenshotCount,
+    allDocuments: [],
+    allDownloads: [],
   };
 
   // Dynamically find non-standard root folders (e.g. Samsung My Files)
@@ -376,6 +407,28 @@ async function doLoad(): Promise<void> {
     downloads: largestDownloads,
     overall: largestOverall,
   };
+
+  const extraDocPaths: string[] = [];
+  try {
+    const rootItems = await RNFS.readDir('/storage/emulated/0/');
+    for (const item of rootItems) {
+      if (!item.isDirectory() || item.name.startsWith('.') || STANDARD_ROOT_DIRS.includes(item.name)) continue;
+      extraDocPaths.push(item.path);
+    }
+  } catch {}
+
+  const [allDocNames, allDlNames] = await Promise.all([
+    getAllFilenames([
+      '/storage/emulated/0/Documents/',
+      '/storage/emulated/0/Download/',
+      '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
+      ...extraDocPaths,
+    ], DOCUMENT_EXTENSIONS),
+    getAllFilenames(['/storage/emulated/0/Download/']),
+  ]);
+
+  cache.mediaContext.allDocuments = allDocNames;
+  cache.mediaContext.allDownloads = allDlNames;
 
   cache.loaded = true;
 }

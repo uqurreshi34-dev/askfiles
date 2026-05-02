@@ -76,6 +76,8 @@ function buildContext(
 ): string {
   const imageNames = mediaContext.recentImages.join(', ') || 'none';
   const videoNames = mediaContext.recentVideos.join(', ') || 'none';
+  const docNames = mediaContext.allDocuments?.join(', ') || 'none';
+  const dlNames = mediaContext.allDownloads?.join(', ') || 'none';
   const freeSpace = storageInfo?.freeBytes ? formatBytes(storageInfo.freeBytes) : 'unknown';
 
   const imageCounts: Record<string, number> = {};
@@ -99,6 +101,8 @@ Screenshots: exactly ${mediaContext.screenshotCount} files (do not count manuall
 Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}, Music ${folderSizes.music}.
 All image filenames sorted newest first: ${imageNames}.
 All video filenames sorted newest first: ${videoNames}.
+All document filenames: ${mediaContext.allDocuments?.join(', ') || 'none'}.
+All download filenames: ${mediaContext.allDownloads?.join(', ') || 'none'}.
 Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Do not recount files from the filename list — always use the exact counts provided above.
 Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
@@ -288,7 +292,6 @@ export default function SearchScreen() {
           Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
-      console.log('Paste error:', e);
       Alert.alert('Error', `Could not ${pickerMode} file.`);
     }
   }
@@ -327,7 +330,6 @@ export default function SearchScreen() {
       }
       closeSheet();
     } catch (e: any) {
-      console.log('Rename error:', e);
       Alert.alert('Rename failed', 'Could not rename this file.');
     }
   }
@@ -352,7 +354,7 @@ export default function SearchScreen() {
       } else {
         await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
       }
-    } catch (e) { console.log('Share error:', e); }
+    } catch (e) {}
   }
 
   async function handleMoveToVault() {
@@ -387,7 +389,7 @@ export default function SearchScreen() {
           if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
           else { removeResult(selectedItem.uri); }
           closeSheet();
-        } catch (e) { console.log('Delete error:', e); }
+        } catch (e) {}
       }},
     ]);
   }
@@ -426,7 +428,7 @@ export default function SearchScreen() {
           return a.name.localeCompare(b.name);
         });
       setFolderStack(prev => [...prev, { name: item.name, uri: item.uri, items }]);
-    } catch (e) { console.log('Folder open error:', e); }
+    } catch (e) {}
     finally { setFolderLoading(false); }
   }
 
@@ -466,7 +468,7 @@ export default function SearchScreen() {
         flags: 1,
         type: getMimeType(name),
       });
-    } catch (e) { console.log('Open error:', e); }
+    } catch (e) {}
   }
 
   function handleSuggestion(s: string) {
