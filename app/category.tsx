@@ -17,6 +17,7 @@ import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { shareFiles } from '@/modules/share-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -141,114 +142,6 @@ const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
 const GRID_COLS = 3;
 const GRID_ITEM_SIZE = (SCREEN_WIDTH - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
 
-interface MediaItemProps {
-  item: FileItem;
-  isVid: boolean;
-  config: { title: string; icon: string; color: string };
-  colors: any;
-  openSheet: (item: FileItem) => void;
-  openItem: (item: FileItem) => void;
-}
-
-const ListItem = React.memo(({ item, isVid, config, colors, openSheet, openItem }: MediaItemProps) => {
-  const isImg = isImageFile(item.name);
-  const [thumb, setThumb] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isVid && !isImg) {
-      (async () => {
-        try {
-          const result = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 5010 });
-          setThumb(result.uri);
-        } catch {}
-      })();
-    }
-  }, [item.uri]);
-
-  const thumbUri = isImg ? item.uri : thumb;
-  const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
-
-  return (
-    <TouchableOpacity
-      style={[styles.row, { borderBottomColor: colors.border }]}
-      onPress={() => openItem(item)}
-      onLongPress={() => openSheet(item)}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.icon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
-        {thumbUri ? (
-          <Image source={{ uri: thumbUri }} style={styles.thumb} resizeMode="cover" />
-        ) : (
-          <Text style={[styles.ext, { color: config.color }]}>{ext.slice(0, 4)}</Text>
-        )}
-      </View>
-      <View style={styles.info}>
-        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.meta, { color: colors.textMuted }]}>
-          {item.size ? formatSize(item.size) : ''}
-          {item.size && item.date ? ' · ' : ''}
-          {item.date ? timeAgo(item.date) : ''}
-        </Text>
-      </View>
-      <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
-});
-
-const GridItem = React.memo(({ item, isVid, config, openSheet }: MediaItemProps) => {
-  const isImg = isImageFile(item.name);
-  const [thumb, setThumb] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isVid && !isImg) {
-      (async () => {
-        try {
-          const result = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 5010 });
-          setThumb(result.uri);
-        } catch {}
-      })();
-    }
-  }, [item.uri]);
-
-  const thumbUri = isImg ? item.uri : thumb;
-
-  return (
-    <TouchableOpacity
-      style={[styles.gridItem, { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE }]}
-      onPress={async () => {
-        try {
-          const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
-          const srcPath = item.uri.replace('file://', '');
-          await RNFS.copyFile(srcPath, cachePath);
-          const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-          await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-            data: contentUri,
-            flags: 1,
-            type: getMimeType(item.name),
-          });
-        } catch (e) { console.log('Open error:', e); }
-      }}
-      onLongPress={() => openSheet(item)}
-      activeOpacity={0.8}
-    >
-      {thumbUri ? (
-        <Image source={{ uri: thumbUri }} style={styles.gridThumb} resizeMode="cover" />
-      ) : (
-        <View style={[styles.gridThumb, { backgroundColor: config.color + '22', alignItems: 'center', justifyContent: 'center' }]}>
-          <Ionicons name="videocam" size={32} color={config.color} />
-        </View>
-      )}
-      {isVid && (
-        <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
-          <Ionicons name="play" size={10} color="#fff" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-});
-
 export default function CategoryScreen() {
   const { colors } = useTheme();
   const { category } = useLocalSearchParams<{ category: Category }>();
@@ -276,6 +169,7 @@ export default function CategoryScreen() {
       },
     })
   ).current;
+  const sharingRef = useRef(false);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -292,6 +186,10 @@ export default function CategoryScreen() {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [gridView, setGridView] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
+  const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
+  const [sharing, setSharing] = useState(false);
   const isMediaCategory = category === 'images' || category === 'videos';
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
@@ -511,9 +409,7 @@ export default function CategoryScreen() {
         flags: 1,
         type: getMimeType(item.name),
       });
-    } catch (e) {
-      console.log('Open error:', e);
-    }
+    } catch (e) { console.log('Open error:', e); }
   }
 
   async function handleMoveToVault() {
@@ -568,6 +464,74 @@ export default function CategoryScreen() {
     } catch (e) { console.log('Share error:', e); }
   }
 
+  async function handleMultiShare() {
+    if (sharingRef.current) return;
+    sharingRef.current = true;
+    setSharing(true);
+    const files = Array.from(selectedItemsMap.values());
+    try {
+      const paths: string[] = [];
+      for (const file of files) {
+        const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+        await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
+        paths.push(cachePath);
+      }
+      const mimeType = files.length === 1 ? getMimeType(files[0].name) : '*/*';
+      await shareFiles(paths, mimeType);
+    } catch (e) { console.log('Multi share error:', e); }
+    finally { sharingRef.current = false; setSharing(false); }
+  }
+
+  async function handleMultiVault() {
+    if (!isPro) {
+      Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+      ]);
+      return;
+    }
+    const files = Array.from(selectedItemsMap.values());
+    Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move', onPress: async () => {
+        for (const file of files) { await addToVault(file.uri, file.name); }
+        setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
+        setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+      }},
+    ]);
+  }
+  
+  async function handleMultiDelete() {
+    const files = Array.from(selectedItemsMap.values());
+    Alert.alert('Delete', `Delete ${files.length} file${files.length !== 1 ? 's' : ''}? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        for (const file of files) {
+          try {
+            const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+            const match = assets.assets.find(a => file.uri.includes(a.filename));
+            if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
+            else { const f = new FileSystem.File(file.uri); f.delete(); }
+          } catch {}
+        }
+        setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
+        setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+      }},
+    ]);
+  }
+  
+  async function handleMultiInfo() {
+    const files = Array.from(selectedItemsMap.values());
+    let totalSize = 0;
+    for (const file of files) {
+      try {
+        const f = new FileSystem.File(file.uri);
+        totalSize += f.size ?? 0;
+      } catch {}
+    }
+    Alert.alert(`${files.length} file${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
+  }
+
   const tabs = category === 'documents' ? DOC_TABS : category === 'downloads' ? DL_TABS : null;
 
   const filteredItems = (tabs && activeTab !== 'All'
@@ -586,20 +550,35 @@ export default function CategoryScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {isMediaCategory && (
-            <TouchableOpacity onPress={() => setGridView(v => !v)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name={gridView ? 'list-outline' : 'grid-outline'} size={22} color={colors.textSecondary} />
+        {selectMode ? (
+          <>
+            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={styles.backBtn}>
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={() => setShowSortSheet(true)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
-            <Ionicons name="swap-vertical-outline" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{selectedUris.size} selected</Text>
+            <View style={{ width: 40 }} />
+          </>
+        ) : (
+          <>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity onPress={() => { setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle-outline" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+              {isMediaCategory && (
+                <TouchableOpacity onPress={() => setGridView(v => !v)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name={gridView ? 'list-outline' : 'grid-outline'} size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setShowSortSheet(true)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="swap-vertical-outline" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
       {tabs && (
         <View style={styles.tabsRow}>
@@ -630,8 +609,96 @@ export default function CategoryScreen() {
           key={isMediaCategory && gridView ? 'grid' : 'list'}
           numColumns={isMediaCategory && gridView ? 3 : 1}
           renderItem={isMediaCategory && gridView
-            ? ({ item }) => <GridItem item={item} isVid={category === 'videos'} config={config} colors={colors} openSheet={openSheet} openItem={openItem} />
-            : ({ item }) => <ListItem item={item} isVid={category === 'videos'} config={config} colors={colors} openSheet={openSheet} openItem={openItem} />
+            ? ({ item }) => {
+                const isSelected = selectedUris.has(item.uri);
+                const isImg = isImageFile(item.name);
+                const isVid = category === 'videos';
+                return (
+                  <TouchableOpacity
+                    style={[styles.gridItem, { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE, borderWidth: isSelected ? 3 : 0, borderColor: colors.blue }]}
+                    onPress={() => {
+                      if (selectMode) {
+                        const newSet = new Set(selectedUris);
+                        const newMap = new Map(selectedItemsMap);
+                        if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
+                        else { newSet.add(item.uri); newMap.set(item.uri, item); }
+                        setSelectedUris(newSet); setSelectedItemsMap(newMap);
+                      } else { openItem(item); }
+                    }}
+                    onLongPress={() => !selectMode && openSheet(item)}
+                    activeOpacity={0.8}
+                  >
+                    {isImg ? (
+                      <Image source={{ uri: item.uri }} style={styles.gridThumb} resizeMode="cover" />
+                    ) : isVid ? (
+                      <VideoThumb uri={item.uri} style={styles.gridThumb} />
+                    ) : (
+                      <View style={[styles.gridThumb, { backgroundColor: config.color + '22', alignItems: 'center', justifyContent: 'center' }]}>
+                        <Ionicons name="videocam" size={32} color={config.color} />
+                      </View>
+                    )}
+                    {isVid && !selectMode && (
+                      <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
+                        <Ionicons name="play" size={10} color="#fff" />
+                      </View>
+                    )}
+                    {selectMode && isSelected && (
+                      <View style={{ position: 'absolute', top: 4, right: 4, backgroundColor: colors.blue, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="checkmark" size={12} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              }
+            : ({ item }) => {
+                const isSelected = selectedUris.has(item.uri);
+                const isImg = isImageFile(item.name);
+                const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
+                return (
+                  <TouchableOpacity
+                    style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
+                    onPress={() => {
+                      if (selectMode) {
+                        const newSet = new Set(selectedUris);
+                        const newMap = new Map(selectedItemsMap);
+                        if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
+                        else { newSet.add(item.uri); newMap.set(item.uri, item); }
+                        setSelectedUris(newSet); setSelectedItemsMap(newMap);
+                      } else { openItem(item); }
+                    }}
+                    onLongPress={() => !selectMode && openSheet(item)}
+                    activeOpacity={0.7}
+                  >
+                    {selectMode && (
+                      <View style={{ marginRight: 12 }}>
+                        <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
+                      </View>
+                    )}
+                    <View style={[styles.icon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
+                      {isImg ? (
+                        <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                      ) : isVideoFile(item.name) ? (
+                        <VideoThumb uri={item.uri} style={styles.thumb} />
+                      ) : (
+                        <Text style={[styles.ext, { color: config.color }]}>{ext.slice(0, 4)}</Text>
+                      )}
+                    </View>
+                    <View style={styles.info}>
+                      <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                      <Text style={[styles.meta, { color: colors.textMuted }]}>
+                        {item.size ? formatSize(item.size) : ''}
+                        {item.size && item.date ? ' · ' : ''}
+                        {item.date ? timeAgo(item.date) : ''}
+                      </Text>
+                    </View>
+                    {!selectMode && (
+                      <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                );
+              }
           }
           contentContainerStyle={isMediaCategory && gridView ? styles.gridContainer : styles.list}
           columnWrapperStyle={isMediaCategory && gridView ? styles.gridRow : undefined}
@@ -840,6 +907,39 @@ export default function CategoryScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {selectMode && selectedUris.size > 0 && (
+        <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
+          <TouchableOpacity
+            onPress={handleMultiShare}
+            disabled={sharing}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
+            <Text style={{ fontSize: 11, color: sharing ? colors.textMuted : '#fff', marginTop: 2 }}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiVault}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
+            <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>Vault</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiInfo}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+            <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Info</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiDelete}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
+            <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

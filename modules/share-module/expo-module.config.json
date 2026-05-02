@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ShareModule"]
+  },
+  "android": {
+    "modules": ["com.askfiles.mobile.sharemodule.ShareModule"]
+  }
+}
