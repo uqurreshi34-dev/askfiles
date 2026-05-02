@@ -24,6 +24,7 @@ import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
 import ZipIcon from '@/components/ZipIcon';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { shareFiles } from '@/modules/share-module';
 
 interface FileItem {
   name: string;
@@ -106,6 +107,8 @@ export default function BrowseScreen() {
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
   const [pickerItems, setPickerItems] = useState<FileItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
@@ -423,6 +426,96 @@ export default function BrowseScreen() {
     }
   }
 
+  async function handleMultiShare() {
+    if (sharingRef.current) return;
+    sharingRef.current = true;
+    setSharing(true);
+    const files = Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory);
+    try {
+      const paths: string[] = [];
+      for (const file of files) {
+        const isPng = file.name.toLowerCase().endsWith('.png');
+        if (isPng) {
+          const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
+          const cacheName = file.name.replace(/\.png$/i, '.jpg');
+          const cacheUri = cacheDir + cacheName;
+          const cacheFile = new FileSystem.File(cacheUri);
+          if (cacheFile.exists) cacheFile.delete();
+          const result = await ImageManipulator.manipulate(file.uri)
+            .renderAsync()
+            .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
+          const convertedFile = new FileSystem.File(result.uri);
+          convertedFile.copy(cacheFile);
+          paths.push(cacheUri.replace('file://', ''));
+        } else {
+          const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+          await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
+          paths.push(cachePath);
+        }
+      }
+      const mimeType = files.length === 1 ? getMimeType(files[0].name) : '*/*';
+      await shareFiles(paths, mimeType);
+    } catch {}
+    finally { sharingRef.current = false; setSharing(false); }
+  }
+  
+  async function handleMultiVault() {
+    if (!isPro) {
+      Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+      ]);
+      return;
+    }
+    const files = Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory);
+    Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move', onPress: async () => {
+        for (const file of files) { await addToVault(file.uri, file.name); }
+        setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+        await loadDirectory(currentPath);
+      }},
+    ]);
+  }
+  
+  async function handleMultiDelete() {
+    const files = Array.from(selectedItemsMap.values());
+    Alert.alert('Delete', `Delete ${files.length} item${files.length !== 1 ? 's' : ''}? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        for (const file of files) {
+          try {
+            if (file.isDirectory) {
+              const dir = new FileSystem.Directory(file.uri);
+              dir.delete();
+            } else {
+              const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+              const match = assets.assets.find(a => file.uri.includes(a.filename));
+              if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
+              else { const f = new FileSystem.File(file.uri); f.delete(); }
+            }
+          } catch {}
+        }
+        setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+        await loadDirectory(currentPath);
+      }},
+    ]);
+  }
+  
+  function handleMultiInfo() {
+    const files = Array.from(selectedItemsMap.values());
+    let totalSize = 0;
+    for (const file of files) {
+      try {
+        if (!file.isDirectory) {
+          const f = new FileSystem.File(file.uri);
+          totalSize += f.size ?? 0;
+        }
+      } catch {}
+    }
+    Alert.alert(`${files.length} item${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
+  }
+
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
@@ -550,7 +643,7 @@ export default function BrowseScreen() {
             const newSet = new Set(selectedUris);
             const newMap = new Map(selectedItemsMap);
             if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
-            else if (!item.name.toLowerCase().endsWith('.zip')) { newSet.add(item.uri); newMap.set(item.uri, item); }
+            else { newSet.add(item.uri); newMap.set(item.uri, item); }
             setSelectedUris(newSet);
             setSelectedItemsMap(newMap);
           } else {
@@ -562,7 +655,7 @@ export default function BrowseScreen() {
         activeOpacity={0.6}
       >
         <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-          {selectMode && !item.isDirectory && !item.name.toLowerCase().endsWith('.zip') ? (
+        {selectMode && !item.isDirectory ? (
             <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
           ) : item.isDirectory ? (
             <Ionicons name="folder" size={22} color={color} />
@@ -626,7 +719,7 @@ export default function BrowseScreen() {
                 }
               }}
             >
-              <ZipIcon size={22} color={selectMode ? colors.blue : colors.textSecondary} />
+              <Ionicons name={selectMode ? 'close-circle' : 'checkmark-circle-outline'} size={22} color={selectMode ? colors.blue : colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.backBtn}
@@ -906,13 +999,42 @@ export default function BrowseScreen() {
         </SafeAreaView>
       </Modal>
       {selectMode && selectedUris.size > 0 && (
-        <View style={{ flexDirection: 'row', padding: 16, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background }}>
+        <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
           <TouchableOpacity
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue, borderRadius: 12, paddingVertical: 14 }}
-            onPress={handleMultiZip}
+            onPress={handleMultiShare}
+            disabled={sharing}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
           >
-            <Ionicons name="archive-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Zip {selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''}</Text>
+            <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
+            <Text style={{ fontSize: 11, color: sharing ? colors.textMuted : '#fff', marginTop: 2 }}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiVault}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
+            <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>Vault</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiZip}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="archive-outline" size={20} color={colors.textPrimary} />
+            <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Zip</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiInfo}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+            <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Info</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMultiDelete}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
+            <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
