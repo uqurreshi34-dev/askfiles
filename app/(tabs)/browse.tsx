@@ -381,7 +381,11 @@ export default function BrowseScreen() {
 
   async function handleMultiZip() {
     if (selectedItemsMap.size === 0) return;
-    const selectedFiles = Array.from(selectedItemsMap.values());
+    const selectedFiles = Array.from(selectedItemsMap.values()).filter(f => !f.name.toLowerCase().endsWith('.zip'));
+    if (selectedFiles.length === 0) {
+      Alert.alert('No files to zip', 'ZIP files cannot be zipped again.');
+      return;
+    }
     let totalSize = 0;
     for (const file of selectedFiles) {
       try {
