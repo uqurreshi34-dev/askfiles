@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { isImageFile } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -67,6 +68,25 @@ async function scanDir(path: string, results: LargeFile[], minSize: number) {
       }
     }
   } catch {}
+}
+
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function LargeFilesScreen() {
@@ -164,6 +184,8 @@ export default function LargeFilesScreen() {
         <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(file.name) ? (
             <Image source={{ uri: file.uri }} style={styles.thumbnail} resizeMode="cover" />
+          ) : isVideoFile(file.name) ? (
+            <VideoThumb uri={file.uri} style={styles.thumbnail} />
           ) : (
             <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
           )}
