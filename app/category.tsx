@@ -472,9 +472,24 @@ export default function CategoryScreen() {
     try {
       const paths: string[] = [];
       for (const file of files) {
-        const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-        await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
-        paths.push(cachePath);
+        const isPng = file.name.toLowerCase().endsWith('.png');
+        if (isPng) {
+          const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
+          const cacheName = file.name.replace(/\.png$/i, '.jpg');
+          const cacheUri = cacheDir + cacheName;
+          const cacheFile = new FileSystem.File(cacheUri);
+          if (cacheFile.exists) cacheFile.delete();
+          const result = await ImageManipulator.manipulate(file.uri)
+            .renderAsync()
+            .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
+          const convertedFile = new FileSystem.File(result.uri);
+          convertedFile.copy(cacheFile);
+          paths.push(cacheUri.replace('file://', ''));
+        } else {
+          const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+          await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
+          paths.push(cachePath);
+        }
       }
       const mimeType = files.length === 1 ? getMimeType(files[0].name) : '*/*';
       await shareFiles(paths, mimeType);
