@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -21,6 +22,25 @@ function getFileColor(name: string): string {
   if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext ?? '')) return '#534AB7';
   if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
   return '#5F5E5A';
+}
+
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function DuplicatesScreen() {
@@ -55,8 +75,10 @@ export default function DuplicatesScreen() {
     return (
       <View style={[styles.groupCard, { backgroundColor: colors.surfaceAlt }]}>
         <View style={styles.groupHeader}>
-          {showThumb ? (
+        {showThumb ? (
             <Image source={{ uri: group.files[0].uri }} style={styles.thumbnail} resizeMode="cover" />
+          ) : isVideoFile(group.name) ? (
+            <VideoThumb uri={group.files[0].uri} style={styles.thumbnail} />
           ) : (
             <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
               <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
