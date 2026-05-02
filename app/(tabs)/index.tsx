@@ -14,9 +14,33 @@ import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import RNFS from 'react-native-fs';
+import { getMimeType } from '@/utils/files';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
+
+function isVideoFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+}
+
+function VideoThumb({ uri, style }: { uri: string; style: any }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        setThumb(result.uri);
+      } catch {}
+    })();
+  }, [uri]);
+  if (!thumb) return null;
+  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
+}
 
 export default function HomeScreen() {
   const { colors, dark } = useTheme();
@@ -285,16 +309,23 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={file.uri}
                   style={[styles.recentRow, { borderBottomColor: colors.border }]}
-                  onPress={() => {
-                    if (isImageFile(file.name)) {
-                      router.push({ pathname: '/viewer', params: { uri: file.uri, name: file.name } });
-                    }
+                  onPress={async () => {
+                    try {
+                      const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+                      await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
+                      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                        data: contentUri, flags: 1, type: getMimeType(file.name),
+                      });
+                    } catch (e) { console.log('Open error:', e); }
                   }}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.recentIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
                     {isImageFile(file.name) ? (
                       <Image source={{ uri: file.uri }} style={styles.recentThumb} resizeMode="cover" />
+                    ) : isVideoFile(file.name) ? (
+                      <VideoThumb uri={file.uri} style={styles.recentThumb} />
                     ) : (
                       <Text style={[styles.recentExt, { color }]}>{ext.slice(0, 4)}</Text>
                     )}
@@ -303,7 +334,6 @@ export default function HomeScreen() {
                     <Text style={[styles.recentName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
                     <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {timeAgo(file.openedAt)}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
               );
             })
