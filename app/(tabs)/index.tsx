@@ -317,7 +317,7 @@ export default function HomeScreen() {
                       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
                         data: contentUri, flags: 1, type: getMimeType(file.name),
                       });
-                    } catch (e) { console.log('Open error:', e); }
+                    } catch (e) {}
                   }}
                   activeOpacity={0.7}
                 >
