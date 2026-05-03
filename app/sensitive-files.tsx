@@ -1,0 +1,316 @@
+import React, { useState } from 'react';
+import {
+  StyleSheet, Text, View, TouchableOpacity, FlatList,
+  ActivityIndicator, Alert, Image,
+} from 'react-native';
+import RNFS from 'react-native-fs';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import { useVault } from '@/hooks/useVault';
+import { usePro } from '@/hooks/usePro';
+import { useTheme } from '@/hooks/useTheme';
+
+interface SensitiveFile {
+  name: string;
+  uri: string;
+  size: number;
+  matchedKeyword: string;
+}
+
+const SENSITIVE_KEYWORDS = [
+  'password', 'passwd', 'credentials',
+  'bank', 'banking',
+  'statement', 'payslip', 'salary', 'invoice', 'receipt',
+  'passport', 'national id', 'nid', 'license', 'licence',
+  'insurance', 'tax', 'tax return',
+  'cv', 'resume', 'curriculum',
+  'credit card', 'pin', 'secret',
+  'medical', 'prescription',
+  'contract', 'agreement',
+];
+
+const SCAN_DIRS = [
+    'file:///storage/emulated/0/Download/',
+    'file:///storage/emulated/0/Documents/',
+    'file:///storage/emulated/0/Pictures/',
+    'file:///storage/emulated/0/Movies/',
+    'file:///storage/emulated/0/DCIM/',
+  ];
+
+const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1024).toFixed(1) + ' KB';
+}
+
+function getFileColor(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return '#185FA5';
+  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
+  if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext ?? '')) return '#534AB7';
+  if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
+  if (['apk'].includes(ext ?? '')) return '#A32D2D';
+  return '#5F5E5A';
+}
+
+function isImageFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext);
+}
+
+function matchesKeyword(name: string): string | null {
+  const lower = name.toLowerCase();
+  for (const kw of SENSITIVE_KEYWORDS) {
+    if (lower.includes(kw)) return kw;
+  }
+  return null;
+}
+
+async function scanDir(path: string, results: SensitiveFile[]) {
+  try {
+    const uri = path.endsWith('/') ? path : path + '/';
+    const dir = new FileSystem.Directory(uri);
+    const contents = dir.list();
+    for (const item of contents) {
+      if (item instanceof FileSystem.File) {
+        if (item.name.startsWith('.')) continue;
+        const keyword = matchesKeyword(item.name);
+        if (keyword) {
+          results.push({ name: item.name, uri: item.uri, size: item.size ?? 0, matchedKeyword: keyword });
+        }
+      } else if (item instanceof FileSystem.Directory) {
+        await scanDir(item.uri, results);
+      }
+    }
+  } catch {}
+}
+
+export default function SensitiveFilesScreen() {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const { addToVault } = useVault();
+  const { isPro } = usePro();
+  const [files, setFiles] = useState<SensitiveFile[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [movingUri, setMovingUri] = useState<string | null>(null);
+
+  async function scan() {
+    setScanning(true);
+    setScanned(false);
+    setFiles([]);
+    await new Promise(r => setTimeout(r, 50));
+    try {
+      const results: SensitiveFile[] = [];
+      const dynamicDirs = [...SCAN_DIRS];
+      try {
+        const rootItems = await RNFS.readDir('/storage/emulated/0/');
+        for (const item of rootItems) {
+          if (!item.isDirectory() || item.name.startsWith('.') || STANDARD_ROOT_DIRS.includes(item.name)) continue;
+          dynamicDirs.push(`file://${item.path}/`);
+        }
+      } catch {}
+      for (const dir of dynamicDirs) {
+        await scanDir(dir, results);
+      }
+      const unique = results.filter((f, i, arr) => arr.findIndex(x => x.uri === f.uri) === i);
+      unique.sort((a, b) => a.name.localeCompare(b.name));
+      setFiles(unique);
+    } catch {}
+    finally {
+      setScanning(false);
+      setScanned(true);
+    }
+  }
+
+  async function handleMoveToVault(file: SensitiveFile) {
+    if (!isPro) {
+      Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud' as any) },
+      ]);
+      return;
+    }
+    Alert.alert('Move to Vault', `Move "${file.name}" to your Secure Vault?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Move', onPress: async () => {
+        setMovingUri(file.uri);
+        const ok = await addToVault(file.uri, file.name);
+        if (ok) {
+          setFiles(prev => prev.filter(f => f.uri !== file.uri));
+        } else {
+          Alert.alert('Error', 'Could not move file to Vault.');
+        }
+        setMovingUri(null);
+      }},
+    ]);
+  }
+
+  async function handleDelete(file: SensitiveFile) {
+    Alert.alert('Delete', `Delete "${file.name}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
+          const match = assets.assets.find(a => file.uri.includes(a.filename));
+          if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
+          else { const f = new FileSystem.File(file.uri); f.delete(); }
+          setFiles(prev => prev.filter(f => f.uri !== file.uri));
+        } catch {
+          Alert.alert('Error', 'Could not delete file.');
+        }
+      }},
+    ]);
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Sensitive Files</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {!scanned && !scanning && (
+        <View style={styles.centered}>
+          <View style={[styles.startIcon, { backgroundColor: colors.amberTint }]}>
+            <Ionicons name="shield-outline" size={40} color={colors.amber} />
+          </View>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Find sensitive files</Text>
+          <Text style={[styles.startSub, { color: colors.textMuted }]}>
+            Scans for files with names suggesting sensitive content — passwords, bank statements, IDs, CVs and more. Move them to your Secure Vault.
+          </Text>
+          <TouchableOpacity style={[styles.scanBtn, { backgroundColor: colors.amber }]} onPress={scan} activeOpacity={0.85}>
+            <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.scanBtnText}>Start Scan</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {scanning && (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.amber} />
+          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>Scanning your storage...</Text>
+          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>This may take a moment</Text>
+        </View>
+      )}
+
+      {scanned && !scanning && (
+        <FlatList
+          data={files}
+          keyExtractor={item => item.uri}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            <View style={[styles.summaryCard, { backgroundColor: colors.amberTint }]}>
+              <Ionicons name="warning-outline" size={20} color={colors.amber} style={{ marginRight: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.summaryTitle, { color: colors.textPrimary }]}>
+                  {files.length === 0 ? 'No sensitive files found' : `${files.length} sensitive file${files.length !== 1 ? 's' : ''} found`}
+                </Text>
+                <Text style={[styles.summarySub, { color: colors.textSecondary }]}>
+                  {files.length === 0 ? 'Your storage looks clean.' : 'Consider moving these to your Secure Vault.'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={scan} style={{ paddingLeft: 8 }}>
+                <Text style={[styles.rescanText, { color: colors.amber }]}>Rescan</Text>
+              </TouchableOpacity>
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Ionicons name="shield-checkmark-outline" size={56} color="#2E7D32" />
+              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>No sensitive files found!</Text>
+              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>Your storage looks clean.</Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const color = getFileColor(item.name);
+            const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
+            return (
+              <View style={[styles.row, { borderBottomColor: colors.border }]}>
+                <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
+                  {isImageFile(item.name) ? (
+                    <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                  ) : (
+                    <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+                  )}
+                </View>
+                <View style={styles.fileInfo}>
+                  <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <View style={[styles.keywordBadge, { backgroundColor: colors.amberTint }]}>
+                      <Text style={[styles.keywordText, { color: colors.amber }]}>{item.matchedKeyword}</Text>
+                    </View>
+                    <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{formatSize(item.size)}</Text>
+                  </View>
+                </View>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={[styles.vaultBtn, { backgroundColor: isPro ? colors.blue : colors.surface }]}
+                    onPress={() => handleMoveToVault(item)}
+                    disabled={movingUri === item.uri}
+                  >
+                    {movingUri === item.uri ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="shield-checkmark-outline" size={14} color={isPro ? '#fff' : colors.textMuted} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.deleteBtn, { backgroundColor: colors.surface }]}
+                    onPress={() => handleDelete(item)}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={colors.deleteRed} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
+  startIcon: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  startTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
+  startSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  scanBtn: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
+  scanBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  scanningText: { fontSize: 16, fontWeight: '500', marginTop: 16 },
+  scanningSubText: { fontSize: 13 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 32 },
+  summaryCard: { borderRadius: 12, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center' },
+  summaryTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  summarySub: { fontSize: 12 },
+  rescanText: { fontSize: 13, fontWeight: '500' },
+  cleanTitle: { fontSize: 20, fontWeight: '600' },
+  cleanSub: { fontSize: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
+  fileIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  thumbnail: { width: 40, height: 40 },
+  extLabel: { fontSize: 9, fontWeight: '500' },
+  fileInfo: { flex: 1 },
+  fileName: { fontSize: 14, fontWeight: '500' },
+  fileMeta: { fontSize: 11 },
+  keywordBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  keywordText: { fontSize: 10, fontWeight: '600' },
+  actions: { flexDirection: 'row', gap: 6 },
+  vaultBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  deleteBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+});

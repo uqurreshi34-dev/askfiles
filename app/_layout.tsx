@@ -29,6 +29,7 @@ export default function RootLayout() {
       <Stack.Screen name="vault" />
       <Stack.Screen name="duplicates" />
       <Stack.Screen name="backup" />
+      <Stack.Screen name="sensitive-files" />
     </Stack>
   );
 }

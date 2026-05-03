@@ -284,6 +284,19 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
 
+        <TouchableOpacity activeOpacity={0.8} style={[styles.largeFilesCard, { backgroundColor: colors.amberTint }]} onPress={() => router.push('/sensitive-files' as any)}>
+          <View style={styles.largeFilesLeft}>
+            <View style={[styles.largeFilesIcon, { backgroundColor: colors.amberTint }]}>
+              <Ionicons name="shield-outline" size={22} color={colors.amber} />
+            </View>
+            <View>
+              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Sensitive Files</Text>
+              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Find and protect sensitive documents</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+
         <TouchableOpacity activeOpacity={0.8} style={[styles.breakdownCard, { backgroundColor: colors.purpleBg }]} onPress={() => router.push('/storage-breakdown')}>
           <View style={styles.largeFilesLeft}>
             <View style={[styles.breakdownIcon, { backgroundColor: colors.purpleTint }]}>
