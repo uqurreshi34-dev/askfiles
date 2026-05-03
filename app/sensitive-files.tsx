@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -12,6 +12,10 @@ import * as MediaLibrary from 'expo-media-library';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { getMimeType } from '@/utils/files';
 
 interface SensitiveFile {
   name: string;
@@ -90,6 +94,25 @@ async function scanDir(path: string, results: SensitiveFile[]) {
     }
   } catch {}
 }
+
+function isVideoFile(name: string): boolean {
+    const ext = name.split('.').pop()?.toLowerCase() ?? '';
+    return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
+  }
+  
+  function VideoThumb({ uri, style }: { uri: string; style: any }) {
+    const [thumb, setThumb] = useState<string | null>(null);
+    useEffect(() => {
+      (async () => {
+        try {
+          const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+          setThumb(result.uri);
+        } catch {}
+      })();
+    }, [uri]);
+    if (!thumb) return null;
+    return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
+  }
 
 export default function SensitiveFilesScreen() {
   const { colors } = useTheme();
@@ -236,10 +259,25 @@ export default function SensitiveFilesScreen() {
             const color = getFileColor(item.name);
             const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
             return (
-              <View style={[styles.row, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                style={[styles.row, { borderBottomColor: colors.border }]}
+                activeOpacity={0.7}
+                onPress={async () => {
+                  try {
+                    const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+                    await RNFS.copyFile(item.uri.replace('file://', ''), cachePath);
+                    const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                      data: contentUri, flags: 1, type: getMimeType(item.name),
+                    });
+                  } catch {}
+                }}
+              >
                 <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
                   {isImageFile(item.name) ? (
                     <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                  ) : isVideoFile(item.name) ? (
+                    <VideoThumb uri={item.uri} style={styles.thumbnail} />
                   ) : (
                     <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
                   )}
@@ -272,7 +310,7 @@ export default function SensitiveFilesScreen() {
                     <Ionicons name="trash-outline" size={14} color={colors.deleteRed} />
                   </TouchableOpacity>
                 </View>
-              </View>
+               </TouchableOpacity>
             );
           }}
         />
