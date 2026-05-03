@@ -179,7 +179,7 @@ export default function BackupScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
-                {lastBackup ? `Last backup: ${lastBackup}` : 'No backup yet'}
+                {lastBackup ? `Last backup: ${lastBackup}` : 'No Google Drive backup yet'}
               </Text>
             </View>
             <TouchableOpacity style={styles.backupBtn} onPress={handleBackup} disabled={syncing || restoring} activeOpacity={0.85}>
