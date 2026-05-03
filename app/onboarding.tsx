@@ -27,9 +27,16 @@ const SLIDES = [
     body: 'Lock sensitive files in your private Vault. Find and remove duplicate files to free up storage space.',
   },
   {
-    icon: 'search-outline' as const,
+    icon: 'lock-closed-outline' as const,
     iconColor: '#3B6D11',
     iconBg: '#EAF3DE',
+    title: 'Your Privacy, Protected',
+    body: 'No account needed. No ads. Your files never leave your device. The only data sent anywhere is the text of your AI search query — sent securely to Groq to generate an answer.',
+  },
+  {
+    icon: 'search-outline' as const,
+    iconColor: '#854F0B',
+    iconBg: '#FEF3E2',
     title: 'AI-Powered Search',
     body: 'Ask in plain English — "show me videos from last week" or "find large PDFs". AskFiles understands you.',
   },
