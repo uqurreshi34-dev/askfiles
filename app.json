@@ -40,9 +40,10 @@
         "expo-build-properties",
         {
           "android": {
-            "permissions": [
-              "MANAGE_EXTERNAL_STORAGE"
-            ]
+            "permissions": ["MANAGE_EXTERNAL_STORAGE"],
+            "enableEdgeToEdge": true,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
           }
         }
       ],
