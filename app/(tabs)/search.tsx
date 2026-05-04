@@ -73,11 +73,16 @@ function buildContext(
   folderSizes: any,
   mediaContext: any,
   largestFiles: any,
+  question: string,
 ): string {
-  const imageNames = mediaContext.recentImages.join(', ') || 'none';
-  const videoNames = mediaContext.recentVideos.join(', ') || 'none';
-  const docNames = mediaContext.allDocuments?.join(', ') || 'none';
-  const dlNames = mediaContext.allDownloads?.join(', ') || 'none';
+  const q = question.toLowerCase();
+  const isAboutImages = /image|photo|picture|jpg|jpeg|png|screenshot|selfie|camera/i.test(q);
+  const isAboutVideos = /video|mp4|movie|clip|recording/i.test(q);
+  const isAboutDocs = /doc|pdf|word|excel|spreadsheet|txt|file|document/i.test(q);
+  const isAboutDownloads = /download|apk|install/i.test(q);
+  const isAboutStorage = /storage|space|large|big|size|free|used|full/i.test(q);
+  const isGeneral = !isAboutImages && !isAboutVideos && !isAboutDocs && !isAboutDownloads && !isAboutStorage;
+
   const freeSpace = storageInfo?.freeBytes ? formatBytes(storageInfo.freeBytes) : 'unknown';
 
   const imageCounts: Record<string, number> = {};
@@ -94,6 +99,11 @@ function buildContext(
   }
   const videoBreakdown = Object.entries(videoCounts).map(([ext, count]) => `${count} ${ext}`).join(', ');
 
+  const imageNames = (isAboutImages || isGeneral) ? mediaContext.recentImages.join(', ') || 'none' : `${fileCounts.images} images total`;
+  const videoNames = (isAboutVideos || isGeneral) ? mediaContext.recentVideos.join(', ') || 'none' : `${fileCounts.videos} videos total`;
+  const docNames = (isAboutDocs || isGeneral) ? mediaContext.allDocuments?.join(', ') || 'none' : `${fileCounts.documents} documents total`;
+  const dlNames = (isAboutDownloads || isGeneral) ? mediaContext.allDownloads?.join(', ') || 'none' : `${fileCounts.downloads} downloads total`;
+
   return `
 Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadable} total. ${freeSpace} free.
 File counts: ${fileCounts.images} images (${imageBreakdown}), ${fileCounts.videos} videos (${videoBreakdown}), ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
@@ -101,8 +111,8 @@ Screenshots: exactly ${mediaContext.screenshotCount} files (do not count manuall
 Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}, Music ${folderSizes.music}.
 All image filenames sorted newest first: ${imageNames}.
 All video filenames sorted newest first: ${videoNames}.
-All document filenames: ${mediaContext.allDocuments?.join(', ') || 'none'}.
-All download filenames: ${mediaContext.allDownloads?.join(', ') || 'none'}.
+All document filenames: ${docNames}.
+All download filenames: ${dlNames}.
 Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Do not recount files from the filename list — always use the exact counts provided above.
 Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
@@ -452,7 +462,7 @@ export default function SearchScreen() {
     const q = question ?? aiQuery;
     if (q.trim().length < 3) return;
     Keyboard.dismiss();
-    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles);
+    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles, aiQuery);
     await ask(q, context);
   }
 
