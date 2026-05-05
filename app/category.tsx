@@ -17,7 +17,7 @@ import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { shareFiles } from '@/modules/share-module';
+import { shareFiles, openFile } from '@/modules/share-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -398,18 +398,27 @@ export default function CategoryScreen() {
   async function openItem(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     setOpeningUri(item.uri);
+    const mime = getMimeType(item.name);
     try {
-      const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
-      const srcPath = item.uri.replace('file://', '');
-      await RNFS.copyFile(srcPath, cachePath);
-      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri, 
-        flags: 1, 
-        type: getMimeType(item.name),
-      });
-    } catch (e) {}
-    finally { setOpeningUri(null); }
+      const filePath = decodeURIComponent(item.uri.replace('file://', ''));
+      await openFile(filePath, mime);
+    } catch (e) {
+      // Fallback: original cache copy path for files not indexed by MediaStore
+      console.log('MediaStore failed, trying fallback:', e);
+      try {
+        const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+        const srcPath = decodeURIComponent(item.uri.replace('file://', ''));
+        await RNFS.copyFile(srcPath, cachePath);
+        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri,
+          flags: 1,
+          type: mime,
+        });
+      } catch{} 
+    } finally {
+      setOpeningUri(null);
+    }
   }
 
   async function handleMoveToVault() {

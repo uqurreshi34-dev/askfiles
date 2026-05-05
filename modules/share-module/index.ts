@@ -1,1 +1,1 @@
-export { shareFiles } from './src/ShareModule';
+export { shareFiles, openFile } from './src/ShareModule';
