@@ -181,6 +181,7 @@ export default function SearchScreen() {
   const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
   const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [pasting, setPasting] = useState(false);
   const [isFav, setIsFav] = useState(false);
   const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
@@ -271,40 +272,43 @@ export default function SearchScreen() {
     if (!item) return;
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
     const destUri = destDir + item.name;
+    const src = toPath(item.uri);
+    const dst = toPath(destUri);
+    if (pickerMode === 'copy') {
+      const alreadyExists = await RNFS.exists(dst);
+      if (alreadyExists) {
+        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+        return;
+      }
+    } else {
+      const moveExists = await RNFS.exists(dst);
+      if (moveExists) {
+        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+        return;
+      }
+    }
+    setShowPicker(false);
+    setPasting(true);
     try {
-      const src = toPath(item.uri);
-      const dst = toPath(destUri);
       if (pickerMode === 'copy') {
-        const alreadyExists = await RNFS.exists(dst);
-        if (alreadyExists){
-          setShowPicker(false);
-          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-          return;
-        }
         await RNFS.copyFile(src, dst);
-        setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-        const moveExists = await RNFS.exists(dst);
-          if (moveExists) {
-            setShowPicker(false);
-            Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-            return;
-          }
-          await RNFS.moveFile(src, dst);
-          try {
-            const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
-            const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-            const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
-            if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-          } catch {}
-          if (item.inFolder) { removeFolderItem(item.uri); }
-          else { removeResult(item.uri); }
-          setShowPicker(false);
-          Alert.alert('Success', `"${item.name}" moved successfully.`);
+        await RNFS.moveFile(src, dst);
+        try {
+          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
+          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
+          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+        } catch {}
+        if (item.inFolder) { removeFolderItem(item.uri); }
+        else { removeResult(item.uri); }
+        Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
     } catch (e: any) {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
+    } finally {
+      setPasting(false);
     }
   }
 
@@ -502,7 +506,12 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Search</Text>
       </View>
-
+      {pasting && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{pickerMode === 'copy' ? 'Copying...' : 'Moving...'} {pendingItem.current?.name}</Text>
+        </View>
+      )}
       <View style={[styles.modeToggle, { backgroundColor: colors.surface }]}>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'search' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
