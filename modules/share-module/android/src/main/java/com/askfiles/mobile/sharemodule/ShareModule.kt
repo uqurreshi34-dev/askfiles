@@ -83,6 +83,16 @@ class ShareModule : Module() {
 
       activity.startActivity(intent)
     }
+
+    AsyncFunction("scanFile") { filePath: String ->
+      val context = appContext.reactContext!!
+      android.media.MediaScannerConnection.scanFile(
+        context,
+        arrayOf(filePath),
+        null,
+        null
+      )
+    }
   }
 
     private fun getMediaStoreUri(context: Context, filePath: String): Uri? {

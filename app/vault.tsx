@@ -17,9 +17,7 @@ import { isImageFile, getMimeType } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
-import { openFile as openFileNative } from '@/modules/share-module';
+import { openFile as openFileNative, scanFile } from '@/modules/share-module';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -149,11 +147,11 @@ export default function VaultScreen() {
         return;
       }
       await RNFS.copyFile(toPath(file.uri), dst);
+      await scanFile(dst).catch(() => {});
       setShowPicker(false);
       await deleteFromVault(file);
       Alert.alert('Moved', `"${file.name}" moved out of Vault successfully.`);
     } catch (e) {
-      console.log('Move out error:', e);
       Alert.alert('Error', 'Could not move file out of Vault.');
     }
   }
@@ -177,7 +175,7 @@ export default function VaultScreen() {
       const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
       await RNFS.copyFile(toPath(file.uri), cachePath);
       await openFileNative(cachePath, mime);
-    } catch (e) { console.log('Open error:', e); }
+    } catch (e) {}
     finally { setOpeningFile(false); }
   }
 
@@ -200,7 +198,7 @@ export default function VaultScreen() {
       } else {
         await Sharing.shareAsync(file.uri, { mimeType: getMimeType(file.name), dialogTitle: file.name });
       }
-    } catch (e) { console.log('Share error:', e); }
+    } catch (e) {}
   }
 
   async function handleDelete(file: VaultFile) {
@@ -377,7 +375,7 @@ export default function VaultScreen() {
           <Ionicons name="lock-closed-outline" size={22} color={colors.blue} />
         </TouchableOpacity>
       </View>
-      
+
       {openingFile && (
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="small" color={colors.blue} />
