@@ -19,6 +19,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
 import { getMimeType } from '@/utils/files';
+import { openFile as openFileNative } from '@/modules/share-module';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -90,6 +91,11 @@ export default function HomeScreen() {
     { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
     { id: '5', label: 'Favourites', count: pluralise(favCount, 'file'), color: colors.favRedBg, iconColor: colors.favRed, icon: 'heart-outline', route: '/favourites' },
   ];
+
+  function toPath(uri: string): string {
+    try { return decodeURIComponent(uri.replace('file://', '')); }
+    catch { return uri.replace('file://', ''); }
+  }
 
   function getFileColor(name: string): string {
     const ext = name.split('.').pop()?.toLowerCase();
@@ -323,14 +329,20 @@ export default function HomeScreen() {
                   key={file.uri}
                   style={[styles.recentRow, { borderBottomColor: colors.border }]}
                   onPress={async () => {
+                    const mime = getMimeType(file.name);
                     try {
-                      const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-                      await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
-                      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-                      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-                        data: contentUri, flags: 1, type: getMimeType(file.name),
-                      });
-                    } catch (e) {}
+                      const filePath = toPath(file.uri);
+                      await openFileNative(filePath, mime);
+                    } catch (e) {
+                      try {
+                        const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+                        await RNFS.copyFile(toPath(file.uri), cachePath);
+                        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                          data: contentUri, flags: 1, type: mime,
+                        });
+                      } catch (e2) {}
+                    }
                   }}
                   activeOpacity={0.7}
                 >
