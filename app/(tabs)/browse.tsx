@@ -106,6 +106,7 @@ export default function BrowseScreen() {
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
   const [pickerItems, setPickerItems] = useState<FileItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [pasting, setPasting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
@@ -562,29 +563,29 @@ export default function BrowseScreen() {
     if (!item) return;
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
     const destUri = destDir + item.name;
+    const src = toPath(item.uri);
+    const dst = toPath(destUri);
+    if (pickerMode === 'copy') {
+      const alreadyExists = await RNFS.exists(dst);
+      if (alreadyExists) {
+        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+        return;
+      }
+    } else {
+      const moveExists = await RNFS.exists(dst);
+      if (moveExists) {
+        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+        return;
+      }
+    }
+    setShowPicker(false);
+    setPasting(true);
     try {
-      const src = toPath(item.uri);
-      const dst = toPath(destUri);
       if (pickerMode === 'copy') {
-        const alreadyExists = await RNFS.exists(dst);
-        if (alreadyExists) {
-          setShowPicker(false);
-          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-          return;
-        }
         await RNFS.copyFile(src, dst);
-        setShowPicker(false);
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-        const moveExists = await RNFS.exists(dst);
-        if (moveExists) {
-          setShowPicker(false);
-          Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-          return;
-        }
         await RNFS.moveFile(src, dst);
-        const exists = await RNFS.exists(dst);
-        try { await RNFS.scanFile(dst); } catch {}
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
           const sourcePath = toPath(item.uri);
@@ -592,7 +593,6 @@ export default function BrowseScreen() {
           const ghost = allAssets.assets.find(a => a.filename === sourceFilename && toPath(a.uri) === sourcePath);
           if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
         } catch {}
-        setShowPicker(false);
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
         const destName = (() => { try { return decodeURIComponent(destFolder.split('/').filter(Boolean).pop() ?? 'Folder'); } catch { return destFolder.split('/').filter(Boolean).pop() ?? 'Folder'; } })();
         setCurrentPath(destFolder);
@@ -602,6 +602,8 @@ export default function BrowseScreen() {
       }
     } catch (e: any) {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
+    } finally {
+      setPasting(false);
     }
   }
 
@@ -792,6 +794,13 @@ export default function BrowseScreen() {
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={[styles.busyText, { color: colors.blue }]}>Processing...</Text>
+        </View>
+      )}
+
+      {pasting && (
+        <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={[styles.busyText, { color: colors.blue }]}>{pickerMode === 'copy' ? 'Copying...' : 'Moving...'} {pendingItem.current?.name}</Text>
         </View>
       )}
 
