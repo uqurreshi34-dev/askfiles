@@ -26,6 +26,12 @@ const SCAN_DIRS = [
   'file:///storage/emulated/0/Movies/',
   'file:///storage/emulated/0/DCIM/',
   'file:///storage/emulated/0/Music/',
+  'file:///storage/emulated/0/Recordings/',
+  'file:///storage/emulated/0/Ringtones/',
+  'file:///storage/emulated/0/Alarms/',
+  'file:///storage/emulated/0/Notifications/',
+  'file:///storage/emulated/0/Audiobooks/',
+  'file:///storage/emulated/0/Podcasts/',
   'file:///storage/emulated/0/Android/media/',
 ];
 
@@ -104,7 +110,7 @@ export default function LargeFilesScreen() {
     await new Promise(r => setTimeout(r, 50));
     try {
       const results: LargeFile[] = [];
-      const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+      const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Ringtones', 'Alarms', 'Notifications', 'Audiobooks', 'Podcasts', 'Android'];
       const dynamicDirs = [...SCAN_DIRS];
       try {
         const rootItems = await RNFS.readDir('/storage/emulated/0/');
