@@ -21,6 +21,7 @@ import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import RNFS from 'react-native-fs';
 import { useTheme } from '@/hooks/useTheme';
+import { openFile as openFileNative } from '@/modules/share-module';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -112,6 +113,7 @@ export default function FavouritesScreen() {
   }
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
+
   function toPath(uri: string): string { 
     try { return decodeURIComponent(uri.replace('file://', '')); } 
     catch { return uri.replace('file://', ''); } 
@@ -217,14 +219,19 @@ export default function FavouritesScreen() {
 
   async function openItem(item: FavouriteItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    const mime = getMimeType(item.name);
     try {
-      const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
-      await RNFS.copyFile(item.uri.replace('file://', ''), cachePath);
-      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri, flags: 1, type: getMimeType(item.name),
-      });
-    } catch (e) {}
+      await openFileNative(toPath(item.uri), mime);
+    } catch (e) {
+      try {
+        const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+        await RNFS.copyFile(toPath(item.uri), cachePath);
+        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri, flags: 1, type: mime,
+        });
+      } catch (e2) {}
+    }
   }
 
   async function handleShare() {
