@@ -191,6 +191,7 @@ export default function CategoryScreen() {
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
   const [sharing, setSharing] = useState(false);
   const isMediaCategory = category === 'images' || category === 'videos';
+  const [openingUri, setOpeningUri] = useState<string | null>(null);
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
@@ -396,17 +397,19 @@ export default function CategoryScreen() {
 
   async function openItem(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    setOpeningUri(item.uri);
     try {
       const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
       const srcPath = item.uri.replace('file://', '');
       await RNFS.copyFile(srcPath, cachePath);
       const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
       await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        flags: 1,
+        data: contentUri, 
+        flags: 1, 
         type: getMimeType(item.name),
       });
     } catch (e) {}
+    finally { setOpeningUri(null); }
   }
 
   async function handleMoveToVault() {
@@ -650,9 +653,15 @@ export default function CategoryScreen() {
                       </View>
                     )}
                     {isVid && !selectMode && (
-                      <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
-                        <Ionicons name="play" size={10} color="#fff" />
-                      </View>
+                      openingUri === item.uri ? (
+                        <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 4 }}>
+                          <ActivityIndicator size="small" color="#fff" />
+                        </View>
+                      ) : (
+                        <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
+                          <Ionicons name="play" size={10} color="#fff" />
+                        </View>
+                      )
                     )}
                     {selectMode && isSelected && (
                       <View style={{ position: 'absolute', top: 4, right: 4, backgroundColor: colors.blue, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
@@ -704,9 +713,11 @@ export default function CategoryScreen() {
                       </Text>
                     </View>
                     {!selectMode && (
-                      <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-                      </TouchableOpacity>
+                      openingUri === item.uri
+                        ? <ActivityIndicator size="small" color={config.color} />
+                        : <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                          </TouchableOpacity>
                     )}
                   </TouchableOpacity>
                 );
