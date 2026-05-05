@@ -18,19 +18,21 @@ const DEFAULT_Y = SH - 160;
 const MIC_POS_KEY = 'askfiles-mic-position';
 
 const COMMANDS = [
-  { keywords: ['home', 'main', 'start'], route: '/(tabs)/' },
-  { keywords: ['image', 'photo', 'picture', 'gallery'], route: '/category?category=images' },
-  { keywords: ['video', 'film', 'movie', 'clip'], route: '/category?category=videos' },
-  { keywords: ['document', 'pdf', 'word', 'excel'], route: '/category?category=documents' },
-  { keywords: ['download'], route: '/category?category=downloads' },
-  { keywords: ['browse', 'folder', 'storage', 'files'], route: '/(tabs)/browse' },
-  { keywords: ['search', 'find'], route: '/(tabs)/search' },
-  { keywords: ['vault', 'secure', 'private'], route: '/vault' },
+  { keywords: ['storage breakdown', 'storage info', 'storage stats'], route: '/storage-breakdown' },
+  { keywords: ['large files'], route: '/large-files' },
+  { keywords: ['sensitive files', 'personal files', 'secret files', 'confidential files'], route: '/sensitive-files' },
+  { keywords: ['duplicates', 'dupes'], route: '/duplicates' },
+  { keywords: ['internal', 'free space', 'how much space'], route: '/(tabs)/' },
+  { keywords: ['vault', 'locked'], route: '/vault' },
   { keywords: ['favourite', 'favorite'], route: '/favourites' },
   { keywords: ['cloud', 'pro', 'upgrade', 'premium'], route: '/(tabs)/cloud' },
-  { keywords: ['duplicate', 'dupe'], route: '/duplicates' },
-  { keywords: ['large', 'big', 'space'], route: '/large-files' },
-  { keywords: ['sensitive', 'confidential'], route: '/sensitive-files' },
+  { keywords: ['photo', 'picture', 'gallery', 'screenshot', 'image'], route: '/category?category=images' },
+  { keywords: ['video', 'film', 'movie', 'clip'], route: '/category?category=videos' },
+  { keywords: ['pdf', 'document', 'spreadsheet', 'excel'], route: '/category?category=documents' },
+  { keywords: ['download', 'apk'], route: '/category?category=downloads' },
+  { keywords: ['search', 'find'], route: '/(tabs)/search' },
+  { keywords: ['browse', 'folders', 'explore'], route: '/(tabs)/browse' },
+  { keywords: ['home', 'start'], route: '/(tabs)/' },
 ];
 
 function parseCommand(transcript: string): string | null {
@@ -104,7 +106,7 @@ export default function RootLayout() {
           startPulse();
           ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: true });
         }
-      }, 150);
+      }, 300);
     },
     onPanResponderMove: (_, g) => {
       if (Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6) {
