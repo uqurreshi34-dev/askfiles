@@ -26,6 +26,7 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useTheme } from '@/hooks/useTheme';
+import { openFile as openFileNative } from '@/modules/share-module';
 
 type Mode = 'search' | 'ask';
 
@@ -235,6 +236,7 @@ export default function SearchScreen() {
   }
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
+
   function toPath(uri: string): string { 
     try { return decodeURIComponent(uri.replace('file://', '')); }
     catch { return uri.replace('file://', ''); } 
@@ -468,17 +470,21 @@ export default function SearchScreen() {
 
   async function openFile(name: string, uri: string) {
     await addRecent({ name, uri, openedAt: Date.now() });
+    const mime = getMimeType(name);
     try {
-      const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
-      const srcPath = uri.replace('file://', '');
-      await RNFS.copyFile(srcPath, cachePath);
-      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        flags: 1,
-        type: getMimeType(name),
-      });
-    } catch (e) {}
+      await openFileNative(toPath(uri), mime);
+    } catch (e) {
+      try {
+        const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
+        await RNFS.copyFile(toPath(uri), cachePath);
+        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri,
+          flags: 1,
+          type: mime,
+        });
+      } catch (e2) {}
+    }
   }
 
   function handleSuggestion(s: string) {
