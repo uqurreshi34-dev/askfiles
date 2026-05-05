@@ -72,6 +72,7 @@ export default function VaultScreen() {
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const insets = useSafeAreaInsets();
   const [openingFile, setOpeningFile] = useState(false);
+  const [movingFile, setMovingFile] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -138,21 +139,24 @@ export default function VaultScreen() {
     if (!file) return;
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
     const destUri = destDir + file.name;
+    setShowPicker(false);
+    setMovingFile(true);
     try {
       const dst = toPath(destUri);
       const exists = await RNFS.exists(dst);
       if (exists) {
-        setShowPicker(false);
+        setMovingFile(false);
         Alert.alert('File already exists', `"${file.name}" already exists in this folder.`);
         return;
       }
       await RNFS.copyFile(toPath(file.uri), dst);
       await scanFile(dst).catch(() => {});
-      setShowPicker(false);
       await deleteFromVault(file);
       Alert.alert('Moved', `"${file.name}" moved out of Vault successfully.`);
     } catch (e) {
       Alert.alert('Error', 'Could not move file out of Vault.');
+    } finally {
+      setMovingFile(false);
     }
   }
 
@@ -380,6 +384,12 @@ export default function VaultScreen() {
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="small" color={colors.blue} />
             <Text style={[styles.busyText, { color: colors.textSecondary }]}>Opening file...</Text>
+          </View>
+        )}
+        {movingFile && (
+          <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="small" color={colors.blue} />
+            <Text style={[styles.busyText, { color: colors.textSecondary }]}>Moving file...</Text>
           </View>
         )}
       {busy && (
