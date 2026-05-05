@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { View, Animated, Text, Easing, PanResponder, Dimensions } from 'react-native';
+import { View, Animated, Text, Easing, PanResponder, Dimensions, TouchableOpacity } from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,6 +69,7 @@ export default function RootLayout() {
 
   const [listening, setListening] = useState(false);
   const [banner, setBanner] = useState<{ text: string; success: boolean } | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,6 +89,9 @@ export default function RootLayout() {
         posRef.current = saved;
         pan.setValue(saved);
       }
+    }).catch(() => {});
+    AsyncStorage.getItem('askfiles-mic-tooltip-seen').then(val => {
+      if (!val) setShowTooltip(true);
     }).catch(() => {});
   }, []);
 
@@ -246,7 +250,52 @@ export default function RootLayout() {
             </Animated.View>
           )}
 
+          {/* Tooltip */}
+          {showTooltip && (
+            <Animated.View style={{
+              position: 'absolute',
+              bottom: MIC_SIZE + 10,
+              right: 0,
+              backgroundColor: dark ? '#fff' : '#222',
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 12,
+              width: 200,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 8,
+            }}>
+              <Text style={{ color: dark ? '#111' : '#fff', fontSize: 12, fontWeight: '600', marginBottom: 3 }}>
+                🎤 Voice Navigation
+              </Text>
+              <Text style={{ color: dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.75)', fontSize: 11, lineHeight: 16 }}>
+                Hold to navigate by voice. Drag to move.
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowTooltip(false);
+                  AsyncStorage.setItem('askfiles-mic-tooltip-seen', 'true').catch(() => {});
+                }}
+                style={{ marginTop: 8, alignSelf: 'flex-end' }}
+              >
+                <Text style={{ color: '#185FA5', fontSize: 11, fontWeight: '600' }}>Got it</Text>
+              </TouchableOpacity>
+              {/* Arrow pointing down to mic */}
+              <View style={{
+                position: 'absolute',
+                bottom: -6,
+                right: 20,
+                width: 12,
+                height: 12,
+                backgroundColor: dark ? '#fff' : '#222',
+                transform: [{ rotate: '45deg' }],
+              }} />
+            </Animated.View>
+          )}
           {/* Pulse ring */}
+
           <Animated.View style={{
             position: 'absolute',
             width: MIC_SIZE + 4,
