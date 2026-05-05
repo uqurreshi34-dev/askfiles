@@ -22,9 +22,8 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 import RNFS from 'react-native-fs';
 import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
-import ZipIcon from '@/components/ZipIcon';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
-import { shareFiles } from '@/modules/share-module';
+import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 
 interface FileItem {
   name: string;
@@ -133,6 +132,7 @@ export default function BrowseScreen() {
   ).current;
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [openingUri, setOpeningUri] = useState<string | null>(null);
 
   useEffect(() => {
     loadDirectory(currentPath);
@@ -198,17 +198,26 @@ export default function BrowseScreen() {
 
   async function openFile(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    setOpeningUri(item.uri);
+    const mime = getMimeType(item.name);
     try {
-      const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
-      const srcPath = item.uri.replace('file://', '');
-      await RNFS.copyFile(srcPath, cachePath);
-      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        flags: 1,
-        type: getMimeType(item.name),
-      });
+      const filePath = toPath(item.uri);
+      await openFileNative(filePath, mime);
     } catch (e) {
+      // Fallback: original cache copy path for files not indexed by MediaStore
+      try {
+        const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+        const srcPath = toPath(item.uri);
+        await RNFS.copyFile(srcPath, cachePath);
+        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri,
+          flags: 1,
+          type: mime,
+        });
+      } catch{} 
+    } finally {
+      setOpeningUri(null);
     }
   }
 

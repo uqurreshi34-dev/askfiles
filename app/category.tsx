@@ -400,13 +400,13 @@ export default function CategoryScreen() {
     setOpeningUri(item.uri);
     const mime = getMimeType(item.name);
     try {
-      const filePath = toPath(item.uri.replace('file://', ''));
+      const filePath = toPath(item.uri);
       await openFile(filePath, mime);
     } catch (e) {
       // Fallback: original cache copy path for files not indexed by MediaStore
       try {
         const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
-        const srcPath = toPath(item.uri.replace('file://', ''));
+        const srcPath = toPath(item.uri);
         await RNFS.copyFile(srcPath, cachePath);
         const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
         await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
