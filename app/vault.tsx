@@ -19,6 +19,7 @@ import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { openFile as openFileNative } from '@/modules/share-module';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -72,6 +73,7 @@ export default function VaultScreen() {
   const pendingFile = useRef<VaultFile | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const insets = useSafeAreaInsets();
+  const [openingFile, setOpeningFile] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -168,16 +170,15 @@ export default function VaultScreen() {
   }
 
   async function openFile(file: VaultFile) {
+    if (openingFile) return;
+    setOpeningFile(true);
+    const mime = getMimeType(file.name);
     try {
       const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-      await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
-      const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        flags: 1,
-        type: getMimeType(file.name),
-      });
+      await RNFS.copyFile(toPath(file.uri), cachePath);
+      await openFileNative(cachePath, mime);
     } catch (e) { console.log('Open error:', e); }
+    finally { setOpeningFile(false); }
   }
 
   async function handleShare(file: VaultFile) {
@@ -274,7 +275,7 @@ export default function VaultScreen() {
     const color = getFileColor(item.name);
     const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
-      <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => openFile(item)} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => openFile(item)} activeOpacity={0.7} disabled={openingFile}>
         <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
@@ -376,7 +377,13 @@ export default function VaultScreen() {
           <Ionicons name="lock-closed-outline" size={22} color={colors.blue} />
         </TouchableOpacity>
       </View>
-
+      
+      {openingFile && (
+          <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="small" color={colors.blue} />
+            <Text style={[styles.busyText, { color: colors.textSecondary }]}>Opening file...</Text>
+          </View>
+        )}
       {busy && (
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
