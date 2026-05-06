@@ -29,13 +29,11 @@ class StorageWidgetModule : Module() {
       // Save to SharedPreferences
       val prefs = appCtx.getSharedPreferences("askfiles_widget", android.content.Context.MODE_PRIVATE)
       prefs.edit().putString("recents", recentsJson).apply()
-      android.util.Log.d("AskFilesWidget", "Saved recents to SharedPreferences")
 
       // Send broadcast to widget receiver
       val intent = android.content.Intent("com.askfiles.mobile.UPDATE_WIDGET")
       intent.component = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
       appCtx.sendBroadcast(intent)
-      android.util.Log.d("AskFilesWidget", "Broadcast sent")
     }
 
     View(StorageWidgetView::class) {
