@@ -127,7 +127,7 @@ class StorageWidget : AppWidgetProvider() {
                         views.setViewVisibility(rowId, android.view.View.VISIBLE)
 
                         // PendingIntent to open the file directly
-                        val filePath = uri.removePrefix("file://")
+                        val filePath = java.net.URLDecoder.decode(uri.removePrefix("file://"), "UTF-8")
                         val mime = getMimeType(name)
                         val fileIntent = Intent(Intent.ACTION_VIEW).apply {
                             val file = java.io.File(filePath)
