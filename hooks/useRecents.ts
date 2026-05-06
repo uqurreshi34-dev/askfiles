@@ -27,10 +27,8 @@ export async function addRecent(file: RecentFile): Promise<void> {
     try {
       const StorageWidgetModule = require('@/modules/storage-widget').default;
       const widgetRecents = updated.slice(0, 4);
-      console.log('Saving to widget:', JSON.stringify(widgetRecents));
       await StorageWidgetModule.saveRecentsForWidget(JSON.stringify(widgetRecents));
-      console.log('Widget save done');
-    } catch(e) {console.log('Widget save error:', e);}
+    } catch(e) {}
   } catch (e) {
   }
 }
