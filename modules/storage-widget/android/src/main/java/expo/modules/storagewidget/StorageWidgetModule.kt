@@ -44,10 +44,22 @@ class StorageWidgetModule : Module() {
 
       // Trigger widget update
       // Send custom broadcast — StorageWidget.onReceive handles it
-      val intent = android.content.Intent("com.askfiles.mobile.UPDATE_WIDGET")
-      intent.component = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
-      appCtx.sendBroadcast(intent)
-      android.util.Log.d("AskFilesWidget", "Update broadcast sent")
+      // Update widget directly via AppWidgetManager from application context
+      android.util.Log.d("AskFilesWidget", "Attempting direct widget update")
+      val handler = android.os.Handler(android.os.Looper.getMainLooper())
+      handler.post {
+        try {
+          val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(appCtx)
+          val componentName = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
+          val ids = appWidgetManager.getAppWidgetIds(componentName)
+          android.util.Log.d("AskFilesWidget", "Main thread IDs: ${ids.size}")
+          for (id in ids) {
+            com.askfiles.mobile.StorageWidget.updateWidget(appCtx, appWidgetManager, id)
+          }
+        } catch (e: Exception) {
+          android.util.Log.d("AskFilesWidget", "Direct update error: ${e.message}")
+        }
+      }
     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of
