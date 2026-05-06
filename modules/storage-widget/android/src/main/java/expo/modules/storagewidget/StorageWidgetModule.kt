@@ -38,21 +38,16 @@ class StorageWidgetModule : Module() {
 
     AsyncFunction("saveRecentsForWidget") { recentsJson: String ->
       val context = appContext.reactContext ?: return@AsyncFunction
-      val prefs = context.getSharedPreferences("askfiles_widget", android.content.Context.MODE_PRIVATE)
+      val appCtx = context.applicationContext
+      val prefs = appCtx.getSharedPreferences("askfiles_widget", android.content.Context.MODE_PRIVATE)
       prefs.edit().putString("recents", recentsJson).apply()
 
       // Trigger widget update
-      val manager = android.appwidget.AppWidgetManager.getInstance(context)
-      val ids = manager.getAppWidgetIds(
-          android.content.ComponentName(context, "com.askfiles.mobile.StorageWidget")
-        )
-        android.util.Log.d("AskFilesWidget", "Widget IDs found: ${ids.size} — $ids")
-      if (ids.isNotEmpty()) {
-        val intent = android.content.Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE)
-        intent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-        intent.component = android.content.ComponentName(context, "com.askfiles.mobile.StorageWidget")
-        context.sendBroadcast(intent)
-      }
+      // Send custom broadcast — StorageWidget.onReceive handles it
+      val intent = android.content.Intent("com.askfiles.mobile.UPDATE_WIDGET")
+      intent.component = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
+      appCtx.sendBroadcast(intent)
+      android.util.Log.d("AskFilesWidget", "Update broadcast sent")
     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of

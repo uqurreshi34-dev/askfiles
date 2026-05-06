@@ -47,7 +47,10 @@ module.exports = function withStorageWidget(config) {
         },
         'intent-filter': [
           {
-            action: [{ $: { 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE' } }],
+            action: [
+              { $: { 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE' } },
+              { $: { 'android:name': 'com.askfiles.mobile.UPDATE_WIDGET' } },
+            ],
           },
         ],
         'meta-data': [

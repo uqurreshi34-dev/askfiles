@@ -24,6 +24,21 @@ class StorageWidget : AppWidgetProvider() {
         }
     }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        android.util.Log.d("AskFilesWidget", "onReceive action: ${intent.action}")
+        if (intent.action == "com.askfiles.mobile.UPDATE_WIDGET") {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(
+                android.content.ComponentName(context, StorageWidget::class.java)
+            )
+            android.util.Log.d("AskFilesWidget", "onReceive IDs: ${ids.size}")
+            for (id in ids) {
+                updateWidget(context, manager, id)
+            }
+        }
+    }
+
     companion object {
 
         fun getMimeType(name: String): String {
