@@ -36,6 +36,21 @@ class StorageWidgetModule : Module() {
       ))
     }
 
+    AsyncFunction("saveRecentsForWidget") { recentsJson: String ->
+      val context = appContext.reactContext ?: return@AsyncFunction
+      val prefs = context.getSharedPreferences("askfiles_widget", android.content.Context.MODE_PRIVATE)
+      prefs.edit().putString("recents", recentsJson).apply()
+
+      // Trigger widget update
+      val manager = android.appwidget.AppWidgetManager.getInstance(context)
+      val ids = manager.getAppWidgetIds(
+        android.content.ComponentName(context, com.askfiles.mobile.StorageWidget::class.java)
+      )
+      if (ids.isNotEmpty()) {
+        com.askfiles.mobile.StorageWidget.updateWidget(context, manager, ids[0])
+      }
+    }
+
     // Enables the module to be used as a native view. Definition components that are accepted as part of
     // the view definition: Prop, Events.
     View(StorageWidgetView::class) {
