@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { View, Animated, Text, Easing, PanResponder, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Animated, Text, Easing, PanResponder, Dimensions, TouchableOpacity} from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

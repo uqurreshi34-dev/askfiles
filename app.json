@@ -3,7 +3,7 @@
     "name": "AskFiles",
     "slug": "askFiles",
     "version": "1.0.1",
-    "orientation": "portrait",
+    "orientation": "default",
     "scheme": "askfiles",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
