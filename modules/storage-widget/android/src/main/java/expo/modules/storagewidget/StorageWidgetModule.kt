@@ -5,71 +5,43 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.URL
 
 class StorageWidgetModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
   override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('StorageWidget')` in JavaScript.
     Name("StorageWidget")
 
-    // Defines constant property on the module.
     Constant("PI") {
       Math.PI
     }
 
-    // Defines event names that the module can send to JavaScript.
     Events("onChange")
 
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
     Function("hello") {
       "Hello world! 👋"
     }
 
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
     AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
+      sendEvent("onChange", mapOf("value" to value))
     }
 
     AsyncFunction("saveRecentsForWidget") { recentsJson: String ->
       val context = appContext.reactContext ?: return@AsyncFunction
       val appCtx = context.applicationContext
+
+      // Save to SharedPreferences
       val prefs = appCtx.getSharedPreferences("askfiles_widget", android.content.Context.MODE_PRIVATE)
       prefs.edit().putString("recents", recentsJson).apply()
+      android.util.Log.d("AskFilesWidget", "Saved recents to SharedPreferences")
 
-      // Trigger widget update
-      // Send custom broadcast — StorageWidget.onReceive handles it
-      // Update widget directly via AppWidgetManager from application context
-      android.util.Log.d("AskFilesWidget", "Attempting direct widget update")
-      val handler = android.os.Handler(android.os.Looper.getMainLooper())
-      handler.post {
-        try {
-          val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(appCtx)
-          val componentName = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
-          val ids = appWidgetManager.getAppWidgetIds(componentName)
-          android.util.Log.d("AskFilesWidget", "Main thread IDs: ${ids.size}")
-          for (id in ids) {
-            com.askfiles.mobile.StorageWidget.updateWidget(appCtx, appWidgetManager, id)
-          }
-        } catch (e: Exception) {
-          android.util.Log.d("AskFilesWidget", "Direct update error: ${e.message}")
-        }
-      }
+      // Send broadcast to widget receiver
+      val intent = android.content.Intent("com.askfiles.mobile.UPDATE_WIDGET")
+      intent.component = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
+      appCtx.sendBroadcast(intent)
+      android.util.Log.d("AskFilesWidget", "Broadcast sent")
     }
 
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
     View(StorageWidgetView::class) {
-      // Defines a setter for the `url` prop.
       Prop("url") { view: StorageWidgetView, url: URL ->
         view.webView.loadUrl(url.toString())
       }
-      // Defines an event that the view can send to JavaScript.
       Events("onLoad")
     }
   }
