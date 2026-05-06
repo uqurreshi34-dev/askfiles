@@ -18,6 +18,12 @@ export async function addRecent(file: RecentFile): Promise<void> {
     const filtered = existing.filter(f => f.uri !== file.uri);
     const updated = [file, ...filtered].slice(0, MAX_RECENTS);
     await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
+    // Sync top 4 to widget via SharedPreferences
+    try {
+      const StorageWidgetModule = require('@/modules/storage-widget').default;
+      const widgetRecents = updated.slice(0, 4);
+      await StorageWidgetModule.saveRecentsForWidget(JSON.stringify(widgetRecents));
+    } catch {}
   } catch (e) {
   }
 }

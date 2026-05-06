@@ -14,8 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
-
+        android:layout_marginBottom="6dp">
         <TextView
             android:id="@+id/widget_title"
             android:layout_width="0dp"
@@ -26,7 +25,6 @@
             android:textSize="13sp"
             android:textStyle="bold"
             android:letterSpacing="0.02"/>
-
         <TextView
             android:id="@+id/widget_percent"
             android:layout_width="wrap_content"
@@ -42,8 +40,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
-
+        android:layout_marginBottom="5dp">
         <TextView
             android:id="@+id/widget_used"
             android:layout_width="wrap_content"
@@ -52,7 +49,6 @@
             android:textColor="#111111"
             android:textSize="14sp"
             android:textStyle="bold"/>
-
         <TextView
             android:id="@+id/widget_total"
             android:layout_width="wrap_content"
@@ -69,7 +65,7 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="6dp"
-        android:layout_marginBottom="6dp"
+        android:layout_marginBottom="5dp"
         android:progressDrawable="@drawable/widget_progress_drawable"
         android:max="100"
         android:progress="0"/>
@@ -81,6 +77,122 @@
         android:layout_height="wrap_content"
         android:text="0.0 GB free"
         android:textColor="#3B6D11"
-        android:textSize="11sp"/>
+        android:textSize="11sp"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#E0DED8"
+        android:layout_marginBottom="6dp"/>
+
+    <!-- Recent file row 1 -->
+    <LinearLayout
+        android:id="@+id/recent_row_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="3dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/recent_name_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#111111"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/recent_meta_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#888780"
+            android:textSize="10sp"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <!-- Recent file row 2 -->
+    <LinearLayout
+        android:id="@+id/recent_row_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="3dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/recent_name_2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#111111"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/recent_meta_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#888780"
+            android:textSize="10sp"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <!-- Recent file row 3 -->
+    <LinearLayout
+        android:id="@+id/recent_row_3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="3dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/recent_name_3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#111111"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/recent_meta_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#888780"
+            android:textSize="10sp"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <!-- Recent file row 4 -->
+    <LinearLayout
+        android:id="@+id/recent_row_4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="3dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/recent_name_4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#111111"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/recent_meta_4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#888780"
+            android:textSize="10sp"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
 
 </LinearLayout>

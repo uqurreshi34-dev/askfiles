@@ -6,6 +6,7 @@ declare class StorageWidgetModule extends NativeModule<StorageWidgetModuleEvents
   PI: number;
   hello(): string;
   setValueAsync(value: string): Promise<void>;
+  saveRecentsForWidget(recentsJson: string): Promise<void>;
 }
 
 // This call loads the native module object from the JSI.
