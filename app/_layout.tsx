@@ -143,7 +143,10 @@ export default function RootLayout() {
   })).current;
 
   useEffect(() => {
-    ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    // Delay mic permission request so it doesn't interrupt onboarding
+    setTimeout(() => {
+      ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    }, 3000);
   }, []);
 
   useEffect(() => {
