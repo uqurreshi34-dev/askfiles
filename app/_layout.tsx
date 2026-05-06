@@ -143,10 +143,16 @@ export default function RootLayout() {
   })).current;
 
   useEffect(() => {
-    // Delay mic permission request so it doesn't interrupt onboarding
-    setTimeout(() => {
-      ExpoSpeechRecognitionModule.requestPermissionsAsync();
-    }, 3000);
+    AsyncStorage.getItem('askfiles-onboarding-done').then(done => {
+      if (done) {
+        ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      } else {
+        // Wait for onboarding to finish before requesting mic permission
+        setTimeout(() => {
+          ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        }, 8000);
+      }
+    });
   }, []);
 
   useEffect(() => {
