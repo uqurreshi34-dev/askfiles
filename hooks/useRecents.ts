@@ -13,10 +13,15 @@ export interface RecentFile {
 
 export async function addRecent(file: RecentFile): Promise<void> {
   try {
+    const decodedFile = {
+      ...file,
+      uri: decodeURIComponent(file.uri),
+      name: decodeURIComponent(file.name),
+    };
     const raw = await AsyncStorage.getItem(RECENTS_KEY);
     const existing: RecentFile[] = raw ? JSON.parse(raw) : [];
-    const filtered = existing.filter(f => f.uri !== file.uri);
-    const updated = [file, ...filtered].slice(0, MAX_RECENTS);
+    const filtered = existing.filter(f => f.uri !== decodedFile.uri);
+    const updated = [decodedFile, ...filtered].slice(0, MAX_RECENTS);
     await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
     // Sync top 4 to widget via SharedPreferences
     try {

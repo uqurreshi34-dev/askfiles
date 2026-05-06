@@ -46,11 +46,11 @@ class StorageWidgetModule : Module() {
       val ids = manager.getAppWidgetIds(
           android.content.ComponentName(context, "com.askfiles.mobile.StorageWidget")
         )
+        android.util.Log.d("AskFilesWidget", "Widget IDs found: ${ids.size} — $ids")
       if (ids.isNotEmpty()) {
-        // Force a broadcast to update all widget instances
         val intent = android.content.Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE)
         intent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-        intent.setPackage(context.packageName)
+        intent.component = android.content.ComponentName(context, "com.askfiles.mobile.StorageWidget")
         context.sendBroadcast(intent)
       }
     }
