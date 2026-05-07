@@ -91,13 +91,24 @@ class StorageWidget : AppWidgetProvider() {
 
             // Storage stats
             try {
-                val extPath = Environment.getExternalStorageDirectory().absolutePath
-                val extStat = StatFs(extPath)
-                val rawTotal = extStat.blockCountLong * extStat.blockSizeLong
-                val freeBytes = extStat.availableBlocksLong * extStat.blockSizeLong
-                val usedBytes = rawTotal - freeBytes
                 val GB = 1_073_741_824L
                 val sizes = listOf(32L, 64L, 128L, 256L, 512L, 1024L, 2048L).map { it * GB }
+
+                val rawTotal: Long
+                val freeBytes: Long
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    val storageManager = context.getSystemService(android.content.Context.STORAGE_SERVICE) as android.os.storage.StorageManager
+                    val storageStatsManager = context.getSystemService(android.content.Context.STORAGE_STATS_SERVICE) as android.app.usage.StorageStatsManager
+                    rawTotal = storageStatsManager.getTotalBytes(android.os.storage.StorageManager.UUID_DEFAULT)
+                    freeBytes = storageStatsManager.getFreeBytes(android.os.storage.StorageManager.UUID_DEFAULT)
+                } else {
+                    val extStat = StatFs(Environment.getExternalStorageDirectory().absolutePath)
+                    rawTotal = extStat.blockCountLong * extStat.blockSizeLong
+                    freeBytes = extStat.availableBlocksLong * extStat.blockSizeLong
+                }
+
+                val usedBytes = rawTotal - freeBytes
                 val marketedTotal = sizes.firstOrNull { it >= rawTotal } ?: rawTotal
 
                 val usedGB = usedBytes.toFloat() / 1_073_741_824f

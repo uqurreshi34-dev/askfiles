@@ -272,7 +272,7 @@ export default function HomeScreen() {
               usedBytes={storageInfo?.usedBytes ?? 0}
               totalBytes={storageInfo?.totalBytes ?? 0}
               freeBytes={storageInfo?.freeBytes ?? 0}
-              note="User-accessible storage only"
+              note="Includes apps and user files"
               showChevron={true}
             />
           </TouchableOpacity>

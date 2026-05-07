@@ -62,7 +62,7 @@ export default function StorageBreakdownScreen() {
             usedBytes={usedBytes}
             totalBytes={totalBytes}
             freeBytes={freeBytes}
-            note="User-accessible storage only"
+            note="Includes apps and user files"
             showChevron={false}
           />
 

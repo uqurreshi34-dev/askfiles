@@ -62,7 +62,7 @@ export default function StorageSummaryCard({
         >
           <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
             <Text style={[styles.modalText, { color: colors.textPrimary }]}>
-            {`Your device has ${formatBytes(totalBytes)} of storage in total. AskFiles shows ${formatBytes(usedBytes)} used by your personal files — photos, videos, documents and downloads. Android may show a higher figure for used storage because it also includes Android and system files, which AskFiles cannot access.`}
+            {`Your device has ${formatBytes(totalBytes)} of storage in total. AskFiles shows ${formatBytes(usedBytes)} used across your files and apps. Android Settings may show a slightly different figure — this is normal and is due to how the operating system calculates reserved and system space.`}
             </Text>
           </View>
         </TouchableOpacity>
