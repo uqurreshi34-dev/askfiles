@@ -73,6 +73,7 @@ export default function RootLayout() {
   const [listening, setListening] = useState(false);
   const [banner, setBanner] = useState<{ text: string; success: boolean } | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +96,10 @@ export default function RootLayout() {
     }).catch(() => {});
     AsyncStorage.getItem('askfiles-mic-tooltip-seen').then(val => {
       if (!val) setShowTooltip(true);
+    }).catch(() => {});
+    AsyncStorage.getItem('askfiles-onboarding-done').then(val => {
+      if (val) setOnboardingChecked(true);
+      // For fresh installs, mic will show after onboarding sets the key
     }).catch(() => {});
   }, []);
 
@@ -149,19 +154,6 @@ export default function RootLayout() {
       }
     },
   })).current;
-
-  // useEffect(() => {
-  //   AsyncStorage.getItem('askfiles-onboarding-done').then(done => {
-  //     if (done) {
-  //       ExpoSpeechRecognitionModule.requestPermissionsAsync();
-  //     } else {
-  //       // Wait for onboarding to finish before requesting mic permission
-  //       setTimeout(() => {
-  //         ExpoSpeechRecognitionModule.requestPermissionsAsync();
-  //       }, 8000);
-  //     }
-  //   });
-  // }, []);
 
   useEffect(() => {
     isAppLockEnabled().then(enabled => {
@@ -225,7 +217,15 @@ export default function RootLayout() {
     Animated.timing(pulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
   }
 
-  const showMic = !HIDDEN_ON.some(p => pathname.startsWith(p));
+  useEffect(() => {
+    if (!onboardingChecked) {
+      AsyncStorage.getItem('askfiles-onboarding-done').then(val => {
+        if (val) setOnboardingChecked(true);
+      }).catch(() => {});
+    }
+  }, [pathname]);
+
+  const showMic = onboardingChecked && !!pathname && !HIDDEN_ON.some(p => pathname.startsWith(p));
 
   return (
     <View style={{ flex: 1 }}>
