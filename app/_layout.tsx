@@ -9,6 +9,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export let isAiSearchListening = false;
+export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
+
 SplashScreen.preventAutoHideAsync();
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -175,6 +178,7 @@ export default function RootLayout() {
   useSpeechRecognitionEvent('end', () => {
     setListening(false);
     stopPulse();
+    if (isAiSearchListening) return;
     const transcript = transcriptRef.current;
     transcriptRef.current = '';
     if (!transcript) return;
