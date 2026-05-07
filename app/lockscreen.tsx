@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
-import { verifyPin, isPinSet } from '@/hooks/usePin';
+import { verifyPin } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function LockScreen() {
