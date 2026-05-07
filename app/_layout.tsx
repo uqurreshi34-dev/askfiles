@@ -103,8 +103,13 @@ export default function RootLayout() {
       isDragging.current = false;
       dragStart.current = { x: posRef.current.x, y: posRef.current.y };
       // Start mic after short hold — distinguishes tap-hold from drag
-      pressTimer.current = setTimeout(() => {
+      pressTimer.current = setTimeout(async () => {
         if (!isDragging.current) {
+          const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+          if (!granted) {
+            showBanner('Microphone access needed for voice navigation', false);
+            return;
+          }
           transcriptRef.current = '';
           setListening(true);
           startPulse();
@@ -142,18 +147,18 @@ export default function RootLayout() {
     },
   })).current;
 
-  useEffect(() => {
-    AsyncStorage.getItem('askfiles-onboarding-done').then(done => {
-      if (done) {
-        ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      } else {
-        // Wait for onboarding to finish before requesting mic permission
-        setTimeout(() => {
-          ExpoSpeechRecognitionModule.requestPermissionsAsync();
-        }, 8000);
-      }
-    });
-  }, []);
+  // useEffect(() => {
+  //   AsyncStorage.getItem('askfiles-onboarding-done').then(done => {
+  //     if (done) {
+  //       ExpoSpeechRecognitionModule.requestPermissionsAsync();
+  //     } else {
+  //       // Wait for onboarding to finish before requesting mic permission
+  //       setTimeout(() => {
+  //         ExpoSpeechRecognitionModule.requestPermissionsAsync();
+  //       }, 8000);
+  //     }
+  //   });
+  // }, []);
 
   useEffect(() => {
     isAppLockEnabled().then(enabled => {
