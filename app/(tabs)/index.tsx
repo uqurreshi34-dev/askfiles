@@ -20,8 +20,9 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
 import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
+import Constants from 'expo-constants';
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 function isVideoFile(name: string): boolean {
