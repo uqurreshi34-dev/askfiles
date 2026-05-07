@@ -118,7 +118,7 @@ class StorageWidget : AppWidgetProvider() {
 
                 views.setTextViewText(R.id.widget_used, "%.1f GB used".format(usedGB))
                 views.setTextViewText(R.id.widget_total, "of %.0f GB".format(totalGB))
-                views.setTextViewText(R.id.widget_free, "%.1f GB available · user accessible storage".format(freeGB))
+                views.setTextViewText(R.id.widget_free, "%.1f GB available".format(freeGB))
                 views.setTextViewText(R.id.widget_percent, "$usedPercent%")
                 views.setProgressBar(R.id.widget_progress, 100, usedPercent, false)
             } catch (e: Exception) {
