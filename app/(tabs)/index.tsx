@@ -21,7 +21,7 @@ import RNFS from 'react-native-fs';
 import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 function isVideoFile(name: string): boolean {
