@@ -63,13 +63,13 @@ export default function HomeScreen() {
         router.replace('/onboarding' as any);
       } else {
         setOnboardingChecked(true);
-        scheduleDailyReminder(isPro);
         const lockEnabled = await isAppLockEnabled();
         setAppLockEnabled(lockEnabled);
         const seenVersion = await AsyncStorage.getItem(`askfiles-whats-new-${APP_VERSION}`);
         if (!seenVersion) {
           setWhatsNewVisible(true);
           await AsyncStorage.setItem(`askfiles-whats-new-${APP_VERSION}`, 'true');
+          return; // notifications fire after What's New is dismissed
         }
       }
     }
@@ -206,7 +206,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
-            onPress={() => setWhatsNewVisible(false)}
+            onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>What's New</Text>
@@ -223,7 +223,7 @@ export default function HomeScreen() {
                   <Text style={[styles.modalRowText, { flex: 1, color: colors.textPrimary }]}>{item.text}</Text>
                 </View>
               ))}
-              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => setWhatsNewVisible(false)}>
+              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}>
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Got it</Text>
               </TouchableOpacity>
             </View>
