@@ -203,9 +203,12 @@ export default function SearchScreen() {
   ).current;
 
   useSpeechRecognitionEvent('result', (e) => {
+    if (!listening) return;
     const text = e.results?.[0]?.transcript ?? '';
     if (text) setAiQuery(text);
   });
+  useSpeechRecognitionEvent('end', () => { setListening(false); setAiSearchListening(false); });
+  useSpeechRecognitionEvent('error', () => setListening(false));
   useSpeechRecognitionEvent('end', () => { setListening(false); setAiSearchListening(false); });
   useSpeechRecognitionEvent('error', () => setListening(false));
   
