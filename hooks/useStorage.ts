@@ -6,6 +6,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import RNFS from 'react-native-fs';
 import { formatBytes } from '@/utils/formatBytes';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface StorageInfo {
   totalBytes: number;
@@ -279,10 +280,10 @@ async function requestManageStoragePermission(): Promise<void> {
 }
 
 async function doLoad(): Promise<void> {
+  const onboardingDone = await AsyncStorage.getItem('askfiles-onboarding-done');
+  if (!onboardingDone) return;
   const { status } = await MediaLibrary.requestPermissionsAsync();
   if (status !== 'granted') return;
-
-// Request full filesystem access if not already granted
   await requestManageStoragePermission();
 
   const stats = await getStorageStats();

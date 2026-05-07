@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
-
+import * as MediaLibrary from 'expo-media-library';
+import * as IntentLauncher from 'expo-intent-launcher';
 const { width } = Dimensions.get('window');
 
 const SLIDES = [
@@ -40,6 +41,13 @@ const SLIDES = [
     title: 'AI-Powered Search',
     body: 'Ask in plain English — "show me videos from last week" or "find large PDFs". AskFiles understands you.',
   },
+  {
+    icon: 'folder-open-outline' as const,
+    iconColor: '#185FA5',
+    iconBg: '#E6F1FB',
+    title: 'Access Your Files',
+    body: 'AskFiles needs access to your photos, videos and files to work. Your files never leave your device.',
+  },
 ];
 
 export default function OnboardingScreen() {
@@ -47,6 +55,8 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [requestingPermission, setRequestingPermission] = useState(false);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -59,15 +69,39 @@ export default function OnboardingScreen() {
     }
   }
 
+  async function requestPermissions() {
+    setRequestingPermission(true);
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status === 'granted') {
+        try {
+          await IntentLauncher.startActivityAsync(
+            'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
+            { data: 'package:com.askfiles.mobile' }
+          );
+        } catch {
+          try {
+            await IntentLauncher.startActivityAsync(
+              'android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION'
+            );
+          } catch {}
+        }
+        setPermissionGranted(true);
+      }
+    } catch {}
+    setRequestingPermission(false);
+  }
+
   async function finish() {
     await AsyncStorage.setItem('askfiles-onboarding-done', 'true');
     router.replace('/(tabs)');
   }
 
   const isLast = currentIndex === SLIDES.length - 1;
+  const isPermissionSlide = currentIndex === SLIDES.length - 1;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -94,10 +128,34 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.footer}>
-        {isLast ? (
-          <TouchableOpacity style={styles.btnPrimary} onPress={finish} activeOpacity={0.8}>
-            <Text style={styles.btnPrimaryText}>Get Started</Text>
-          </TouchableOpacity>
+        {isPermissionSlide ? (
+          <View style={{ gap: 12 }}>
+            {!permissionGranted ? (
+              <TouchableOpacity
+                style={styles.btnPrimary}
+                onPress={requestPermissions}
+                disabled={requestingPermission}
+                activeOpacity={0.8}
+              >
+                {requestingPermission ? (
+                  <Text style={styles.btnPrimaryText}>Requesting...</Text>
+                ) : (
+                  <>
+                    <Ionicons name="shield-checkmark-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={styles.btnPrimaryText}>Grant Access</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.btnPrimary, { backgroundColor: '#3B6D11' }]}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.btnPrimaryText}>Access Granted ✓</Text>
+              </View>
+            )}
+            <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: permissionGranted ? '#185FA5' : colors.surface }]} onPress={finish} activeOpacity={0.8}>
+              <Text style={[styles.btnPrimaryText, { color: permissionGranted ? '#fff' : colors.textMuted }]}>Get Started</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={styles.footerRow}>
             <TouchableOpacity onPress={finish} activeOpacity={0.7}>
