@@ -72,7 +72,7 @@ export default function OnboardingScreen() {
   async function requestPermissions() {
     setRequestingPermission(true);
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync();
       if (status === 'granted') {
         try {
           await IntentLauncher.startActivityAsync(
@@ -87,6 +87,11 @@ export default function OnboardingScreen() {
           } catch {}
         }
         setPermissionGranted(true);
+      } else if (!canAskAgain) {
+        await IntentLauncher.startActivityAsync(
+          'android.settings.APPLICATION_DETAILS_SETTINGS',
+          { data: 'package:com.askfiles.mobile' }
+        );
       }
     } catch {}
     setRequestingPermission(false);
