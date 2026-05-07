@@ -35,7 +35,7 @@ const COMMANDS = [
   { keywords: ['download', 'apk'], route: '/category?category=downloads' },
   { keywords: ['search', 'find'], route: '/(tabs)/search' },
   { keywords: ['browse', 'folders', 'explore'], route: '/(tabs)/browse' },
-  { keywords: ['home', 'start'], route: '/(tabs)/' },
+  { keywords: ['home', 'start', 'main page', 'main screen'], route: '/(tabs)/' },
 ];
 
 function parseCommand(transcript: string): string | null {
@@ -181,6 +181,7 @@ export default function RootLayout() {
     if (isAiSearchListening) return;
     const transcript = transcriptRef.current;
     transcriptRef.current = '';
+    console.log('Voice transcript:', JSON.stringify(transcript));
     if (!transcript) return;
     const route = parseCommand(transcript);
     if (route) {
