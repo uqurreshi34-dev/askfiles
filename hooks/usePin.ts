@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
+import { isAppLockEnabledSync, setAppLockEnabledSync } from '@/modules/storage-stats';
 
 const PIN_KEY = 'askfiles-pin';
-const APP_LOCK_KEY = 'askfiles-app-lock-enabled';
 
 export async function savePin(pin: string): Promise<void> {
   await SecureStore.setItemAsync(PIN_KEY, pin);
@@ -26,14 +26,15 @@ export async function isPinSet(): Promise<boolean> {
 }
 
 export async function enableAppLock(): Promise<void> {
-  await SecureStore.setItemAsync(APP_LOCK_KEY, 'true');
+  await SecureStore.setItemAsync('askfiles-app-lock-enabled', 'true');
+  setAppLockEnabledSync(true);
 }
 
 export async function disableAppLock(): Promise<void> {
-  await SecureStore.setItemAsync(APP_LOCK_KEY, 'false');
+  await SecureStore.setItemAsync('askfiles-app-lock-enabled', 'false');
+  setAppLockEnabledSync(false);
 }
 
-export async function isAppLockEnabled(): Promise<boolean> {
-  const val = await SecureStore.getItemAsync(APP_LOCK_KEY);
-  return val === 'true';
+export function isAppLockEnabled(): boolean {
+  return isAppLockEnabledSync();
 }

@@ -54,5 +54,17 @@ class StorageStatsModule : Module() {
         AsyncFunction("isStorageManager") {
             Environment.isExternalStorageManager()
         }
+
+        Function("isAppLockEnabledSync") {
+            val context = appContext.reactContext ?: return@Function false
+            val prefs = context.getSharedPreferences("askfiles_lock", Context.MODE_PRIVATE)
+            prefs.getBoolean("app_lock_enabled", false)
+        }
+
+        Function("setAppLockEnabledSync") { enabled: Boolean ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_lock", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("app_lock_enabled", enabled).apply()
+        }
     }
 }

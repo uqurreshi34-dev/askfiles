@@ -156,10 +156,15 @@ export default function RootLayout() {
   })).current;
 
   useEffect(() => {
-    isAppLockEnabled().then(enabled => {
-      if (enabled) router.replace('/lockscreen');
+    const enabled = isAppLockEnabled();
+    if (enabled) {
+      setTimeout(() => {
+        router.replace('/lockscreen');
+        SplashScreen.hideAsync();
+      }, 0);
+    } else {
       SplashScreen.hideAsync();
-    });
+    }
   }, []);
 
   useSpeechRecognitionEvent('result', (e) => {

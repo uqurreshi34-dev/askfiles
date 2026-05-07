@@ -1,4 +1,11 @@
 import { requireNativeModule } from 'expo-modules-core';
 
-const StorageStats = requireNativeModule('StorageStats');
-export default StorageStats; 
+declare class StorageStatsModuleType {
+  getStorageStats(): Promise<{ total: number; used: number; free: number }>;
+  isStorageManager(): Promise<boolean>;
+  isAppLockEnabledSync(): boolean;
+  setAppLockEnabledSync(enabled: boolean): void;
+}
+
+const StorageStats = requireNativeModule<StorageStatsModuleType>('StorageStats');
+export default StorageStats;

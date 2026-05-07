@@ -63,7 +63,7 @@ export default function HomeScreen() {
         router.replace('/onboarding' as any);
       } else {
         setOnboardingChecked(true);
-        const lockEnabled = await isAppLockEnabled();
+        const lockEnabled = isAppLockEnabled();
         setAppLockEnabled(lockEnabled);
         const seenVersion = await AsyncStorage.getItem(`askfiles-whats-new-${APP_VERSION}`);
         if (!seenVersion) {
@@ -82,7 +82,7 @@ export default function HomeScreen() {
   }, [reload, reloadStorage]));
 
   useFocusEffect(useCallback(() => {
-    isAppLockEnabled().then(enabled => setAppLockEnabled(enabled));
+    setAppLockEnabled(isAppLockEnabled());
   }, []));
 
   const QUICK_ACCESS = [
