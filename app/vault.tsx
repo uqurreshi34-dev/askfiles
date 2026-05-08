@@ -3,7 +3,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
-  Pressable, PanResponder,
+  Pressable, PanResponder, useWindowDimensions, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -55,6 +55,7 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
 
 export default function VaultScreen() {
   const { colors } = useTheme();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const router = useRouter();
   const { files, loading, authenticated, unlockVault, deleteFromVault, lock } = useVault();
   const [busy, setBusy] = useState(false);
@@ -331,7 +332,7 @@ export default function VaultScreen() {
             )}
           </View>
         ) : (
-          <View style={styles.lockScreen}>
+          <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
               <Ionicons name="keypad-outline" size={40} color={colors.blue} />
             </View>
@@ -362,7 +363,7 @@ export default function VaultScreen() {
                 );
               })}
             </View>
-          </View>
+          </ScrollView>
         )}
       </SafeAreaView>
     );
@@ -424,12 +425,19 @@ export default function VaultScreen() {
 
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
-          <Animated.View
-            style={[styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
-            {...panResponder.panHandlers}
+        <Animated.View
+            style={SCREEN_WIDTH > SCREEN_HEIGHT
+              ? [styles.sheetLandscape, { backgroundColor: colors.card }]
+              : [styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16 }]
+            }
+            {...(SCREEN_WIDTH > SCREEN_HEIGHT ? {} : panResponder.panHandlers)}
           >
+            {SCREEN_WIDTH > SCREEN_HEIGHT
+              ? <TouchableOpacity onPress={closeSheet} style={{ alignSelf: 'flex-end', padding: 4 }}><Ionicons name="close" size={20} color={colors.textMuted} /></TouchableOpacity>
+              : <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
+            }
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
             <Pressable>
-              <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               <View style={styles.sheetHeader}>
               <View style={[styles.sheetIcon, { backgroundColor: selectedFile ? getFileColor(selectedFile.name) + '22' : colors.surface, overflow: 'hidden' }]}>
                 {selectedFile && isImageFile(selectedFile.name) ? (
@@ -486,7 +494,8 @@ export default function VaultScreen() {
                 <Ionicons name="close-outline" size={20} color={colors.textMuted} />
                 <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
-            </Pressable>
+              </Pressable>
+            </ScrollView>
           </Animated.View>
         </Pressable>
       </Modal>
@@ -561,7 +570,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 },
-  lockScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
+  lockScreen: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12, paddingVertical: 40 },
   lockIcon: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   lockTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
   lockSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
@@ -584,6 +593,7 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetLandscape: { borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, width: '60%', maxHeight: '90%', alignSelf: 'center', marginTop: 'auto', marginBottom: 'auto' },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
