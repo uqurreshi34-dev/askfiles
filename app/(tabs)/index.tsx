@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,8 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
 
 export default function HomeScreen() {
   const { colors, dark } = useTheme();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
   const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const { count: favCount } = useFavourites();
@@ -139,7 +141,7 @@ export default function HomeScreen() {
             activeOpacity={1}
             onPress={() => setSettingsVisible(false)}
           >
-            <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
               <View style={styles.modalRow}>
@@ -208,7 +210,7 @@ export default function HomeScreen() {
             activeOpacity={1}
             onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}
           >
-            <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>What's New</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
@@ -407,11 +409,11 @@ const styles = StyleSheet.create({
   recentName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
   recentMeta: { fontSize: 11 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { borderRadius: 16, padding: 16, width: 280, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8 },
+  modalCard: { borderRadius: 16, padding: 16, paddingBottom: 24, maxHeight: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8 },
   modalTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center', letterSpacing: -0.3 },
   modalVersion: { fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 16 },
   modalDivider: { height: 0.5, marginBottom: 8 },
-  modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   modalRowText: { fontSize: 14 },
   modalClose: { marginTop: 12, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
   modalCloseText: { fontSize: 14, fontWeight: '500' },
