@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, NativeScrollEvent, NativeSyntheticEvent, useWindowDimensions,
+  Dimensions, ScrollView, NativeScrollEvent, NativeSyntheticEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +11,8 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
+
+const { width: PORTRAIT_WIDTH } = Dimensions.get('window');
 
 const SLIDES = [
   {
@@ -52,23 +55,33 @@ const SLIDES = [
 export default function OnboardingScreen() {
   const { colors } = useTheme();
   const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const slideWidth = width - insets.left - insets.right;
-  const slideHeight = height - insets.top - insets.bottom;
+  const isLandscape = width > height;
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [requestingPermission, setRequestingPermission] = useState(false);
 
+  // When rotating back to portrait, sync scroll to current slide
+  useEffect(() => {
+    if (!isLandscape) {
+      const t = setTimeout(() => {
+        scrollRef.current?.scrollTo({ x: currentIndex * PORTRAIT_WIDTH, animated: false });
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [isLandscape]);
+
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / PORTRAIT_WIDTH);
     setCurrentIndex(idx);
   }
 
   function goNext() {
     if (currentIndex < SLIDES.length - 1) {
-      scrollRef.current?.scrollTo({ x: (currentIndex + 1) * slideWidth, animated: true });
+      const next = currentIndex + 1;
+      setCurrentIndex(next);
+      scrollRef.current?.scrollTo({ x: next * PORTRAIT_WIDTH, animated: true });
     }
   }
 
@@ -105,11 +118,85 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   }
 
-  const isLast = currentIndex === SLIDES.length - 1;
   const isPermissionSlide = currentIndex === SLIDES.length - 1;
+  const slide = SLIDES[currentIndex];
 
+  // ── LANDSCAPE ─────────────────────────────────────────────────────────────
+  if (isLandscape) {
+    return (
+      <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Skip — top right */}
+        <TouchableOpacity onPress={finish} style={styles.lsSkip}>
+          <Text style={[styles.skip, { color: colors.textMuted }]}>Skip</Text>
+        </TouchableOpacity>
+
+        {/* Centre: prev arrow | content | next arrow */}
+        <View style={styles.lsBody}>
+          <TouchableOpacity
+            onPress={() => setCurrentIndex(i => Math.max(0, i - 1))}
+            style={styles.lsArrow}
+            activeOpacity={0.6}
+            disabled={currentIndex === 0}
+          >
+            <Ionicons name="chevron-back" size={28} color={currentIndex === 0 ? colors.textDisabled : colors.textPrimary} />
+          </TouchableOpacity>
+
+          <View style={styles.lsSlide}>
+            <View style={[styles.lsIconWrap, { backgroundColor: slide.iconBg }]}>
+              <Ionicons name={slide.icon} size={36} color={slide.iconColor} />
+            </View>
+            <Text style={[styles.lsTitle, { color: colors.textPrimary }]}>{slide.title}</Text>
+            <Text style={[styles.lsBodyText, { color: colors.textSecondary }]}>{slide.body}</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setCurrentIndex(i => Math.min(SLIDES.length - 1, i + 1))}
+            style={styles.lsArrow}
+            activeOpacity={0.6}
+            disabled={currentIndex === SLIDES.length - 1}
+          >
+            <Ionicons name="chevron-forward" size={28} color={currentIndex === SLIDES.length - 1 ? colors.textDisabled : colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom: permission buttons or page counter */}
+        <View style={styles.lsFooter}>
+          {isPermissionSlide ? (
+            <View style={styles.lsPermissionRow}>
+              {!permissionGranted ? (
+                <TouchableOpacity style={styles.btnPrimary} onPress={requestPermissions} disabled={requestingPermission} activeOpacity={0.8}>
+                  {requestingPermission ? (
+                    <Text style={styles.btnPrimaryText}>Requesting...</Text>
+                  ) : (
+                    <>
+                      <Ionicons name="shield-checkmark-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                      <Text style={styles.btnPrimaryText}>Grant Access</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.btnPrimary, { backgroundColor: '#3B6D11' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.btnPrimaryText}>Access Granted ✓</Text>
+                </View>
+              )}
+              <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: permissionGranted ? '#185FA5' : colors.surface }]} onPress={finish} activeOpacity={0.8}>
+                <Text style={[styles.btnPrimaryText, { color: permissionGranted ? '#fff' : colors.textMuted }]}>Get Started</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={[styles.lsPageCount, { color: colors.textMuted }]}>
+              {currentIndex + 1} / {SLIDES.length}
+            </Text>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ── PORTRAIT (completely unchanged from original) ──────────────────────────
   return (
-    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -118,13 +205,13 @@ export default function OnboardingScreen() {
         onMomentumScrollEnd={handleScroll}
         scrollEventThrottle={16}
       >
-        {SLIDES.map((slide, i) => (
-          <View key={i} style={[styles.slide, { width: slideWidth, height: slideHeight }]}>
-            <View style={[styles.iconWrap, { backgroundColor: slide.iconBg }]}>
-              <Ionicons name={slide.icon} size={52} color={slide.iconColor} />
+        {SLIDES.map((s, i) => (
+          <View key={i} style={styles.slide}>
+            <View style={[styles.iconWrap, { backgroundColor: s.iconBg }]}>
+              <Ionicons name={s.icon} size={52} color={s.iconColor} />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{slide.title}</Text>
-            <Text style={[styles.body, { color: colors.textSecondary }]}>{slide.body}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{s.title}</Text>
+            <Text style={[styles.body, { color: colors.textSecondary }]}>{s.body}</Text>
           </View>
         ))}
       </ScrollView>
@@ -139,12 +226,7 @@ export default function OnboardingScreen() {
         {isPermissionSlide ? (
           <View style={{ gap: 12 }}>
             {!permissionGranted ? (
-              <TouchableOpacity
-                style={styles.btnPrimary}
-                onPress={requestPermissions}
-                disabled={requestingPermission}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={styles.btnPrimary} onPress={requestPermissions} disabled={requestingPermission} activeOpacity={0.8}>
                 {requestingPermission ? (
                   <Text style={styles.btnPrimaryText}>Requesting...</Text>
                 ) : (
@@ -182,7 +264,9 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  slide: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 80 },
+
+  // Portrait (unchanged)
+  slide: { width: PORTRAIT_WIDTH, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 40 },
   iconWrap: { width: 110, height: 110, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 36 },
   title: { fontSize: 26, fontWeight: '600', textAlign: 'center', letterSpacing: -0.4, marginBottom: 14 },
   body: { fontSize: 15, textAlign: 'center', lineHeight: 23 },
@@ -194,4 +278,16 @@ const styles = StyleSheet.create({
   skip: { fontSize: 14, paddingVertical: 14, paddingHorizontal: 4 },
   btnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#185FA5', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24 },
   btnPrimaryText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+
+  // Landscape
+  lsSkip: { position: 'absolute', top: 8, right: 16, zIndex: 10, padding: 8 },
+  lsBody: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
+  lsArrow: { width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
+  lsSlide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  lsIconWrap: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  lsTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center', letterSpacing: -0.3, marginBottom: 8 },
+  lsBodyText: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  lsFooter: { paddingHorizontal: 24, paddingBottom: 12, alignItems: 'center' },
+  lsPermissionRow: { flexDirection: 'row', gap: 12, justifyContent: 'center' },
+  lsPageCount: { fontSize: 13, paddingVertical: 8 },
 });
