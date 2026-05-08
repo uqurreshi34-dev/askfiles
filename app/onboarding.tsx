@@ -1,16 +1,15 @@
 import { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Dimensions, ScrollView, NativeScrollEvent, NativeSyntheticEvent,
+  ScrollView, NativeScrollEvent, NativeSyntheticEvent, useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {
@@ -52,6 +51,10 @@ const SLIDES = [
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const slideWidth = width - insets.left - insets.right;
+  const slideHeight = height - insets.top - insets.bottom;
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -59,13 +62,13 @@ export default function OnboardingScreen() {
   const [requestingPermission, setRequestingPermission] = useState(false);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
     setCurrentIndex(idx);
   }
 
   function goNext() {
     if (currentIndex < SLIDES.length - 1) {
-      scrollRef.current?.scrollTo({ x: (currentIndex + 1) * width, animated: true });
+      scrollRef.current?.scrollTo({ x: (currentIndex + 1) * slideWidth, animated: true });
     }
   }
 
@@ -106,7 +109,7 @@ export default function OnboardingScreen() {
   const isPermissionSlide = currentIndex === SLIDES.length - 1;
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -116,7 +119,7 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
       >
         {SLIDES.map((slide, i) => (
-          <View key={i} style={styles.slide}>
+          <View key={i} style={[styles.slide, { width: slideWidth, height: slideHeight }]}>
             <View style={[styles.iconWrap, { backgroundColor: slide.iconBg }]}>
               <Ionicons name={slide.icon} size={52} color={slide.iconColor} />
             </View>
@@ -179,7 +182,7 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  slide: { width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 40 },
+  slide: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 80 },
   iconWrap: { width: 110, height: 110, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 36 },
   title: { fontSize: 26, fontWeight: '600', textAlign: 'center', letterSpacing: -0.4, marginBottom: 14 },
   body: { fontSize: 15, textAlign: 'center', lineHeight: 23 },
