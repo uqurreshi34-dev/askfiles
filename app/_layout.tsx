@@ -71,8 +71,12 @@ export default function RootLayout() {
   const dark = scheme === 'dark';
   const pathname = usePathname();
   useEffect(() => {
-    ScreenOrientation.unlockAsync();
+    ScreenOrientation.unlockAsync(); // REMOVE AND UNINSTALL PACKAGE FOR AAB BUILD! FORCING LANDSCAPE MODE IN USB DEBUG MODE
   }, []);
+  useEffect(() => {
+    const { setBackgroundColorAsync } = require('expo-system-ui');
+    setBackgroundColorAsync(dark ? '#111111' : '#ffffff');
+  }, [dark]);
   const [listening, setListening] = useState(false);
   const [banner, setBanner] = useState<{ text: string; success: boolean } | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
