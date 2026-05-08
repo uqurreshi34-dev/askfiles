@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -59,7 +59,7 @@ export default function LockScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="lock-closed" size={36} color={colors.blue} />
         </View>
@@ -93,14 +93,14 @@ export default function LockScreen() {
             );
           })}
         </View>
-      </View>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  body: { flex: 1, alignItems: 'center', paddingTop: 48, paddingHorizontal: 24 },
+  body: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 24, paddingBottom: 32 },
   iconWrap: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.4 },
   sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 8 },

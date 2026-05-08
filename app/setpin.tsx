@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -60,7 +60,7 @@ export default function SetPinScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="keypad-outline" size={36} color={colors.blue} />
         </View>
@@ -94,8 +94,8 @@ export default function SetPinScreen() {
             );
           })}
         </View>
-      </View>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
   );
 }
 
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
-  body: { flex: 1, alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 },
+  body: { alignItems: 'center', paddingTop: 32, paddingHorizontal: 24, paddingBottom: 32 },
   iconWrap: { width: 80, height: 80, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   prompt: { fontSize: 20, fontWeight: '600', letterSpacing: -0.3, marginBottom: 8 },
   sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 36 },
