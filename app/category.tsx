@@ -768,7 +768,7 @@ export default function CategoryScreen() {
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             )}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }}>
             <Pressable>
               {SCREEN_WIDTH <= SCREEN_HEIGHT && (
                 <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
