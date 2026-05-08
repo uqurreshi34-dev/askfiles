@@ -320,17 +320,35 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                             MediaStore.Images.Thumbnails.MINI_KIND
                         )
                     } else {
-                        // Image — decode with sampling
                         val path = uri.replace("file://", "")
                             .let { java.net.URLDecoder.decode(it, "UTF-8") }
-                        val opts = BitmapFactory.Options().apply {
-                            inJustDecodeBounds = true
-                        }
+                        // Decode with sampling
+                        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                         BitmapFactory.decodeFile(path, opts)
-                        val size = 200
-                        opts.inSampleSize = calculateInSampleSize(opts, size, size)
+                        val thumbSize = 200
+                        opts.inSampleSize = calculateInSampleSize(opts, thumbSize, thumbSize)
                         opts.inJustDecodeBounds = false
-                        BitmapFactory.decodeFile(path, opts)
+                        val bitmap = BitmapFactory.decodeFile(path, opts) ?: return null
+                        // Read EXIF rotation and apply — fast, just reads header
+                        val exif = androidx.exifinterface.media.ExifInterface(path)
+                        val degrees = when (exif.getAttributeInt(
+                            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                        )) {
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                            else -> 0f
+                        }
+                        if (degrees != 0f) {
+                            val matrix = android.graphics.Matrix()
+                            matrix.postRotate(degrees)
+                            android.graphics.Bitmap.createBitmap(
+                                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                            ).also { bitmap.recycle() }
+                        } else {
+                            bitmap
+                        }
                     }
                 } catch (e: Exception) {
                     null
