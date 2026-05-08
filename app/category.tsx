@@ -943,8 +943,8 @@ export default function CategoryScreen() {
       </Modal>
 
       <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24 }}>
+      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
+      <View style={{ backgroundColor: colors.card, borderRadius: SCREEN_WIDTH > SCREEN_HEIGHT ? 20 : 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24, width: SCREEN_WIDTH > SCREEN_HEIGHT ? '50%' : undefined }}>
             <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
             {(['name', ...(category === 'documents' || category === 'downloads' ? ['size'] : []), 'date'] as SortKey[]).map(key => (
               <TouchableOpacity
