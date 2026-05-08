@@ -18,6 +18,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { shareFiles, openFile } from '@/modules/share-module';
+import { MediaGridView } from 'media-grid';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -639,6 +640,39 @@ export default function CategoryScreen() {
           <Ionicons name={config.icon as any} size={40} color={colors.textDisabled} />
           <Text style={[styles.empty, { color: colors.textMuted }]}>No {activeTab === 'All' ? config.title.toLowerCase() : activeTab + ' files'} found</Text>
         </View>
+      ) : (isMediaCategory && gridView) ? (
+        <>
+          <Text style={[styles.count, { color: colors.textMuted, paddingHorizontal: 16, paddingTop: 8 }]}>
+            {filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}
+          </Text>
+          <MediaGridView
+            style={{ flex: 1 }}
+            uris={filteredItems.map(i => i.uri)}
+            numColumns={GRID_COLS}
+            selectedUris={Array.from(selectedUris)}
+            selectMode={selectMode}
+            category={category ?? 'images'}
+            openingUri={openingUri ?? ''}
+            onItemPress={(e) => {
+              const { uri } = e.nativeEvent;
+              const item = filteredItems.find(i => i.uri === uri);
+              if (!item) return;
+              if (selectMode) {
+                const newSet = new Set(selectedUris);
+                const newMap = new Map(selectedItemsMap);
+                if (newSet.has(uri)) { newSet.delete(uri); newMap.delete(uri); }
+                else { newSet.add(uri); newMap.set(uri, item); }
+                setSelectedUris(newSet); setSelectedItemsMap(newMap);
+              } else { openItem(item); }
+            }}
+            onItemLongPress={(e) => {
+              const { uri } = e.nativeEvent;
+              const item = filteredItems.find(i => i.uri === uri);
+              if (!item || selectMode) return;
+              openSheet(item);
+            }}
+          />
+        </>
       ) : (
         <FlatList
           data={filteredItems}

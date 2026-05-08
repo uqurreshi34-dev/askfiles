@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["MediaGridModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.mediagrid.MediaGridModule"]
+  }
+}
