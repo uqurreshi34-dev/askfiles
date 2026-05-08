@@ -8,6 +8,7 @@ import { isAppLockEnabled } from '@/hooks/usePin';
 import * as SplashScreen from 'expo-splash-screen';
 import { usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export let isAiSearchListening = false;
 export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
@@ -69,7 +70,9 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const dark = scheme === 'dark';
   const pathname = usePathname();
-
+  useEffect(() => {
+    ScreenOrientation.unlockAsync();
+  }, []);
   const [listening, setListening] = useState(false);
   const [banner, setBanner] = useState<{ text: string; success: boolean } | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -230,7 +233,7 @@ export default function RootLayout() {
     }
   }, [pathname]);
 
-  const showMic = onboardingChecked && !!pathname && !HIDDEN_ON.some(p => pathname.startsWith(p));
+  const showMic = onboardingChecked && !!pathname && !HIDDEN_ON.some(p => pathname.startsWith(p)) && SH > SW;
 
   return (
     <View style={{ flex: 1 }}>

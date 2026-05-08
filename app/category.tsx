@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,12 +138,13 @@ function getDlTab(name: string): string {
   return 'Other';
 }
 
-const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
-const GRID_COLS = 3;
-const GRID_ITEM_SIZE = (SCREEN_WIDTH - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
+// const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
+// const GRID_COLS = 3;
+// const GRID_ITEM_SIZE = (SCREEN_WIDTH - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
 
 export default function CategoryScreen() {
   const { colors } = useTheme();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const { category } = useLocalSearchParams<{ category: Category }>();
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +154,9 @@ export default function CategoryScreen() {
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const insets = useSafeAreaInsets();
+  const GRID_COLS = SCREEN_WIDTH > SCREEN_HEIGHT ? 5 : 3;
+  const safeWidth = SCREEN_WIDTH - insets.left - insets.right;
+  const GRID_ITEM_SIZE = (safeWidth - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -639,8 +643,8 @@ export default function CategoryScreen() {
         <FlatList
           data={filteredItems}
           keyExtractor={item => item.uri}
-          key={isMediaCategory && gridView ? 'grid' : 'list'}
-          numColumns={isMediaCategory && gridView ? 3 : 1}
+          key={isMediaCategory && gridView ? `grid-${GRID_COLS}` : 'list'}
+          numColumns={isMediaCategory && gridView ? GRID_COLS : 1}
           renderItem={isMediaCategory && gridView
             ? ({ item }) => {
                 const isSelected = selectedUris.has(item.uri);
@@ -752,12 +756,23 @@ export default function CategoryScreen() {
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
-          <Animated.View
-            style={[styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16 }]}
-            {...panResponder.panHandlers}
+        <Animated.View
+            style={SCREEN_WIDTH > SCREEN_HEIGHT
+              ? [styles.sheetLandscape, { backgroundColor: colors.card }]
+              : [styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16 }]
+            }
+            {...(SCREEN_WIDTH > SCREEN_HEIGHT ? {} : panResponder.panHandlers)}
           >
+            {SCREEN_WIDTH > SCREEN_HEIGHT && (
+              <TouchableOpacity onPress={closeSheet} style={{ alignSelf: 'flex-end', padding: 4 }}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
             <Pressable>
-              <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
+              {SCREEN_WIDTH <= SCREEN_HEIGHT && (
+                <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
+              )}
               <View style={styles.sheetHeader}>
               <View style={[styles.sheetIcon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
                 {isImageFile(selectedItem?.name ?? '') ? (
@@ -857,6 +872,7 @@ export default function CategoryScreen() {
                 </>
               )}
             </Pressable>
+            </ScrollView>
           </Animated.View>
         </Pressable>
         </KeyboardAvoidingView>
@@ -1006,6 +1022,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 11 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16 },
+  sheetLandscape: { borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, width: '60%', maxHeight: '90%', alignSelf: 'center', marginTop: 'auto', marginBottom: 'auto' },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   sheetIcon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
