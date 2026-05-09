@@ -31,6 +31,7 @@ export function useTheme() {
       amber: '#854F0B',
       favRed: '#C0392B',
       deleteRed: '#E24B4A',
+      trashAmber: '#E65100',
       yellow: '#BA7517',
 
       // Tinted backgrounds for category cards
@@ -39,6 +40,7 @@ export function useTheme() {
       redBrownBg: dark ? '#3A1A0F' : '#FAECE7',
       greenBg: dark ? '#152A09' : '#EAF3DE',
       favRedBg: dark ? '#3A0F0F' : '#FEE9E9',
+      trashBg: dark ? '#2A1A00' : '#FFF3E0',
 
       // Tinted icon backgrounds
       blueTint: dark ? '#0D2A47' : '#EBF3FC',

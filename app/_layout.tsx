@@ -250,6 +250,7 @@ export default function RootLayout() {
         <Stack.Screen name="duplicates" />
         <Stack.Screen name="backup" />
         <Stack.Screen name="sensitive-files" />
+        <Stack.Screen name="trash" />
       </Stack>
 
       {showMic && (

@@ -12,6 +12,7 @@ import StorageSummaryCard from '@/components/StorageSummaryCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
+import { useTrash } from '@/hooks/useTrash';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '@/hooks/useTheme';
@@ -57,6 +58,7 @@ export default function HomeScreen() {
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
+  const { files: trashFiles } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
 
   useEffect(() => {
@@ -94,6 +96,7 @@ export default function HomeScreen() {
     { id: '3', label: 'Documents', count: pluralise(fileCounts.documents, 'file'), color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
     { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
     { id: '5', label: 'Favourites', count: pluralise(favCount, 'file'), color: colors.favRedBg, iconColor: colors.favRed, icon: 'heart-outline', route: '/favourites' },
+    { id: '6', label: 'Trash', count: trashFiles.length > 0 ? pluralise(trashFiles.length, 'file') : '', color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
   ];
 
   function toPath(uri: string): string {
