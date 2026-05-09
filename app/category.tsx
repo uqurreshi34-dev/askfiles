@@ -334,23 +334,6 @@ export default function CategoryScreen() {
     });
   }
 
-  // async function handleDelete() {
-  //   if (!selectedItem) return;
-  //   Alert.alert('Delete', `Delete "${selectedItem.name}"? This cannot be undone.`, [
-  //     { text: 'Cancel', style: 'cancel' },
-  //     { text: 'Delete', style: 'destructive', onPress: async () => {
-  //       closeSheet();
-  //       try {
-  //         const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-  //         const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
-  //         if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-  //         else { const f = new FileSystem.File(selectedItem.uri); f.delete(); }
-  //         setItems(prev => prev.filter(f => f.uri !== selectedItem.uri));
-  //       } catch (e) { Alert.alert('Error', 'Could not delete file.'); }
-  //     }},
-  //   ]);
-  // }
-
   async function handleDelete() {
     if (!selectedItem) return;
     Alert.alert('Move to Trash', `"${selectedItem.name}" will be moved to Trash and deleted after 30 days.`, [
@@ -551,24 +534,6 @@ export default function CategoryScreen() {
     ]);
   }
   
-  // async function handleMultiDelete() {
-  //   const files = Array.from(selectedItemsMap.values());
-  //   Alert.alert('Delete', `Delete ${files.length} file${files.length !== 1 ? 's' : ''}? This cannot be undone.`, [
-  //     { text: 'Cancel', style: 'cancel' },
-  //     { text: 'Delete', style: 'destructive', onPress: async () => {
-  //       for (const file of files) {
-  //         try {
-  //           const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-  //           const match = assets.assets.find(a => file.uri.includes(a.filename));
-  //           if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-  //           else { const f = new FileSystem.File(file.uri); f.delete(); }
-  //         } catch {}
-  //       }
-  //       setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
-  //       setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
-  //     }},
-  //   ]);
-  // }
   async function handleMultiDelete() {
     const files = Array.from(selectedItemsMap.values());
     Alert.alert('Move to Trash', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to Trash? They will be deleted after 30 days.`, [
