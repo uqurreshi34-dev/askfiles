@@ -23,6 +23,7 @@ import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
+import { useTrash } from '@/hooks/useTrash';
 
 interface FileItem {
   name: string;
@@ -79,6 +80,7 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
 
 export default function BrowseScreen() {
   const { colors } = useTheme();
+  const { moveToTrash } = useTrash();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [currentPath, setCurrentPath] = useState(ROOT_PATH);
   const [items, setItems] = useState<FileItem[]>([]);
@@ -314,45 +316,44 @@ export default function BrowseScreen() {
 
   async function handleDelete() {
     if (!selectedItem) return;
-    Alert.alert(
-      'Delete',
-      `Are you sure you want to delete "${selectedItem.name}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (selectedItem.isDirectory) {
+    if (selectedItem.isDirectory) {
+      Alert.alert(
+        'Delete Folder',
+        `Delete "${selectedItem.name}" and all its contents? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete', style: 'destructive',
+            onPress: async () => {
+              try {
                 const dir = new FileSystem.Directory(selectedItem.uri);
                 dir.delete();
-              } else {
-                const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-                const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
-                if (match) {
-                  await MediaLibrary.deleteAssetsAsync([match]);
-                } else {
-                  const file = new FileSystem.File(selectedItem.uri);
-                  file.delete();
-                }
-              }
-              closeSheet();
-              await loadDirectory(currentPath);
-            } catch (e) {
-              Alert.alert(
-                'Permission needed',
-                'AskFiles needs full storage access to delete files. Tap "Open Settings", enable "Allow access to manage all files", then try again.',
-                [
+                closeSheet();
+                await loadDirectory(currentPath);
+              } catch {
+                Alert.alert('Permission needed', 'AskFiles needs full storage access to delete folders.', [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: requestManagePermission },
-                ]
-              );
-            }
+                ]);
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    } else {
+      Alert.alert('Move to Trash', `"${selectedItem.name}" will be moved to Trash and deleted after 30 days.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+          closeSheet();
+          const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
+          if (ok) {
+            await loadDirectory(currentPath);
+          } else {
+            Alert.alert('Error', 'Could not move file to Trash.');
+          }
+        }},
+      ]);
+    }
   }
 
   async function handleUnzip() {
@@ -494,21 +495,20 @@ export default function BrowseScreen() {
   
   async function handleMultiDelete() {
     const files = Array.from(selectedItemsMap.values());
-    Alert.alert('Delete', `Delete ${files.length} item${files.length !== 1 ? 's' : ''}? This cannot be undone.`, [
+    const fileCount = files.filter(f => !f.isDirectory).length;
+    const folderCount = files.filter(f => f.isDirectory).length;
+    Alert.alert('Move to Trash', `Move ${fileCount > 0 ? `${fileCount} file${fileCount !== 1 ? 's' : ''}` : ''}${fileCount > 0 && folderCount > 0 ? ' and ' : ''}${folderCount > 0 ? `${folderCount} folder${folderCount !== 1 ? 's' : ''} (permanently)` : ''} to Trash? Files deleted after 30 days.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
+      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
         for (const file of files) {
-          try {
-            if (file.isDirectory) {
+          if (file.isDirectory) {
+            try {
               const dir = new FileSystem.Directory(file.uri);
               dir.delete();
-            } else {
-              const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-              const match = assets.assets.find(a => file.uri.includes(a.filename));
-              if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-              else { const f = new FileSystem.File(file.uri); f.delete(); }
-            }
-          } catch {}
+            } catch {}
+          } else {
+            await moveToTrash(file.uri, file.name);
+          }
         }
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
