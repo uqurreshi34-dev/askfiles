@@ -39,7 +39,7 @@ export default function SetPinScreen() {
       await savePin(pin);
       await enableAppLock();
       Alert.alert('PIN Set', 'Your PIN has been set successfully. App lock is now enabled.', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.replace('/(tabs)/' as any) },
       ]);
     } else {
       Alert.alert('PIN Mismatch', 'PINs do not match. Please try again.', [

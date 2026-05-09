@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -170,8 +171,15 @@ export default function HomeScreen() {
                 activeOpacity={0.7}
                 onPress={async () => {
                   if (appLockEnabled) {
-                    await disableAppLock();
-                    setAppLockEnabled(false);
+                    const result = await LocalAuthentication.authenticateAsync({
+                      promptMessage: 'Verify identity to disable app lock',
+                      cancelLabel: 'Cancel',
+                      disableDeviceFallback: true,
+                    });
+                    if (result.success) {
+                      await disableAppLock();
+                      setAppLockEnabled(false);
+                    }
                   } else {
                     const pinSet = await isPinSet();
                     setSettingsVisible(false);

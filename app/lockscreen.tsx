@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
-import { verifyPin } from '@/hooks/usePin';
+import { verifyPin, deletePin, disableAppLock } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function LockScreen() {
@@ -45,6 +45,31 @@ export default function LockScreen() {
   function handleDelete() {
     setPin(prev => prev.slice(0, -1));
     setError(null);
+  }
+
+  async function handleForgotPin() {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Verify identity to reset PIN',
+          cancelLabel: 'Cancel',
+          disableDeviceFallback: true,
+        });
+        if (result.success) {
+          await deletePin();
+          await disableAppLock();
+          router.replace({ pathname: '/setpin', params: { fromForgotPin: '1' } } as any);
+        }
+      } else {
+        Alert.alert(
+          'No biometrics available',
+          'For security, go to Settings → Apps → AskFiles → Clear Data to reset. Your vault files will be preserved if you reinstall from Play Store.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch {}
   }
 
   async function handleVerify(entered: string) {
@@ -93,8 +118,11 @@ export default function LockScreen() {
             );
           })}
         </View>
-        </ScrollView>
-      </SafeAreaView>
+        <TouchableOpacity onPress={handleForgotPin} style={{ marginTop: 16, paddingVertical: 8 }}>
+          <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

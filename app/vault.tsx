@@ -15,7 +15,7 @@ import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
 import { isImageFile, getMimeType } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { verifyPin, isPinSet } from '@/hooks/usePin';
+import { verifyPin, isPinSet, deletePin, disableAppLock } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative, scanFile } from '@/modules/share-module';
 
@@ -274,6 +274,31 @@ export default function VaultScreen() {
     }
   }
 
+  async function handleForgotPin() {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Verify identity to reset PIN',
+          cancelLabel: 'Cancel',
+          disableDeviceFallback: true,
+        });
+        if (result.success) {
+          await deletePin();
+          await disableAppLock();
+          router.replace({ pathname: '/setpin', params: { fromForgotPin: '1' } } as any);
+        }
+      } else {
+        Alert.alert(
+          'No biometrics available',
+          'For security, go to Settings → Apps → AskFiles → Clear Data to reset. Your vault files will be preserved if you reinstall from Play Store.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch {}
+  }
+
   function renderFile({ item }: { item: VaultFile }) {
     const color = getFileColor(item.name);
     const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
@@ -321,15 +346,14 @@ export default function VaultScreen() {
               <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.authBtnText}>Unlock with Biometrics</Text>
             </TouchableOpacity>
-            {pinAvailable ? (
-              <TouchableOpacity onPress={() => setShowPinEntry(true)} style={{ marginTop: 16, paddingVertical: 8 }}>
-                <Text style={{ fontSize: 14, color: colors.textMuted }}>Use PIN instead</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={{ fontSize: 12, color: colors.deleteRed, textAlign: 'center', marginTop: 16, paddingHorizontal: 32 }}>
-                No PIN set. Go to Settings → App Lock to set one.
+            <TouchableOpacity
+              onPress={() => pinAvailable ? setShowPinEntry(true) : router.push('/setpin' as any)}
+              style={{ marginTop: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ fontSize: 14, color: colors.textMuted }}>
+                {pinAvailable ? 'Use PIN instead' : 'Set up a PIN'}
               </Text>
-            )}
+            </TouchableOpacity>
           </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
@@ -363,6 +387,9 @@ export default function VaultScreen() {
                 );
               })}
             </View>
+            <TouchableOpacity onPress={handleForgotPin} style={{ marginTop: 16, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
+            </TouchableOpacity>
           </ScrollView>
         )}
       </SafeAreaView>
