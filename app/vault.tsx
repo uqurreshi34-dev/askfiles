@@ -311,7 +311,7 @@ export default function VaultScreen() {
           <View style={{ width: 40 }} />
         </View>
         {!showPinEntry ? (
-          <View style={styles.lockScreen}>
+          <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
               <Ionicons name="lock-closed" size={40} color={colors.blue} />
             </View>
@@ -330,7 +330,7 @@ export default function VaultScreen() {
                 No PIN set. Go to Settings → App Lock to set one.
               </Text>
             )}
-          </View>
+          </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
