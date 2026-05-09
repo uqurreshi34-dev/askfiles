@@ -27,6 +27,7 @@ import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { setAiSearchListening } from '@/app/_layout';
 import { useTheme } from '@/hooks/useTheme';
+import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative } from '@/modules/share-module';
 
 type Mode = 'search' | 'ask';
@@ -147,6 +148,7 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
 
 export default function SearchScreen() {
   const { colors } = useTheme();
+  const { moveToTrash } = useTrash();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [mode, setMode] = useState<Mode>('search');
   const [query, setQuery] = useState('');
@@ -410,18 +412,17 @@ export default function SearchScreen() {
 
   async function handleDelete() {
     if (!selectedItem) return;
-    Alert.alert('Delete', `Delete "${selectedItem.name}"? This cannot be undone.`, [
+    Alert.alert('Move to Trash', `"${selectedItem.name}" will be moved to Trash and deleted after 30 days.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        try {
-          const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-          const match = assets.assets.find(a => selectedItem.uri.includes(a.filename));
-          if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-          else { const file = new FileSystem.File(selectedItem.uri); file.delete(); }
+      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+        closeSheet();
+        const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
+        if (ok) {
           if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
           else { removeResult(selectedItem.uri); }
-          closeSheet();
-        } catch (e) {}
+        } else {
+          Alert.alert('Error', 'Could not move file to Trash.');
+        }
       }},
     ]);
   }

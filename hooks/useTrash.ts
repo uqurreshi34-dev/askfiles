@@ -96,8 +96,18 @@ export function useTrash() {
         counter++;
       }
       // Move file to trash
+      // Handle both file:// and content:// URIs
+      let srcPath = sourceUri;
+      if (sourceUri.startsWith('content://')) {
+        // Get real path from content URI
+        const realPath = await RNFS.stat(sourceUri).then(s => s.path).catch(() => null);
+        if (!realPath) return false;
+        srcPath = realPath;
+      } else {
+        srcPath = sourceUri.replace('file://', '');
+      }
       await RNFS.moveFile(
-        sourceUri.replace('file://', ''),
+        srcPath,
         destUri.replace('file://', '')
       );
       // Update metadata
