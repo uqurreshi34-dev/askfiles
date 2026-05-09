@@ -1006,6 +1006,13 @@ export default function CategoryScreen() {
         </TouchableOpacity>
       </Modal>
       {selectMode && selectedUris.size > 0 && (
+        <>
+          {sharing && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+              <ActivityIndicator size="small" color={colors.blue} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Preparing files for sharing...</Text>
+            </View>
+          )}
         <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
           <TouchableOpacity
             onPress={handleMultiShare}
@@ -1036,7 +1043,8 @@ export default function CategoryScreen() {
             <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
             <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>Delete</Text>
           </TouchableOpacity>
-        </View>
+          </View>
+        </>
       )}
     </SafeAreaView>
   );
