@@ -8,10 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { isImageFile } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
+import { useTrash } from '@/hooks/useTrash';
 
 interface LargeFile {
   name: string;
@@ -97,6 +97,7 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
 
 export default function LargeFilesScreen() {
   const { colors } = useTheme();
+  const { moveToTrash } = useTrash();
   const router = useRouter();
   const [files, setFiles] = useState<LargeFile[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -135,25 +136,21 @@ export default function LargeFilesScreen() {
 
   async function handleDelete(file: LargeFile) {
     Alert.alert(
-      'Delete file',
-      `Delete "${file.name}"? This cannot be undone.`,
+      'Move to Trash',
+      `"${file.name}" will be moved to Trash and deleted after 30 days.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete', style: 'destructive',
+          text: 'Move to Trash', style: 'destructive',
           onPress: async () => {
             setDeleting(file.uri);
-            try {
-              const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-              const match = assets.assets.find(a => file.uri.includes(a.filename));
-              if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-              else { const f = new FileSystem.File(file.uri); f.delete(); }
+            const ok = await moveToTrash(file.uri, file.name);
+            if (ok) {
               setFiles(prev => prev.filter(f => f.uri !== file.uri));
-            } catch {
-              Alert.alert('Error', 'Could not delete file.');
-            } finally {
-              setDeleting(null);
+            } else {
+              Alert.alert('Error', 'Could not move file to Trash.');
             }
+            setDeleting(null);
           },
         },
       ]
