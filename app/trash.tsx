@@ -56,6 +56,7 @@ export default function TrashScreen() {
   const { files, loading, restoreFile, deletePermanently, emptyTrash, formatDaysLeft } = useTrash();
   const [selectedFile, setSelectedFile] = useState<TrashFile | null>(null);
   const [showSheet, setShowSheet] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
@@ -86,10 +87,13 @@ export default function TrashScreen() {
 
   async function handleRestore() {
     if (!selectedFile) return;
+    const file = selectedFile;
     closeSheet();
-    const ok = await restoreFile(selectedFile);
+    setRestoring(true);
+    const ok = await restoreFile(file);
+    setRestoring(false);
     if (ok) {
-      Alert.alert('Restored', `"${selectedFile.name}" restored to its original location.`);
+      Alert.alert('Restored', `"${file.name}" restored to its original location.`);
     } else {
       Alert.alert('Error', 'Could not restore file.');
     }
@@ -140,7 +144,13 @@ export default function TrashScreen() {
           <View style={{ width: 40 }} />
         )}
       </View>
-
+      
+      {restoring && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Restoring file...</Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />
