@@ -128,11 +128,18 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         fun setSelectedUris(newSelected: Set<String>) {
             val old = selectedUris
             selectedUris = newSelected
-            // Only rebind items that changed selection state
+            val changed = mutableListOf<Int>()
             uris.forEachIndexed { index, uri ->
                 if (old.contains(uri) != newSelected.contains(uri)) {
-                    notifyItemChanged(index)
+                    changed.add(index)
                 }
+            }
+            mainHandler?.post {
+                changed.forEach { index -> 
+                recyclerView.findViewHolderForAdapterPosition(index)?.let { holder ->
+                    (holder as? GridViewHolder)?.updateSelection(selectedUris.contains(uris[index]))
+                }
+              }
             }
         }
 
@@ -175,6 +182,15 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             holder.bind(uri, isSelected, isOpening, category, selectMode)
         }
 
+        override fun onBindViewHolder(holder: GridViewHolder, position: Int, payloads: List<Any>) {
+            if (payloads.contains("selection")) {
+                // Only update selection state — don't reload thumbnail
+                holder.updateSelection(selectedUris.contains(uris[position]))
+            } else {
+                onBindViewHolder(holder, position)
+            }
+        }
+
         inner class GridViewHolder(private val container: FrameLayout) :
             RecyclerView.ViewHolder(container) {
 
@@ -202,7 +218,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     setMargins(0, margin, margin, 0)
                 }
                 setImageResource(android.R.drawable.checkbox_on_background)
-                visibility = View.GONE
+                visibility = View.INVISIBLE
             }
 
             private val playIcon = ImageView(container.context).apply {
@@ -249,7 +265,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     checkView.visibility = View.VISIBLE
                 } else {
                     overlay.visibility = View.GONE
-                    checkView.visibility = View.GONE
+                    checkView.visibility = View.INVISIBLE
                 }
 
                 // Border for selected
@@ -301,12 +317,38 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
                 // Click handlers
                 container.setOnClickListener {
+                    if (selectMode) {
+                        val isNowSelected = !selectedUris.contains(uri)
+                        // Update visuals immediately — don't wait for JS round trip
+                        updateSelection(isNowSelected)
+                        // Update local state so subsequent taps are correct
+                        val newSet = selectedUris.toMutableSet()
+                        if (isNowSelected) newSet.add(uri) else newSet.remove(uri)
+                        selectedUris = newSet
+                    }
                     onItemClick?.invoke(uri, adapterPosition)
                 }
                 container.setOnLongClickListener {
                     onItemLongClick?.invoke(uri, adapterPosition)
                     true
                 }
+            }
+
+            fun updateSelection(isSelected: Boolean) {
+                if (isSelected) {
+                    overlay.setBackgroundColor(Color.argb(80, 24, 95, 165))
+                    overlay.visibility = View.VISIBLE
+                    checkView.visibility = View.VISIBLE
+                    container.setPadding(dpToPx(3), dpToPx(3), dpToPx(3), dpToPx(3))
+                    container.setBackgroundColor(Color.parseColor("#185FA5"))
+                } else {
+                    overlay.visibility = View.GONE
+                    checkView.visibility = View.INVISIBLE
+                    container.setPadding(0, 0, 0, 0)
+                    container.setBackgroundColor(Color.TRANSPARENT)
+                }
+                container.requestLayout()
+                container.invalidate()
             }
 
             private fun loadThumbnail(uri: String, category: String): Bitmap? {

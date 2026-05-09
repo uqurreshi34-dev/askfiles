@@ -658,11 +658,18 @@ export default function CategoryScreen() {
               const item = filteredItems.find(i => i.uri === uri);
               if (!item) return;
               if (selectMode) {
-                const newSet = new Set(selectedUris);
-                const newMap = new Map(selectedItemsMap);
-                if (newSet.has(uri)) { newSet.delete(uri); newMap.delete(uri); }
-                else { newSet.add(uri); newMap.set(uri, item); }
-                setSelectedUris(newSet); setSelectedItemsMap(newMap);
+                setSelectedUris(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(uri)) newSet.delete(uri);
+                  else newSet.add(uri);
+                  return newSet;
+                });
+                setSelectedItemsMap(prev => {
+                  const newMap = new Map(prev);
+                  if (newMap.has(uri)) newMap.delete(uri);
+                  else newMap.set(uri, item!);
+                  return newMap;
+                });
               } else { openItem(item); }
             }}
             onItemLongPress={(e) => {
