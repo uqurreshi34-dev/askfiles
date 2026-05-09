@@ -144,7 +144,7 @@ export default function TrashScreen() {
           <View style={{ width: 40 }} />
         )}
       </View>
-      
+
       {restoring && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
@@ -169,7 +169,7 @@ export default function TrashScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <Text style={[styles.count, { color: colors.textMuted }]}>
-              {files.length} file{files.length !== 1 ? 's' : ''} · Auto-deleted after 30 days
+              {files.length} file{files.length !== 1 ? 's' : ''} · Kept for up to 30 days
             </Text>
           }
           renderItem={({ item }) => {
