@@ -58,7 +58,7 @@ export default function HomeScreen() {
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
-  const { files: trashFiles } = useTrash();
+  const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
 
   useEffect(() => {
@@ -84,7 +84,8 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => {
     reload();
     reloadStorage();
-  }, [reload, reloadStorage]));
+    reloadTrash();
+  }, [reload, reloadStorage, reloadTrash]));
 
   useFocusEffect(useCallback(() => {
     setAppLockEnabled(isAppLockEnabled());

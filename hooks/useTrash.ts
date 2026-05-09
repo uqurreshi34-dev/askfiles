@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system';
 import RNFS from 'react-native-fs';
 
@@ -53,7 +53,7 @@ export function useTrash() {
     });
   }, []);
 
-  async function loadFiles() {
+  const loadFiles = useCallback(async () => {
     setLoading(true);
     try {
       const meta = await readMeta();
@@ -77,9 +77,9 @@ export function useTrash() {
     } catch {
       setFiles([]);
     } finally {
-      setLoading(false);
-    }
-  }
+        setLoading(false);
+      }
+    }, []);
 
   async function moveToTrash(sourceUri: string, fileName: string): Promise<boolean> {
     try {
