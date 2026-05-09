@@ -22,7 +22,8 @@ export async function deletePin(): Promise<void> {
 
 export async function isPinSet(): Promise<boolean> {
   const pin = await SecureStore.getItemAsync(PIN_KEY);
-  return !!pin;
+  const appLockEnabled = isAppLockEnabled();
+  return !!pin && appLockEnabled;
 }
 
 export async function enableAppLock(): Promise<void> {
