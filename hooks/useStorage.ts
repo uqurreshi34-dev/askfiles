@@ -284,7 +284,11 @@ async function doLoad(): Promise<void> {
   if (!onboardingDone) return;
   const { status } = await MediaLibrary.requestPermissionsAsync();
   if (status !== 'granted') return;
-  await requestManageStoragePermission();
+  const askedBefore = await AsyncStorage.getItem('askfiles-asked-manage-storage');
+  if (!askedBefore) {
+    await AsyncStorage.setItem('askfiles-asked-manage-storage', 'true');
+    await requestManageStoragePermission();
+  }
 
   const stats = await getStorageStats();
   const total = stats.total;

@@ -90,18 +90,6 @@ export default function OnboardingScreen() {
     try {
       const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync();
       if (status === 'granted') {
-        try {
-          await IntentLauncher.startActivityAsync(
-            'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
-            { data: 'package:com.askfiles.mobile' }
-          );
-        } catch {
-          try {
-            await IntentLauncher.startActivityAsync(
-              'android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION'
-            );
-          } catch {}
-        }
         setPermissionGranted(true);
       } else if (!canAskAgain) {
         await IntentLauncher.startActivityAsync(

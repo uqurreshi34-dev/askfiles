@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { isStorageManager } from '@/modules/storage-stats';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
 import { getMimeType } from '@/utils/files';
@@ -58,6 +59,7 @@ export default function HomeScreen() {
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
+  const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
 
@@ -85,7 +87,22 @@ export default function HomeScreen() {
     reload();
     reloadStorage();
     reloadTrash();
-  }, [reload, reloadStorage, reloadTrash]));
+    isStorageManager().then(setHasAllFilesAccess);
+  }, [reload, reloadStorage]));
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        isStorageManager().then(granted => {
+          setHasAllFilesAccess(granted);
+          if (granted && !hasAllFilesAccess) {
+            reloadStorage();
+          }
+        });
+      }
+    });
+    return () => sub.remove();
+  }, [hasAllFilesAccess, reloadStorage]);
 
   useFocusEffect(useCallback(() => {
     setAppLockEnabled(isAppLockEnabled());
@@ -244,6 +261,35 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </Modal>
 
+        {!hasAllFilesAccess && (
+          <TouchableOpacity
+            style={[styles.permissionCard, { backgroundColor: colors.amberTint }]}
+            onPress={async () => {
+              try {
+                await IntentLauncher.startActivityAsync(
+                  'android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION',
+                  { data: 'package:com.askfiles.mobile' }
+                );
+              } catch {
+                try {
+                  await IntentLauncher.startActivityAsync(
+                    'android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION'
+                  );
+                } catch {}
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="folder-open-outline" size={18} color={colors.amber} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Full storage access needed</Text>
+                <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>Tap to enable — required for Browse, Documents and file operations</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[styles.searchBar, { backgroundColor: colors.surface }]}
           onPress={() => router.push('/(tabs)/search?autofocus=1')}

@@ -17,7 +17,6 @@
       "package": "com.askfiles.mobile",
       "allowBackup": false,
       "permissions": [
-        "android.permission.MANAGE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
@@ -38,7 +37,6 @@
         "expo-build-properties",
         {
           "android": {
-            "permissions": ["MANAGE_EXTERNAL_STORAGE"],
             "enableEdgeToEdge": true,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35
