@@ -781,7 +781,7 @@ export default function SearchScreen() {
       </Modal>
 
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH > SCREEN_HEIGHT ? undefined : Platform.OS === 'android' ? 'height' : 'padding'}>
           <Pressable style={styles.overlay} onPress={closeSheet}>
           <Animated.View
               style={SCREEN_WIDTH > SCREEN_HEIGHT
