@@ -240,6 +240,8 @@ export default function SearchScreen() {
     setSelectedItem(item);
     setFileSize(null);
     setShowSheet(true);
+    setShowRename(false);
+    setRenameValue('');
     setIsFav(await isFavourite(item.uri));
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     try {
@@ -792,7 +794,7 @@ export default function SearchScreen() {
                 ? <TouchableOpacity onPress={closeSheet} style={{ alignSelf: 'flex-end', padding: 4 }}><Ionicons name="close" size={20} color={colors.textMuted} /></TouchableOpacity>
                 : <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               }
-              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
               <Pressable>
                 <View style={styles.sheetHeader}>
                 <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22' }]}>

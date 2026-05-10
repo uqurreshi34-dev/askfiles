@@ -315,8 +315,10 @@ export default function CategoryScreen() {
 
   async function openSheet(item: FileItem) {
     setSelectedItem(item);
-    setFileSize(item.size && item.size > 0 ? formatSize(item.size) : 'Calculating...');
+    setFileSize(null);
     setIsFav(await isFavourite(item.uri));
+    setShowRename(false);
+    setRenameValue('');
     setShowSheet(true);
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     if (!item.size || item.size === 0) {
@@ -805,7 +807,7 @@ export default function CategoryScreen() {
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             )}
-            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }}>
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
             <Pressable>
               {SCREEN_WIDTH <= SCREEN_HEIGHT && (
                 <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
