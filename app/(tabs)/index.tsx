@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions, AppState } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions, AppState, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +62,7 @@ export default function HomeScreen() {
   const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
+  const [openingUri, setOpeningUri] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -390,6 +391,7 @@ export default function HomeScreen() {
                   key={file.uri}
                   style={[styles.recentRow, { borderBottomColor: colors.border }]}
                   onPress={async () => {
+                    setOpeningUri(file.uri);
                     const mime = getMimeType(file.name);
                     try {
                       const filePath = toPath(file.uri);
@@ -404,6 +406,7 @@ export default function HomeScreen() {
                         });
                       } catch (e2) {}
                     }
+                    setOpeningUri(null);
                   }}
                   activeOpacity={0.7}
                 >
@@ -420,6 +423,7 @@ export default function HomeScreen() {
                     <Text style={[styles.recentName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
                     <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {timeAgo(file.openedAt)}</Text>
                   </View>
+                  {openingUri === file.uri && <ActivityIndicator size="small" color={colors.blue} />}
                 </TouchableOpacity>
               );
             })

@@ -8,7 +8,7 @@ import { StyleSheet, Text, View, TouchableOpacity, FlatList,
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getMimeType, isImageFile } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
@@ -81,12 +81,16 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
 export default function BrowseScreen() {
   const { colors } = useTheme();
   const { moveToTrash } = useTrash();
+  const { initialPath } = useLocalSearchParams<{ initialPath?: string }>();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
-  const [currentPath, setCurrentPath] = useState(ROOT_PATH);
   const [items, setItems] = useState<FileItem[]>([]);
-  const [breadcrumbs, setBreadcrumbs] = useState<{ name: string; path: string }[]>([
-    { name: 'Storage', path: ROOT_PATH },
-  ]);
+  const startPath = initialPath ?? ROOT_PATH;
+  const [currentPath, setCurrentPath] = useState(startPath);
+  const [breadcrumbs, setBreadcrumbs] = useState<{ name: string; path: string }[]>(
+    initialPath
+      ? [{ name: 'Storage', path: ROOT_PATH }, { name: 'Music', path: initialPath }]
+      : [{ name: 'Storage', path: ROOT_PATH }]
+  );
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
   const { addToVault } = useVault();
