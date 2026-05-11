@@ -119,7 +119,9 @@ export default function TrashScreen() {
   function handleEmptyTrash() {
     Alert.alert(
       'Empty Trash',
-      `Permanently delete all ${files.length} file${files.length !== 1 ? 's' : ''}? This cannot be undone.`,
+      files.length === 1
+        ? `Permanently delete this file? This cannot be undone.`
+        : `Permanently delete ${files.length} files? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Empty Trash', style: 'destructive', onPress: () => emptyTrash() },
