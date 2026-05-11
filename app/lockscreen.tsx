@@ -58,9 +58,7 @@ export default function LockScreen() {
           disableDeviceFallback: true,
         });
         if (result.success) {
-          await deletePin();
-          await disableAppLock();
-          router.replace({ pathname: '/setpin', params: { fromForgotPin: '1' } } as any);
+          router.push({ pathname: '/setpin', params: { fromForgotPin: '1' } } as any);
         }
       } else {
         Alert.alert(

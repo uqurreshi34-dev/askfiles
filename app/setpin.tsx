@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { savePin, enableAppLock } from '@/hooks/usePin';
+import { savePin, enableAppLock, deletePin, disableAppLock } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function SetPinScreen() {
   const { colors } = useTheme();
+  const { fromForgotPin } = useLocalSearchParams<{ fromForgotPin?: string }>();
   const router = useRouter();
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -36,14 +38,14 @@ export default function SetPinScreen() {
 
   async function handleConfirm(entered: string) {
     if (entered === pin) {
+      if (fromForgotPin === '1') {
+        await deletePin();
+        await disableAppLock();
+      }
       await savePin(pin);
       await enableAppLock();
       Alert.alert('PIN Set', 'Your PIN has been set successfully. App lock is now enabled.', [
         { text: 'OK', onPress: () => router.replace('/(tabs)/' as any) },
-      ]);
-    } else {
-      Alert.alert('PIN Mismatch', 'PINs do not match. Please try again.', [
-        { text: 'Try Again', onPress: () => { setPin(''); setConfirmPin(''); setStage('set'); } },
       ]);
     }
   }
