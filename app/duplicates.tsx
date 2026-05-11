@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useDuplicates, DuplicateGroup, DuplicateFile } from '@/hooks/useDuplicates';
 import { useTheme } from '@/hooks/useTheme';
+import { removeFavourite } from '@/hooks/useFavourites';
 
 function isImage(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase();
@@ -61,6 +62,7 @@ export default function DuplicatesScreen() {
           onPress: async () => {
             setDeleting(file.uri);
             await deleteFile(group.key, file.uri);
+            await removeFavourite(file.uri);
             setDeleting(null);
           },
         },

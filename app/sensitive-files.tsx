@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
+import { removeFavourite } from '@/hooks/useFavourites';
 
 interface SensitiveFile {
   name: string;
@@ -185,6 +186,7 @@ export default function SensitiveFilesScreen() {
           const match = assets.assets.find(a => file.uri.includes(a.filename));
           if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
           else { const f = new FileSystem.File(file.uri); f.delete(); }
+          await removeFavourite(file.uri);
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
         } catch {
           Alert.alert('Error', 'Could not delete file.');

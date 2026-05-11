@@ -12,6 +12,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { isImageFile } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
+import { removeFavourite } from '@/hooks/useFavourites';
 
 interface LargeFile {
   name: string;
@@ -146,6 +147,7 @@ export default function LargeFilesScreen() {
             setDeleting(file.uri);
             const ok = await moveToTrash(file.uri, file.name);
             if (ok) {
+              await removeFavourite(file.uri);
               setFiles(prev => prev.filter(f => f.uri !== file.uri));
             } else {
               Alert.alert('Error', 'Could not move file to Trash.');
