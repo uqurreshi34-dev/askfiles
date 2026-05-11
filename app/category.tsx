@@ -344,6 +344,7 @@ export default function CategoryScreen() {
         closeSheet();
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
+          await removeFavourite(selectedItem.uri);
           setItems(prev => prev.filter(f => f.uri !== selectedItem.uri));
         } else {
           Alert.alert('Error', 'Could not move file to Trash.');
@@ -543,6 +544,7 @@ export default function CategoryScreen() {
       { text: 'Move to Trash', style: 'destructive', onPress: async () => {
         for (const file of files) {
           await moveToTrash(file.uri, file.name);
+          await removeFavourite(file.uri);
         }
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());

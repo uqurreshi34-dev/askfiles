@@ -351,6 +351,7 @@ export default function BrowseScreen() {
           closeSheet();
           const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
           if (ok) {
+            await removeFavourite(selectedItem.uri);
             await loadDirectory(currentPath);
           } else {
             Alert.alert('Error', 'Could not move file to Trash.');
@@ -512,6 +513,7 @@ export default function BrowseScreen() {
             } catch {}
           } else {
             await moveToTrash(file.uri, file.name);
+            await removeFavourite(file.uri);
           }
         }
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
