@@ -13,9 +13,8 @@ import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { getMimeType } from '@/utils/files';
+import { openFile as openFileNative } from '@/modules/share-module';
 
 interface SensitiveFile {
   name: string;
@@ -34,6 +33,7 @@ const SENSITIVE_KEYWORDS = [
   'credit card', 'pin', 'secret',
   'medical', 'prescription',
   'contract', 'agreement',
+  'personal',
 ];
 
 const SCAN_DIRS = [
@@ -123,6 +123,7 @@ export default function SensitiveFilesScreen() {
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [movingUri, setMovingUri] = useState<string | null>(null);
+  const [openingUri, setOpeningUri] = useState<string | null>(null);
 
   async function scan() {
     setScanning(true);
@@ -263,14 +264,12 @@ export default function SensitiveFilesScreen() {
                 style={[styles.row, { borderBottomColor: colors.border }]}
                 activeOpacity={0.7}
                 onPress={async () => {
+                  setOpeningUri(item.uri);
                   try {
-                    const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
-                    await RNFS.copyFile(item.uri.replace('file://', ''), cachePath);
-                    const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-                    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-                      data: contentUri, flags: 1, type: getMimeType(item.name),
-                    });
+                    const path = item.uri.replace('file://', '');
+                    await openFileNative(path, getMimeType(item.name));
                   } catch {}
+                  setOpeningUri(null);
                 }}
               >
                 <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
@@ -292,6 +291,9 @@ export default function SensitiveFilesScreen() {
                   </View>
                 </View>
                 <View style={styles.actions}>
+                  {openingUri === item.uri && (
+                    <ActivityIndicator size="small" color={colors.blue} style={{ marginRight: 6 }} />
+                  )}
                   <TouchableOpacity
                     style={[styles.vaultBtn, { backgroundColor: isPro ? colors.blue : colors.surface }]}
                     onPress={() => handleMoveToVault(item)}
