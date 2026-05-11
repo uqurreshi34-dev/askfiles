@@ -73,6 +73,7 @@ export default function FavouritesScreen() {
   const { addToVault } = useVault();
   const { isPro } = usePro();
   const [selectedItem, setSelectedItem] = useState<FavouriteItem | null>(null);
+  const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
@@ -118,6 +119,7 @@ export default function FavouritesScreen() {
   }
 
   async function openItem(item: FavouriteItem) {
+    setOpeningUri(item.uri);
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     const mime = getMimeType(item.name);
     try {
@@ -132,6 +134,7 @@ export default function FavouritesScreen() {
         });
       } catch (e2) {}
     }
+    setOpeningUri(null);
   }
 
   async function handleShare() {
@@ -208,7 +211,9 @@ export default function FavouritesScreen() {
           <Text style={[styles.meta, { color: colors.textMuted }]}>{ext} file</Text>
         </View>
         <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+          {openingUri === item.uri
+            ? <ActivityIndicator size="small" color={colors.textDisabled} />
+            : <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />}
         </TouchableOpacity>
       </TouchableOpacity>
     );
