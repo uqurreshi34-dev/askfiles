@@ -1,0 +1,23 @@
+{
+    "name": "file-watcher",
+    "version": "1.0.0",
+    "description": "Native file watcher module for AskFiles",
+    "main": "index.ts",
+    "types": "index.ts",
+    "scripts": {
+      "build": "expo-module build",
+      "clean": "expo-module clean",
+      "lint": "expo-module lint",
+      "test": "expo-module test"
+    },
+    "keywords": [
+      "expo",
+      "expo-module"
+    ],
+    "license": "MIT",
+    "peerDependencies": {
+      "expo": "*",
+      "react": "*",
+      "react-native": "*"
+    }
+  }

@@ -8,6 +8,7 @@ import { isAppLockEnabled } from '@/hooks/usePin';
 import * as SplashScreen from 'expo-splash-screen';
 import { usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFileWatcher } from '@/hooks/useFileWatcher';
 
 export let isAiSearchListening = false;
 export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
@@ -66,6 +67,7 @@ function getBannerLabel(route: string): string {
 const HIDDEN_ON = ['/lockscreen', '/onboarding', '/setpin'];
 
 export default function RootLayout() {
+  useFileWatcher();
   const router = useRouter();
   const scheme = useColorScheme();
   const dark = scheme === 'dark';

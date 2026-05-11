@@ -18,6 +18,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { shareFiles, openFile } from '@/modules/share-module';
+import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 
@@ -311,6 +312,11 @@ export default function CategoryScreen() {
 
   useEffect(() => {
     loadCategory();
+    const subscription = addMediaStoreChangeListener(() => {
+      console.log('MediaStore change detected in category');
+      loadCategory();
+    });
+    return () => subscription.remove();
   }, [category]);
 
   async function openSheet(item: FileItem) {
