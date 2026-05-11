@@ -104,11 +104,15 @@ export function useTrash() {
         if (!realPath) return false;
         srcPath = realPath;
       } else {
-        srcPath = sourceUri.replace('file://', '');
+        try {
+          srcPath = decodeURIComponent(sourceUri.replace('file://', ''));
+        } catch {
+          srcPath = sourceUri.replace('file://', '');
+        }
       }
       await RNFS.moveFile(
         srcPath,
-        destUri.replace('file://', '')
+        decodeURIComponent(destUri.replace('file://', ''))
       );
       // Update metadata
       const meta = await readMeta();
@@ -124,8 +128,8 @@ export function useTrash() {
   async function restoreFile(file: TrashFile): Promise<boolean> {
     try {
       const destUri = file.originalUri;
-      const destPath = destUri.replace('file://', '');
-      const srcPath = file.uri.replace('file://', '');
+      const destPath = (() => { try { return decodeURIComponent(destUri.replace('file://', '')); } catch { return destUri.replace('file://', ''); } })();
+      const srcPath = (() => { try { return decodeURIComponent(file.uri.replace('file://', '')); } catch { return file.uri.replace('file://', ''); } })();
       // Check if original location still exists as a directory
       const destDir = destPath.substring(0, destPath.lastIndexOf('/'));
       const dirExists = await RNFS.exists(destDir);
