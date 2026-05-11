@@ -160,6 +160,7 @@ export default function SearchScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [listening, setListening] = useState(false);
+  const [openingUri, setOpeningUri] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -492,6 +493,7 @@ export default function SearchScreen() {
   }
 
   async function openFile(name: string, uri: string) {
+    setOpeningUri(uri);
     await addRecent({ name, uri, openedAt: Date.now() });
     const mime = getMimeType(name);
     try {
@@ -508,6 +510,7 @@ export default function SearchScreen() {
         });
       } catch (e2) {}
     }
+    setOpeningUri(null);
   }
 
   function handleSuggestion(s: string) {
@@ -625,9 +628,11 @@ export default function SearchScreen() {
                       <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
                     </View>
                     {!item.isDirectory && (
-                      <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
-                      </TouchableOpacity>
+                      openingUri === item.uri
+                        ? <ActivityIndicator size="small" color={colors.blue} />
+                        : <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
+                          </TouchableOpacity>
                     )}
                   </TouchableOpacity>
                 );
