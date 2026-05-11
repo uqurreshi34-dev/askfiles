@@ -689,6 +689,8 @@ export default function BrowseScreen() {
         {!selectMode && (
           item.isDirectory ? (
             <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+          ) : openingUri === item.uri ? (
+            <ActivityIndicator size="small" color={colors.blue} style={styles.dotsBtn} />
           ) : (
             <TouchableOpacity style={styles.dotsBtn} onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
