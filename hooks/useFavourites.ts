@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { File } from 'expo-file-system';
 
 export interface FavouriteItem {
   name: string;
@@ -38,6 +39,24 @@ export async function addFavourite(item: Omit<FavouriteItem, 'addedAt'>) {
 export async function removeFavourite(uri: string) {
   const items = await load();
   await save(items.filter(f => f.uri !== uri));
+}
+
+export async function cleanupBrokenFavourites() {
+  const items = await load();
+  const valid: FavouriteItem[] = [];
+  for (const item of items) {
+    try {
+      if (item.uri.startsWith('content://')) {
+        valid.push(item);
+      } else {
+        const file = new File(item.uri);
+        if (file.exists) valid.push(item);
+      }
+    } catch {
+      valid.push(item);
+    }
+  }
+  if (valid.length !== items.length) await save(valid);
 }
 
 export async function isFavourite(uri: string): Promise<boolean> {

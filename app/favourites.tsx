@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
@@ -15,7 +16,7 @@ import * as FileSystem from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { isImageFile, getMimeType } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
-import { removeFavourite, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
+import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
@@ -64,6 +65,11 @@ export default function FavouritesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { favourites } = useFavourites();
+  useFocusEffect(
+    useCallback(() => {
+      cleanupBrokenFavourites();
+    }, [])
+  );
   const { addToVault } = useVault();
   const { isPro } = usePro();
   const [selectedItem, setSelectedItem] = useState<FavouriteItem | null>(null);
