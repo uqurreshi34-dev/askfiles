@@ -37,7 +37,7 @@ const COMMANDS = [
   { keywords: ['search', 'find'], route: '/(tabs)/search' },
   { keywords: ['browse', 'folders', 'explore'], route: '/(tabs)/browse' },
   { keywords: ['home', 'start', 'main page', 'main screen'], route: '/(tabs)/' },
-  { keywords: ['trash', 'bin', 'recycle bin', 'rubbish'], route: '/(tabs)/trash' },
+  { keywords: ['trash', 'bin', 'recycle bin', 'rubbish', 'delete', 'deleted', 'deletion'], route: '/(tabs)/trash' },
 ];
 
 function parseCommand(transcript: string): string | null {
