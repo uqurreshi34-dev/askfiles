@@ -8,7 +8,6 @@ import { isAppLockEnabled } from '@/hooks/usePin';
 import * as SplashScreen from 'expo-splash-screen';
 import { usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ScreenOrientation from 'expo-screen-orientation'; // remove before aab build!!!!!!!!!!!!!!
 
 export let isAiSearchListening = false;
 export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
@@ -71,9 +70,7 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const dark = scheme === 'dark';
   const pathname = usePathname();
-  useEffect(() => {
-    ScreenOrientation.unlockAsync(); // REMOVE AND UNINSTALL PACKAGE FOR AAB BUILD! FORCING LANDSCAPE MODE IN USB DEBUG MODE
-  }, []);
+
   useEffect(() => {
     const { setBackgroundColorAsync } = require('expo-system-ui');
     setBackgroundColorAsync(dark ? '#111111' : '#ffffff');
