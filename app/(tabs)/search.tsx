@@ -421,6 +421,7 @@ export default function SearchScreen() {
         closeSheet();
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
+          await removeFavourite(selectedItem.uri);
           if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
           else { removeResult(selectedItem.uri); }
         } else {
