@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGoogleDrive } from '@/hooks/useGoogleDrive';
 import { useOneDrive } from '@/hooks/useOneDrive';
+import { useDropbox } from '@/hooks/useDropbox';
 import { useVault } from '@/hooks/useVault';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -17,13 +18,59 @@ export default function BackupScreen() {
     isConnected, lastBackup, loading, syncing, restoring, error,
     signIn, disconnect, backupVault, restoreVault,
   } = useGoogleDrive();
+
   const {
     isConnected: odConnected, lastBackup: odLastBackup, loading: odLoading,
     syncing: odSyncing, restoring: odRestoring, error: odError,
     signIn: odSignIn, disconnect: odDisconnect,
     backupVault: odBackupVault, restoreVault: odRestoreVault,
   } = useOneDrive();
+
+  const {
+    isConnected: dbConnected, lastBackup: dbLastBackup, loading: dbLoading,
+    syncing: dbSyncing, restoring: dbRestoring, error: dbError,
+    signIn: dbSignIn, disconnect: dbDisconnect,
+    backupVault: dbBackupVault, restoreVault: dbRestoreVault,
+  } = useDropbox();
+
   const { vaultDir } = useVault() as any;
+
+  async function handleDBBackup() {
+    const ok = await dbBackupVault(vaultDir);
+    if (ok) {
+      Alert.alert('Backup complete', 'Your vault files have been backed up to Dropbox.');
+    }
+  }
+
+  async function handleDBRestore() {
+    Alert.alert(
+      'Restore from Dropbox',
+      'This will restore files from your Dropbox backup that are not already in your vault.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Restore', onPress: async () => {
+            const count = await dbRestoreVault(vaultDir);
+            if (count > 0) {
+              Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
+            } else if (count === 0 && !dbError) {
+              Alert.alert('Nothing to restore', 'All Dropbox backup files are already in your vault.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function handleDBDisconnect() {
+    Alert.alert(
+      'Disconnect Dropbox',
+      'This removes access to Dropbox from AskFiles. Your backed-up files will remain on Dropbox.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Disconnect', style: 'destructive', onPress: dbDisconnect },
+      ]
+    );
+  }
 
   async function handleODBackup() {
     const ok = await odBackupVault(vaultDir);
@@ -306,6 +353,89 @@ export default function BackupScreen() {
         {!odConnected && (
           <Text style={[styles.notConnectedHint, { color: colors.textMuted }]}>
             Connect your Microsoft account to back up and restore your vault files.
+          </Text>
+        )}
+
+
+        {/* Dropbox */}
+        <Text style={[styles.providerLabel, { color: colors.textMuted }]}>Dropbox</Text>
+        <View style={[styles.driveCard, { backgroundColor: colors.surfaceAlt }]}>
+          <View style={styles.driveCardLeft}>
+            <View style={[styles.driveIcon, { backgroundColor: dbConnected ? '#E8F0FE' : colors.surface }]}>
+              <Ionicons
+                name={dbConnected ? 'cloud-done-outline' : 'cloud-outline'}
+                size={24}
+                color={dbConnected ? '#0061FF' : colors.textMuted}
+              />
+            </View>
+            <View>
+              <Text style={[styles.driveTitle, { color: colors.textPrimary }]}>Dropbox</Text>
+              <Text style={[styles.driveStatus, { color: colors.textMuted }]}>
+                {dbConnected ? 'Connected' : 'Not connected'}
+              </Text>
+            </View>
+          </View>
+          {dbConnected ? (
+            <TouchableOpacity onPress={handleDBDisconnect} style={styles.disconnectBtn}>
+              <Text style={styles.disconnectText}>Disconnect</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={dbSignIn} style={styles.connectBtn}>
+              <Text style={styles.connectText}>Connect</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {dbError && <Text style={styles.errorText}>{dbError}</Text>}
+
+        {dbConnected && (
+          <>
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+              <Text style={[styles.infoText, { color: colors.textMuted }]}>
+                {dbLastBackup ? `Last backup: ${dbLastBackup}` : 'No Dropbox backup yet'}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.backupBtn} onPress={handleDBBackup} disabled={dbSyncing || dbRestoring} activeOpacity={0.85}>
+              {dbSyncing ? (
+                <>
+                  <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+                  <Text style={styles.backupBtnText}>Backing up...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.backupBtnText}>Back Up to Dropbox</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleDBRestore} disabled={dbSyncing || dbRestoring} activeOpacity={0.85}>
+              {dbRestoring ? (
+                <>
+                  <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restoring...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-download-outline" size={18} color={colors.blue} style={{ marginRight: 8 }} />
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restore from Dropbox</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <View style={{ paddingHorizontal: 20 }}>
+              <Text style={[styles.note, { color: colors.textSecondary }]}>
+                <Text style={{ fontWeight: 'bold' }}>File location:</Text> "AskFiles" folder on your Dropbox.
+              </Text>
+              <Text style={[styles.note, { marginTop: 4, color: '#2E7D32', fontWeight: '500' }]}>
+                Only you can see these files.
+              </Text>
+            </View>
+          </>
+        )}
+
+        {!dbConnected && (
+          <Text style={[styles.notConnectedHint, { color: colors.textMuted }]}>
+            Connect your Dropbox account to back up and restore your vault files.
           </Text>
         )}
 
