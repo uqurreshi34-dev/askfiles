@@ -51,12 +51,21 @@ function isVideoFile(name: string): boolean {
   return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
 }
 
+const videoThumbCache = new Map<string, string>();
+const MAX_THUMB_CACHE = 500;
+
 function VideoThumb({ uri, style }: { uri: string; style: any }) {
-  const [thumb, setThumb] = useState<string | null>(null);
+  const [thumb, setThumb] = useState<string | null>(videoThumbCache.get(uri) ?? null);
   useEffect(() => {
+    if (videoThumbCache.has(uri)) return;
     (async () => {
       try {
-        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
+        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 0 });
+        if (videoThumbCache.size >= MAX_THUMB_CACHE) {
+          const firstKey = videoThumbCache.keys().next().value;
+          if (firstKey) videoThumbCache.delete(firstKey);
+        }
+        videoThumbCache.set(uri, result.uri);
         setThumb(result.uri);
       } catch {}
     })();
@@ -690,7 +699,7 @@ export default function CategoryScreen() {
         <FlatList
           data={filteredItems}
           keyExtractor={item => item.uri}
-          key={isMediaCategory && gridView ? `grid-${GRID_COLS}` : 'list'}
+          key={isMediaCategory && gridView ? `grid-${GRID_COLS}` : `list-${SCREEN_WIDTH > SCREEN_HEIGHT ? 'land' : 'port'}`}
           numColumns={isMediaCategory && gridView ? GRID_COLS : 1}
           renderItem={isMediaCategory && gridView
             ? ({ item }) => {
