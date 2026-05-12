@@ -67,7 +67,8 @@
       ],
       "expo-secure-store",
       "./modules/storage-widget/app.plugin.js",
-      "./modules/share-module/app.plugin.js"
+      "./modules/share-module/app.plugin.js",
+      "./modules/smooth-rotation/app.plugin.js"
     ],
     "extra": {
       "router": {},
