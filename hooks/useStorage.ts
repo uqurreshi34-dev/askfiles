@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import RNFS from 'react-native-fs';
-import { formatBytes } from '@/utils/formatBytes';
+import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -205,7 +205,7 @@ async function getLargestFiles(
   return files
     .sort((a, b) => b.size - a.size)
     .slice(0, topN)
-    .map(f => ({ name: f.name, size: formatBytes(f.size), folder: f.folder }));
+    .map(f => ({ name: f.name, size: formatSize(f.size), folder: f.folder }));
 }
 
 async function getAllFilenames(paths: string[], extensions?: string[]): Promise<string[]> {
@@ -300,8 +300,8 @@ async function doLoad(): Promise<void> {
     freeBytes: free,
     usedBytes: used,
     usedPercent: Math.round((used / total) * 100),
-    totalReadable: formatBytes(total),
-    usedReadable: formatBytes(used),
+    totalReadable: formatSize(total),
+    usedReadable: formatSize(used),
   };
 
   const [allImages, allVideos] = await Promise.all([
@@ -378,13 +378,13 @@ async function doLoad(): Promise<void> {
   const otherBytes = Math.max(0, (cache.storageInfo?.usedBytes ?? 0) - knownBytes);
 
   cache.folderSizes = {
-    pictures: formatBytes(totalImagesSize),
-    videos: formatBytes(totalVideosSize),
-    downloads: formatBytes(downloadsSize),
-    documents: formatBytes(documentsSize + documentsInDownloadSize + documentsInWhatsappSize + documentsInWhatsappBizSize + documentsInTelegramSize),
-    music: formatBytes(musicSize),
-    dcim: formatBytes(dcimImagesSize + dcimVideosSize),
-    other: formatBytes(otherBytes),
+    pictures: formatSize(totalImagesSize),
+    videos: formatSize(totalVideosSize),
+    downloads: formatSize(downloadsSize),
+    documents: formatSize(documentsSize + documentsInDownloadSize + documentsInWhatsappSize + documentsInWhatsappBizSize + documentsInTelegramSize),
+    music: formatSize(musicSize),
+    dcim: formatSize(dcimImagesSize + dcimVideosSize),
+    other: formatSize(otherBytes),
   };
 
   const [largestImages, largestVideos, largestDocs, largestDownloads, largestOverall] = await Promise.all([

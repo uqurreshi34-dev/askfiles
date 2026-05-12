@@ -1,4 +1,4 @@
-import { formatBytes } from '@/utils/formatBytes';
+import { formatSize } from '@/utils/files';
 import React, { useState } from 'react';
 import { Modal, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +33,7 @@ export default function StorageSummaryCard({
         </View>
         <View style={styles.right}>
           <Text style={[styles.value, { color: colors.textPrimary }]}>
-            {formatBytes(usedBytes)} of {formatBytes(totalBytes)} used
+            {formatSize(usedBytes)} of {formatSize(totalBytes)} used
           </Text>
           {showChevron ? (
             <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
@@ -42,7 +42,7 @@ export default function StorageSummaryCard({
       </View>
 
       <Text style={[styles.note, { color: colors.textMuted }]}>
-        {formatBytes(freeBytes)} available
+        {formatSize(freeBytes)} available
       </Text>
 
       <Text style={[styles.note, { color: colors.successGreen }]}>
@@ -62,7 +62,7 @@ export default function StorageSummaryCard({
         >
           <View style={[styles.modalCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
             <Text style={[styles.modalText, { color: colors.textPrimary }]}>
-            {`Your device has ${formatBytes(totalBytes)} of storage in total. AskFiles shows ${formatBytes(usedBytes)} used across your files and apps. Android Settings may show a slightly different figure — this is normal and is due to how the operating system calculates reserved and system space.`}
+            {`Your device has ${formatSize(totalBytes)} of storage in total. AskFiles shows ${formatSize(usedBytes)} used across your files and apps. Android Settings may show a slightly different figure — this is normal and is due to how the operating system calculates reserved and system space.`}
             </Text>
           </View>
         </TouchableOpacity>
