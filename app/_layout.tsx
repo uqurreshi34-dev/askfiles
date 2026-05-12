@@ -213,7 +213,6 @@ export default function RootLayout() {
     if (isAiSearchListening) return;
     const transcript = transcriptRef.current;
     transcriptRef.current = '';
-    console.log('Voice transcript:', JSON.stringify(transcript));
     if (!transcript) return;
     const route = parseCommand(transcript);
     if (route) {

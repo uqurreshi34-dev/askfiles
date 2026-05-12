@@ -55,7 +55,6 @@ export default function ViewerScreen() {
         mimeType: isPng ? 'image/jpeg' : getMimeType(name as string),
       });
     } catch (e) {
-      console.log('Share error:', e);
     }
   }
 

@@ -287,7 +287,6 @@ export default function CategoryScreen() {
   useEffect(() => {
     loadCategory();
     const subscription = addMediaStoreChangeListener(() => {
-      console.log('MediaStore change detected in category');
       loadCategory();
     });
     return () => subscription.remove();

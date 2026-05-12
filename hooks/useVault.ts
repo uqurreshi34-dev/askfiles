@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { removeFavourite } from '@/hooks/useFavourites';
 
 const VAULT_DIR = FileSystem.Paths.document.uri.endsWith('/')
@@ -18,7 +17,6 @@ export function useVault() {
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     ensureVaultDir();
@@ -32,38 +30,6 @@ export function useVault() {
       }
     } catch {}
   }
-
-  // async function authenticate(): Promise<boolean> {
-  //   setAuthError(null);
-  //   try {
-  //     const hasHardware = await LocalAuthentication.hasHardwareAsync();
-  //     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-  //     if (!hasHardware || !isEnrolled) {
-  //       setAuthError('Biometrics not available on this device.');
-  //       return false;
-  //     }
-
-  //     const result = await LocalAuthentication.authenticateAsync({
-  //       promptMessage: 'Authenticate to access your Vault',
-  //       cancelLabel: 'Cancel',
-  //       fallbackLabel: 'Use PIN',
-  //       disableDeviceFallback: false,
-  //     });
-
-  //     if (result.success) {
-  //       setAuthenticated(true);
-  //       await loadFiles();
-  //       return true;
-  //     } else {
-  //       setAuthError('Authentication failed. Try again.');
-  //       return false;
-  //     }
-  //   } catch (e) {
-  //     setAuthError('Authentication error. Try again.');
-  //     return false;
-  //   }
-  // }
 
   async function unlockVault(): Promise<void> {
     setAuthenticated(true);
@@ -143,7 +109,6 @@ export function useVault() {
     files,
     loading,
     authenticated,
-    authError,
     unlockVault,
     addToVault,
     removeFromVault,

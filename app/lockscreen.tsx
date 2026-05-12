@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
-import { verifyPin, deletePin, disableAppLock } from '@/hooks/usePin';
+import { verifyPin } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function LockScreen() {
@@ -14,13 +14,17 @@ export default function LockScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('LockScreen mounted');
     tryBiometric();
   }, []);
 
   async function tryBiometric() {
+    console.log('tryBiometric started');
     try {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const [hasHardware, isEnrolled] = await Promise.all([
+        LocalAuthentication.hasHardwareAsync(),
+        LocalAuthentication.isEnrolledAsync(),
+      ]);
       if (!hasHardware || !isEnrolled) return;
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Unlock AskFiles',
@@ -49,8 +53,10 @@ export default function LockScreen() {
 
   async function handleForgotPin() {
     try {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const [hasHardware, isEnrolled] = await Promise.all([
+        LocalAuthentication.hasHardwareAsync(),
+        LocalAuthentication.isEnrolledAsync(),
+      ]);
       if (hasHardware && isEnrolled) {
         const result = await LocalAuthentication.authenticateAsync({
           promptMessage: 'Verify identity to reset PIN',
