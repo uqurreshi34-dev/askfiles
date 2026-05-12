@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Purchases, { LOG_LEVEL, PurchasesPackage } from 'react-native-purchases';
+import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
 const RC_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
