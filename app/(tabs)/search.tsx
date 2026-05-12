@@ -10,7 +10,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearch } from '@/hooks/useSearch';
 import { useAskAI } from '@/hooks/useAskAI';
-import { isImageFile, getMimeType, getFileColor } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
@@ -41,12 +41,6 @@ const SUGGESTIONS = [
   'Should I free up some space?',
 ];
 
-function formatBytes(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  return (bytes / 1024).toFixed(1) + ' KB';
-}
-
 function friendlyFolder(folder: string): string {
   const map: Record<string, string> = {
     'Camera': 'Camera Roll',
@@ -76,7 +70,7 @@ function buildContext(
   const isAboutStorage = /storage|space|large|big|size|free|used|full/i.test(q);
   const isGeneral = !isAboutImages && !isAboutVideos && !isAboutDocs && !isAboutDownloads && !isAboutStorage;
 
-  const freeSpace = storageInfo?.freeBytes ? formatBytes(storageInfo.freeBytes) : 'unknown';
+  const freeSpace = storageInfo?.freeBytes ? formatSize(storageInfo.freeBytes) : 'unknown';
 
   const imageCounts: Record<string, number> = {};
   for (const name of mediaContext.recentImages) {
@@ -218,7 +212,7 @@ export default function SearchScreen() {
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     try {
       const file = new FileSystem.File(item.uri);
-      setFileSize(formatBytes(file.size ?? 0));
+      setFileSize(formatSize(file.size ?? 0));
     } catch { setFileSize('Unknown'); }
   }
 

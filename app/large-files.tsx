@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
-import { isImageFile, getFileColor } from '@/utils/files';
+import { isImageFile, getFileColor, formatSize } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { removeFavourite } from '@/hooks/useFavourites';
@@ -41,12 +41,6 @@ const SIZE_GROUPS = [
   { label: '51 – 75 MB',  min: 51 * 1024 * 1024, max: 75 * 1024 * 1024 },
   { label: '25 – 50 MB',  min: 25 * 1024 * 1024, max: 51 * 1024 * 1024 },
 ];
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  return (bytes / 1024).toFixed(1) + ' KB';
-}
 
 async function scanDir(path: string, results: LargeFile[], minSize: number) {
   try {

@@ -13,10 +13,9 @@ import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
-import { isImageFile, getFileColor } from '@/utils/files';
+import { isImageFile, getFileColor, formatSize, getMimeType } from '@/utils/files';
 
 interface SensitiveFile {
   name: string;
@@ -47,12 +46,6 @@ const SCAN_DIRS = [
   ];
 
 const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  return (bytes / 1024).toFixed(1) + ' KB';
-}
 
 function matchesKeyword(name: string): string | null {
   const lower = name.toLowerCase();

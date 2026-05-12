@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { isImageFile, getMimeType, getFileColor } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
 import { useVault } from '@/hooks/useVault';
@@ -23,12 +23,6 @@ import { openFile as openFileNative } from '@/modules/share-module';
 import RNFS from 'react-native-fs';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return bytes + ' B';
-}
 
 export default function FavouritesScreen() {
   const { colors } = useTheme();

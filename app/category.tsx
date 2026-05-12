@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
@@ -29,13 +29,6 @@ interface FileItem {
   uri: string;
   size?: number;
   date?: number;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return bytes + ' B';
 }
 
 function timeAgo(ts: number): string {

@@ -9,15 +9,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTrash, TrashFile } from '@/hooks/useTrash';
 import { useTheme } from '@/hooks/useTheme';
-import { isImageFile, getFileColor } from '@/utils/files';
+import { isImageFile, getFileColor, formatSize } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return bytes + ' B';
-}
 
 export default function TrashScreen() {
   const { colors } = useTheme();
