@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDuplicates, DuplicateGroup, DuplicateFile } from '@/hooks/useDuplicates';
 import { useTheme } from '@/hooks/useTheme';
 import { removeFavourite } from '@/hooks/useFavourites';
-import { getVideoThumbnail } from 'media-grid';
+import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 
 function isImage(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase();
@@ -23,43 +23,6 @@ function getFileColor(name: string): string {
   if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext ?? '')) return '#534AB7';
   if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
   return '#5F5E5A';
-}
-
-function isVideoFile(name: string): boolean {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
-}
-
-const videoThumbCache = new Map<string, string>();
-const MAX_THUMB_CACHE = 500;
-
-function getThumbCached(uri: string): string | undefined {
-  const cached = videoThumbCache.get(uri);
-  if (cached) { videoThumbCache.delete(uri); videoThumbCache.set(uri, cached); return cached; }
-  return undefined;
-}
-
-function setThumbCached(uri: string, thumb: string) {
-  if (videoThumbCache.size >= MAX_THUMB_CACHE) {
-    const firstKey = videoThumbCache.keys().next().value;
-    if (firstKey) videoThumbCache.delete(firstKey);
-  }
-  videoThumbCache.set(uri, thumb);
-}
-
-function VideoThumb({ uri, style }: { uri: string; style: any }) {
-  const [thumb, setThumb] = useState<string | null>(getThumbCached(uri) ?? null);
-  useEffect(() => {
-    if (videoThumbCache.has(uri)) return;
-    (async () => {
-      try {
-        const result = await getVideoThumbnail(uri);
-        if (result) { setThumbCached(uri, result); setThumb(result); }
-      } catch {}
-    })();
-  }, [uri]);
-  if (!thumb) return null;
-  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function DuplicatesScreen() {

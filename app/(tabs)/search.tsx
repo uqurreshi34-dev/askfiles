@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { getVideoThumbnail } from 'media-grid';
+import React, { useState, useRef, useCallback } from 'react';
+import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
@@ -125,43 +125,6 @@ Top 10 largest files across all storage (use this to answer "what's my largest f
 Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
 Note: always use the folder name provided in brackets when stating where a file is located — never guess or assume a file's location based on its type.
   `.trim();
-}
-
-function isVideoFile(name: string): boolean {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
-}
-
-const videoThumbCache = new Map<string, string>();
-const MAX_THUMB_CACHE = 500;
-
-function getThumbCached(uri: string): string | undefined {
-  const cached = videoThumbCache.get(uri);
-  if (cached) { videoThumbCache.delete(uri); videoThumbCache.set(uri, cached); return cached; }
-  return undefined;
-}
-
-function setThumbCached(uri: string, thumb: string) {
-  if (videoThumbCache.size >= MAX_THUMB_CACHE) {
-    const firstKey = videoThumbCache.keys().next().value;
-    if (firstKey) videoThumbCache.delete(firstKey);
-  }
-  videoThumbCache.set(uri, thumb);
-}
-
-function VideoThumb({ uri, style }: { uri: string; style: any }) {
-  const [thumb, setThumb] = useState<string | null>(getThumbCached(uri) ?? null);
-  useEffect(() => {
-    if (videoThumbCache.has(uri)) return;
-    (async () => {
-      try {
-        const result = await getVideoThumbnail(uri);
-        if (result) { setThumbCached(uri, result); setThumb(result); }
-      } catch {}
-    })();
-  }, [uri]);
-  if (!thumb) return null;
-  return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
 
 export default function SearchScreen() {
