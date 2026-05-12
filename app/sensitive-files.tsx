@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -16,6 +16,7 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
+import { isImageFile, getFileColor } from '@/utils/files';
 
 interface SensitiveFile {
   name: string;
@@ -51,22 +52,6 @@ function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
   return (bytes / 1024).toFixed(1) + ' KB';
-}
-
-function getFileColor(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return '#185FA5';
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
-  if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext ?? '')) return '#534AB7';
-  if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
-  if (['apk'].includes(ext ?? '')) return '#A32D2D';
-  return '#5F5E5A';
-}
-
-function isImageFile(name: string): boolean {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext);
 }
 
 function matchesKeyword(name: string): string | null {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -10,20 +10,7 @@ import { useDuplicates, DuplicateGroup, DuplicateFile } from '@/hooks/useDuplica
 import { useTheme } from '@/hooks/useTheme';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-
-function isImage(name: string): boolean {
-  const ext = name.split('.').pop()?.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '');
-}
-
-function getFileColor(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return '#185FA5';
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
-  if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext ?? '')) return '#534AB7';
-  if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
-  return '#5F5E5A';
-}
+import { isImageFile, getFileColor } from '@/utils/files';
 
 export default function DuplicatesScreen() {
   const { colors } = useTheme();
@@ -54,7 +41,7 @@ export default function DuplicatesScreen() {
   function renderGroup({ item: group }: { item: DuplicateGroup }) {
     const color = getFileColor(group.name);
     const ext = group.name.split('.').pop()?.toUpperCase() ?? '?';
-    const showThumb = isImage(group.name) && group.files[0]?.uri;
+    const showThumb = isImageFile(group.name) && group.files[0]?.uri;
     return (
       <View style={[styles.groupCard, { backgroundColor: colors.surfaceAlt }]}>
         <View style={styles.groupHeader}>
