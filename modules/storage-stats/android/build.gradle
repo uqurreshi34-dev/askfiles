@@ -6,6 +6,9 @@ plugins {
 group = 'expo.modules.storagestats'
 version = '0.7.10'
 
+dependencies {
+    implementation 'androidx.biometric:biometric:1.1.0'
+}
 android {
   namespace "expo.modules.storagestats"
   defaultConfig {

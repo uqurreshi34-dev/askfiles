@@ -9,6 +9,10 @@ import android.os.storage.StorageManager
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.util.UUID
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 
 class StorageStatsModule : Module() {
     override fun definition() = ModuleDefinition {
@@ -65,6 +69,51 @@ class StorageStatsModule : Module() {
             val context = appContext.reactContext ?: return@Function
             val prefs = context.getSharedPreferences("askfiles_lock", Context.MODE_PRIVATE)
             prefs.edit().putBoolean("app_lock_enabled", enabled).apply()
+        }
+
+        AsyncFunction("showBiometricPrompt") { title: String, subtitle: String ->
+            val activity = appContext.activityProvider?.currentActivity as? FragmentActivity
+                ?: return@AsyncFunction "error"
+
+            val biometricManager = BiometricManager.from(activity)
+            val canAuth = biometricManager.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.BIOMETRIC_WEAK
+            )
+            if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
+                return@AsyncFunction "unavailable"
+            }
+
+            val future = java.util.concurrent.CompletableFuture<String>()
+
+            activity.runOnUiThread {
+                val executor = ContextCompat.getMainExecutor(activity)
+                val callback = object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        future.complete("success")
+                    }
+                    override fun onAuthenticationFailed() {
+                        // let user try again — don't complete
+                    }
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        future.complete("cancelled")
+                    }
+                }
+
+                val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(title)
+                    .setSubtitle(subtitle)
+                    .setNegativeButtonText("Use PIN")
+                    .setAllowedAuthenticators(
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                        BiometricManager.Authenticators.BIOMETRIC_WEAK
+                    )
+                    .build()
+
+                BiometricPrompt(activity, executor, callback).authenticate(promptInfo)
+            }
+
+            future.get()
         }
     }
 }

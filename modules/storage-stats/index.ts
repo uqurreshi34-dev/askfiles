@@ -17,3 +17,7 @@ export function isAppLockEnabledSync(): boolean {
 export function setAppLockEnabledSync(enabled: boolean): void {
   StorageStats.setAppLockEnabledSync(enabled);
 }
+
+export async function showBiometricPrompt(title: string, subtitle: string): Promise<'success' | 'cancelled' | 'unavailable' | 'error'> {
+  return StorageStats.showBiometricPrompt(title, subtitle);
+}

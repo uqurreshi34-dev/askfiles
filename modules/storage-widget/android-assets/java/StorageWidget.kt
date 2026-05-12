@@ -130,8 +130,11 @@ class StorageWidget : AppWidgetProvider() {
             }
 
             // Tap header to open app
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                ?: Intent(context, Class.forName("${context.packageName}.MainActivity"))
+            val launchIntent = Intent(context, Class.forName("${context.packageName}.MainActivity")).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            }
             val launchPending = PendingIntent.getActivity(
                 context, 0, launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
