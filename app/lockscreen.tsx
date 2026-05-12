@@ -14,12 +14,10 @@ export default function LockScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('LockScreen mounted');
     tryBiometric();
   }, []);
 
   async function tryBiometric() {
-    console.log('tryBiometric started');
     try {
       const [hasHardware, isEnrolled] = await Promise.all([
         LocalAuthentication.hasHardwareAsync(),
