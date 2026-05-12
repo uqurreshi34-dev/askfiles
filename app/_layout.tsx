@@ -29,7 +29,7 @@ const COMMANDS = [
   { keywords: ['sensitive files', 'personal files', 'secret files', 'confidential files'], route: '/sensitive-files' },
   { keywords: ['duplicates', 'dupes'], route: '/duplicates' },
   { keywords: ['internal', 'free space', 'how much space'], route: '/(tabs)/' },
-  { keywords: ['vault', 'locked'], route: '/vault' },
+  { keywords: ['vault', 'locked', 'private'], route: '/vault' },
   { keywords: ['favourite', 'favorite'], route: '/favourites' },
   { keywords: ['cloud', 'pro', 'upgrade', 'premium'], route: '/(tabs)/cloud' },
   { keywords: ['photo', 'picture', 'gallery', 'screenshot', 'image'], route: '/category?category=images' },
