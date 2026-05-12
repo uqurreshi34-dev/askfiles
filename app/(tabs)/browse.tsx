@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PanResponder } from 'react-native';
-import * as VideoThumbnails from 'expo-video-thumbnails';
+import { getVideoThumbnail } from 'media-grid';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Image, Modal, TextInput, Alert,
   Animated, Pressable, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions,
@@ -64,13 +64,31 @@ function isVideoFile(name: string): boolean {
   return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
 }
 
+const videoThumbCache = new Map<string, string>();
+const MAX_THUMB_CACHE = 500;
+
+function getThumbCached(uri: string): string | undefined {
+  const cached = videoThumbCache.get(uri);
+  if (cached) { videoThumbCache.delete(uri); videoThumbCache.set(uri, cached); return cached; }
+  return undefined;
+}
+
+function setThumbCached(uri: string, thumb: string) {
+  if (videoThumbCache.size >= MAX_THUMB_CACHE) {
+    const firstKey = videoThumbCache.keys().next().value;
+    if (firstKey) videoThumbCache.delete(firstKey);
+  }
+  videoThumbCache.set(uri, thumb);
+}
+
 function VideoThumb({ uri, style }: { uri: string; style: any }) {
-  const [thumb, setThumb] = useState<string | null>(null);
+  const [thumb, setThumb] = useState<string | null>(getThumbCached(uri) ?? null);
   useEffect(() => {
+    if (videoThumbCache.has(uri)) return;
     (async () => {
       try {
-        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
-        setThumb(result.uri);
+        const result = await getVideoThumbnail(uri);
+        if (result) { setThumbCached(uri, result); setThumb(result); }
       } catch {}
     })();
   }, [uri]);
