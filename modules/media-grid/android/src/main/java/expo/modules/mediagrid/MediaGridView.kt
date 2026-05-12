@@ -76,7 +76,8 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     fun setNumColumns(numColumns: Int) {
         if (layoutManager.spanCount != numColumns) {
             layoutManager.spanCount = numColumns
-            adapter.notifyItemRangeChanged(0, adapter.itemCount)
+            requestLayout()
+            adapter.notifyDataSetChanged()
         }
     }
 
