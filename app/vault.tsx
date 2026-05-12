@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as VideoThumbnails from 'expo-video-thumbnails';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
@@ -15,9 +14,10 @@ import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
 import { isImageFile, getMimeType } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { verifyPin, isPinSet, deletePin, disableAppLock } from '@/hooks/usePin';
+import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative, scanFile } from '@/modules/share-module';
+import { getVideoThumbnail } from 'media-grid';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -39,13 +39,31 @@ function isVideoFile(name: string): boolean {
   return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
 }
 
+const videoThumbCache = new Map<string, string>();
+const MAX_THUMB_CACHE = 500;
+
+function getThumbCached(uri: string): string | undefined {
+  const cached = videoThumbCache.get(uri);
+  if (cached) { videoThumbCache.delete(uri); videoThumbCache.set(uri, cached); return cached; }
+  return undefined;
+}
+
+function setThumbCached(uri: string, thumb: string) {
+  if (videoThumbCache.size >= MAX_THUMB_CACHE) {
+    const firstKey = videoThumbCache.keys().next().value;
+    if (firstKey) videoThumbCache.delete(firstKey);
+  }
+  videoThumbCache.set(uri, thumb);
+}
+
 function VideoThumb({ uri, style }: { uri: string; style: any }) {
-  const [thumb, setThumb] = useState<string | null>(null);
+  const [thumb, setThumb] = useState<string | null>(getThumbCached(uri) ?? null);
   useEffect(() => {
+    if (videoThumbCache.has(uri)) return;
     (async () => {
       try {
-        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 5010 });
-        setThumb(result.uri);
+        const result = await getVideoThumbnail(uri);
+        if (result) { setThumbCached(uri, result); setThumb(result); }
       } catch {}
     })();
   }, [uri]);
