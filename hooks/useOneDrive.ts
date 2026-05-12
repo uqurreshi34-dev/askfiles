@@ -161,7 +161,7 @@ export function useOneDrive() {
     const binaryStr = atob(base64);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
+      bytes[i] = binaryStr.charCodeAt(i) & 0xff;
     }
 
     const mimeType = getMimeTypeFromName(fileName);
