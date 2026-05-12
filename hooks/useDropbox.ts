@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
+import RNFS from 'react-native-fs';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -147,17 +148,20 @@ export function useDropbox() {
     fileName: string,
     fileUri: string,
   ): Promise<void> {
-    const base64 = await FileSystemLegacy.readAsStringAsync(fileUri, {
-      encoding: FileSystemLegacy.EncodingType.Base64,
-    });
-
+    const path = (() => { 
+      try { return decodeURIComponent(fileUri.replace('file://', '')); } 
+      catch { return fileUri.replace('file://', ''); } 
+    })();
+    
+    const base64 = await RNFS.readFile(path, 'base64');
+    
+    // Correct binary conversion using byte masking to prevent corruption of pngs
     const binaryStr = atob(base64);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
+      bytes[i] = binaryStr.charCodeAt(i) & 0xff;
     }
 
-    // Dropbox upload — path is relative to app folder
     await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
@@ -200,10 +204,10 @@ export function useDropbox() {
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
       setLastBackup(now);
       return true;
-    } catch {
+    } catch (e) {
       setError('Backup failed. Check your connection and try again.');
       return false;
-    } finally {
+    }finally {
       setSyncing(false);
     }
   }
