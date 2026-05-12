@@ -14,13 +14,12 @@ import RNFS from 'react-native-fs';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
-import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { shareFiles, openFile } from '@/modules/share-module';
 import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import { useTrash } from '@/hooks/useTrash';
-import { MediaGridView } from 'media-grid';
+import { MediaGridView, getVideoThumbnail } from 'media-grid';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -57,7 +56,6 @@ const MAX_THUMB_CACHE = 500;
 function getThumbCached(uri: string): string | undefined {
   const cached = videoThumbCache.get(uri);
   if (cached) {
-    // Move to end — most recently used
     videoThumbCache.delete(uri);
     videoThumbCache.set(uri, cached);
     return cached;
@@ -67,7 +65,6 @@ function getThumbCached(uri: string): string | undefined {
 
 function setThumbCached(uri: string, thumb: string) {
   if (videoThumbCache.size >= MAX_THUMB_CACHE) {
-    // Evict least recently used (first entry)
     const firstKey = videoThumbCache.keys().next().value;
     if (firstKey) videoThumbCache.delete(firstKey);
   }
@@ -80,9 +77,11 @@ function VideoThumb({ uri, style }: { uri: string; style: any }) {
     if (videoThumbCache.has(uri)) return;
     (async () => {
       try {
-        const result = await VideoThumbnails.getThumbnailAsync(uri, { time: 0 });
-        setThumbCached(uri, result.uri);
-        setThumb(result.uri);
+        const result = await getVideoThumbnail(uri);
+        if (result) {
+          setThumbCached(uri, result);
+          setThumb(result);
+        }
       } catch {}
     })();
   }, [uri]);
