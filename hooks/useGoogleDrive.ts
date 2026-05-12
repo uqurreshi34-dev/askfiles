@@ -3,6 +3,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import * as FileSystem from 'expo-file-system';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setCloudSyncing } from '@/hooks/useCloudSync';
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const LAST_BACKUP_KEY = 'google_drive_last_backup';
@@ -153,6 +154,7 @@ export function useGoogleDrive() {
 
   async function backupVault(vaultDir: string): Promise<boolean> {
     setSyncing(true);
+    setCloudSyncing(true);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -192,11 +194,13 @@ export function useGoogleDrive() {
       return false;
     } finally {
       setSyncing(false);
+      setCloudSyncing(false);
     }
   }
 
   async function restoreVault(vaultDir: string): Promise<number> {
     setRestoring(true);
+    setCloudSyncing(true);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -243,6 +247,7 @@ export function useGoogleDrive() {
       return 0;
     } finally {
       setRestoring(false);
+      setCloudSyncing(false);
     }
   }
 

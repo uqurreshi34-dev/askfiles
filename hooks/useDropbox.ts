@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
+import { setCloudSyncing } from '@/hooks/useCloudSync';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -180,6 +181,7 @@ export function useDropbox() {
 
   async function backupVault(vaultDir: string): Promise<boolean> {
     setSyncing(true);
+    setCloudSyncing(true);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -209,11 +211,13 @@ export function useDropbox() {
       return false;
     }finally {
       setSyncing(false);
+      setCloudSyncing(false);
     }
   }
 
   async function restoreVault(vaultDir: string): Promise<number> {
     setRestoring(true);
+    setCloudSyncing(true);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -264,6 +268,7 @@ export function useDropbox() {
       return 0;
     } finally {
       setRestoring(false);
+      setCloudSyncing(false);
     }
   }
 

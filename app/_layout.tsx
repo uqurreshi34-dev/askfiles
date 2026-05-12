@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { View, Animated, Text, Easing, PanResponder, Dimensions, TouchableOpacity} from 'react-native';
+import { View, Animated, Text, Easing, PanResponder, Dimensions, TouchableOpacity, ActivityIndicator} from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFileWatcher } from '@/hooks/useFileWatcher';
+import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export let isAiSearchListening = false;
 export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
@@ -72,6 +74,7 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const dark = scheme === 'dark';
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const { setBackgroundColorAsync } = require('expo-system-ui');
@@ -91,6 +94,31 @@ export default function RootLayout() {
   const dragStart = useRef({ x: DEFAULT_X, y: DEFAULT_Y });
   const pan = useRef(new Animated.ValueXY({ x: DEFAULT_X, y: DEFAULT_Y })).current;
   const isDragging = useRef(false);
+
+  //cloud backup in progress
+  const syncPulse = useRef(new Animated.Value(1)).current;
+  const [cloudSyncing, setCloudSyncing] = useState(isCloudSyncing());
+
+  useEffect(() => {
+    const unsub = addCloudSyncListener(() => {
+      setCloudSyncing(isCloudSyncing());
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (cloudSyncing) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(syncPulse, { toValue: 0.3, duration: 600, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(syncPulse, { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
+      ).start();
+    } else {
+      syncPulse.stopAnimation();
+      syncPulse.setValue(1);
+    }
+  }, [cloudSyncing]);
 
   // Load saved position
   useEffect(() => {
@@ -241,6 +269,18 @@ export default function RootLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+      {cloudSyncing && (
+        <Animated.View style={{
+          position: 'absolute',
+          top: insets.top,
+          left: insets.left,
+          right: insets.right,
+          height: 3,
+          zIndex: 9999,
+          backgroundColor: '#185FA5',
+          opacity: syncPulse,
+        }} />
+      )}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />

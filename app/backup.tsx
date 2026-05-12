@@ -10,6 +10,8 @@ import { useOneDrive } from '@/hooks/useOneDrive';
 import { useDropbox } from '@/hooks/useDropbox';
 import { useVault } from '@/hooks/useVault';
 import { useTheme } from '@/hooks/useTheme';
+import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
+import { useEffect, useState } from 'react';
 
 export default function BackupScreen() {
   const { colors } = useTheme();
@@ -32,6 +34,13 @@ export default function BackupScreen() {
     signIn: dbSignIn, disconnect: dbDisconnect,
     backupVault: dbBackupVault, restoreVault: dbRestoreVault,
   } = useDropbox();
+
+  const [cloudBusy, setCloudBusy] = useState(isCloudSyncing());
+
+  useEffect(() => {
+    const unsub = addCloudSyncListener(() => setCloudBusy(isCloudSyncing()));
+    return unsub;
+  }, []);
 
   const { vaultDir } = useVault() as any;
 
@@ -229,7 +238,7 @@ export default function BackupScreen() {
                 {lastBackup ? `Last backup: ${lastBackup}` : 'No Google Drive backup yet'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.backupBtn} onPress={handleBackup} disabled={syncing || restoring} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.backupBtn} onPress={handleBackup} disabled={cloudBusy || syncing || restoring} activeOpacity={0.85}>
               {syncing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
@@ -242,7 +251,7 @@ export default function BackupScreen() {
                 </>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleRestore} disabled={syncing || restoring} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleRestore} disabled={cloudBusy || syncing || restoring} activeOpacity={0.85}>
               {restoring ? (
                 <>
                   <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
@@ -313,7 +322,7 @@ export default function BackupScreen() {
                 {odLastBackup ? `Last backup: ${odLastBackup}` : 'No OneDrive backup yet'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.backupBtn} onPress={handleODBackup} disabled={odSyncing || odRestoring} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.backupBtn} onPress={handleODBackup} disabled={cloudBusy || odSyncing || odRestoring} activeOpacity={0.85}>
               {odSyncing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
@@ -326,7 +335,7 @@ export default function BackupScreen() {
                 </>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleODRestore} disabled={odSyncing || odRestoring} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleODRestore} disabled={cloudBusy || odSyncing || odRestoring} activeOpacity={0.85}>
               {odRestoring ? (
                 <>
                   <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
@@ -396,7 +405,7 @@ export default function BackupScreen() {
                 {dbLastBackup ? `Last backup: ${dbLastBackup}` : 'No Dropbox backup yet'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.backupBtn} onPress={handleDBBackup} disabled={dbSyncing || dbRestoring} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.backupBtn} onPress={handleDBBackup} disabled={cloudBusy || dbSyncing || dbRestoring} activeOpacity={0.85}>
               {dbSyncing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
@@ -409,7 +418,7 @@ export default function BackupScreen() {
                 </>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleDBRestore} disabled={dbSyncing || dbRestoring} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.restoreBtn, { backgroundColor: colors.blueTint }]} onPress={handleDBRestore} disabled={cloudBusy || dbSyncing || dbRestoring} activeOpacity={0.85}>
               {dbRestoring ? (
                 <>
                   <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
