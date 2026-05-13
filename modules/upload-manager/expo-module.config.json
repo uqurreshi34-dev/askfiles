@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["UploadManagerModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.uploadmanager.UploadManagerModule"]
+  }
+}

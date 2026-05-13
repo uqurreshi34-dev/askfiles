@@ -3,9 +3,8 @@ import { makeRedirectUri, useAuthRequest, exchangeCodeAsync } from 'expo-auth-se
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
-import RNFS from 'react-native-fs';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
+import { uploadToDropbox, downloadFile } from '@/modules/upload-manager';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -20,19 +19,6 @@ const discovery = {
 };
 
 const redirectUri = makeRedirectUri({ scheme: 'askfiles', path: 'callback' });
-
-function getMimeTypeFromName(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic',
-    mp4: 'video/mp4', pdf: 'application/pdf',
-    doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    txt: 'text/plain',
-  };
-  return map[ext ?? ''] ?? 'application/octet-stream';
-}
 
 export function useDropbox() {
   const [isConnected, setIsConnected] = useState(false);
@@ -149,34 +135,14 @@ export function useDropbox() {
     fileName: string,
     fileUri: string,
   ): Promise<void> {
-    const path = (() => { 
-      try { return decodeURIComponent(fileUri.replace('file://', '')); } 
-      catch { return fileUri.replace('file://', ''); } 
+    const path = (() => {
+      try { return decodeURIComponent(fileUri.replace('file://', '')); }
+      catch { return fileUri.replace('file://', ''); }
     })();
-    
-    const base64 = await RNFS.readFile(path, 'base64');
-    
-    // Correct binary conversion using byte masking to prevent corruption of pngs
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i) & 0xff;
-    }
 
-    await fetch('https://content.dropboxapi.com/2/files/upload', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/octet-stream',
-        'Dropbox-API-Arg': JSON.stringify({
-          path: `/${fileName}`,
-          mode: 'overwrite',
-          autorename: false,
-          mute: true,
-        }),
-      },
-      body: bytes,
-    });
+    const result = await uploadToDropbox(path, token, fileName);
+    if (result === 'storage_full') throw new Error('storage_full');
+    if (result !== 'success') throw new Error('upload_failed');
   }
 
   async function backupVault(vaultDir: string): Promise<boolean> {
@@ -206,8 +172,12 @@ export function useDropbox() {
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
       setLastBackup(now);
       return true;
-    } catch (e) {
-      setError('Backup failed. Check your connection and try again.');
+     } catch (e: any) {
+      if (e?.message === 'storage_full') {
+        setError('Backup failed. Your Dropbox storage may be full. Check your available space and try again.');
+      } else {
+        setError('Backup failed. Check your connection and try again.');
+      }
       return false;
     }finally {
       setSyncing(false);
@@ -242,24 +212,21 @@ export function useDropbox() {
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
 
-        const dlRes = await fetch('https://content.dropboxapi.com/2/files/download', {
-          method: 'POST',
-          headers: {
+        const destPath = (() => {
+          try { return decodeURIComponent(destUri.replace('file://', '')); }
+          catch { return destUri.replace('file://', ''); }
+        })();
+
+        const dlResult = await downloadFile(
+          'https://content.dropboxapi.com/2/files/download',
+          {
             Authorization: `Bearer ${token}`,
             'Dropbox-API-Arg': JSON.stringify({ path: `/${fileName}` }),
           },
-        });
-        const blob = await dlRes.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-
-        await FileSystemLegacy.writeAsStringAsync(destUri, base64, {
-          encoding: FileSystemLegacy.EncodingType.Base64,
-        });
+          destPath,
+          'GET'
+        );
+        if (dlResult !== 'success') continue;
         restored++;
       }
       return restored;

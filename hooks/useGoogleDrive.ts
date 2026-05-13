@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as FileSystem from 'expo-file-system';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
+import { uploadToGoogleDrive, downloadFile } from '@/modules/upload-manager';
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const LAST_BACKUP_KEY = 'google_drive_last_backup';
@@ -17,19 +17,6 @@ GoogleSignin.configure({
   ],
   offlineAccess: true,
 });
-
-function getMimeTypeFromName(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic',
-    mp4: 'video/mp4', pdf: 'application/pdf',
-    doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    txt: 'text/plain',
-  };
-  return map[ext ?? ''] ?? 'application/octet-stream';
-}
 
 export function useGoogleDrive() {
   const [isConnected, setIsConnected] = useState(false);
@@ -118,38 +105,14 @@ export function useGoogleDrive() {
     fileUri: string,
     existingFileId?: string
   ): Promise<void> {
-    const base64 = await FileSystemLegacy.readAsStringAsync(fileUri, {
-      encoding: FileSystemLegacy.EncodingType.Base64,
-    });
-    const mimeType = getMimeTypeFromName(fileName);
-    const boundary = 'askfiles_multipart_boundary';
-    const metadata = JSON.stringify({
-      name: fileName,
-      ...(existingFileId ? {} : { parents: [folderId] }),
-    });
+    const path = (() => {
+      try { return decodeURIComponent(fileUri.replace('file://', '')); }
+      catch { return fileUri.replace('file://', ''); }
+    })();
 
-    const body =
-      `--${boundary}\r\n` +
-      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-      `${metadata}\r\n` +
-      `--${boundary}\r\n` +
-      `Content-Type: ${mimeType}\r\n` +
-      `Content-Transfer-Encoding: base64\r\n\r\n` +
-      `${base64}\r\n` +
-      `--${boundary}--`;
-
-    const url = existingFileId
-      ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`
-      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
-
-    await fetch(url, {
-      method: existingFileId ? 'PATCH' : 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-      },
-      body,
-    });
+    const result = await uploadToGoogleDrive(path, token, folderId, fileName, existingFileId ?? '');
+    if (result === 'storage_full') throw new Error('storage_full');
+    if (result !== 'success') throw new Error('upload_failed');
   }
 
   async function backupVault(vaultDir: string): Promise<boolean> {
@@ -189,8 +152,12 @@ export function useGoogleDrive() {
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
       setLastBackup(now);
       return true;
-    } catch (e) {
-      setError('Backup failed. Check your connection and try again.');
+    } catch (e: any) {
+      if (e?.message === 'storage_full') {
+        setError('Backup failed. Your Google Drive storage may be full. Check your available space and try again.');
+      } else {
+        setError('Backup failed. Check your connection and try again.');
+      }
       return false;
     } finally {
       setSyncing(false);
@@ -224,21 +191,17 @@ export function useGoogleDrive() {
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
 
-        const dlRes = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const blob = await dlRes.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        const destPath = (() => {
+          try { return decodeURIComponent(destUri.replace('file://', '')); }
+          catch { return destUri.replace('file://', ''); }
+        })();
 
-        await FileSystemLegacy.writeAsStringAsync(destUri, base64, {
-          encoding: FileSystemLegacy.EncodingType.Base64,
-        });
+        const dlResult = await downloadFile(
+          `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`,
+          { Authorization: `Bearer ${token}` },
+          destPath
+        );
+        if (dlResult !== 'success') continue;
         restored++;
       }
       return restored;

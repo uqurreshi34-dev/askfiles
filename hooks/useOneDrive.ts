@@ -3,8 +3,8 @@ import { makeRedirectUri, useAuthRequest, exchangeCodeAsync } from 'expo-auth-se
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
+import { uploadToOneDrive, downloadFile } from '@/modules/upload-manager';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -22,19 +22,6 @@ const discovery = {
 
 const redirectUri = makeRedirectUri({ scheme: 'askfiles', path: 'callback' });
 //const redirectUri = 'askfiles://callback';
-
-function getMimeTypeFromName(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic',
-    mp4: 'video/mp4', pdf: 'application/pdf',
-    doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    txt: 'text/plain',
-  };
-  return map[ext ?? ''] ?? 'application/octet-stream';
-}
 
 export function useOneDrive() {
   const [isConnected, setIsConnected] = useState(false);
@@ -154,31 +141,14 @@ export function useOneDrive() {
     fileName: string,
     fileUri: string,
   ): Promise<void> {
-    const base64 = await FileSystemLegacy.readAsStringAsync(fileUri, {
-      encoding: FileSystemLegacy.EncodingType.Base64,
-    });
+    const path = (() => {
+      try { return decodeURIComponent(fileUri.replace('file://', '')); }
+      catch { return fileUri.replace('file://', ''); }
+    })();
 
-    // Convert base64 to binary string for upload
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i) & 0xff;
-    }
-
-    const mimeType = getMimeTypeFromName(fileName);
-
-    // OneDrive approot — special folder only this app can access
-    await fetch(
-      `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${encodeURIComponent(fileName)}:/content`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': mimeType,
-        },
-        body: bytes,
-      }
-    );
+    const result = await uploadToOneDrive(path, token, fileName);
+    if (result === 'storage_full') throw new Error('storage_full');
+    if (result !== 'success') throw new Error('upload_failed');
   }
 
   async function backupVault(vaultDir: string): Promise<boolean> {
@@ -208,8 +178,12 @@ export function useOneDrive() {
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
       setLastBackup(now);
       return true;
-    } catch (e) {
-      setError('Backup failed. Check your connection and try again.');
+    } catch (e: any) {
+      if (e?.message === 'storage_full') {
+        setError('Backup failed. Your OneDrive storage may be full. Check your available space and try again.');
+      } else {
+        setError('Backup failed. Check your connection and try again.');
+      }
       return false;
     } finally {
       setSyncing(false);
@@ -240,18 +214,17 @@ export function useOneDrive() {
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
 
-        const dlRes = await fetch(driveFile['@microsoft.graph.downloadUrl']);
-        const blob = await dlRes.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        const destPath = (() => {
+          try { return decodeURIComponent(destUri.replace('file://', '')); }
+          catch { return destUri.replace('file://', ''); }
+        })();
 
-        await FileSystemLegacy.writeAsStringAsync(destUri, base64, {
-          encoding: FileSystemLegacy.EncodingType.Base64,
-        });
+        const dlResult = await downloadFile(
+          driveFile['@microsoft.graph.downloadUrl'],
+          {},
+          destPath
+        );
+        if (dlResult !== 'success') continue;
         restored++;
       }
       return restored;
