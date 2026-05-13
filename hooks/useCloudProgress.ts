@@ -5,8 +5,13 @@ let _uploadProgress: Record<string, ProgressState> = { google: null, onedrive: n
 let _restoreProgress: Record<string, ProgressState> = { google: null, onedrive: null, dropbox: null };
 const listeners: Listener[] = [];
 
+let notifyTimer: ReturnType<typeof setTimeout> | null = null;
 function notify() {
-  listeners.forEach(l => l());
+  if (notifyTimer) clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(() => {
+    listeners.forEach(l => l());
+    notifyTimer = null;
+  }, 100);
 }
 
 export function setUploadProgress(provider: 'google' | 'onedrive' | 'dropbox', progress: ProgressState) {

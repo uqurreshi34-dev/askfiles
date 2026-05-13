@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["UploadServiceModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.uploadservice.UploadServiceModule"]
+  }
+}
