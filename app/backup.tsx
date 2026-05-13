@@ -12,6 +12,7 @@ import { useVault } from '@/hooks/useVault';
 import { useTheme } from '@/hooks/useTheme';
 import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
 import { useEffect, useState } from 'react';
+import { getUploadProgress, getRestoreProgress, addProgressListener } from '@/hooks/useCloudProgress';
 
 export default function BackupScreen() {
   const { colors } = useTheme();
@@ -22,20 +23,47 @@ export default function BackupScreen() {
   } = useGoogleDrive();
 
   const {
-    isConnected: odConnected, lastBackup: odLastBackup, loading: odLoading,
+    isConnected: odConnected, lastBackup: odLastBackup,
     syncing: odSyncing, restoring: odRestoring, error: odError,
     signIn: odSignIn, disconnect: odDisconnect,
     backupVault: odBackupVault, restoreVault: odRestoreVault,
   } = useOneDrive();
 
   const {
-    isConnected: dbConnected, lastBackup: dbLastBackup, loading: dbLoading,
+    isConnected: dbConnected, lastBackup: dbLastBackup,
     syncing: dbSyncing, restoring: dbRestoring, error: dbError,
     signIn: dbSignIn, disconnect: dbDisconnect,
     backupVault: dbBackupVault, restoreVault: dbRestoreVault,
   } = useDropbox();
 
   const [cloudBusy, setCloudBusy] = useState(isCloudSyncing());
+
+  const [globalUpload, setGlobalUpload] = useState({
+    google: getUploadProgress('google'),
+    onedrive: getUploadProgress('onedrive'),
+    dropbox: getUploadProgress('dropbox'),
+  });
+  const [globalRestore, setGlobalRestore] = useState({
+    google: getRestoreProgress('google'),
+    onedrive: getRestoreProgress('onedrive'),
+    dropbox: getRestoreProgress('dropbox'),
+  });
+
+  useEffect(() => {
+    const unsub = addProgressListener(() => {
+      setGlobalUpload({
+        google: getUploadProgress('google'),
+        onedrive: getUploadProgress('onedrive'),
+        dropbox: getUploadProgress('dropbox'),
+      });
+      setGlobalRestore({
+        google: getRestoreProgress('google'),
+        onedrive: getRestoreProgress('onedrive'),
+        dropbox: getRestoreProgress('dropbox'),
+      });
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const unsub = addCloudSyncListener(() => setCloudBusy(isCloudSyncing()));
@@ -235,7 +263,12 @@ export default function BackupScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
-                {lastBackup ? `Last backup: ${lastBackup}` : 'No Google Drive backup yet'}
+              {globalUpload.google
+                  ? <Text>Uploading — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalUpload.google.current}/{globalUpload.google.total} files uploaded</Text></Text>
+                  : globalRestore.google
+                    ? <Text>Restoring — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalRestore.google.current}/{globalRestore.google.total} files restored</Text></Text>
+                    : lastBackup ? `Last backup: ${lastBackup}` : 'No Google Drive backup yet'
+                }
               </Text>
             </View>
             <TouchableOpacity style={styles.backupBtn} onPress={handleBackup} disabled={cloudBusy || syncing || restoring} activeOpacity={0.85}>
@@ -319,7 +352,12 @@ export default function BackupScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
-                {odLastBackup ? `Last backup: ${odLastBackup}` : 'No OneDrive backup yet'}
+              {globalUpload.onedrive
+                  ? <Text>Uploading — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalUpload.onedrive.current}/{globalUpload.onedrive.total} files uploaded</Text></Text>
+                  : globalRestore.onedrive
+                    ? <Text>Restoring — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalRestore.onedrive.current}/{globalRestore.onedrive.total} files restored</Text></Text>
+                    : odLastBackup ? `Last backup: ${odLastBackup}` : 'No OneDrive backup yet'
+                }
               </Text>
             </View>
             <TouchableOpacity style={styles.backupBtn} onPress={handleODBackup} disabled={cloudBusy || odSyncing || odRestoring} activeOpacity={0.85}>
@@ -402,7 +440,12 @@ export default function BackupScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
-                {dbLastBackup ? `Last backup: ${dbLastBackup}` : 'No Dropbox backup yet'}
+              {globalUpload.dropbox
+                  ? <Text>Uploading — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalUpload.dropbox.current}/{globalUpload.dropbox.total} files uploaded</Text></Text>
+                  : globalRestore.dropbox
+                    ? <Text>Restoring — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalRestore.dropbox.current}/{globalRestore.dropbox.total} files restored</Text></Text>
+                    : dbLastBackup ? `Last backup: ${dbLastBackup}` : 'No Dropbox backup yet'
+                }
               </Text>
             </View>
             <TouchableOpacity style={styles.backupBtn} onPress={handleDBBackup} disabled={cloudBusy || dbSyncing || dbRestoring} activeOpacity={0.85}>

@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToGoogleDrive, downloadFile } from '@/modules/upload-manager';
+import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const LAST_BACKUP_KEY = 'google_drive_last_backup';
@@ -25,6 +26,8 @@ export function useGoogleDrive() {
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [restoreProgress, setRestoreProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
     checkSignInStatus();
@@ -137,7 +140,11 @@ export function useGoogleDrive() {
         return false;
       }
 
-      for (const file of files) {
+      setUploadProgress({ current: 0, total: files.length });
+      setGlobalUploadProgress('google', { current: 0, total: files.length });
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const existsRes = await fetch(
           `https://www.googleapis.com/drive/v3/files?q=name='${file.name}' and '${folderId}' in parents and trashed=false&fields=files(id)`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -146,6 +153,8 @@ export function useGoogleDrive() {
         const existingId = existsData.files?.[0]?.id;
 
         await uploadFileToDrive(token, folderId, file.name, file.uri, existingId);
+        setUploadProgress({ current: i + 1, total: files.length });
+        setGlobalUploadProgress('google', { current: i + 1, total: files.length });
       }
 
       const now = new Date().toLocaleString();
@@ -162,6 +171,8 @@ export function useGoogleDrive() {
     } finally {
       setSyncing(false);
       setCloudSyncing(false);
+      setUploadProgress(null);
+      setGlobalUploadProgress('google', null);
     }
   }
 
@@ -182,14 +193,24 @@ export function useGoogleDrive() {
       );
       const listData = await listRes.json();
       const driveFiles = listData.files ?? [];
+      const fileEntries = driveFiles.filter((f: any) => f.mimeType !== 'application/vnd.google-apps.folder');
+      const filesToRestore = fileEntries.filter((f: any) => {
+        const destFile = new FileSystem.File(vaultDir + f.name);
+        return !destFile.exists;
+      });
+      setRestoreProgress({ current: 0, total: filesToRestore.length });
+      setGlobalRestoreProgress('google', { current: 0, total: filesToRestore.length });
 
       let restored = 0;
+      let restoreIndex = 0;
       for (const driveFile of driveFiles) {
-        // Skip folders
         if (driveFile.mimeType === 'application/vnd.google-apps.folder') continue;
         const destUri = vaultDir + driveFile.name;
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
+        restoreIndex++;
+        setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
+        setGlobalRestoreProgress('google', { current: restoreIndex, total: filesToRestore.length });
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }
@@ -211,6 +232,8 @@ export function useGoogleDrive() {
     } finally {
       setRestoring(false);
       setCloudSyncing(false);
+      setRestoreProgress(null);
+      setGlobalRestoreProgress('google', null);
     }
   }
 
@@ -221,6 +244,8 @@ export function useGoogleDrive() {
     syncing,
     restoring,
     error,
+    uploadProgress,
+    restoreProgress,
     signIn,
     disconnect,
     backupVault,

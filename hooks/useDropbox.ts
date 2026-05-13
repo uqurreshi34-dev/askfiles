@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToDropbox, downloadFile } from '@/modules/upload-manager';
+import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,6 +28,8 @@ export function useDropbox() {
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [restoreProgress, setRestoreProgress] = useState<{ current: number; total: number } | null>(null);
 
   const [request, response, promptAsync] = useAuthRequest(
     {
@@ -164,8 +167,14 @@ export function useDropbox() {
         return false;
       }
 
-      for (const file of files) {
+      setUploadProgress({ current: 0, total: files.length });
+      setGlobalUploadProgress('dropbox', { current: 0, total: files.length });
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         await uploadFileToDropbox(token, file.name, file.uri);
+        setUploadProgress({ current: i + 1, total: files.length });
+        setGlobalUploadProgress('dropbox', { current: i + 1, total: files.length });
       }
 
       const now = new Date().toLocaleString();
@@ -182,6 +191,8 @@ export function useDropbox() {
     }finally {
       setSyncing(false);
       setCloudSyncing(false);
+      setUploadProgress(null);
+      setGlobalUploadProgress('dropbox', null);
     }
   }
 
@@ -203,14 +214,25 @@ export function useDropbox() {
       });
       const listData = await listRes.json();
       const dropboxFiles = listData.entries ?? [];
+      const fileEntries = dropboxFiles.filter((f: any) => f['.tag'] === 'file');
+      const filesToRestore = fileEntries.filter((f: any) => {
+        const destFile = new FileSystem.File(vaultDir + f.name);
+        return !destFile.exists;
+      });
+      setRestoreProgress({ current: 0, total: filesToRestore.length });
+      setGlobalRestoreProgress('dropbox', { current: 0, total: filesToRestore.length });
 
       let restored = 0;
+      let restoreIndex = 0;
       for (const dropboxFile of dropboxFiles) {
         if (dropboxFile['.tag'] !== 'file') continue;
         const fileName = dropboxFile.name;
         const destUri = vaultDir + fileName;
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
+        restoreIndex++;
+        setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
+        setGlobalRestoreProgress('dropbox', { current: restoreIndex, total: filesToRestore.length });
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }
@@ -236,6 +258,8 @@ export function useDropbox() {
     } finally {
       setRestoring(false);
       setCloudSyncing(false);
+      setRestoreProgress(null);
+      setGlobalRestoreProgress('dropbox', null);
     }
   }
 
@@ -247,6 +271,8 @@ export function useDropbox() {
     restoring,
     error,
     request,
+    uploadProgress,
+    restoreProgress,
     signIn,
     disconnect,
     backupVault,

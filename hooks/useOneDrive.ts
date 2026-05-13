@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToOneDrive, downloadFile } from '@/modules/upload-manager';
+import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -30,6 +31,8 @@ export function useOneDrive() {
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [restoreProgress, setRestoreProgress] = useState<{ current: number; total: number } | null>(null);
 
   const [request, response, promptAsync] = useAuthRequest(
     {
@@ -170,8 +173,14 @@ export function useOneDrive() {
         return false;
       }
 
-      for (const file of files) {
+      setUploadProgress({ current: 0, total: files.length });
+      setGlobalUploadProgress('onedrive', { current: 0, total: files.length });
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         await uploadFileToOneDrive(token, file.name, file.uri);
+        setUploadProgress({ current: i + 1, total: files.length });
+        setGlobalUploadProgress('onedrive', { current: i + 1, total: files.length });
       }
 
       const now = new Date().toLocaleString();
@@ -188,6 +197,8 @@ export function useOneDrive() {
     } finally {
       setSyncing(false);
       setCloudSyncing(false);
+      setUploadProgress(null);
+      setGlobalUploadProgress('onedrive', null);
     }
   }
 
@@ -205,14 +216,24 @@ export function useOneDrive() {
       );
       const listData = await listRes.json();
       const oneDriveFiles = listData.value ?? [];
+      const fileEntries = oneDriveFiles.filter((f: any) => !f.folder);
+      const filesToRestore = fileEntries.filter((f: any) => {
+        const destFile = new FileSystem.File(vaultDir + f.name);
+        return !destFile.exists;
+      });
+      setRestoreProgress({ current: 0, total: filesToRestore.length });
+      setGlobalRestoreProgress('onedrive', { current: 0, total: filesToRestore.length });
 
       let restored = 0;
+      let restoreIndex = 0;
       for (const driveFile of oneDriveFiles) {
-         // Skip folders
         if (driveFile.folder) continue;
         const destUri = vaultDir + driveFile.name;
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
+        restoreIndex++;
+        setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
+        setGlobalRestoreProgress('onedrive', { current: restoreIndex, total: filesToRestore.length });
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }
@@ -234,6 +255,8 @@ export function useOneDrive() {
     } finally {
       setRestoring(false);
       setCloudSyncing(false);
+      setRestoreProgress(null);
+      setGlobalRestoreProgress('onedrive', null);
     }
   }
 
@@ -245,6 +268,8 @@ export function useOneDrive() {
     restoring,
     error,
     request,
+    uploadProgress,
+    restoreProgress,
     signIn,
     disconnect,
     backupVault,
