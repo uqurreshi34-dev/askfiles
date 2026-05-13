@@ -1,50 +1,63 @@
 package expo.modules.uploadservice
 
+import android.content.Intent
+import android.os.Build
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.net.URL
 
 class UploadServiceModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
-  override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('UploadService')` in JavaScript.
-    Name("UploadService")
+    override fun definition() = ModuleDefinition {
+        Name("UploadService")
 
-    // Defines constant property on the module.
-    Constant("PI") {
-      Math.PI
+        Function("startService") { message: String ->
+            val context = appContext.reactContext
+            if (context != null) {
+                val intent = Intent(context, UploadForegroundService::class.java).apply {
+                    action = UploadForegroundService.ACTION_START
+                    putExtra(UploadForegroundService.EXTRA_MESSAGE, message)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
+        }
+
+        Function("updateService") { message: String ->
+            val context = appContext.reactContext
+            if (context != null) {
+                val intent = Intent(context, UploadForegroundService::class.java).apply {
+                    action = UploadForegroundService.ACTION_UPDATE
+                    putExtra(UploadForegroundService.EXTRA_MESSAGE, message)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
+        }
+
+        Function("stopService") {
+            val context = appContext.reactContext
+            if (context != null) {
+                val intent = Intent(context, UploadForegroundService::class.java).apply {
+                    action = UploadForegroundService.ACTION_STOP
+                }
+                context.startService(intent)
+            }
+        }
+
+        Function("stopService") { ->
+            val context = appContext.reactContext
+            if (context != null) {
+                val intent = Intent(context, UploadForegroundService::class.java).apply {
+                    action = UploadForegroundService.ACTION_STOP
+                }
+                context.startService(intent)
+            }
+            Unit
+        }
     }
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
-    View(UploadServiceView::class) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { view: UploadServiceView, url: URL ->
-        view.webView.loadUrl(url.toString())
-      }
-      // Defines an event that the view can send to JavaScript.
-      Events("onLoad")
-    }
-  }
 }

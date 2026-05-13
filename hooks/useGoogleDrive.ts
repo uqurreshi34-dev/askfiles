@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToGoogleDrive, downloadFile } from '@/modules/upload-manager';
 import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
+import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const LAST_BACKUP_KEY = 'google_drive_last_backup';
@@ -142,6 +143,7 @@ export function useGoogleDrive() {
 
       setUploadProgress({ current: 0, total: files.length });
       setGlobalUploadProgress('google', { current: 0, total: files.length });
+      startUploadService(`Backing up to Google Drive — 0/${files.length} files`);
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -155,6 +157,7 @@ export function useGoogleDrive() {
         await uploadFileToDrive(token, folderId, file.name, file.uri, existingId);
         setUploadProgress({ current: i + 1, total: files.length });
         setGlobalUploadProgress('google', { current: i + 1, total: files.length });
+        updateUploadService(`Backing up to Google Drive — ${i + 1}/${files.length} files`);
       }
 
       const now = new Date().toLocaleString();
@@ -173,6 +176,7 @@ export function useGoogleDrive() {
       setCloudSyncing(false);
       setUploadProgress(null);
       setGlobalUploadProgress('google', null);
+      stopUploadService();
     }
   }
 
@@ -200,6 +204,7 @@ export function useGoogleDrive() {
       });
       setRestoreProgress({ current: 0, total: filesToRestore.length });
       setGlobalRestoreProgress('google', { current: 0, total: filesToRestore.length });
+      startUploadService(`Restoring from Google Drive — 0/${filesToRestore.length} files`);
 
       let restored = 0;
       let restoreIndex = 0;
@@ -211,6 +216,7 @@ export function useGoogleDrive() {
         restoreIndex++;
         setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
         setGlobalRestoreProgress('google', { current: restoreIndex, total: filesToRestore.length });
+        updateUploadService(`Restoring from Google Drive — ${restoreIndex}/${filesToRestore.length} files`);
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }
@@ -234,6 +240,7 @@ export function useGoogleDrive() {
       setCloudSyncing(false);
       setRestoreProgress(null);
       setGlobalRestoreProgress('google', null);
+      stopUploadService();
     }
   }
 

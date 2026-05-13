@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToDropbox, downloadFile } from '@/modules/upload-manager';
 import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
+import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -169,12 +170,14 @@ export function useDropbox() {
 
       setUploadProgress({ current: 0, total: files.length });
       setGlobalUploadProgress('dropbox', { current: 0, total: files.length });
+      startUploadService(`Backing up to Dropbox — 0/${files.length} files`);
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         await uploadFileToDropbox(token, file.name, file.uri);
         setUploadProgress({ current: i + 1, total: files.length });
         setGlobalUploadProgress('dropbox', { current: i + 1, total: files.length });
+        updateUploadService(`Backing up to Dropbox — ${i + 1}/${files.length} files`);
       }
 
       const now = new Date().toLocaleString();
@@ -193,6 +196,7 @@ export function useDropbox() {
       setCloudSyncing(false);
       setUploadProgress(null);
       setGlobalUploadProgress('dropbox', null);
+      stopUploadService();
     }
   }
 
@@ -221,6 +225,7 @@ export function useDropbox() {
       });
       setRestoreProgress({ current: 0, total: filesToRestore.length });
       setGlobalRestoreProgress('dropbox', { current: 0, total: filesToRestore.length });
+      startUploadService(`Restoring from Dropbox — 0/${filesToRestore.length} files`);
 
       let restored = 0;
       let restoreIndex = 0;
@@ -233,6 +238,7 @@ export function useDropbox() {
         restoreIndex++;
         setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
         setGlobalRestoreProgress('dropbox', { current: restoreIndex, total: filesToRestore.length });
+        updateUploadService(`Restoring from Dropbox — ${restoreIndex}/${filesToRestore.length} files`);
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }
@@ -260,6 +266,7 @@ export function useDropbox() {
       setCloudSyncing(false);
       setRestoreProgress(null);
       setGlobalRestoreProgress('dropbox', null);
+      stopUploadService();
     }
   }
 

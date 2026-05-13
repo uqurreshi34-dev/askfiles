@@ -1,5 +1,15 @@
-// Reexport the native module. On web, it will be resolved to UploadServiceModule.web.ts
-// and on native platforms to UploadServiceModule.ts
-export { default } from './src/UploadServiceModule';
-export { default as UploadServiceView } from './src/UploadServiceView';
-export * from  './src/UploadService.types';
+import { requireNativeModule } from 'expo-modules-core';
+
+const UploadService = requireNativeModule('UploadService');
+
+export function startUploadService(message: string): void {
+  UploadService.startService(message);
+}
+
+export function updateUploadService(message: string): void {
+  UploadService.updateService(message);
+}
+
+export function stopUploadService(): void {
+  UploadService.stopService();
+}

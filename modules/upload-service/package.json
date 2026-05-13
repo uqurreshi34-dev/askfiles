@@ -1,0 +1,20 @@
+{
+    "name": "upload-service",
+    "version": "1.0.0",
+    "description": "Foreground service for cloud uploads in AskFiles",
+    "main": "index.ts",
+    "types": "index.ts",
+    "scripts": {
+      "build": "expo-module build",
+      "clean": "expo-module clean",
+      "lint": "expo-module lint",
+      "test": "expo-module test"
+    },
+    "keywords": ["expo", "expo-module"],
+    "license": "MIT",
+    "peerDependencies": {
+      "expo": "*",
+      "react": "*",
+      "react-native": "*"
+    }
+  }

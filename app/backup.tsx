@@ -13,6 +13,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
 import { useEffect, useState } from 'react';
 import { getUploadProgress, getRestoreProgress, addProgressListener } from '@/hooks/useCloudProgress';
+import { AppState } from 'react-native';
 
 export default function BackupScreen() {
   const { colors } = useTheme();
@@ -75,7 +76,9 @@ export default function BackupScreen() {
   async function handleDBBackup() {
     const ok = await dbBackupVault(vaultDir);
     if (ok) {
-      Alert.alert('Backup complete', 'Your vault files have been backed up to Dropbox.');
+      if (AppState.currentState === 'active') {
+        Alert.alert('Backup complete', 'Your vault files have been backed up to Dropbox.');
+      }
     }
   }
 
@@ -87,10 +90,12 @@ export default function BackupScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Restore', onPress: async () => {
             const count = await dbRestoreVault(vaultDir);
-            if (count > 0) {
-              Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
-            } else if (count === 0 && !dbError) {
-              Alert.alert('Nothing to restore', 'All Dropbox backup files are already in your vault.');
+            if (AppState.currentState === 'active') {
+              if (count > 0) {
+                Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
+              } else if (count === 0 && !dbError) {
+                Alert.alert('Nothing to restore', 'All Dropbox backup files are already in your vault.');
+              }
             }
           },
         },
@@ -112,7 +117,9 @@ export default function BackupScreen() {
   async function handleODBackup() {
     const ok = await odBackupVault(vaultDir);
     if (ok) {
-      Alert.alert('Backup complete', 'Your vault files have been backed up to OneDrive.');
+      if (AppState.currentState === 'active') {
+        Alert.alert('Backup complete', 'Your vault files have been backed up to OneDrive.');
+      }
     }
   }
 
@@ -126,10 +133,12 @@ export default function BackupScreen() {
           text: 'Restore',
           onPress: async () => {
             const count = await odRestoreVault(vaultDir);
-            if (count > 0) {
-              Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
-            } else if (count === 0 && !odError) {
-              Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+            if (AppState.currentState === 'active') {
+              if (count > 0) {
+                Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
+              } else if (count === 0 && !odError) {
+                Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+              }
             }
           },
         },
@@ -151,7 +160,9 @@ export default function BackupScreen() {
   async function handleBackup() {
     const ok = await backupVault(vaultDir);
     if (ok) {
-      Alert.alert('Backup complete', 'Your vault files have been backed up to Google Drive.');
+      if (AppState.currentState === 'active') {
+        Alert.alert('Backup complete', 'Your vault files have been backed up to Google Drive.');
+      }
     }
   }
 
@@ -165,10 +176,12 @@ export default function BackupScreen() {
           text: 'Restore',
           onPress: async () => {
             const count = await restoreVault(vaultDir);
-            if (count > 0) {
-              Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
-            } else if (count === 0 && !error) {
-              Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+            if (AppState.currentState === 'active') {
+              if (count > 0) {
+                Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
+              } else if (count === 0 && !error) {
+                Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+              }
             }
           },
         },

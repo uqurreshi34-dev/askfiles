@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system';
 import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToOneDrive, downloadFile } from '@/modules/upload-manager';
 import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
+import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -175,12 +176,14 @@ export function useOneDrive() {
 
       setUploadProgress({ current: 0, total: files.length });
       setGlobalUploadProgress('onedrive', { current: 0, total: files.length });
+      startUploadService(`Backing up to OneDrive — 0/${files.length} files`);
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         await uploadFileToOneDrive(token, file.name, file.uri);
         setUploadProgress({ current: i + 1, total: files.length });
         setGlobalUploadProgress('onedrive', { current: i + 1, total: files.length });
+        updateUploadService(`Backing up to OneDrive — ${i + 1}/${files.length} files`);
       }
 
       const now = new Date().toLocaleString();
@@ -199,6 +202,7 @@ export function useOneDrive() {
       setCloudSyncing(false);
       setUploadProgress(null);
       setGlobalUploadProgress('onedrive', null);
+      stopUploadService();
     }
   }
 
@@ -223,6 +227,7 @@ export function useOneDrive() {
       });
       setRestoreProgress({ current: 0, total: filesToRestore.length });
       setGlobalRestoreProgress('onedrive', { current: 0, total: filesToRestore.length });
+      startUploadService(`Restoring from OneDrive — 0/${filesToRestore.length} files`);
 
       let restored = 0;
       let restoreIndex = 0;
@@ -234,6 +239,7 @@ export function useOneDrive() {
         restoreIndex++;
         setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
         setGlobalRestoreProgress('onedrive', { current: restoreIndex, total: filesToRestore.length });
+        updateUploadService(`Restoring from OneDrive — ${restoreIndex}/${filesToRestore.length} files`);
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }
@@ -257,6 +263,7 @@ export function useOneDrive() {
       setCloudSyncing(false);
       setRestoreProgress(null);
       setGlobalRestoreProgress('onedrive', null);
+      stopUploadService();
     }
   }
 
