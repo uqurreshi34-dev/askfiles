@@ -79,9 +79,7 @@ export function useVault() {
       const destUri = destDir.endsWith('/') ? destDir + file.name : destDir + '/' + file.name;
       const src = new FileSystem.File(file.uri);
       const dst = new FileSystem.File(destUri);
-      // Copy first, then delete source — move fails across filesystem boundaries
-      src.copy(dst);
-      src.delete();
+      src.move(dst);
       await loadFiles();
       return true;
     } catch (e) {
