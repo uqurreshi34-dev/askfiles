@@ -174,6 +174,7 @@ export default function CategoryScreen() {
   const [sharing, setSharing] = useState(false);
   const isMediaCategory = category === 'images' || category === 'videos';
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const [movingUri, setMovingUri] = useState<string | null>(null);
   const [pasting, setPasting] = useState(false);
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
@@ -431,9 +432,13 @@ export default function CategoryScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Move to Vault', onPress: async () => {
+          const uri = selectedItem.uri;
+          const name = selectedItem.name;
           closeSheet();
-          const ok = await addToVault(selectedItem.uri, selectedItem.name);
-          if (ok) { setItems(prev => prev.filter(f => f.uri !== selectedItem.uri)); }
+          setMovingUri(uri);
+          const ok = await addToVault(uri, name);
+          setMovingUri(null);
+          if (ok) { setItems(prev => prev.filter(f => f.uri !== uri)); }
           else Alert.alert('Error', 'Could not move file to Vault. Try again.');
         }},
     ]);
@@ -766,7 +771,9 @@ export default function CategoryScreen() {
                       </Text>
                     </View>
                     {!selectMode && (
-                      openingUri === item.uri
+                      movingUri === item.uri
+                        ? <ActivityIndicator size="small" color={colors.blue} />
+                        : openingUri === item.uri
                         ? <ActivityIndicator size="small" color={config.color} />
                         : <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                             <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />

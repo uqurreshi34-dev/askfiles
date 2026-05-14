@@ -39,6 +39,7 @@ export default function FavouritesScreen() {
   const { isPro } = usePro();
   const [selectedItem, setSelectedItem] = useState<FavouriteItem | null>(null);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const [movingUri, setMovingUri] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
@@ -133,9 +134,13 @@ export default function FavouritesScreen() {
       [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move to Vault', onPress: async () => {
+        const uri = selectedItem.uri;
+        const name = selectedItem.name;
         closeSheet();
-        const ok = await addToVault(selectedItem.uri, selectedItem.name);
-        if (ok) { await removeFavourite(selectedItem.uri); }
+        setMovingUri(uri);
+        const ok = await addToVault(uri, name);
+        setMovingUri(null);
+        if (ok) { await removeFavourite(uri); }
         else Alert.alert('Error', 'Could not move file to Vault. Try again.');
       }},
     ]);
@@ -176,7 +181,9 @@ export default function FavouritesScreen() {
           <Text style={[styles.meta, { color: colors.textMuted }]}>{ext} file</Text>
         </View>
         <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          {openingUri === item.uri
+          {movingUri === item.uri
+            ? <ActivityIndicator size="small" color={colors.blue} />
+            : openingUri === item.uri
             ? <ActivityIndicator size="small" color={colors.textDisabled} />
             : <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />}
         </TouchableOpacity>

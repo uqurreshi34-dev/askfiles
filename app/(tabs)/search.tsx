@@ -126,6 +126,7 @@ export default function SearchScreen() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [listening, setListening] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const [movingUri, setMovingUri] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -367,13 +368,19 @@ export default function SearchScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Move to Vault', onPress: async () => {
+          const uri = selectedItem.uri;
+          const name = selectedItem.name;
+          const inFolder = selectedItem.inFolder;
           closeSheet();
-          const ok = await addToVault(selectedItem.uri, selectedItem.name);
+          setMovingUri(uri);
+          const ok = await addToVault(uri, name);
+          setMovingUri(null);
           if (ok) {
-            if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
-            else { removeResult(selectedItem.uri); }
+            if (inFolder) { removeFolderItem(uri); }
+            else { removeResult(uri); }
+          } else {
+            Alert.alert('Error', 'Could not move file to Vault. Try again.');
           }
-          else Alert.alert('Error', 'Could not move file to Vault. Try again.');
         }},
     ]);
   }
@@ -594,7 +601,9 @@ export default function SearchScreen() {
                       <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
                     </View>
                     {!item.isDirectory && (
-                      openingUri === item.uri
+                      movingUri === item.uri
+                        ? <ActivityIndicator size="small" color={colors.blue} />
+                        : openingUri === item.uri
                         ? <ActivityIndicator size="small" color={colors.blue} />
                         : <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                             <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />

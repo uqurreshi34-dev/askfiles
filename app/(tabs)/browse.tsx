@@ -87,6 +87,7 @@ export default function BrowseScreen() {
   const [pickerItems, setPickerItems] = useState<FileItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pasting, setPasting] = useState(false);
+  const [vaulting, setVaulting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
@@ -114,6 +115,7 @@ export default function BrowseScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const [movingUri, setMovingUri] = useState<string | null>(null);
 
   useEffect(() => {
     loadDirectory(currentPath);
@@ -268,8 +270,12 @@ export default function BrowseScreen() {
         {
           text: 'Move to Vault',
           onPress: async () => {
+            const uri = selectedItem.uri;
+            const name = selectedItem.name;
             closeSheet();
-            const ok = await addToVault(selectedItem.uri, selectedItem.name);
+            setMovingUri(uri);
+            const ok = await addToVault(uri, name);
+            setMovingUri(null);
             if (ok) {
               await loadDirectory(currentPath);
             } else {
@@ -465,7 +471,9 @@ export default function BrowseScreen() {
     Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
+        setVaulting(true);
         for (const file of files) { await addToVault(file.uri, file.name); }
+        setVaulting(false);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
       }},
@@ -669,6 +677,8 @@ export default function BrowseScreen() {
         {!selectMode && (
           item.isDirectory ? (
             <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+          ) : movingUri === item.uri ? (
+            <ActivityIndicator size="small" color={colors.blue} style={styles.dotsBtn} />
           ) : openingUri === item.uri ? (
             <ActivityIndicator size="small" color={colors.blue} style={styles.dotsBtn} />
           ) : (
@@ -785,7 +795,12 @@ export default function BrowseScreen() {
           <Text style={[styles.busyText, { color: colors.blue }]}>{pickerMode === 'copy' ? 'Copying...' : 'Moving...'} {pendingItem.current?.name}</Text>
         </View>
       )}
-
+      {vaulting && (
+        <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={[styles.busyText, { color: colors.blue }]}>Moving to Vault...</Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />
