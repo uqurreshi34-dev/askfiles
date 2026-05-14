@@ -337,24 +337,35 @@ export default function CategoryScreen() {
     try {
       if (category === 'images' || category === 'videos') {
         const mediaType = category === 'images' ? 'photo' : 'video';
-        const all: MediaLibrary.Asset[] = [];
-        let after: string | undefined;
-        for (let page = 0; page < 100; page++) {
-          const result = await MediaLibrary.getAssetsAsync({ mediaType, first: 50, after });
-          all.push(...result.assets);
-          if (!result.hasNextPage || !result.endCursor || result.assets.length === 0) break;
-          after = result.endCursor;
+        const sortAssets = (assets: MediaLibrary.Asset[]) =>
+          assets.sort((a, b) => {
+            const at = a.creationTime > 0 ? a.creationTime : a.modificationTime;
+            const bt = b.creationTime > 0 ? b.creationTime : b.modificationTime;
+            return bt - at;
+          });
+        const toItems = (assets: MediaLibrary.Asset[]) =>
+          assets.map(a => ({
+            name: a.filename,
+            uri: a.uri,
+            date: a.creationTime > 0 ? a.creationTime : a.modificationTime,
+          }));
+
+        // First page — show immediately
+        const first = await MediaLibrary.getAssetsAsync({ mediaType, first: 500, sortBy: [MediaLibrary.SortBy.creationTime] });
+        setItems(toItems(sortAssets([...first.assets])));
+        setLoading(false);
+
+        // Background pages — append silently
+        if (first.hasNextPage) {
+          const all = [...first.assets];
+          let cursor: string | undefined = first.endCursor;
+          while (cursor) {
+            const page = await MediaLibrary.getAssetsAsync({ mediaType, first: 500, after: cursor, sortBy: [MediaLibrary.SortBy.creationTime] });
+            all.push(...page.assets);
+            setItems(toItems(sortAssets([...all])));
+            cursor = page.hasNextPage && page.endCursor ? page.endCursor : undefined;
+          }
         }
-        const sorted = all.sort((a, b) => {
-          const at = a.creationTime > 0 ? a.creationTime : a.modificationTime;
-          const bt = b.creationTime > 0 ? b.creationTime : b.modificationTime;
-          return bt - at;
-        });
-        setItems(sorted.map(a => ({
-          name: a.filename,
-          uri: a.uri,
-          date: a.creationTime > 0 ? a.creationTime : a.modificationTime,
-        })));
       } else if (category === 'downloads') {
         const dlItems = await scanDirForDownloads('file:///storage/emulated/0/Download/');
         setItems(dlItems.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')));
