@@ -111,6 +111,7 @@ export function useVault() {
     addToVault,
     removeFromVault,
     deleteFromVault,
+    loadFiles,
     lock,
     vaultDir: VAULT_DIR,
   };
