@@ -333,6 +333,11 @@ export default function VaultScreen() {
         activeOpacity={0.7}
         disabled={openingFile && !selectMode}
       >
+        {selectMode && (
+          <View style={{ marginRight: 12 }}>
+            <Ionicons name={selectedUris.has(item.uri) ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selectedUris.has(item.uri) ? colors.blue : colors.textMuted} />
+          </View>
+        )}
         <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
           {isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
@@ -342,11 +347,6 @@ export default function VaultScreen() {
             <Text style={[styles.ext, { color }]}>{ext.slice(0, 4)}</Text>
           )}
         </View>
-        {selectMode && (
-          <View style={{ position: 'absolute', left: 0, width: 40, height: 40, borderRadius: 10, backgroundColor: selectedUris.has(item.uri) ? colors.blue + 'CC' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-            {selectedUris.has(item.uri) && <Ionicons name="checkmark" size={20} color="#fff" />}
-          </View>
-        )}
         <View style={styles.info}>
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{formatSize(item.size)}</Text>

@@ -657,10 +657,13 @@ export default function BrowseScreen() {
         delayLongPress={400}
         activeOpacity={0.6}
       >
-        <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-        {selectMode && !item.isDirectory ? (
+        {selectMode && !item.isDirectory && (
+          <View style={{ marginRight: 12 }}>
             <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
-          ) : item.isDirectory ? (
+          </View>
+        )}
+        <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
+          {item.isDirectory ? (
             <Ionicons name="folder" size={22} color={color} />
           ) : isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
