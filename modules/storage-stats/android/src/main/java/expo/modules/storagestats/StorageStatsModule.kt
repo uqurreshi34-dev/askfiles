@@ -23,7 +23,6 @@ class StorageStatsModule : Module() {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 try {
-                    val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
                     val storageStatsManager = context.getSystemService(Context.STORAGE_STATS_SERVICE) as StorageStatsManager
                     val uuid: UUID = StorageManager.UUID_DEFAULT
                     val total = storageStatsManager.getTotalBytes(uuid)
