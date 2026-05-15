@@ -6,5 +6,10 @@
     "paths": {
       "@/*": ["./*"]
     }
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "modules/**/src/*.web.ts",
+    "modules/**/src/*.web.tsx"
+  ]
 }
