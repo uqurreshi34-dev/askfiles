@@ -292,7 +292,17 @@ export default function HomeScreen() {
             >
               <Ionicons name={item.icon as any} size={24} color={item.iconColor} style={{ marginBottom: 8 }} />
               <Text style={[styles.cardName, { color: colors.textPrimary }]}>{item.label}</Text>
-              <Text style={[styles.cardCount, { color: colors.textSecondary }]}>{item.count}</Text>
+              {loading ? (
+                <View style={{
+                  height: 12,
+                  width: 48,
+                  borderRadius: 6,
+                  backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+                  marginTop: 2,
+                }} />
+              ) : (
+                <Text style={[styles.cardCount, { color: colors.textSecondary }]}>{item.count}</Text>
+              )}
             </TouchableOpacity>
           ))}
         </View>
