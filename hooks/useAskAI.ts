@@ -7,6 +7,8 @@ export function useAskAI() {
   const [answer, setAnswer] = useState('');
   const [thinking, setThinking] = useState(false);
   const askingRef = useRef(false);
+  const lastAskTime = useRef(0);
+  const [cooldown, setCooldown] = useState(0);
 
   function reset() {
     setAnswer('');
@@ -16,9 +18,19 @@ export function useAskAI() {
 
   async function ask(question: string, context: string) {
     if (askingRef.current) return;
+    const now = Date.now();
+    if (now - lastAskTime.current < 10000) return;
+    lastAskTime.current = now;
     askingRef.current = true;
     setThinking(true);
     setAnswer('');
+    setCooldown(10);
+    const interval = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
     try {
       const response = await fetch(`${BACKEND_URL}/api/ask-ai/`, {
         method: 'POST',
@@ -45,5 +57,5 @@ export function useAskAI() {
     }
   }
 
-  return { answer, thinking, ask, reset };
+  return { answer, thinking, cooldown, ask, reset };
 }

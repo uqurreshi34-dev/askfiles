@@ -119,7 +119,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [aiQuery, setAiQuery] = useState('');
   const { results, setResults, searching, search, removeResult } = useSearch();
-  const { answer, thinking, ask, reset } = useAskAI();
+  const { answer, thinking, cooldown, ask, reset } = useAskAI();
   const router = useRouter();
   const { autofocus } = useLocalSearchParams<{ autofocus?: string }>();
   const searchInputRef = useRef<TextInput>(null);
@@ -625,14 +625,17 @@ export default function SearchScreen() {
               placeholderTextColor={colors.textMuted}
               value={aiQuery}
               onChangeText={setAiQuery}
-              onSubmitEditing={() => handleAsk()}
+              onSubmitEditing={() => cooldown === 0 && handleAsk()}
               returnKeyType="send"
               editable={true}
             />
             <>
-              {aiQuery.length > 0 ? (
-                <TouchableOpacity onPress={() => handleAsk()} disabled={thinking} style={{ opacity: thinking ? 0.4 : 1 }}>
-                  <Ionicons name="send" size={16} color={colors.blue} />
+            {aiQuery.length > 0 ? (
+                <TouchableOpacity onPress={() => handleAsk()} disabled={thinking || cooldown > 0} style={{ opacity: (thinking || cooldown > 0) ? 0.4 : 1 }}>
+                  {cooldown > 0
+                    ? <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted, width: 20, textAlign: 'center' }}>{cooldown}s</Text>
+                    : <Ionicons name="send" size={16} color={colors.blue} />
+                  }
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={toggleListening} style={{ opacity: thinking ? 0.4 : 1 }} disabled={thinking}>
