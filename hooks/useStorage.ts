@@ -438,6 +438,56 @@ async function doLoad(): Promise<void> {
   cache.loaded = true;
 }
 
+async function doLoadCounts(): Promise<void> {
+  if (!cache.loaded) return;
+  
+  const stats = await getStorageStats();
+  const total = stats.total;
+  const free = stats.free;
+  const used = (stats as any).used ?? (total - free);
+  
+  cache.storageInfo = {
+    totalBytes: total,
+    freeBytes: free,
+    usedBytes: used,
+    usedPercent: Math.round((used / total) * 100),
+    totalReadable: formatSize(total),
+    usedReadable: formatSize(used),
+  };
+
+  const [allImages, allVideos] = await Promise.all([
+    getAllAssets('photo'),
+    getAllAssets('video'),
+  ]);
+
+  cache.fileCounts.images = allImages.length;
+  cache.fileCounts.videos = allVideos.length;
+
+  const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
+  let extraDocCount = 0;
+  try {
+    const rootItems = await RNFS.readDir('/storage/emulated/0/');
+    for (const item of rootItems) {
+      if (!item.isDirectory() || item.name.startsWith('.') || STANDARD_ROOT_DIRS.includes(item.name)) continue;
+      extraDocCount += await countFilesInDir(`file://${item.path}/`, DOCUMENT_EXTENSIONS);
+    }
+  } catch {}
+
+  const [docCount, dlCount] = await Promise.all([
+    Promise.all([
+      countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
+      countFilesInDir('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
+    ]).then(counts => counts.reduce((a, b) => a + b, 0) + extraDocCount),
+    countFilesInDir('file:///storage/emulated/0/Download/'),
+  ]);
+
+  cache.fileCounts.documents = docCount;
+  cache.fileCounts.downloads = dlCount;
+}
+
 function getLoadingPromise(): Promise<void> {
   if (!loadingPromise) {
     loadingPromise = doLoad().catch(e => {
@@ -487,6 +537,13 @@ export function useStorage() {
     setTick(t => t + 1);
   }, []);
 
+  const reloadCounts = useCallback(async () => {
+    setLoading(true);
+    await doLoadCounts();
+    setLoading(false);
+    setTick(t => t + 1);
+  }, []);
+
   return {
     storageInfo: cache.storageInfo,
     fileCounts: { ...cache.fileCounts },
@@ -502,5 +559,6 @@ export function useStorage() {
     permissionGranted: cache.loaded,
     loading,
     reload,
+    reloadCounts,
   };
 }

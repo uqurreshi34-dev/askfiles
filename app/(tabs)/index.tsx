@@ -32,7 +32,7 @@ export default function HomeScreen() {
   const { colors, dark } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
-  const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage } = useStorage();
+  const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage, reloadCounts } = useStorage();
   const { recents, reload } = useRecents();
   const { count: favCount } = useFavourites();
   const router = useRouter();
@@ -67,10 +67,10 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => {
     reload();
-    reloadStorage();
+    reloadCounts();
     reloadTrash();
     isStorageManager().then(setHasAllFilesAccess);
-  }, [reload, reloadStorage]));
+  }, [reload, reloadCounts]));
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
