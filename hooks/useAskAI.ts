@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 
 const BACKEND_URL = 'https://askfiles-backend.onrender.com';
+const API_KEY = process.env.EXPO_PUBLIC_ASKFILES_API_KEY ?? '';
 
 export function useAskAI() {
   const [answer, setAnswer] = useState('');
@@ -23,6 +24,7 @@ export function useAskAI() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify({ question, context }),
       });
