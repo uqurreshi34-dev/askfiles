@@ -337,14 +337,37 @@ async function doLoad(): Promise<void> {
     }
   } catch {}
 
+  // Dynamically scan Android/media/ for any app document folders
+  let appDocCount = 0;
+  let appDocSize = 0;
+  try {
+    const mediaApps = await RNFS.readDir('/storage/emulated/0/Android/media/');
+    for (const app of mediaApps) {
+      if (!app.isDirectory()) continue;
+      try {
+        const appMedia = await RNFS.readDir(app.path);
+        for (const appFolder of appMedia) {
+          if (!appFolder.isDirectory()) continue;
+          try {
+            const mediaFolders = await RNFS.readDir(appFolder.path + '/Media/');
+            for (const mf of mediaFolders) {
+              if (!mf.isDirectory()) continue;
+              if (mf.name.toLowerCase().includes('document')) {
+                appDocCount += await countFilesInDir(`file://${mf.path}/`, DOCUMENT_EXTENSIONS);
+                appDocSize += await getFolderSizeByExtension(`file://${mf.path}/`, DOCUMENT_EXTENSIONS);
+              }
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+  } catch {}
+
   const [docCount, dlCount] = await Promise.all([
     Promise.all([
       countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
       countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
-    ]).then(counts => counts.reduce((a, b) => a + b, 0) + extraDocCount),
+    ]).then(counts => counts.reduce((a, b) => a + b, 0) + extraDocCount + appDocCount),
     countFilesInDir('file:///storage/emulated/0/Download/'),
   ]);
 
@@ -356,8 +379,7 @@ async function doLoad(): Promise<void> {
 
   const [picturesSize, dcimImagesSize, dcimVideosSize, moviesSize,
     downloadsSize, documentsSize, musicSize,
-    documentsInDownloadSize, documentsInWhatsappSize, documentsInWhatsappBizSize,
-    documentsInTelegramSize] =
+    documentsInDownloadSize] =
     await Promise.all([
       getFolderSizeByExtension('file:///storage/emulated/0/Pictures/', IMAGE_EXTS),
       getFolderSizeByExtension('file:///storage/emulated/0/DCIM/', IMAGE_EXTS),
@@ -367,9 +389,6 @@ async function doLoad(): Promise<void> {
       getFolderSize('file:///storage/emulated/0/Documents/'),
       getFolderSize('file:///storage/emulated/0/Music/'),
       getFolderSizeByExtension('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-      getFolderSizeByExtension('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
-      getFolderSizeByExtension('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
-      getFolderSizeByExtension('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
     ]);
 
   const totalImagesSize = picturesSize + dcimImagesSize;
@@ -381,7 +400,7 @@ async function doLoad(): Promise<void> {
     pictures: formatSize(totalImagesSize),
     videos: formatSize(totalVideosSize),
     downloads: formatSize(downloadsSize),
-    documents: formatSize(documentsSize + documentsInDownloadSize + documentsInWhatsappSize + documentsInWhatsappBizSize + documentsInTelegramSize),
+    documents: formatSize(documentsSize + documentsInDownloadSize + appDocSize),
     music: formatSize(musicSize),
     dcim: formatSize(dcimImagesSize + dcimVideosSize),
     other: formatSize(otherBytes),
