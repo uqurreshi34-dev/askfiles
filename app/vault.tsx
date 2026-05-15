@@ -153,8 +153,16 @@ export default function VaultScreen() {
     setSelectMode(false);
     setSelectedUris(new Set());
     setSelectedFilesMap(new Map());
-    if (failed > 0) Alert.alert('Partial success', `${failed} file${failed !== 1 ? 's' : ''} could not be moved.`);
-    else Alert.alert('Moved', `${filesToMove.length} file${filesToMove.length !== 1 ? 's' : ''} moved out of Vault.`);
+    const succeeded = filesToMove.length - failed;
+    if (failed > 0 && succeeded === 0) {
+      Alert.alert('File already exists', filesToMove.length === 1
+        ? `"${filesToMove[0].name}" already exists in this location.`
+        : `${failed} file${failed !== 1 ? 's' : ''} already exist at this location and could not be moved.`);
+    } else if (failed > 0) {
+      Alert.alert('Partial success', `${succeeded} file${succeeded !== 1 ? 's' : ''} moved. ${failed} could not be moved — ${failed === 1 ? 'it' : 'they'} already exist${failed === 1 ? 's' : ''} at this location.`);
+    } else {
+      Alert.alert('Moved', `${filesToMove.length} file${filesToMove.length !== 1 ? 's' : ''} moved out of Vault.`);
+    }
   }
   
   async function handleMultiDelete() {
@@ -467,7 +475,9 @@ export default function VaultScreen() {
         {movingFile && (
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="small" color={colors.blue} />
-            <Text style={[styles.busyText, { color: colors.textSecondary }]}>Moving file...</Text>
+            <Text style={[styles.busyText, { color: colors.textSecondary }]}>
+              {selectedUris.size > 1 ? 'Moving files...' : 'Moving file...'}
+            </Text>
           </View>
         )}
         {selectMode && selectedUris.size > 0 && (

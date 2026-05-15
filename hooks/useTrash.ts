@@ -130,17 +130,20 @@ export function useTrash() {
       const destUri = file.originalUri;
       const destPath = (() => { try { return decodeURIComponent(destUri.replace('file://', '')); } catch { return destUri.replace('file://', ''); } })();
       const srcPath = (() => { try { return decodeURIComponent(file.uri.replace('file://', '')); } catch { return file.uri.replace('file://', ''); } })();
-      // Check if original location still exists as a directory
       const destDir = destPath.substring(0, destPath.lastIndexOf('/'));
       const dirExists = await RNFS.exists(destDir);
+      let finalPath = destPath;
       if (!dirExists) {
-        // Restore to Downloads if original path gone
-        const fallback = `/storage/emulated/0/Download/${file.name}`;
-        await RNFS.moveFile(srcPath, fallback);
+        finalPath = `/storage/emulated/0/Download/${file.name}`;
+        await RNFS.moveFile(srcPath, finalPath);
       } else {
         await RNFS.moveFile(srcPath, destPath);
       }
-      // Remove from metadata
+      // Force MediaStore re-index so gallery opens file correctly
+      try {
+        const { scanFile } = require('@/modules/share-module');
+        await scanFile(finalPath);
+      } catch {}
       const meta = await readMeta();
       delete meta[file.name];
       await writeMeta(meta);

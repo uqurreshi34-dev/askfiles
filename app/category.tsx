@@ -642,6 +642,7 @@ export default function CategoryScreen() {
           </Text>
           <MediaGridView
             style={{ flex: 1 }}
+            key={`grid-${sortKey}`}
             uris={filteredItems.map(i => i.uri)}
             numColumns={GRID_COLS}
             selectedUris={Array.from(selectedUris)}
