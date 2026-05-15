@@ -320,13 +320,21 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(tabs)/browse')}>
-            <StorageSummaryCard
-              usedBytes={storageInfo?.usedBytes ?? 0}
-              totalBytes={storageInfo?.totalBytes ?? 0}
-              freeBytes={storageInfo?.freeBytes ?? 0}
-              note="Includes apps and user files"
-              showChevron={true}
-            />
+            {loading ? (
+              <View style={{ marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 16, backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
+                <View style={{ height: 14, width: 120, borderRadius: 7, backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', marginBottom: 12 }} />
+                <View style={{ height: 4, borderRadius: 2, backgroundColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', marginBottom: 8 }} />
+                <View style={{ height: 10, width: 80, borderRadius: 5, backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+              </View>
+            ) : (
+              <StorageSummaryCard
+                usedBytes={storageInfo?.usedBytes ?? 0}
+                totalBytes={storageInfo?.totalBytes ?? 0}
+                freeBytes={storageInfo?.freeBytes ?? 0}
+                note="Includes apps and user files"
+                showChevron={true}
+              />
+            )}
           </TouchableOpacity>
         )}
 
