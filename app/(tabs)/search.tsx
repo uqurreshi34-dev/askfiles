@@ -86,21 +86,13 @@ function buildContext(
   }
   const videoBreakdown = Object.entries(videoCounts).map(([ext, count]) => `${count} ${ext}`).join(', ');
 
-  const imageNames = (isAboutImages || isGeneral) ? mediaContext.recentImages.slice(0, 50).join(', ') || 'none' : `${fileCounts.images} images total`;
-  const videoNames = (isAboutVideos || isGeneral) ? mediaContext.recentVideos.slice(0, 50).join(', ') || 'none' : `${fileCounts.videos} videos total`;
-  const docNames = (isAboutDocs || isGeneral) ? mediaContext.allDocuments?.slice(0, 50).join(', ') || 'none' : `${fileCounts.documents} documents total`;
-  const dlNames = (isAboutDownloads || isGeneral) ? mediaContext.allDownloads?.slice(0, 50).join(', ') || 'none' : `${fileCounts.downloads} downloads total`;
 
   return `
 Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadable} total. ${freeSpace} free.
 File counts: ${fileCounts.images} images (${imageBreakdown}), ${fileCounts.videos} videos (${videoBreakdown}), ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
 Screenshots: exactly ${mediaContext.screenshotCount} files (do not count manually, use this number).
 Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}, Music ${folderSizes.music}.
-All image filenames sorted newest first: ${imageNames}.
-All video filenames sorted newest first: ${videoNames}.
-All document filenames: ${docNames}.
-All download filenames: ${dlNames}.
-Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Do not recount files from the filename list — always use the exact counts provided above.
+Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Always use the exact file counts stated in the File counts line.
 Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
