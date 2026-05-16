@@ -212,7 +212,7 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => setSettingsVisible(false)}>
+              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled }]} activeOpacity={0.7} onPress={() => setSettingsVisible(false)}>
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Close</Text>
               </TouchableOpacity>
             </View>
@@ -246,7 +246,7 @@ export default function HomeScreen() {
                   <Text style={[styles.modalRowText, { flex: 1, color: colors.textPrimary }]}>{item.text}</Text>
                 </View>
               ))}
-              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface }]} activeOpacity={0.7} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}>
+              <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled}]} activeOpacity={0.7} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}>
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Got it</Text>
               </TouchableOpacity>
             </View>
