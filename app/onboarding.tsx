@@ -16,32 +16,32 @@ const { width: PORTRAIT_WIDTH } = Dimensions.get('window');
 
 const SLIDES = [
   {
-    icon: 'folder-open-outline' as const,
+    icon: 'albums-outline' as const,
     iconColor: '#185FA5',
     iconBg: '#E6F1FB',
     title: 'Welcome to AskFiles',
     body: 'Your personal file manager. Browse, organise, and access everything on your device — simply and fast.',
   },
   {
-    icon: 'shield-checkmark-outline' as const,
+    icon: 'mic-outline' as const,
     iconColor: '#534AB7',
     iconBg: '#EEEDFE',
-    title: 'Vault & Duplicates',
-    body: 'Lock sensitive files in your private Vault. Find and remove duplicate files to free up storage space.',
+    title: 'Voice Navigation',
+    body: 'Hold the mic button and speak to navigate. Try "Open Images", "Open Vault", "Go to Browse" or "Find Downloads".',
   },
   {
     icon: 'lock-closed-outline' as const,
     iconColor: '#3B6D11',
     iconBg: '#EAF3DE',
     title: 'Your Privacy, Protected',
-    body: 'No account needed. No ads. Your files never leave your device. The only data sent anywhere is the text of your AI search query — sent securely to Groq to generate an answer.',
+    body: 'No account needed. No ads. Your files never leave your device. AI search sends only filenames — never file contents.',
   },
   {
-    icon: 'search-outline' as const,
+    icon: 'star-outline' as const,
     iconColor: '#854F0B',
     iconBg: '#FEF3E2',
-    title: 'AI-Powered Search',
-    body: 'Ask in plain English — "show me videos from last week" or "find large PDFs". AskFiles understands you.',
+    title: 'Unlock Pro — £2.99 Forever',
+    body: 'AI-powered file search. Secure Vault with biometrics. Cloud backup to Google Drive, OneDrive and Dropbox. Duplicate finder. One payment, no subscription.',
   },
   {
     icon: 'folder-open-outline' as const,
