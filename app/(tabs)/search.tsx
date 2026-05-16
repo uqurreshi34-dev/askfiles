@@ -86,10 +86,10 @@ function buildContext(
   }
   const videoBreakdown = Object.entries(videoCounts).map(([ext, count]) => `${count} ${ext}`).join(', ');
 
-  const imageNames = (isAboutImages || isGeneral) ? mediaContext.recentImages.join(', ') || 'none' : `${fileCounts.images} images total`;
-  const videoNames = (isAboutVideos || isGeneral) ? mediaContext.recentVideos.join(', ') || 'none' : `${fileCounts.videos} videos total`;
-  const docNames = (isAboutDocs || isGeneral) ? mediaContext.allDocuments?.join(', ') || 'none' : `${fileCounts.documents} documents total`;
-  const dlNames = (isAboutDownloads || isGeneral) ? mediaContext.allDownloads?.join(', ') || 'none' : `${fileCounts.downloads} downloads total`;
+  const imageNames = (isAboutImages || isGeneral) ? mediaContext.recentImages.slice(0, 50).join(', ') || 'none' : `${fileCounts.images} images total`;
+  const videoNames = (isAboutVideos || isGeneral) ? mediaContext.recentVideos.slice(0, 50).join(', ') || 'none' : `${fileCounts.videos} videos total`;
+  const docNames = (isAboutDocs || isGeneral) ? mediaContext.allDocuments?.slice(0, 50).join(', ') || 'none' : `${fileCounts.documents} documents total`;
+  const dlNames = (isAboutDownloads || isGeneral) ? mediaContext.allDownloads?.slice(0, 50).join(', ') || 'none' : `${fileCounts.downloads} downloads total`;
 
   return `
 Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadable} total. ${freeSpace} free.
