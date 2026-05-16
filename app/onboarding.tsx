@@ -8,7 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/hooks/useTheme';
+import { useColorScheme } from 'react-native';
+import { getColors } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 
@@ -53,7 +54,9 @@ const SLIDES = [
 ];
 
 export default function OnboardingScreen() {
-  const { colors } = useTheme();
+  const scheme = useColorScheme();
+  const dark = scheme === 'dark';
+  const colors = getColors(dark);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const router = useRouter();

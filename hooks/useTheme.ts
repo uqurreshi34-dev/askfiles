@@ -1,6 +1,6 @@
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 const THEME_KEY = 'askfiles_theme_override';
 let globalDark: boolean | null = null;
@@ -46,7 +46,12 @@ export function useTheme() {
   return {
     dark,
     toggleTheme: () => setThemePreference(!dark),
-    colors: {
+    colors: getColors(dark),
+  };
+}
+
+export function getColors(dark: boolean) {
+  return {
       // Backgrounds
       background: dark ? '#111111' : '#ffffff',
       surface: dark ? '#1E1E1E' : '#F1EFE8',
@@ -97,6 +102,5 @@ export function useTheme() {
       busyText: '#185FA5',
 
       successGreen: dark ? '#4CAF50' : '#3B6D11',
-    },
   };
 }
