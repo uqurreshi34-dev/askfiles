@@ -1,3 +1,7 @@
+// Note: Google Play may warn about BOOT_COMPLETED for dataSync foreground services.
+// This app does NOT use BOOT_COMPLETED — service is only started by user-initiated backup.
+// Warning is a false positive from Google's static analyser.
+
 const { withAndroidManifest } = require('@expo/config-plugins');
 
 module.exports = function withUploadService(config) {
