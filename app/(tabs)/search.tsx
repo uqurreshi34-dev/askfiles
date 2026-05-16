@@ -60,15 +60,7 @@ function buildContext(
   folderSizes: any,
   mediaContext: any,
   largestFiles: any,
-  question: string,
 ): string {
-  const q = question.toLowerCase();
-  const isAboutImages = /image|photo|picture|jpg|jpeg|png|screenshot|selfie|camera/i.test(q);
-  const isAboutVideos = /video|mp4|movie|clip|recording/i.test(q);
-  const isAboutDocs = /doc|pdf|word|excel|spreadsheet|txt|file|document/i.test(q);
-  const isAboutDownloads = /download|apk|install/i.test(q);
-  const isAboutStorage = /storage|space|large|big|size|free|used|full/i.test(q);
-  const isGeneral = !isAboutImages && !isAboutVideos && !isAboutDocs && !isAboutDownloads && !isAboutStorage;
 
   const freeSpace = storageInfo?.freeBytes ? formatSize(storageInfo.freeBytes) : 'unknown';
 
@@ -453,7 +445,7 @@ export default function SearchScreen() {
     const q = question ?? aiQuery;
     if (q.trim().length < 3) return;
     Keyboard.dismiss();
-    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles, aiQuery);
+    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles);
     await ask(q, context);
   }
 
