@@ -39,7 +39,6 @@ export default function HomeScreen() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [initialLoaded, setInitialLoaded] = useState(false);
   const { isPro } = usePro();
   const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
@@ -71,7 +70,6 @@ export default function HomeScreen() {
     reloadCounts();
     reloadTrash();
     isStorageManager().then(setHasAllFilesAccess);
-    setInitialLoaded(true);
   }, [reload, reloadCounts]));
 
   useEffect(() => {
@@ -116,22 +114,7 @@ export default function HomeScreen() {
     return colors.textSecondary;
   }
 
-  if (!onboardingChecked || (!initialLoaded && loading)) return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
-      </View>
-      <View style={styles.quickGrid}>
-        {[0,1,2,3,4,5].map(i => (
-          <View key={i} style={[styles.quickCard, { backgroundColor: colors.surface }]}>
-            <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', marginBottom: 8 }} />
-            <View style={{ height: 13, width: 60, borderRadius: 6, backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', marginBottom: 4 }} />
-            <View style={{ height: 10, width: 40, borderRadius: 5, backgroundColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }} />
-          </View>
-        ))}
-      </View>
-    </SafeAreaView>
-  );
+  if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -319,7 +302,7 @@ export default function HomeScreen() {
             >
               <Ionicons name={item.icon as any} size={24} color={item.iconColor} style={{ marginBottom: 8 }} />
               <Text style={[styles.cardName, { color: colors.textPrimary }]}>{item.label}</Text>
-              {loading ? (
+              {loading || !hasAllFilesAccess ? (
                 <View style={{
                   height: 12,
                   width: 48,
