@@ -89,6 +89,8 @@ export default function BrowseScreen() {
   const [pasting, setPasting] = useState(false);
   const [vaulting, setVaulting] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deletingCount, setDeletingCount] = useState(0);
   const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
@@ -329,6 +331,8 @@ export default function BrowseScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Move to Trash', style: 'destructive', onPress: async () => {
           closeSheet();
+          setDeleting(true);
+          setDeletingCount(1);
           const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
           if (ok) {
             await removeFavourite(selectedItem.uri);
@@ -336,6 +340,8 @@ export default function BrowseScreen() {
           } else {
             Alert.alert('Error', 'Could not move file to Trash.');
           }
+          setDeleting(false);
+          setDeletingCount(0);
         }},
       ]);
     }
@@ -487,6 +493,8 @@ export default function BrowseScreen() {
     Alert.alert('Move to Trash', `Move ${fileCount > 0 ? `${fileCount} file${fileCount !== 1 ? 's' : ''}` : ''}${fileCount > 0 && folderCount > 0 ? ' and ' : ''}${folderCount > 0 ? `${folderCount} folder${folderCount !== 1 ? 's' : ''} (permanently)` : ''} to Trash? Files deleted after 30 days.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+        setDeleting(true);
+        setDeletingCount(files.filter(f => !f.isDirectory).length);
         for (const file of files) {
           if (file.isDirectory) {
             try {
@@ -498,6 +506,8 @@ export default function BrowseScreen() {
             await removeFavourite(file.uri);
           }
         }
+        setDeleting(false);
+        setDeletingCount(0);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
       }},
@@ -802,6 +812,14 @@ export default function BrowseScreen() {
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={[styles.busyText, { color: colors.blue }]}>Moving to Vault...</Text>
+        </View>
+      )}
+      {deleting && (
+        <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
+          <ActivityIndicator size="small" color={colors.deleteRed} />
+          <Text style={[styles.busyText, { color: colors.textSecondary }]}>
+            Moving {deletingCount} file{deletingCount !== 1 ? 's' : ''} to Trash...
+          </Text>
         </View>
       )}
       {loading ? (
