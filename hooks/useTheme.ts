@@ -1,11 +1,51 @@
 import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect, useCallback } from 'react';
+
+const THEME_KEY = 'askfiles_theme_override';
+let globalDark: boolean | null = null;
+const listeners: Array<(dark: boolean) => void> = [];
+
+export async function loadThemePreference(systemDark: boolean): Promise<boolean> {
+  try {
+    const saved = await AsyncStorage.getItem(THEME_KEY);
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return systemDark;
+  } catch {
+    return systemDark;
+  }
+}
+
+export async function setThemePreference(dark: boolean): Promise<void> {
+  globalDark = dark;
+  await AsyncStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+  listeners.forEach(l => l(dark));
+}
 
 export function useTheme() {
   const scheme = useColorScheme();
-  const dark = scheme === 'dark';
+  const systemDark = scheme === 'dark';
+  const [dark, setDark] = useState<boolean>(globalDark ?? systemDark);
+
+  useEffect(() => {
+    if (globalDark === null) {
+      loadThemePreference(systemDark).then(d => {
+        globalDark = d;
+        setDark(d);
+      });
+    }
+    const listener = (d: boolean) => setDark(d);
+    listeners.push(listener);
+    return () => {
+      const i = listeners.indexOf(listener);
+      if (i > -1) listeners.splice(i, 1);
+    };
+  }, []);
 
   return {
     dark,
+    toggleTheme: () => setThemePreference(!dark),
     colors: {
       // Backgrounds
       background: dark ? '#111111' : '#ffffff',

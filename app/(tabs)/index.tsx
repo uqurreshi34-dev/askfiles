@@ -29,7 +29,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 export default function HomeScreen() {
-  const { colors, dark } = useTheme();
+  const { colors, dark, toggleTheme } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
   const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage, reloadCounts } = useStorage();
@@ -121,16 +121,26 @@ export default function HomeScreen() {
       <StatusBar style={dark ? 'light' : 'dark'} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        <View style={styles.header}>
+      <View style={styles.header}>
           <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
-          <TouchableOpacity
-            style={styles.settingsBtn}
-            onPress={() => setSettingsVisible(true)}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              onPress={toggleTheme}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              onPress={() => setSettingsVisible(true)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Settings Modal */}

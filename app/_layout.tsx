@@ -2,7 +2,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { View, Animated, Text, Easing, PanResponder, Dimensions, TouchableOpacity } from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { isAppLockEnabled } from '@/hooks/usePin';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFileWatcher } from '@/hooks/useFileWatcher';
 import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/useTheme';
 
 export let isAiSearchListening = false;
 export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
@@ -71,8 +71,7 @@ const HIDDEN_ON = ['/lockscreen', '/onboarding', '/setpin'];
 export default function RootLayout() {
   useFileWatcher();
   const router = useRouter();
-  const scheme = useColorScheme();
-  const dark = scheme === 'dark';
+  const { dark } = useTheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
