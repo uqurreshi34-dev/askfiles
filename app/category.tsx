@@ -152,6 +152,9 @@ export default function CategoryScreen() {
     })
   ).current;
   const sharingRef = useRef(false);
+  const suppressWatcherRef = useRef(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deletingCount, setDeletingCount] = useState(0);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -288,6 +291,7 @@ export default function CategoryScreen() {
   useEffect(() => {
     loadCategory();
     const subscription = addMediaStoreChangeListener(() => {
+      if (suppressWatcherRef.current) return;
       loadCategory();
     });
     return () => subscription.remove();
@@ -537,12 +541,18 @@ export default function CategoryScreen() {
     Alert.alert('Move to Trash', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to Trash? They will be deleted after 30 days.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+        suppressWatcherRef.current = true;
+        setDeleting(true);
+        setDeletingCount(files.length);
         for (const file of files) {
           await moveToTrash(file.uri, file.name);
           await removeFavourite(file.uri);
         }
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+        setDeleting(false);
+        setDeletingCount(0);
+        suppressWatcherRef.current = false;
       }},
     ]);
   }
@@ -1003,6 +1013,14 @@ export default function CategoryScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {deleting && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.deleteRed} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            Moving {deletingCount} file{deletingCount !== 1 ? 's' : ''} to Trash...
+          </Text>
+        </View>
+      )}
       {selectMode && selectedUris.size > 0 && (
         <>
           {sharing && (
