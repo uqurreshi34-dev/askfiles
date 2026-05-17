@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["DocIndexerModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.docindexer.DocIndexerModule"]
+  }
+}

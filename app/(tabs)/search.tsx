@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
@@ -29,8 +29,9 @@ import { setAiSearchListening } from '@/app/_layout';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative } from '@/modules/share-module';
+import { DocIndexer, IndexedFile } from 'doc-indexer';
 
-type Mode = 'search' | 'ask';
+type Mode = 'search' | 'ask' | 'smart';
 
 const SUGGESTIONS = [
   'What images do I have?',
@@ -111,6 +112,11 @@ export default function SearchScreen() {
   const [listening, setListening] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
+  const [smartQuery, setSmartQuery] = useState('');
+  const [smartResults, setSmartResults] = useState<IndexedFile[]>([]);
+  const [smartSearching, setSmartSearching] = useState(false);
+  const [indexing, setIndexing] = useState(false);
+  const smartTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -120,6 +126,12 @@ export default function SearchScreen() {
       }
     }, [autofocus])
   );
+
+  useEffect(() => {
+    if (mode !== 'smart') return;
+    handleIndexNow();
+  }, [mode]);
+
   const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles } = useStorage();
   const { isPro } = usePro();
 
@@ -480,6 +492,78 @@ export default function SearchScreen() {
     reset();
   }
 
+  function handleSmartQueryChange(text: string) {
+    setSmartQuery(text);
+    if (smartTimeout.current) clearTimeout(smartTimeout.current);
+    if (text.trim().length < 2) { setSmartResults([]); return; }
+    smartTimeout.current = setTimeout(() => runSmartSearch(text), 400);
+  }
+  
+  async function runSmartSearch(q: string) {
+    setSmartSearching(true);
+    try {
+      const results = await DocIndexer.searchFiles(q);
+      setSmartResults(results);
+    } catch {
+      setSmartResults([]);
+    } finally {
+      setSmartSearching(false);
+    }
+  }
+
+  async function scanDir(base: string, extensions: string[], results: { uri: string; name: string }[]) {
+    try {
+      const dir = new FileSystem.Directory(base);
+      const contents = dir.list();
+      for (const item of contents) {
+        if (item instanceof FileSystem.File) {
+          const lower = item.name.toLowerCase();
+          if (extensions.some(ext => lower.endsWith(ext))) {
+            const alreadyIndexed = await DocIndexer.isIndexed(item.uri);
+            if (!alreadyIndexed) results.push({ uri: item.uri, name: item.name });
+          }
+        } else if (item instanceof FileSystem.Directory) {
+          await scanDir(item.uri, extensions, results);
+        }
+      }
+    } catch {}
+  }
+  
+  async function handleIndexNow() {
+    if (indexing) return;
+    setIndexing(true);
+    try {
+      const DOC_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.txt', '.csv', '.rtf'];
+      const docPaths = [
+        'file:///storage/emulated/0/Documents/',
+        'file:///storage/emulated/0/Download/',
+      ];
+      const files: { uri: string; name: string }[] = [];
+      for (const base of docPaths) {
+        await scanDir(base, DOC_EXTENSIONS, files);
+      }
+      await DocIndexer.indexFiles(files);
+    } catch {} finally {
+      setIndexing(false);
+    }
+  }
+  
+  function highlightSnippet(snippet: string, query: string): React.ReactElement {
+    if (!query.trim()) return <Text style={[styles.smartSnippet, { color: colors.textMuted }]}>{snippet}</Text>;
+    const lower = snippet.toLowerCase();
+    const lowerQ = query.toLowerCase();
+    const idx = lower.indexOf(lowerQ);
+    if (idx < 0) return <Text style={[styles.smartSnippet, { color: colors.textMuted }]}>{snippet}</Text>;
+    const before = snippet.slice(0, idx);
+    const match = snippet.slice(idx, idx + query.length);
+    const after = snippet.slice(idx + query.length);
+    return (
+      <Text style={[styles.smartSnippet, { color: colors.textMuted }]}>
+        {before}<Text style={[styles.smartHighlight, { backgroundColor: colors.blue + '33', color: colors.blue }]}>{match}</Text>{after}
+      </Text>
+    );
+  }
+
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
@@ -509,6 +593,13 @@ export default function SearchScreen() {
           <Ionicons name="sparkles-outline" size={14} color={mode === 'ask' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
           <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>Ask AI</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+            style={[styles.modeBtn, mode === 'smart' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
+            onPress={() => setMode('smart')}
+          >
+            <Ionicons name="document-text-outline" size={14} color={mode === 'smart' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
+            <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'smart' && { color: colors.blue }]}>Smart</Text>
+          </TouchableOpacity>
       </View>
 
       {mode === 'search' ? (
@@ -599,7 +690,7 @@ export default function SearchScreen() {
             />
           )}
         </>
-      ) : (
+      ) : mode === 'ask' ? (
         <>
           <View style={[styles.inputWrap, { backgroundColor: colors.surface }]}>
             <Ionicons name="sparkles-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
@@ -677,9 +768,87 @@ export default function SearchScreen() {
               </>
             </ScrollView>
           )}
-        </>
-      )}
-
+       </>
+      ) : mode === 'smart' ? (
+        /* ── Smart Search Tab ── */
+        <>
+          <View style={[styles.inputWrap, { backgroundColor: colors.surface }]}>
+            <Ionicons name="document-text-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={[styles.input, { color: colors.textPrimary }]}
+              placeholder="Search inside documents..."
+              placeholderTextColor={colors.textMuted}
+              value={smartQuery}
+              onChangeText={handleSmartQueryChange}
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {smartQuery.length > 0 && (
+              <TouchableOpacity onPress={() => { setSmartQuery(''); setSmartResults([]); }}>
+                <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {smartSearching ? (
+            <View style={styles.centered}>
+              <ActivityIndicator color={colors.blue} />
+              <Text style={[styles.hint, { color: colors.textMuted }]}>Searching content...</Text>
+            </View>
+          ) : smartQuery.length < 2 ? (
+            <View style={styles.centered}>
+              <Ionicons name="document-text-outline" size={40} color={colors.textDisabled} />
+              <Text style={[styles.hint, { color: colors.textMuted }]}>Search inside your documents and downloads</Text>
+              <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>PDFs, Word, Excel and text files</Text>
+            </View>
+          ) : smartResults.length === 0 ? (
+            <View style={styles.centered}>
+              <Ionicons name="search-outline" size={40} color={colors.textDisabled} />
+              <Text style={[styles.hint, { color: colors.textMuted }]}>No documents contain "{smartQuery}"</Text>
+              <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>Can't find your document? Make sure it's saved to Downloads or Documents.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={smartResults}
+              keyExtractor={item => item.uri}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              ListHeaderComponent={
+                <Text style={[styles.resultCount, { color: colors.textMuted }]}>
+                  {smartResults.length} document{smartResults.length !== 1 ? 's' : ''} match
+                </Text>
+              }
+              renderItem={({ item }) => {
+                const color = getFileColor(item.name);
+                const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
+                return (
+                  <TouchableOpacity
+                    style={[styles.smartRow, { borderBottomColor: colors.border }]}
+                    onPress={() => openFile(item.name, item.uri)}
+                    onLongPress={() => openSheet(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
+                      <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+                    </View>
+                    <View style={styles.fileInfo}>
+                      <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                      {highlightSnippet(item.snippet, smartQuery)}
+                    </View>
+                    {openingUri === item.uri
+                      ? <ActivityIndicator size="small" color={colors.blue} />
+                      : <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
+                        </TouchableOpacity>
+                    }
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+          </>
+      ) : null}
+  
       <Modal visible={folderStack.length > 0} transparent={false} animationType="slide" onRequestClose={popFolder}>
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
           {folderStack.length > 0 && (() => {
@@ -998,4 +1167,7 @@ const styles = StyleSheet.create({
   pickerCancelText: { fontSize: 14, fontWeight: '500' },
   pickerPasteBtn: { flex: 2, flexDirection: 'row', padding: 14, borderRadius: 12, backgroundColor: '#185FA5', alignItems: 'center', justifyContent: 'center' },
   pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  smartRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 0.5 },
+  smartSnippet: { fontSize: 12, lineHeight: 18, marginTop: 2 },
+  smartHighlight: { borderRadius: 2, paddingHorizontal: 1 },
 });

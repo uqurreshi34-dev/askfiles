@@ -1,0 +1,19 @@
+{
+    "name": "doc-indexer",
+    "version": "1.0.0",
+    "description": "Native document text indexer for AskFiles",
+    "main": "index.ts",
+    "scripts": {
+      "build": "expo-module build",
+      "clean": "expo-module clean",
+      "lint": "expo-module lint",
+      "typecheck": "expo-module typecheck"
+    },
+    "dependencies": {},
+    "peerDependencies": {
+      "expo": "*"
+    },
+    "expo-module": {
+      "platforms": ["android"]
+    }
+  }

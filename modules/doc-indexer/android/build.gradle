@@ -1,0 +1,27 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.docindexer'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.docindexer"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+  packagingOptions {
+    resources {
+      excludes += ['META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt']
+    }
+  }
+}
+
+dependencies {
+  implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+}
