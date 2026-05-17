@@ -115,10 +115,6 @@ function getDlTab(name: string): string {
   return 'Other';
 }
 
-// const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
-// const GRID_COLS = 3;
-// const GRID_ITEM_SIZE = (SCREEN_WIDTH - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
-
 export default function CategoryScreen() {
   const { colors } = useTheme();
   const { moveToTrash } = useTrash();
