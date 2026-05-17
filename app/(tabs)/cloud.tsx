@@ -19,6 +19,12 @@ const PRO_FEATURES = [
     route: null,
   },
   {
+    icon: 'document-text-outline' as const,
+    title: 'Smart Search',
+    desc: 'Search inside PDFs, Word, Excel and text files — find any word across all your documents instantly',
+    route: null,
+  },
+  {
     icon: 'shield-checkmark-outline' as const,
     title: 'Secure Vault',
     desc: 'Lock sensitive files behind biometric authentication',

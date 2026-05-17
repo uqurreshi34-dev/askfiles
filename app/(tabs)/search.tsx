@@ -594,9 +594,12 @@ export default function SearchScreen() {
           <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>Ask AI</Text>
         </TouchableOpacity>
         <TouchableOpacity
-            style={[styles.modeBtn, mode === 'smart' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
-            onPress={() => setMode('smart')}
-          >
+          style={[styles.modeBtn, mode === 'smart' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
+          onPress={() => {
+            if (!isPro) { router.push('/(tabs)/cloud'); return; }
+            setMode('smart');
+          }}
+        >
             <Ionicons name="document-text-outline" size={14} color={mode === 'smart' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
             <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'smart' && { color: colors.blue }]}>Smart</Text>
           </TouchableOpacity>
