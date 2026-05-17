@@ -18,6 +18,7 @@ import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative, scanFile } from '@/modules/share-module';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 
 export default function VaultScreen() {
@@ -175,6 +176,7 @@ export default function VaultScreen() {
           try {
             const f = new FileSystem.File(file.uri);
             f.delete();
+            DocIndexer.removeFromIndex(file.uri);
           } catch {}
         }
         await loadFiles();
@@ -244,6 +246,7 @@ export default function VaultScreen() {
           onPress: async () => {
             setBusy(true);
             await deleteFromVault(file);
+            DocIndexer.removeFromIndex(file.uri);
             setBusy(false);
           },
         },

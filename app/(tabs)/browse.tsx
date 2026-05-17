@@ -24,6 +24,7 @@ import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 interface FileItem {
   name: string;
@@ -336,6 +337,7 @@ export default function BrowseScreen() {
           const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
           if (ok) {
             await removeFavourite(selectedItem.uri);
+            DocIndexer.removeFromIndex(selectedItem.uri);
             await loadDirectory(currentPath);
           } else {
             Alert.alert('Error', 'Could not move file to Trash.');
@@ -506,6 +508,7 @@ export default function BrowseScreen() {
           fileItems.map(file => Promise.all([
             moveToTrash(file.uri, file.name, false),
             removeFavourite(file.uri),
+            DocIndexer.removeFromIndex(file.uri),
           ]))
         );
         setDeleting(false);

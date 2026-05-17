@@ -29,7 +29,7 @@ import { setAiSearchListening } from '@/app/_layout';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative } from '@/modules/share-module';
-import { DocIndexer, IndexedFile } from 'doc-indexer';
+import { DocIndexer, IndexedFile } from '@/modules/doc-indexer'
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -390,6 +390,7 @@ export default function SearchScreen() {
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
           await removeFavourite(selectedItem.uri);
+          DocIndexer.removeFromIndex(selectedItem.uri);
           if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
           else { removeResult(selectedItem.uri); }
         } else {

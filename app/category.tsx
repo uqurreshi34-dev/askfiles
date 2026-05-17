@@ -21,6 +21,7 @@ import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -325,6 +326,7 @@ export default function CategoryScreen() {
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
           await removeFavourite(selectedItem.uri);
+          DocIndexer.removeFromIndex(selectedItem.uri);
           setItems(prev => prev.filter(f => f.uri !== selectedItem.uri));
         } else {
           Alert.alert('Error', 'Could not move file to Trash.');
@@ -543,6 +545,7 @@ export default function CategoryScreen() {
         await Promise.all(files.map(file => Promise.all([
           moveToTrash(file.uri, file.name, false),
           removeFavourite(file.uri),
+          DocIndexer.removeFromIndex(file.uri),
         ])));
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
