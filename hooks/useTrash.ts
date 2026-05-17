@@ -81,7 +81,7 @@ export function useTrash() {
       }
     }, []);
 
-  async function moveToTrash(sourceUri: string, fileName: string): Promise<boolean> {
+    async function moveToTrash(sourceUri: string, fileName: string, reload = true): Promise<boolean> {
     try {
       await ensureTrashDir();
       // Handle duplicate names in trash
@@ -118,7 +118,7 @@ export function useTrash() {
       const meta = await readMeta();
       meta[destName] = { originalUri: sourceUri, deletedAt: Date.now() };
       await writeMeta(meta);
-      await loadFiles();
+      if (reload) await loadFiles();
       return true;
     } catch {
       return false;

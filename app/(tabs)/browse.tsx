@@ -495,17 +495,19 @@ export default function BrowseScreen() {
       { text: 'Move to Trash', style: 'destructive', onPress: async () => {
         setDeleting(true);
         setDeletingCount(files.filter(f => !f.isDirectory).length);
-        for (const file of files) {
-          if (file.isDirectory) {
-            try {
-              const dir = new FileSystem.Directory(file.uri);
-              dir.delete();
-            } catch {}
-          } else {
-            await moveToTrash(file.uri, file.name);
-            await removeFavourite(file.uri);
-          }
-        }
+        const folders = files.filter(f => f.isDirectory);
+        const fileItems = files.filter(f => !f.isDirectory);
+        
+        folders.forEach(f => {
+          try { new FileSystem.Directory(f.uri).delete(); } catch {}
+        });
+        
+        await Promise.all(
+          fileItems.map(file => Promise.all([
+            moveToTrash(file.uri, file.name, false),
+            removeFavourite(file.uri),
+          ]))
+        );
         setDeleting(false);
         setDeletingCount(0);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
