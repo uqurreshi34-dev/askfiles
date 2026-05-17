@@ -66,11 +66,11 @@ export default function HomeScreen() {
   }, [isPro]);
 
   useFocusEffect(useCallback(() => {
-    //reload();
-    reloadCounts();
-    reloadTrash();
+    reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
+    reloadCounts();  // fresh card counts
+    reloadTrash();   // fresh trash count
     isStorageManager().then(setHasAllFilesAccess);
-  }, [reloadCounts]));
+  }, [reload, reloadCounts]));
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
