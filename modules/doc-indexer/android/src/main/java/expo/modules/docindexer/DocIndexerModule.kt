@@ -13,7 +13,7 @@ import java.io.InputStream
 import java.util.zip.ZipInputStream
 
 // ── SQLite helper ──────────────────────────────────────────────────────────────
-class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db", null, 5) {
+class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db", null, 6) {
   override fun onCreate(db: SQLiteDatabase) {
     db.execSQL("""
       CREATE TABLE IF NOT EXISTS doc_meta (
