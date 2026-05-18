@@ -69,6 +69,13 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         adapter.mainHandler = mainHandler
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w != oldw) {
+            adapter.notifyDataSetChanged()
+        }
+    }
+
     fun setUris(uris: List<String>) {
         adapter.setUris(uris)
     }
