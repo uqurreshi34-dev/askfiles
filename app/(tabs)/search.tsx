@@ -532,6 +532,7 @@ export default function SearchScreen() {
   }
   
   async function handleIndexNow() {
+    await DocIndexer.clearIndex();
     if (indexing) return;
     setIndexing(true);
     try {
@@ -544,6 +545,7 @@ export default function SearchScreen() {
       for (const base of docPaths) {
         await scanDir(base, DOC_EXTENSIONS, files);
       }
+      console.log('Files to index:', files.map(f => f.name));
       await DocIndexer.indexFiles(files);
     } catch {} finally {
       setIndexing(false);

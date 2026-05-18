@@ -194,30 +194,62 @@ class DocIndexerModule : Module() {
   }
 
   private fun extractXlsx(file: File): String {
-    // XLSX is a ZIP containing xl/sharedStrings.xml (all text content)
+    val sb = StringBuilder()
+    var foundSharedStrings = false
+    
+    // First pass — try sharedStrings.xml
     ZipInputStream(file.inputStream()).use { zip ->
-      var entry = zip.nextEntry
-      while (entry != null) {
-        if (entry.name == "xl/sharedStrings.xml") {
-          val bytes = zip.readBytes()
-          val xml = if (bytes.size > 512 * 1024) {
-              bytes.take(512 * 1024).toByteArray().toString(Charsets.UTF_8)
-          } else {
-              bytes.toString(Charsets.UTF_8)
-          }
-          val sb = StringBuilder()
-          val regex = Regex("<t[^>]*>([^<]*)</t>")
-          for (match in regex.findAll(xml)) {
-              sb.append(match.groupValues[1]).append(" ")
-              if (sb.length >= 5000) break
-          }
-          return sb.toString()
+        var entry = zip.nextEntry
+        while (entry != null) {
+            if (entry.name == "xl/sharedStrings.xml") {
+                foundSharedStrings = true
+                val bytes = zip.readBytes()
+                val xml = if (bytes.size > 512 * 1024) {
+                    bytes.take(512 * 1024).toByteArray().toString(Charsets.UTF_8)
+                } else {
+                    bytes.toString(Charsets.UTF_8)
+                }
+                val regex = Regex("<t[^>]*>([^<]*)</t>")
+                for (match in regex.findAll(xml)) {
+                    sb.append(match.groupValues[1]).append(" ")
+                    if (sb.length >= 5000) break
+                }
+                break
+            }
+            entry = zip.nextEntry
         }
-        entry = zip.nextEntry
-      }
     }
-    return ""
-  }
+    
+    // Second pass — fallback to sheet1.xml inline strings if sharedStrings empty
+    if (sb.isBlank()) {
+        ZipInputStream(file.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (entry.name == "xl/worksheets/sheet1.xml") {
+                    val bytes = zip.readBytes()
+                    val xml = if (bytes.size > 512 * 1024) {
+                        bytes.take(512 * 1024).toByteArray().toString(Charsets.UTF_8)
+                    } else {
+                        bytes.toString(Charsets.UTF_8)
+                    }
+                    // Extract inline strings <is><t>value</t></is> and <v> values
+                    val regex = Regex("<t[^>]*>([^<]+)</t>|<v>([^<]+)</v>")
+                    for (match in regex.findAll(xml)) {
+                        val value = match.groupValues[1].ifEmpty { match.groupValues[2] }
+                        if (value.isNotBlank() && !value.matches(Regex("[0-9.,E+\\-]+"))) {
+                            sb.append(value).append(" ")
+                        }
+                        if (sb.length >= 5000) break
+                    }
+                    break
+                }
+                entry = zip.nextEntry
+            }
+        }
+    }
+    
+    return sb.toString()
+}
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
