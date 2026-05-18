@@ -75,15 +75,32 @@ class DocIndexerModule : Module() {
 
     // Bulk index a list of files
     AsyncFunction("indexFiles") { files: List<Map<String, String>> ->
+      val writableDb = db.writableDatabase
       var count = 0
-      for (entry in files) {
-        val uri = entry["uri"] ?: continue
-        val name = entry["name"] ?: continue
-        val file = uriToFile(uri) ?: continue
-        val snippet = extractText(file, name) ?: continue
-        saveToDb(uri, name, snippet)
-        count++
+
+      writableDb.beginTransaction()
+
+      try {
+
+        for (entry in files.take(200)) {
+
+          val uri = entry["uri"] ?: continue
+          val name = entry["name"] ?: continue
+
+          val file = uriToFile(uri) ?: continue
+          val snippet = extractText(file, name) ?: continue
+
+          saveToDb(uri, name, snippet)
+
+          count++
+        }
+
+        writableDb.setTransactionSuccessful()
+
+      } finally {
+        writableDb.endTransaction()
       }
+
       count
     }
 

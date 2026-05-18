@@ -513,19 +513,24 @@ export default function SearchScreen() {
     }
   }
 
-  async function scanDir(base: string, extensions: string[], results: { uri: string; name: string }[]) {
+  async function scanDir(base: string, extensions: string[], results: { uri: string; name: string }[], remaining: { count: number }) {
+    if (remaining.count <= 0) return;
     try {
       const dir = new FileSystem.Directory(base);
       const contents = dir.list();
       for (const item of contents) {
+        if (remaining.count <= 0) return;
         if (item instanceof FileSystem.File) {
           const lower = item.name.toLowerCase();
-          if (extensions.some(ext => lower.endsWith(ext))) {
-            const alreadyIndexed = await DocIndexer.isIndexed(item.uri);
-            if (!alreadyIndexed) results.push({ uri: item.uri, name: item.name });
+          if (!extensions.some(ext => lower.endsWith(ext))) continue;
+          if (remaining.count <= 0) break;
+          const alreadyIndexed = await DocIndexer.isIndexed(item.uri);
+          if (!alreadyIndexed && remaining.count > 0) {
+            results.push({ uri: item.uri, name: item.name });
+            remaining.count--;
           }
-        } else if (item instanceof FileSystem.Directory) {
-          await scanDir(item.uri, extensions, results);
+        }else if (item instanceof FileSystem.Directory && remaining.count > 0) {
+          await scanDir(item.uri, extensions, results, remaining);
         }
       }
     } catch {}
@@ -541,8 +546,9 @@ export default function SearchScreen() {
         'file:///storage/emulated/0/Download/',
       ];
       const files: { uri: string; name: string }[] = [];
+      const remaining = { count: 200 };
       for (const base of docPaths) {
-        await scanDir(base, DOC_EXTENSIONS, files);
+        await scanDir(base, DOC_EXTENSIONS, files, remaining);
       }
       await DocIndexer.indexFiles(files);
     } catch {} finally {
