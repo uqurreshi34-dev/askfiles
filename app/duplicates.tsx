@@ -11,6 +11,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { isImageFile, getFileColor } from '@/utils/files';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 export default function DuplicatesScreen() {
   const { colors } = useTheme();
@@ -31,6 +32,7 @@ export default function DuplicatesScreen() {
             setDeleting(file.uri);
             await deleteFile(group.key, file.uri);
             await removeFavourite(file.uri);
+            DocIndexer.removeFromIndex(file.uri);
             setDeleting(null);
           },
         },

@@ -372,6 +372,7 @@ export default function SearchScreen() {
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) {
+            DocIndexer.removeFromIndex(uri);
             if (inFolder) { removeFolderItem(uri); }
             else { removeResult(uri); }
           } else {

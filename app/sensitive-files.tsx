@@ -16,6 +16,7 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isImageFile, getFileColor, formatSize, getMimeType } from '@/utils/files';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 interface SensitiveFile {
   name: string;
@@ -128,6 +129,7 @@ export default function SensitiveFilesScreen() {
         const ok = await addToVault(file.uri, file.name);
         if (ok) {
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
+          DocIndexer.removeFromIndex(file.uri);
         } else {
           Alert.alert('Error', 'Could not move file to Vault.');
         }
@@ -146,6 +148,7 @@ export default function SensitiveFilesScreen() {
           if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
           else { const f = new FileSystem.File(file.uri); f.delete(); }
           await removeFavourite(file.uri);
+          DocIndexer.removeFromIndex(file.uri);
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
         } catch {
           Alert.alert('Error', 'Could not delete file.');

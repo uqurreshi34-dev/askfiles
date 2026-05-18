@@ -280,6 +280,7 @@ export default function BrowseScreen() {
             const ok = await addToVault(uri, name);
             setMovingUri(null);
             if (ok) {
+              DocIndexer.removeFromIndex(uri);
               await loadDirectory(currentPath);
             } else {
               Alert.alert('Error', 'Could not move file to Vault. Try again.');
@@ -481,6 +482,7 @@ export default function BrowseScreen() {
       { text: 'Move', onPress: async () => {
         setVaulting(true);
         for (const file of files) { await addToVault(file.uri, file.name); }
+        files.forEach(f => DocIndexer.removeFromIndex(f.uri));
         setVaulting(false);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);

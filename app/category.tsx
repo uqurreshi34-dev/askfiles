@@ -440,7 +440,10 @@ export default function CategoryScreen() {
           setMovingUri(uri);
           const ok = await addToVault(uri, name);
           setMovingUri(null);
-          if (ok) { setItems(prev => prev.filter(f => f.uri !== uri)); }
+          if (ok) { 
+            setItems(prev => prev.filter(f => f.uri !== uri)); 
+            DocIndexer.removeFromIndex(uri); 
+          }
           else Alert.alert('Error', 'Could not move file to Vault. Try again.');
         }},
     ]);
@@ -529,6 +532,7 @@ export default function CategoryScreen() {
       { text: 'Move', onPress: async () => {
         for (const file of files) { await addToVault(file.uri, file.name); }
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
+        files.forEach(f => DocIndexer.removeFromIndex(f.uri));
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
       }},
     ]);

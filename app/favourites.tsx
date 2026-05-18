@@ -22,6 +22,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative } from '@/modules/share-module';
 import RNFS from 'react-native-fs';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import { DocIndexer } from 'doc-indexer';
 
 
 export default function FavouritesScreen() {
@@ -140,7 +141,10 @@ export default function FavouritesScreen() {
         setMovingUri(uri);
         const ok = await addToVault(uri, name);
         setMovingUri(null);
-        if (ok) { await removeFavourite(uri); }
+        if (ok) { 
+          await removeFavourite(uri);
+          DocIndexer.removeFromIndex(uri);
+         }
         else Alert.alert('Error', 'Could not move file to Vault. Try again.');
       }},
     ]);

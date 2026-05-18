@@ -13,6 +13,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 interface LargeFile {
   name: string;
@@ -112,6 +113,7 @@ export default function LargeFilesScreen() {
             const ok = await moveToTrash(file.uri, file.name);
             if (ok) {
               await removeFavourite(file.uri);
+              DocIndexer.removeFromIndex(file.uri);
               setFiles(prev => prev.filter(f => f.uri !== file.uri));
             } else {
               Alert.alert('Error', 'Could not move file to Trash.');
