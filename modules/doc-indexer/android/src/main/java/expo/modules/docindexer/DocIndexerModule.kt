@@ -104,7 +104,7 @@ class DocIndexerModule : Module() {
       count
     }
 
-    // Search indexed content — FTS5 BM25 ranked, fallback to LIKE
+    // Search indexed content — term frequency ranked, LIKE fallback
    AsyncFunction("searchFiles") { query: String ->
       val results = mutableListOf<Pair<Int, Map<String, String>>>()
       val lower = query.trim().lowercase()
@@ -136,7 +136,28 @@ class DocIndexerModule : Module() {
             results.add(Pair(score, mapOf("uri" to uri, "name" to name, "snippet" to preview)))
           }
         }
-      } catch (e: Exception) { }
+      } catch (e: Exception) {
+        try {
+          val cursor = db.readableDatabase.rawQuery(
+            "SELECT uri, name, snippet FROM doc_meta WHERE LOWER(snippet) LIKE ? OR LOWER(name) LIKE ?",
+            arrayOf("%$lower%", "%$lower%")
+          )
+          cursor.use {
+            while (it.moveToNext()) {
+              val uri = it.getString(0)
+              val name = it.getString(1)
+              val snippet = it.getString(2)
+              val text = snippet.lowercase()
+              val score = text.split(lower).size - 1
+              val idx = text.indexOf(lower)
+              val preview = if (idx >= 0) {
+                "...${snippet.substring(maxOf(0, idx - 60), minOf(snippet.length, idx + lower.length + 60))}..."
+              } else snippet.take(150)
+              results.add(Pair(score, mapOf("uri" to uri, "name" to name, "snippet" to preview)))
+            }
+          }
+        } catch (e2: Exception) { }
+      }
 
       results.sortedByDescending { it.first }.map { it.second }
     }
