@@ -13,7 +13,7 @@ import { cleanupBrokenFavourites } from '@/hooks/useFavourites';
 const WATCH_DIRS = [
   '/storage/emulated/0/DCIM',
   '/storage/emulated/0/Pictures',
-  '/storage/emulated/0/Downloads',
+  '/storage/emulated/0/Download',
   '/storage/emulated/0/Documents',
   '/storage/emulated/0/Movies',
   '/storage/emulated/0/Music',
