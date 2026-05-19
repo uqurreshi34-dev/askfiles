@@ -19,6 +19,8 @@ import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 import java.util.concurrent.Executors
+import android.os.Build
+import java.io.File
 
 class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
 
@@ -311,7 +313,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                             cache[uri] = bitmap
                             mainHandler?.post {
                                 // Only set if view is still showing same URI
-                                val currentPos = adapterPosition
+                                val currentPos = bindingAdapterPosition
                                 if (currentPos != RecyclerView.NO_ID.toInt() &&
                                     currentPos < uris.size &&
                                     uris[currentPos] == uri
@@ -334,10 +336,10 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                         if (isNowSelected) newSet.add(uri) else newSet.remove(uri)
                         selectedUris = newSet
                     }
-                    onItemClick?.invoke(uri, adapterPosition)
+                    onItemClick?.invoke(uri, bindingAdapterPosition)
                 }
                 container.setOnLongClickListener {
-                    onItemLongClick?.invoke(uri, adapterPosition)
+                    onItemLongClick?.invoke(uri, bindingAdapterPosition)
                     true
                 }
             }
@@ -365,10 +367,12 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                         // Use MediaStore to get video thumbnail
                         val path = uri.replace("file://", "")
                             .let { java.net.URLDecoder.decode(it, "UTF-8") }
-                        ThumbnailUtils.createVideoThumbnail(
-                            path,
-                            MediaStore.Images.Thumbnails.MINI_KIND
-                        )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            ThumbnailUtils.createVideoThumbnail(File(path), android.util.Size(512, 512), null)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            ThumbnailUtils.createVideoThumbnail(path, MediaStore.Images.Thumbnails.MINI_KIND)
+                        }
                     } else {
                         val path = uri.replace("file://", "")
                             .let { java.net.URLDecoder.decode(it, "UTF-8") }
