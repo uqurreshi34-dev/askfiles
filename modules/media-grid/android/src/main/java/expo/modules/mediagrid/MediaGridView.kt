@@ -24,6 +24,7 @@ import java.io.File
 
 class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
 
+    private var thumbSizeDp = 110
     private val onItemPress by EventDispatcher()
     private val onItemLongPress by EventDispatcher()
 
@@ -31,9 +32,9 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private var adapter = MediaGridAdapter()
     private var layoutManager = object : GridLayoutManager(context, 3) {
         override fun checkLayoutParams(lp: RecyclerView.LayoutParams?): Boolean {
-            val spacing = (4 * context.resources.displayMetrics.density).toInt()
-            lp?.width = (width - spacing * (spanCount + 1)) / spanCount
-            lp?.height = lp?.width ?: 0
+            val thumbPx = (thumbSizeDp * context.resources.displayMetrics.density).toInt()
+            lp?.width = thumbPx
+            lp?.height = thumbPx
             return true
         }
     }
@@ -73,7 +74,10 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (w != oldw) {
+        if (w != oldw && w > 0) {
+            val thumbPx = (thumbSizeDp * context.resources.displayMetrics.density).toInt()
+            val cols = maxOf(2, w / thumbPx)
+            layoutManager.spanCount = cols
             adapter.notifyDataSetChanged()
         }
     }
