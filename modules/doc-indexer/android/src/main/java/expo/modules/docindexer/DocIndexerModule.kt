@@ -1,8 +1,8 @@
 package expo.modules.docindexer
 
 import android.content.Context
-import io.requery.android.database.sqlite.SQLiteDatabase
-import io.requery.android.database.sqlite.SQLiteOpenHelper
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -13,7 +13,7 @@ import java.io.InputStream
 import java.util.zip.ZipInputStream
 
 // ── SQLite helper ──────────────────────────────────────────────────────────────
-class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db", null, 6) {
+class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db", null, 15) {
   override fun onCreate(db: SQLiteDatabase) {
     db.execSQL("""
       CREATE TABLE IF NOT EXISTS doc_meta (
@@ -36,10 +36,10 @@ class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db"
     } catch (e: Exception) {
       db.execSQL("""
         CREATE VIRTUAL TABLE IF NOT EXISTS doc_fts USING fts4(
-          name, snippet,
-          content=doc_meta,
-          tokenize=unicode61
-        )
+            name, snippet,
+            content=doc_meta,
+            tokenize=unicode61
+          )
       """.trimIndent())
     }
   }
@@ -105,100 +105,40 @@ class DocIndexerModule : Module() {
     }
 
     // Search indexed content — FTS5 BM25 ranked, fallback to LIKE
-    AsyncFunction("searchFiles") { query: String ->
-      val results = mutableListOf<Map<String, String>>()
+   AsyncFunction("searchFiles") { query: String ->
+      val results = mutableListOf<Pair<Int, Map<String, String>>>()
       val lower = query.trim().lowercase()
-      var success = false
 
-      // Build FTS5 query — each word gets prefix search with *
       try {
-          val ftsQuery = lower.split("\\s+".toRegex())
-            .filter { it.isNotBlank() }
-            .joinToString(" ") { "$it*" }
+        val ftsQuery = lower.split("\\s+".toRegex())
+          .filter { it.isNotBlank() }
+          .joinToString(" ") { "$it*" }
 
-          val cursor = try {
+        val cursor = db.readableDatabase.rawQuery(
+          """SELECT m.uri, m.name, m.snippet
+            FROM doc_fts f
+            JOIN doc_meta m ON f.rowid = m.id
+            WHERE doc_fts MATCH ?""",
+          arrayOf(ftsQuery)
+        )
 
-            // FTS5 + BM25
-            db.readableDatabase.rawQuery(
-              """SELECT m.uri, m.name, m.snippet
-                FROM doc_fts f
-                JOIN doc_meta m ON f.rowid = m.id
-                WHERE doc_fts MATCH ?
-                ORDER BY bm25(doc_fts)""",
-              arrayOf(ftsQuery)
-            )
-
-          } catch (_: Exception) {
-
-            // FTS without ranking
-            db.readableDatabase.rawQuery(
-              """SELECT m.uri, m.name, m.snippet
-                FROM doc_fts f
-                JOIN doc_meta m ON f.rowid = m.id
-                WHERE doc_fts MATCH ?""",
-              arrayOf(ftsQuery)
-            )
+        cursor.use {
+          while (it.moveToNext()) {
+            val uri = it.getString(0)
+            val name = it.getString(1)
+            val snippet = it.getString(2)
+            val text = snippet.lowercase()
+            val score = lower.split(" ").sumOf { term -> text.split(term).size - 1 }
+            val idx = text.indexOf(lower)
+            val preview = if (idx >= 0) {
+              "...${snippet.substring(maxOf(0, idx - 60), minOf(snippet.length, idx + lower.length + 60))}..."
+            } else snippet.take(150)
+            results.add(Pair(score, mapOf("uri" to uri, "name" to name, "snippet" to preview)))
           }
-
-          cursor.use {
-            while (it.moveToNext()) {
-              val snippet = it.getString(2)
-
-              val idx = snippet.lowercase().indexOf(lower)
-
-              val preview = if (idx >= 0) {
-                val start = maxOf(0, idx - 60)
-                val end = minOf(snippet.length, idx + lower.length + 60)
-                "...${snippet.substring(start, end)}..."
-              } else {
-                snippet.take(150)
-              }
-
-              results.add(
-                mapOf(
-                  "uri" to it.getString(0),
-                  "name" to it.getString(1),
-                  "snippet" to preview
-                )
-              )
-            }
-          }
-
-          success = true
-
-        } catch (_: Exception) {
-          // falls to LIKE
         }
+      } catch (e: Exception) { }
 
-      // Fallback LIKE query if FTS5 failed
-      if (!success) {
-        try {
-          val cursor = db.readableDatabase.rawQuery(
-            "SELECT uri, name, snippet FROM doc_meta WHERE LOWER(snippet) LIKE ?",
-            arrayOf("%$lower%")
-          )
-          cursor.use {
-            while (it.moveToNext()) {
-              val snippet = it.getString(2)
-              val idx = snippet.lowercase().indexOf(lower)
-              val preview = if (idx >= 0) {
-                val start = maxOf(0, idx - 60)
-                val end = minOf(snippet.length, idx + lower.length + 60)
-                "...${snippet.substring(start, end)}..."
-              } else snippet.take(150)
-              results.add(mapOf(
-                "uri" to it.getString(0),
-                "name" to it.getString(1),
-                "snippet" to preview
-              ))
-            }
-          }
-        } catch (e: Exception) {
-          // silent
-        }
-      }
-
-      results
+      results.sortedByDescending { it.first }.map { it.second }
     }
 
     // Check if a file is already indexed
@@ -393,6 +333,7 @@ class DocIndexerModule : Module() {
             "INSERT INTO doc_fts(rowid, name, snippet) VALUES(?,?,?)",
             arrayOf(id.toString(), name, snippet)
           )
+          android.util.Log.d("FTS_INSERT", "Indexed: $name id=$id snippet_len=${snippet.length}")
         }
       }
     } catch (e: Exception) {
