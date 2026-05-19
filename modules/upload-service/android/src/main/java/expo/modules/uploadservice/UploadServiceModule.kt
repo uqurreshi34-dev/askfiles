@@ -39,16 +39,6 @@ class UploadServiceModule : Module() {
             }
         }
 
-        Function("stopService") {
-            val context = appContext.reactContext
-            if (context != null) {
-                val intent = Intent(context, UploadForegroundService::class.java).apply {
-                    action = UploadForegroundService.ACTION_STOP
-                }
-                context.startService(intent)
-            }
-        }
-
         Function("stopService") { ->
             val context = appContext.reactContext
             if (context != null) {
