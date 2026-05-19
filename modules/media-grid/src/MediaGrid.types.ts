@@ -2,7 +2,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 
 export type MediaGridProps = {
   uris: string[];
-  numColumns: number;
+  numColumns?: number;
   selectedUris: string[];
   selectMode: boolean;
   category: 'images' | 'videos';

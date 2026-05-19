@@ -44,11 +44,6 @@ class MediaGridModule : Module() {
         view.setUris(uris)
       }
 
-      // Number of columns in the grid
-      Prop("numColumns") { view: MediaGridView, numColumns: Int ->
-        view.setNumColumns(numColumns)
-      }
-
       // Set of selected URIs for multi-select mode
       Prop("selectedUris") { view: MediaGridView, selectedUris: List<String> ->
         view.setSelectedUris(selectedUris.toSet())

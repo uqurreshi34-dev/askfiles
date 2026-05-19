@@ -129,9 +129,6 @@ export default function CategoryScreen() {
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const insets = useSafeAreaInsets();
-  const GRID_COLS = SCREEN_WIDTH > SCREEN_HEIGHT ? 5 : 3;
-  const safeWidth = SCREEN_WIDTH - insets.left - insets.right;
-  const GRID_ITEM_SIZE = (safeWidth - 32 - (GRID_COLS - 1) * 3) / GRID_COLS;
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -657,7 +654,6 @@ export default function CategoryScreen() {
             style={{ flex: 1 }}
             key={`grid-${sortKey}`}
             uris={filteredItems.map(i => i.uri)}
-            numColumns={GRID_COLS}
             selectedUris={Array.from(selectedUris)}
             selectMode={selectMode}
             category={category ?? 'images'}
@@ -693,57 +689,9 @@ export default function CategoryScreen() {
         <FlatList
           data={filteredItems}
           keyExtractor={item => item.uri}
-          key={isMediaCategory && gridView ? `grid-${GRID_COLS}` : `list-${SCREEN_WIDTH > SCREEN_HEIGHT ? 'land' : 'port'}`}
-          numColumns={isMediaCategory && gridView ? GRID_COLS : 1}
-          renderItem={isMediaCategory && gridView
-            ? ({ item }) => {
-                const isSelected = selectedUris.has(item.uri);
-                const isImg = isImageFile(item.name);
-                const isVid = category === 'videos';
-                return (
-                  <TouchableOpacity
-                    style={[styles.gridItem, { width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE, borderWidth: isSelected ? 3 : 0, borderColor: colors.blue }]}
-                    onPress={() => {
-                      if (selectMode) {
-                        const newSet = new Set(selectedUris);
-                        const newMap = new Map(selectedItemsMap);
-                        if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
-                        else { newSet.add(item.uri); newMap.set(item.uri, item); }
-                        setSelectedUris(newSet); setSelectedItemsMap(newMap);
-                      } else { openItem(item); }
-                    }}
-                    onLongPress={() => !selectMode && openSheet(item)}
-                    activeOpacity={0.8}
-                  >
-                    {isImg ? (
-                      <Image source={{ uri: item.uri }} style={styles.gridThumb} resizeMode="cover" />
-                    ) : isVid ? (
-                      <VideoThumb uri={item.uri} style={styles.gridThumb} />
-                    ) : (
-                      <View style={[styles.gridThumb, { backgroundColor: config.color + '22', alignItems: 'center', justifyContent: 'center' }]}>
-                        <Ionicons name="videocam" size={32} color={config.color} />
-                      </View>
-                    )}
-                    {isVid && !selectMode && (
-                      openingUri === item.uri ? (
-                        <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 4 }}>
-                          <ActivityIndicator size="small" color="#fff" />
-                        </View>
-                      ) : (
-                        <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, padding: 2 }}>
-                          <Ionicons name="play" size={10} color="#fff" />
-                        </View>
-                      )
-                    )}
-                    {selectMode && isSelected && (
-                      <View style={{ position: 'absolute', top: 4, right: 4, backgroundColor: colors.blue, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="checkmark" size={12} color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              }
-            : ({ item }) => {
+          key="list"
+          numColumns={1}
+          renderItem={({ item }) => {
                 const isSelected = selectedUris.has(item.uri);
                 const isImg = isImageFile(item.name);
                 const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
@@ -797,8 +745,7 @@ export default function CategoryScreen() {
                 );
               }
           }
-          contentContainerStyle={isMediaCategory && gridView ? styles.gridContainer : styles.list}
-          columnWrapperStyle={isMediaCategory && gridView ? styles.gridRow : undefined}
+          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <Text style={[styles.count, { color: colors.textMuted }]}>{filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}</Text>
