@@ -558,9 +558,7 @@ export function useStorage() {
 
   const reloadCounts = useCallback(async () => {
     if (!cache.loaded) return;
-    setLoading(true);
     await doLoadCounts();
-    setLoading(false);
     setTick(t => t + 1);
   }, []);
 
