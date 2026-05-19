@@ -22,7 +22,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative } from '@/modules/share-module';
 import RNFS from 'react-native-fs';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-import { DocIndexer } from 'doc-indexer';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 
 export default function FavouritesScreen() {
