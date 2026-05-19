@@ -8,20 +8,6 @@ class StorageWidgetModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("StorageWidget")
 
-    Constant("PI") {
-      Math.PI
-    }
-
-    Events("onChange")
-
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
-    AsyncFunction("setValueAsync") { value: String ->
-      sendEvent("onChange", mapOf("value" to value))
-    }
-
     AsyncFunction("saveRecentsForWidget") { recentsJson: String ->
       val context = appContext.reactContext ?: return@AsyncFunction
       val appCtx = context.applicationContext
