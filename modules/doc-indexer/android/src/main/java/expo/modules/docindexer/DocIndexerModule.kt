@@ -13,7 +13,7 @@ import java.io.InputStream
 import java.util.zip.ZipInputStream
 
 // ── SQLite helper ──────────────────────────────────────────────────────────────
-class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db", null, 15) {
+class IndexDbHelper(context: Context) : SQLiteOpenHelper(context, "doc_index.db", null, 16) {
   override fun onCreate(db: SQLiteDatabase) {
     db.execSQL("""
       CREATE TABLE IF NOT EXISTS doc_meta (
@@ -197,7 +197,7 @@ class DocIndexerModule : Module() {
         }
         else -> null
       }
-      text?.trim()?.take(2000)?.ifBlank { null }
+      text?.trim()?.take(5000)?.ifBlank { null }
     } catch (e: Exception) {
       null
     }
@@ -333,7 +333,6 @@ class DocIndexerModule : Module() {
             "INSERT INTO doc_fts(rowid, name, snippet) VALUES(?,?,?)",
             arrayOf(id.toString(), name, snippet)
           )
-          android.util.Log.d("FTS_INSERT", "Indexed: $name id=$id snippet_len=${snippet.length}")
         }
       }
     } catch (e: Exception) {
