@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Image } from 'react-native';
-import { getVideoThumbnail } from 'media-grid';
+import { getVideoThumbnail } from '@/modules/media-grid';
 
 export function isVideoFile(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
