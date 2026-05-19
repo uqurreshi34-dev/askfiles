@@ -66,6 +66,5 @@ export async function scheduleDailyReminder(isPro: boolean): Promise<void> {
       },
     });
   } catch (e) {
-    console.warn('scheduleDailyReminder error:', e);
   }
 }
