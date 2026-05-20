@@ -117,6 +117,7 @@ export default function SearchScreen() {
   const [smartSearching, setSmartSearching] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const smartTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [indexCount, setIndexCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -553,6 +554,10 @@ export default function SearchScreen() {
       await DocIndexer.indexFiles(files);
     } catch {} finally {
       setIndexing(false);
+      try {
+        const count = await DocIndexer.getIndexCount();
+        setIndexCount(count);
+      } catch {}
     }
   }
   
@@ -807,9 +812,21 @@ export default function SearchScreen() {
             </View>
           ) : smartQuery.length < 2 ? (
             <View style={styles.centered}>
-              <Ionicons name="document-text-outline" size={40} color={colors.textDisabled} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>Search inside your documents and downloads</Text>
-              <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>PDFs, Word, Excel and text files</Text>
+              {indexing ? (
+                <>
+                  <ActivityIndicator color={colors.blue} />
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>Reading your documents...</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>This only happens once</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="document-text-outline" size={40} color={colors.textDisabled} />
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>Search inside your documents</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>
+                    {indexCount > 0 ? `${indexCount} file${indexCount !== 1 ? 's' : ''} ready to search` : 'PDFs, Word, Excel and text files'}
+                  </Text>
+                </>
+              )}
             </View>
           ) : smartResults.length === 0 ? (
             <View style={styles.centered}>
