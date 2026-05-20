@@ -202,6 +202,18 @@ class DocIndexerModule : Module() {
 
   // ── Text extraction ──────────────────────────────────────────────────────────
 
+  private fun decodeHtmlEntities(text: String): String {
+    return text
+        .replace("&#163;", "£")
+        .replace("&#38;", "&")
+        .replace("&#60;", "<")
+        .replace("&#62;", ">")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&pound;", "£")
+}
+
   private fun extractText(file: File, name: String): String? {
     return try {
       val ext = name.substringAfterLast('.', "").lowercase()
@@ -312,7 +324,7 @@ class DocIndexerModule : Module() {
       }
     }
 
-    return sb.toString()
+    return decodeHtmlEntities(sb.toString())
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
