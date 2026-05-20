@@ -12,7 +12,7 @@ module.exports = function withUploadService(config) {
     if (!application.service) application.service = [];
 
     const alreadyAdded = application.service.some(
-      s => s.$?.['android:name'] === '.uploadservice.UploadForegroundService'
+      s => s.$?.['android:name'] === 'expo.modules.uploadservice.UploadForegroundService'
     );
 
     if (!alreadyAdded) {
