@@ -816,7 +816,6 @@ export default function SearchScreen() {
                 <>
                   <ActivityIndicator color={colors.blue} />
                   <Text style={[styles.hint, { color: colors.textMuted }]}>Reading your documents...</Text>
-                  <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>This only happens once</Text>
                 </>
               ) : (
                 <>
