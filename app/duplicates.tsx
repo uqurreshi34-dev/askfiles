@@ -20,6 +20,7 @@ export default function DuplicatesScreen() {
   const { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, formatSize } = useDuplicates();
   const { isPro } = usePro();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [keepingGroup, setKeepingGroup] = useState<string | null>(null);
 
   async function handleDelete(group: DuplicateGroup, file: DuplicateFile) {
     Alert.alert(
@@ -38,6 +39,26 @@ export default function DuplicatesScreen() {
             setDeleting(null);
           },
         },
+      ]
+    );
+  }
+
+  async function handleKeepOne(group: DuplicateGroup) {
+    Alert.alert(
+      'Keep one copy',
+      `Keep the first copy of "${group.name}" and move the rest to Trash?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Keep one', style: 'destructive', onPress: async () => {
+          setKeepingGroup(group.key);
+          const toDelete = group.files.slice(1);
+          for (const file of toDelete) {
+            await deleteFile(group.key, file.uri);
+            await removeFavourite(file.uri);
+            DocIndexer.removeFromIndex(file.uri);
+          }
+          setKeepingGroup(null);
+        }},
       ]
     );
   }
@@ -85,6 +106,20 @@ export default function DuplicatesScreen() {
             </TouchableOpacity>
           </View>
         ))}
+        <TouchableOpacity
+          style={[styles.keepOneRow, { borderTopColor: colors.border }]}
+          onPress={() => handleKeepOne(group)}
+          disabled={keepingGroup === group.key}
+        >
+          {keepingGroup === group.key ? (
+            <ActivityIndicator size="small" color={colors.deleteRed} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={16} color={colors.deleteRed} style={{ marginRight: 8 }} />
+              <Text style={[styles.keepOneText, { color: colors.deleteRed }]}>Delete all but one</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     );
   }
@@ -234,4 +269,6 @@ const styles = StyleSheet.create({
   deleteBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   keepBadge: { backgroundColor: '#E8F5E9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   keepBadgeText: { fontSize: 9, fontWeight: '700', color: '#2E7D32', letterSpacing: 0.5 },
+  keepOneRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderTopWidth: 0.5, marginTop: 4 },
+  keepOneText: { fontSize: 13, fontWeight: '600' },
 });
