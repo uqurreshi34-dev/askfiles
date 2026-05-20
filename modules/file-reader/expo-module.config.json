@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["FileReaderModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.filereader.FileReaderModule"]
+  }
+}

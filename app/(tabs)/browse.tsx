@@ -25,6 +25,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { readDirectory } from 'file-reader';
 
 interface FileItem {
   name: string;
@@ -32,6 +33,8 @@ interface FileItem {
   isDirectory: boolean;
 }
 
+const dirCacheStore: Record<string, FileItem[]> = {};
+const folderCountsStore: Record<string, number> = {};
 const ROOT_PATH = 'file:///storage/emulated/0/';
 
 function getFileColor(name: string): string {
@@ -119,7 +122,7 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
-  const [folderCounts, setFolderCounts] = useState<Record<string, number>>({});
+  const [folderCounts, setFolderCounts] = useState<Record<string, number>>(folderCountsStore);
 
   useEffect(() => {
     loadDirectory(currentPath);
@@ -157,39 +160,37 @@ export default function BrowseScreen() {
   }
 
   async function loadDirectory(path: string) {
+    if (dirCacheStore[path]) {
+      setItems(dirCacheStore[path]);
+      setLoading(false);
+      readDirectory(toPath(path)).then(fileItems => {
+        dirCacheStore[path] = fileItems;
+        setItems(fileItems);
+      }).catch(() => {});
+      return;
+    }
+  
     setLoading(true);
     try {
-      const dir = new FileSystem.Directory(path);
-      const contents = dir.list();
-      const fileItems: FileItem[] = contents
-        .map(item => ({
-          name: decodeName(item instanceof FileSystem.File
-            ? item.name
-            : item.uri.split('/').filter(Boolean).pop() ?? ''),
-          uri: item.uri,
-          isDirectory: item instanceof FileSystem.Directory,
-        }))
-        .filter(item => !item.name.startsWith('.'))
-        .sort((a, b) => {
-          if (a.isDirectory && !b.isDirectory) return -1;
-          if (!a.isDirectory && b.isDirectory) return 1;
-          return a.name.localeCompare(b.name);
-        });
+      const fileItems = await readDirectory(toPath(path));
+      dirCacheStore[path] = fileItems;
       setItems(fileItems);
-
-      // Pre-count subfolders in background — ready before user taps
+  
       fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
-        const path = toPath(folder.uri);
-        if (path.includes('/Android/data')) return;
-        
-        RNFS.readDir(path)
+        const folderPath = toPath(folder.uri);
+        if (folderPath.includes('/Android/data')) return;
+        RNFS.readDir(folderPath)
           .then(contents => {
-            const count = contents.filter(f => !f.name.startsWith('.')).length;
-            setFolderCounts(prev => ({ ...prev, [folder.uri]: count }));
+            const count = contents.filter((f: { name: string }) => !f.name.startsWith('.')).length;
+            setFolderCounts(prev => {
+              const updated = { ...prev, [folder.uri]: count };
+              Object.assign(folderCountsStore, updated);
+              return updated;
+            });
           })
           .catch(() => {});
       });
-
+  
     } catch {
       setItems([]);
     } finally {

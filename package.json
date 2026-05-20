@@ -45,6 +45,7 @@
     "expo-status-bar": "~3.0.9",
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.11",
+    "file-reader": "file:modules/file-reader",
     "file-watcher": "file:modules/file-watcher",
     "jszip": "^3.10.1",
     "media-grid": "file:modules/media-grid",
