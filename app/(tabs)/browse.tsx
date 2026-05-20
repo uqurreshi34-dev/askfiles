@@ -179,7 +179,10 @@ export default function BrowseScreen() {
 
       // Pre-count subfolders in background — ready before user taps
       fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
-        RNFS.readDir(toPath(folder.uri))
+        const path = toPath(folder.uri);
+        if (path.includes('/Android/data')) return;
+        
+        RNFS.readDir(path)
           .then(contents => {
             const count = contents.filter(f => !f.name.startsWith('.')).length;
             setFolderCounts(prev => ({ ...prev, [folder.uri]: count }));
