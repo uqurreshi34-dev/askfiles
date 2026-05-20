@@ -119,6 +119,7 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
+  const [folderCounts, setFolderCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadDirectory(currentPath);
@@ -175,6 +176,17 @@ export default function BrowseScreen() {
           return a.name.localeCompare(b.name);
         });
       setItems(fileItems);
+
+      // Pre-count subfolders in background — ready before user taps
+      fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
+        RNFS.readDir(toPath(folder.uri))
+          .then(contents => {
+            const count = contents.filter(f => !f.name.startsWith('.')).length;
+            setFolderCounts(prev => ({ ...prev, [folder.uri]: count }));
+          })
+          .catch(() => {});
+      });
+
     } catch {
       setItems([]);
     } finally {
@@ -692,7 +704,14 @@ export default function BrowseScreen() {
         </View>
         <View style={styles.fileInfo}>
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+          <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
+            {item.isDirectory
+              ? folderCounts[item.uri] === undefined ? 'Folder'
+                : folderCounts[item.uri] === -1 ? 'Folder'
+                : folderCounts[item.uri] === 0 ? 'Empty'
+                : `${folderCounts[item.uri]} item${folderCounts[item.uri] !== 1 ? 's' : ''}`
+              : ext + ' file'}
+          </Text>
         </View>
         {!selectMode && (
           item.isDirectory ? (
