@@ -8,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
@@ -17,6 +16,7 @@ import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isImageFile, getFileColor, formatSize, getMimeType } from '@/utils/files';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { useTrash } from '@/hooks/useTrash';
 
 interface SensitiveFile {
   name: string;
@@ -85,6 +85,8 @@ export default function SensitiveFilesScreen() {
   const [scanned, setScanned] = useState(false);
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const { moveToTrash } = useTrash();
+  const [deletingUri, setDeletingUri] = useState<string | null>(null);
 
   async function scan() {
     setScanning(true);
@@ -139,20 +141,19 @@ export default function SensitiveFilesScreen() {
   }
 
   async function handleDelete(file: SensitiveFile) {
-    Alert.alert('Delete', `Delete "${file.name}"? This cannot be undone.`, [
+    Alert.alert('Move to Trash', `"${file.name}" will be moved to Trash and deleted after 30 days.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        try {
-          const assets = await MediaLibrary.getAssetsAsync({ first: 1000 });
-          const match = assets.assets.find(a => file.uri.includes(a.filename));
-          if (match) { await MediaLibrary.deleteAssetsAsync([match]); }
-          else { const f = new FileSystem.File(file.uri); f.delete(); }
+      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+        setDeletingUri(file.uri);
+        const ok = await moveToTrash(file.uri, file.name);
+        if (ok) {
           await removeFavourite(file.uri);
           DocIndexer.removeFromIndex(file.uri);
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
-        } catch {
-          Alert.alert('Error', 'Could not delete file.');
+        } else {
+          Alert.alert('Error', 'Could not move file to Trash.');
         }
+        setDeletingUri(null);
       }},
     ]);
   }
@@ -160,9 +161,13 @@ export default function SensitiveFilesScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+      <TouchableOpacity 
+        onPress={() => !scanning && router.back()} 
+        style={styles.backBtn}
+        disabled={scanning}
+      >
+        <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
+      </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Sensitive Files</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -272,8 +277,13 @@ export default function SensitiveFilesScreen() {
                   <TouchableOpacity
                     style={[styles.deleteBtn, { backgroundColor: colors.surface }]}
                     onPress={() => handleDelete(item)}
+                    disabled={deletingUri === item.uri}
                   >
-                    <Ionicons name="trash-outline" size={14} color={colors.deleteRed} />
+                    {deletingUri === item.uri ? (
+                      <ActivityIndicator size="small" color={colors.deleteRed} />
+                    ) : (
+                      <Ionicons name="trash-outline" size={14} color={colors.deleteRed} />
+                    )}
                   </TouchableOpacity>
                 </View>
                </TouchableOpacity>

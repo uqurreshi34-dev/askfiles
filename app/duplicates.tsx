@@ -119,9 +119,13 @@ export default function DuplicatesScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+      <TouchableOpacity 
+        onPress={() => !scanning && router.back()} 
+        style={styles.backBtn}
+        disabled={scanning}
+      >
+        <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
+      </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Duplicate Finder</Text>
         <View style={{ width: 40 }} />
       </View>

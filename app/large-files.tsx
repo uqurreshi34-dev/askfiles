@@ -185,9 +185,13 @@ export default function LargeFilesScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+      <TouchableOpacity 
+        onPress={() => !scanning && router.back()} 
+        style={styles.backBtn}
+        disabled={scanning}
+      >
+        <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
+      </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Large Files</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -198,7 +202,7 @@ export default function LargeFilesScreen() {
             <Ionicons name="folder-open-outline" size={40} color={colors.redBrown} />
           </View>
           <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Find large files</Text>
-          <Text style={[styles.startSub, { color: colors.textMuted }]}>Scans your storage for files over 5 MB, sorted by size.</Text>
+          <Text style={[styles.startSub, { color: colors.textMuted }]}>Scans your storage for files over 25 MB, sorted by size.</Text>
           <TouchableOpacity style={styles.scanBtn} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.scanBtnText}>Start Scan</Text>
