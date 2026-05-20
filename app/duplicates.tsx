@@ -12,11 +12,13 @@ import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { isImageFile, getFileColor } from '@/utils/files';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { usePro } from '@/hooks/usePro';
 
 export default function DuplicatesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, formatSize } = useDuplicates();
+  const { isPro } = usePro();
   const [deleting, setDeleting] = useState<string | null>(null);
 
   async function handleDelete(group: DuplicateGroup, file: DuplicateFile) {
@@ -84,6 +86,33 @@ export default function DuplicatesScreen() {
           </View>
         ))}
       </View>
+    );
+  }
+
+  if (!isPro) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.background }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Duplicate Finder</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.startScreen}>
+          <View style={[styles.startIcon, { backgroundColor: colors.blueTint }]}>
+            <Ionicons name="duplicate-outline" size={40} color={colors.blue} />
+          </View>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Pro Feature</Text>
+          <Text style={[styles.startSub, { color: colors.textMuted }]}>
+            Duplicate Finder is part of AskFiles Pro. Upgrade once, use forever.
+          </Text>
+          <TouchableOpacity style={styles.scanBtn} onPress={() => router.push('/(tabs)/cloud')} activeOpacity={0.85}>
+            <Ionicons name="sparkles-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.scanBtnText}>Upgrade to Pro</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 

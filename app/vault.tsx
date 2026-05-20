@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative, scanFile } from '@/modules/share-module';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { usePro } from '@/hooks/usePro';
 
 
 export default function VaultScreen() {
@@ -45,7 +46,7 @@ export default function VaultScreen() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [selectedFilesMap, setSelectedFilesMap] = useState<Map<string, VaultFile>>(new Map());
-
+  const { isPro } = usePro();
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
@@ -439,15 +440,41 @@ export default function VaultScreen() {
             </TouchableOpacity>
           </ScrollView>
         )}
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => {
-          if (selectMode) { setSelectMode(false); setSelectedUris(new Set()); setSelectedFilesMap(new Map()); }
+        </SafeAreaView>
+      );
+    }
+  
+    if (!isPro) {
+      return (
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Secure Vault</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
+            <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
+              <Ionicons name="shield-checkmark-outline" size={40} color={colors.blue} />
+            </View>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Pro Feature</Text>
+            <Text style={[styles.lockSub, { color: colors.textMuted }]}>
+              Secure Vault is part of AskFiles Pro. Upgrade once, use forever.
+            </Text>
+            <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/(tabs)/cloud' as any)} activeOpacity={0.85}>
+              <Ionicons name="sparkles-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.authBtnText}>Upgrade to Pro</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => {
+            if (selectMode) { setSelectMode(false); setSelectedUris(new Set()); setSelectedFilesMap(new Map()); }
           else { router.back(); }
         }} style={styles.backBtn}>
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
