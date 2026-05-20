@@ -40,3 +40,5 @@ yarn-error.*
 /ios
 /android
 modules/storage-stats/android/build/
+
+google-services.json
