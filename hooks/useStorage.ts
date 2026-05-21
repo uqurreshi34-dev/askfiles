@@ -377,22 +377,36 @@ async function doLoad(): Promise<void> {
   const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'];
   const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.3gp', '.m4v', '.ts', '.wmv', '.flv'];
 
-  const [picturesSize, dcimImagesSize, dcimVideosSize, moviesSize,
-    downloadsSize, documentsSize, musicSize,
-    documentsInDownloadSize] =
+  const [
+    downloadsSize, documentsSize, musicSize, documentsInDownloadSize] =
     await Promise.all([
-      getFolderSizeByExtension('file:///storage/emulated/0/Pictures/', IMAGE_EXTS),
-      getFolderSizeByExtension('file:///storage/emulated/0/DCIM/', IMAGE_EXTS),
-      getFolderSizeByExtension('file:///storage/emulated/0/DCIM/', VIDEO_EXTS),
-      getFolderSize('file:///storage/emulated/0/Movies/'),
       getFolderSize('file:///storage/emulated/0/Download/'),
       getFolderSize('file:///storage/emulated/0/Documents/'),
       getFolderSize('file:///storage/emulated/0/Music/'),
       getFolderSizeByExtension('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
     ]);
 
-  const totalImagesSize = picturesSize + dcimImagesSize;
-  const totalVideosSize = dcimVideosSize + moviesSize;
+// Get sizes directly from MediaLibrary assets — matches home card counts exactly
+  const videoSizeBytes = (await Promise.all(
+    allVideos.map(async asset => {
+      try {
+        const stat = await RNFS.stat(asset.uri.replace('file://', ''));
+        return Number(stat.size) || 0;
+      } catch { return 0; }
+    })
+  )).reduce((a, b) => a + b, 0);
+
+  const imageSizeBytes = (await Promise.all(
+    allImages.map(async asset => {
+      try {
+        const stat = await RNFS.stat(asset.uri.replace('file://', ''));
+        return Number(stat.size) || 0;
+      } catch { return 0; }
+    })
+  )).reduce((a, b) => a + b, 0);
+
+const totalImagesSize = imageSizeBytes;
+const totalVideosSize = videoSizeBytes;
   const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize + musicSize;
   const otherBytes = Math.max(0, (cache.storageInfo?.usedBytes ?? 0) - knownBytes);
 
@@ -402,7 +416,7 @@ async function doLoad(): Promise<void> {
     downloads: formatSize(downloadsSize),
     documents: formatSize(documentsSize + documentsInDownloadSize + appDocSize),
     music: formatSize(musicSize),
-    dcim: formatSize(dcimImagesSize + dcimVideosSize),
+    dcim: formatSize(0),
     other: formatSize(otherBytes),
   };
 
