@@ -988,10 +988,12 @@ export default function BrowseScreen() {
                       </TouchableOpacity>
                     )}
                     <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
-                      <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
-                    </TouchableOpacity>
+                    {!selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
+                        <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
                       <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
                       <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>

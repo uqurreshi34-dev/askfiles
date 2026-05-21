@@ -18,10 +18,9 @@ module.exports = function withUploadService(config) {
     if (!alreadyAdded) {
       application.service.push({
         $: {
-          'android:name': 'androidx.work.impl.foreground.SystemForegroundService',
+          'android:name': 'expo.modules.uploadservice.UploadForegroundService',
           'android:foregroundServiceType': 'dataSync',
-          'android:process': ':main',
-          'tools:node': 'merge',
+          'android:exported': 'false',
         },
       });
     }
