@@ -378,11 +378,12 @@ async function doLoad(): Promise<void> {
   const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.3gp', '.m4v', '.ts', '.wmv', '.flv'];
 
   const [
-    downloadsSize, documentsSize, musicSize, documentsInDownloadSize] =
+    downloadsSize, documentsSize, musicSize, dcimSize, documentsInDownloadSize] =
     await Promise.all([
       getFolderSize('file:///storage/emulated/0/Download/'),
       getFolderSize('file:///storage/emulated/0/Documents/'),
       getFolderSize('file:///storage/emulated/0/Music/'),
+      getFolderSize('file:///storage/emulated/0/DCIM/'),
       getFolderSizeByExtension('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
     ]);
 
@@ -416,7 +417,7 @@ const totalVideosSize = videoSizeBytes;
     downloads: formatSize(downloadsSize),
     documents: formatSize(documentsSize + documentsInDownloadSize + appDocSize),
     music: formatSize(musicSize),
-    dcim: formatSize(0),
+    dcim: formatSize(dcimSize),
     other: formatSize(otherBytes),
   };
 
