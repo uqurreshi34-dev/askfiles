@@ -681,6 +681,21 @@ export default function BrowseScreen() {
   }
 
   function renderItem({ item }: { item: FileItem }) {
+    if (item.isDirectory && folderCounts[item.uri] === undefined) {
+      const folderPath = toPath(item.uri);
+      if (!folderPath.includes('/Android/data')) {
+        RNFS.readDir(folderPath)
+          .then(contents => {
+            const count = contents.filter((f: { name: string }) => !f.name.startsWith('.')).length;
+            setFolderCounts(prev => {
+              const updated = { ...prev, [item.uri]: count };
+              Object.assign(folderCountsStore, updated);
+              return updated;
+            });
+          })
+          .catch(() => {});
+      }
+    }
     const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
     const ext = item.isDirectory ? null : (item.name.split('.').pop()?.toUpperCase() ?? '?');
     const isSelected = selectedUris.has(item.uri);
