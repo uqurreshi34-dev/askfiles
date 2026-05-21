@@ -73,6 +73,13 @@ export function useSearch() {
     try {
       const found: SearchResult[] = [];
       const searchDirs = await getSearchDirs();
+      // Check if any root folder name matches the query
+      for (const dir of searchDirs) {
+        const folderName = dir.replace(/\/$/, '').split('/').pop() ?? '';
+        if (folderName.toLowerCase().includes(query.toLowerCase())) {
+          found.push({ name: folderName, uri: dir, isDirectory: true });
+        }
+      }
       for (const dir of searchDirs) {
         await searchDir(dir, query, found);
       }
