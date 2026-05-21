@@ -166,6 +166,20 @@ export default function BrowseScreen() {
       readDirectory(toPath(path)).then(fileItems => {
         dirCacheStore[path] = fileItems;
         setItems(fileItems);
+        fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
+          const folderPath = toPath(folder.uri);
+          if (folderPath.includes('/Android/data')) return;
+          RNFS.readDir(folderPath)
+            .then(contents => {
+              const count = contents.filter((f: { name: string }) => !f.name.startsWith('.')).length;
+              setFolderCounts(prev => {
+                const updated = { ...prev, [folder.uri]: count };
+                Object.assign(folderCountsStore, updated);
+                return updated;
+              });
+            })
+            .catch(() => {});
+        });
       }).catch(() => {});
       return;
     }
@@ -615,9 +629,10 @@ export default function BrowseScreen() {
           if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
         } catch {}
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
-        const destName = (() => { try { return decodeURIComponent(destFolder.split('/').filter(Boolean).pop() ?? 'Folder'); } catch { return destFolder.split('/').filter(Boolean).pop() ?? 'Folder'; } })();
+        const isRoot = destFolder === ROOT_PATH;
+        const destName = isRoot ? 'Storage' : (() => { try { return decodeURIComponent(destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'); } catch { return destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'; } })();
         setCurrentPath(destFolder);
-        setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }, { name: destName, path: destFolder }]);
+        setBreadcrumbs(isRoot ? [{ name: 'Storage', path: ROOT_PATH }] : [{ name: 'Storage', path: ROOT_PATH }, { name: destName, path: destFolder }]);
         await loadDirectory(destFolder);
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
