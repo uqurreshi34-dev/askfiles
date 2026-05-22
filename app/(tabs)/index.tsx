@@ -1,12 +1,11 @@
 import { useCallback, useState, useEffect } from 'react';
-import appIcon from '@/assets/icon.png';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions, AppState, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStorage, pluralise } from '@/hooks/useStorage';
-import { useRecents, timeAgo } from '@/hooks/useRecents';
+import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
@@ -396,55 +395,83 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
 
-        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Recent</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8 }}>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
+          {recents.length > 0 && (
+            <TouchableOpacity onPress={async () => { await clearRecents(); reload(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 12, color: colors.blue }}>Clear all</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.recentsList}>
           {recents.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent files — open something from Browse</Text>
           ) : (
-            recents.map(file => {
-              const color = getFileColor(file.name);
-              const ext = file.name.split('.').pop()?.toUpperCase() ?? '?';
-              return (
-                <TouchableOpacity
-                  key={file.uri}
-                  style={[styles.recentRow, { borderBottomColor: colors.border }]}
-                  onPress={async () => {
-                    setOpeningUri(file.uri);
-                    const mime = getMimeType(file.name);
-                    try {
-                      const filePath = toPath(file.uri);
-                      await openFileNative(filePath, mime);
-                    } catch (e) {
-                      try {
-                        const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-                        await RNFS.copyFile(toPath(file.uri), cachePath);
-                        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-                        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-                          data: contentUri, flags: 1, type: mime,
-                        });
-                      } catch (e2) {}
-                    }
-                    setOpeningUri(null);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.recentIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
-                    {isImageFile(file.name) ? (
-                      <Image source={{ uri: file.uri }} style={styles.recentThumb} resizeMode="cover" />
-                    ) : isVideoFile(file.name) ? (
-                      <VideoThumb uri={file.uri} style={styles.recentThumb} />
-                    ) : (
-                      <Text style={[styles.recentExt, { color }]}>{ext.slice(0, 4)}</Text>
-                    )}
-                  </View>
-                  <View style={styles.recentInfo}>
-                    <Text style={[styles.recentName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
-                    <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {timeAgo(file.openedAt)}</Text>
-                  </View>
-                  {openingUri === file.uri && <ActivityIndicator size="small" color={colors.blue} />}
-                </TouchableOpacity>
-              );
-            })
+            (() => {
+              const groups = ['Today', 'Yesterday', 'This week', 'Older'];
+              const grouped = groups.reduce((acc, g) => {
+                acc[g] = recents.filter(f => getDateGroup(f.openedAt) === g);
+                return acc;
+              }, {} as Record<string, typeof recents>);
+              return groups.flatMap(group => {
+                const files = grouped[group];
+                if (!files.length) return [];
+                return [
+                  <Text key={`header-${group}`} style={{ fontSize: 11, fontWeight: '500', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, paddingBottom: 4, paddingTop: group === 'Today' ? 0 : 8 }}>
+                    {group}
+                  </Text>,
+                  ...files.map(file => {
+                    const color = getFileColor(file.name);
+                    const ext = file.name.split('.').pop()?.toUpperCase() ?? '?';
+                    const locationRaw = file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).pop() ?? 'Storage';
+                    const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
+                    return (
+                      <TouchableOpacity
+                        key={file.uri}
+                        style={[styles.recentRow, { borderBottomColor: colors.border }]}
+                        onPress={async () => {
+                          setOpeningUri(file.uri);
+                          const mime = getMimeType(file.name);
+                          try {
+                            await openFileNative(toPath(file.uri), mime);
+                          } catch (e) {
+                            try {
+                              const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
+                              await RNFS.copyFile(toPath(file.uri), cachePath);
+                              const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                              await IntentLauncher.startActivityAsync('android.intent.action.VIEW', { data: contentUri, flags: 1, type: mime });
+                            } catch {}
+                          }
+                          setOpeningUri(null);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.recentIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
+                          {isImageFile(file.name) ? (
+                            <Image source={{ uri: file.uri }} style={styles.recentThumb} resizeMode="cover" />
+                          ) : isVideoFile(file.name) ? (
+                            <VideoThumb uri={file.uri} style={styles.recentThumb} />
+                          ) : (
+                            <Text style={[styles.recentExt, { color }]}>{ext.slice(0, 4)}</Text>
+                          )}
+                        </View>
+                        <View style={styles.recentInfo}>
+                          <Text style={[styles.recentName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
+                          <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {timeAgo(file.openedAt)} · {location}</Text>
+                        </View>
+                        {openingUri === file.uri ? (
+                          <ActivityIndicator size="small" color={colors.blue} />
+                        ) : (
+                          <TouchableOpacity onPress={async () => { await removeRecent(file.uri); reload(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ padding: 4 }}>
+                            <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                          </TouchableOpacity>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })
+                ];
+              });
+            })()
           )}
         </View>
 

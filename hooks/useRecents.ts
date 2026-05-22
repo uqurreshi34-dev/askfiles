@@ -3,12 +3,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 
 const RECENTS_KEY = 'askfiles_recents';
-const MAX_RECENTS = 10;
+const MAX_RECENTS = 20;
 
 export interface RecentFile {
   name: string;
   uri: string;
   openedAt: number;
+}
+
+async function syncWidget(recents: RecentFile[]): Promise<void> {
+  try {
+    const StorageWidgetModule = require('@/modules/storage-widget').default;
+    await StorageWidgetModule.saveRecentsForWidget(JSON.stringify(recents.slice(0, 4)));
+  } catch {}
 }
 
 export async function addRecent(file: RecentFile): Promise<void> {
@@ -23,14 +30,25 @@ export async function addRecent(file: RecentFile): Promise<void> {
     const filtered = existing.filter(f => f.uri !== decodedFile.uri);
     const updated = [decodedFile, ...filtered].slice(0, MAX_RECENTS);
     await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
-    // Sync top 4 to widget via SharedPreferences
-    try {
-      const StorageWidgetModule = require('@/modules/storage-widget').default;
-      const widgetRecents = updated.slice(0, 4);
-      await StorageWidgetModule.saveRecentsForWidget(JSON.stringify(widgetRecents));
-    } catch(e) {}
-  } catch (e) {
-  }
+    await syncWidget(updated);
+  } catch {}
+}
+
+export async function removeRecent(uri: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(RECENTS_KEY);
+    const existing: RecentFile[] = raw ? JSON.parse(raw) : [];
+    const updated = existing.filter(f => f.uri !== uri);
+    await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
+    await syncWidget(updated);
+  } catch {}
+}
+
+export async function clearRecents(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify([]));
+    await syncWidget([]);
+  } catch {}
 }
 
 export function useRecents() {
@@ -41,8 +59,6 @@ export function useRecents() {
     try {
       const raw = await AsyncStorage.getItem(RECENTS_KEY);
       const parsed: RecentFile[] = raw ? JSON.parse(raw) : [];
-
-      // Remove ghost entries (files that no longer exist at their URI)
       const valid: RecentFile[] = [];
       const seenNames = new Set<string>();
       for (const file of parsed) {
@@ -52,26 +68,17 @@ export function useRecents() {
             valid.push(file);
             seenNames.add(file.name.toLowerCase());
           }
-        } catch {
-          // skip inaccessible files
-        }
+        } catch {}
       }
-
-      // Persist cleaned list back to storage
       if (valid.length !== parsed.length) {
         await AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(valid));
       }
-
       setRecents(valid);
-    } catch (e) {
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   return { recents, loading, reload: load };
 }
@@ -86,4 +93,16 @@ export function timeAgo(timestamp: number): string {
   if (hours < 24) return `${hours} hr ago`;
   if (days === 1) return 'Yesterday';
   return `${days} days ago`;
+}
+
+export function getDateGroup(timestamp: number): string {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  const weekStart = todayStart - 6 * 86400000;
+  if (timestamp >= todayStart) return 'Today';
+  if (timestamp >= yesterdayStart) return 'Yesterday';
+  if (timestamp >= weekStart) return 'This week';
+  return 'Older';
 }
