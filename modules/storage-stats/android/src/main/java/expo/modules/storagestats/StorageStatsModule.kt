@@ -28,8 +28,11 @@ class StorageStatsModule : Module() {
                     val total = storageStatsManager.getTotalBytes(uuid)
                     val free = storageStatsManager.getFreeBytes(uuid)
                     val used = total - free
+                    val GB = 1_073_741_824L
+                    val sizes = listOf(32L, 64L, 128L, 256L, 512L, 1024L, 2048L).map { it * GB }
+                    val marketedTotal = sizes.firstOrNull { it >= total } ?: total
                     return@AsyncFunction mapOf(
-                        "total" to total.toDouble(),
+                        "total" to marketedTotal.toDouble(),
                         "used" to used.toDouble(),
                         "free" to free.toDouble()
                     )
