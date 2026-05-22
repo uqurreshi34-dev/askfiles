@@ -32,18 +32,14 @@ export function usePro() {
     checkEntitlement();
   }, []);
 
-  // async function checkEntitlement() {
-  //   try {
-  //     const info = await Purchases.getCustomerInfo();
-  //     setIsPro(typeof info.entitlements.active['pro'] !== 'undefined');
-  //   } catch (e) {
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
   async function checkEntitlement() {
-    setIsPro(false); // TEMP: force free user for testing
-    setLoading(false);
+    try {
+      const info = await Purchases.getCustomerInfo();
+      setIsPro(typeof info.entitlements.active['pro'] !== 'undefined');
+    } catch (e) {
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadOfferings() {
