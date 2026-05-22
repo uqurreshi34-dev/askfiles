@@ -55,7 +55,7 @@ export default function CloudScreen() {
 
   if (isPro) {
     return (
-      <SafeAreaView edges={[]} style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.topBar}>
             <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.homeBtn}>
@@ -102,7 +102,7 @@ export default function CloudScreen() {
   }
 
   return (
-    <SafeAreaView edges={[]} style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.homeBtn}>
