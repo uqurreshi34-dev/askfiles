@@ -157,7 +157,7 @@ export default function CloudScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={[styles.legalNote, { color: colors.textDisabled }]}>
+        <Text style={[styles.legalNote, { color: colors.textMuted }]}>
           One-time payment via Google Play. No subscription, no recurring charges.
         </Text>
       </ScrollView>
