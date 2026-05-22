@@ -89,6 +89,7 @@ export default function BrowseScreen() {
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState(ROOT_PATH);
   const [pickerItems, setPickerItems] = useState<FileItem[]>([]);
+  const [pickerFiles, setPickerFiles] = useState<FileItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [vaulting, setVaulting] = useState(false);
@@ -574,12 +575,17 @@ export default function BrowseScreen() {
         .filter(item => item instanceof FileSystem.Directory)
         .map(item => {
           const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
-          const decoded = decodeName(raw);
-          return { name: decoded, uri: item.uri, isDirectory: true };
+          return { name: decodeName(raw), uri: item.uri, isDirectory: true };
         })
         .filter(f => !f.name.startsWith('.'))
         .sort((a, b) => a.name.localeCompare(b.name));
+      const files: FileItem[] = contents
+        .filter(item => item instanceof FileSystem.File)
+        .map(item => ({ name: decodeName(item.name), uri: item.uri, isDirectory: false }))
+        .filter(f => !f.name.startsWith('.'))
+        .sort((a, b) => a.name.localeCompare(b.name));
       setPickerItems(folders);
+      setPickerFiles(files);
     } catch (e) {}
     finally { setPickerLoading(false); }
   }
@@ -1074,27 +1080,35 @@ export default function BrowseScreen() {
           </View>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
-          ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>No folders here</Text></View>
+          ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
+            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>This folder is empty</Text></View>
           ) : (
             <FlatList
-              data={pickerItems}
+              data={[...pickerItems, ...pickerFiles]}
               keyExtractor={item => item.uri}
               contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.row, { borderBottomColor: colors.border }]}
-                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
-                  activeOpacity={0.6}
+                  onPress={() => { if (item.isDirectory) { setPickerPath(item.uri); loadPickerDir(item.uri); } }}
+                  activeOpacity={item.isDirectory ? 0.6 : 1}
                 >
-                  <View style={[styles.fileIcon, { backgroundColor: colors.yellow + '22' }]}>
-                    <Ionicons name="folder" size={22} color={colors.yellow} />
+                  <View style={[styles.fileIcon, { backgroundColor: (item.isDirectory ? colors.yellow : getFileColor(item.name)) + '22' }]}>
+                    {item.isDirectory ? (
+                      <Ionicons name="folder" size={22} color={colors.yellow} />
+                    ) : isImageFile(item.name) ? (
+                      <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                    ) : isVideoFile(item.name) ? (
+                      <VideoThumb uri={item.uri} style={styles.thumbnail} />
+                    ) : (
+                      <Text style={[styles.extLabel, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                    )}
                   </View>
                   <View style={styles.fileInfo}>
-                    <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.fileName, { color: colors.textPrimary}]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  {item.isDirectory && <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />}
                 </TouchableOpacity>
               )}
             />

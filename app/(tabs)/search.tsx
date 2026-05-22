@@ -147,7 +147,8 @@ export default function SearchScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
-  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
+  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
+  const [pickerFiles, setPickerFiles] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [isFav, setIsFav] = useState(false);
@@ -234,11 +235,17 @@ export default function SearchScreen() {
       const contents = dir.list();
       const folders = contents
         .filter((item: any) => item instanceof FileSystem.Directory)
-        .map((item: any) => { const raw = item.uri.split('/').filter(Boolean).pop() ?? ''; let name = raw; try { name = decodeURIComponent(raw); } catch {} return { name, uri: item.uri }; })
+        .map((item: any) => { const raw = item.uri.split('/').filter(Boolean).pop() ?? ''; let name = raw; try { name = decodeURIComponent(raw); } catch {} return { name, uri: item.uri, isDirectory: true }; })
+        .filter((f: any) => !f.name.startsWith('.'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      const files = contents
+        .filter((item: any) => item instanceof FileSystem.File)
+        .map((item: any) => ({ name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(), uri: item.uri, isDirectory: false }))
         .filter((f: any) => !f.name.startsWith('.'))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setPickerItems(folders);
-    } catch { setPickerItems([]); }
+      setPickerFiles(files);
+    } catch { setPickerItems([]); setPickerFiles([]); }
     finally { setPickerLoading(false); }
   }
 
@@ -1090,27 +1097,35 @@ export default function SearchScreen() {
           </Text>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
-          ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.hint, { color: colors.textMuted }]}>No folders here</Text></View>
+          ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
+            <View style={styles.centered}><Text style={[styles.hint, { color: colors.textMuted }]}>This folder is empty</Text></View>
           ) : (
             <FlatList
-              data={pickerItems}
+              data={[...pickerItems, ...pickerFiles]}
               keyExtractor={item => item.uri}
               contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.row, { borderBottomColor: colors.border }]}
-                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
-                  activeOpacity={0.6}
+                  onPress={() => { if (item.isDirectory) { setPickerPath(item.uri); loadPickerDir(item.uri); } }}
+                  activeOpacity={item.isDirectory ? 0.6 : 1}
                 >
-                  <View style={[styles.fileIcon, { backgroundColor: colors.yellow + '22' }]}>
-                    <Ionicons name="folder" size={22} color={colors.yellow} />
+                  <View style={[styles.fileIcon, { backgroundColor: (item.isDirectory ? colors.yellow : getFileColor(item.name)) + '22', overflow: 'hidden' }]}>
+                    {item.isDirectory ? (
+                      <Ionicons name="folder" size={22} color={colors.yellow} />
+                    ) : isImageFile(item.name) ? (
+                      <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                    ) : isVideoFile(item.name) ? (
+                      <VideoThumb uri={item.uri} style={styles.thumbnail} />
+                    ) : (
+                      <Text style={[styles.extLabel, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                    )}
                   </View>
                   <View style={styles.fileInfo}>
                     <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  {item.isDirectory && <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />}
                 </TouchableOpacity>
               )}
             />

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
@@ -154,7 +154,8 @@ export default function CategoryScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'copy' | 'move'>('copy');
   const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
-  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
+  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
+  const [pickerFiles, setPickerFiles] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const pendingItem = useRef<FileItem | null>(null);
   const router = useRouter();
@@ -191,11 +192,18 @@ export default function CategoryScreen() {
         .map((item: any) => ({
           name: (() => { try { return decodeURIComponent(item.uri.split('/').filter(Boolean).pop() ?? ''); } catch { return item.uri.split('/').filter(Boolean).pop() ?? ''; } })(),
           uri: item.uri,
+          isDirectory: true,
         }))
         .filter((f: any) => !f.name.startsWith('.'))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      const files = contents
+        .filter((item: any) => item instanceof FileSystem.File)
+        .map((item: any) => ({ name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(), uri: item.uri, isDirectory: false }))
+        .filter((f: any) => !f.name.startsWith('.'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setPickerItems(folders);
-    } catch { setPickerItems([]); }
+      setPickerFiles(files);
+    } catch { setPickerItems([]); setPickerFiles([]); }
     finally { setPickerLoading(false); }
   }
 
@@ -904,27 +912,35 @@ export default function CategoryScreen() {
           </Text>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
-          ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.empty, { color: colors.textMuted }]}>No folders here</Text></View>
+          ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
+            <View style={styles.centered}><Text style={[styles.empty, { color: colors.textMuted }]}>This folder is empty</Text></View>
           ) : (
             <FlatList
-              data={pickerItems}
+              data={[...pickerItems, ...pickerFiles]}
               keyExtractor={item => item.uri}
               contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.row, { borderBottomColor: colors.border }]}
-                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
-                  activeOpacity={0.6}
+                  onPress={() => { if (item.isDirectory) { setPickerPath(item.uri); loadPickerDir(item.uri); } }}
+                  activeOpacity={item.isDirectory ? 0.6 : 1}
                 >
-                  <View style={[styles.icon, { backgroundColor: colors.yellow + '22' }]}>
-                    <Ionicons name="folder" size={22} color={colors.yellow} />
+                  <View style={[styles.icon, { backgroundColor: (item.isDirectory ? colors.yellow : getFileColor(item.name)) + '22' }]}>
+                    {item.isDirectory ? (
+                      <Ionicons name="folder" size={22} color={colors.yellow} />
+                    ) : isImageFile(item.name) ? (
+                      <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                    ) : isVideoFile(item.name) ? (
+                      <VideoThumb uri={item.uri} style={styles.thumb} />
+                    ) : (
+                      <Text style={[styles.ext, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                    )}
                   </View>
                   <View style={styles.info}>
-                    <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.name, { color: colors.textPrimary}]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  {item.isDirectory && <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />}
                 </TouchableOpacity>
               )}
             />
@@ -1029,7 +1045,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: '500' },
   count: { fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
-  icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12, overflow: 'hidden' },
   thumb: { width: 40, height: 40 },
   ext: { fontSize: 9, fontWeight: '500' },
   info: { flex: 1 },
