@@ -174,6 +174,7 @@ export default function CategoryScreen() {
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [pasting, setPasting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
@@ -291,6 +292,7 @@ export default function CategoryScreen() {
   }
 
   useEffect(() => {
+    setSearchQuery('');
     loadCategory();
     const subscription = addMediaStoreChangeListener(() => {
       if (suppressWatcherRef.current) return;
@@ -590,7 +592,7 @@ export default function CategoryScreen() {
     if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
     if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
     return 0;
-  });
+  }).filter(item => !searchQuery.trim() || item.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -638,6 +640,26 @@ export default function CategoryScreen() {
           ))}
         </View>
       )}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
+            <Ionicons name="search-outline" size={15} color={colors.textMuted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={{ flex: 1, fontSize: 14, color: colors.textPrimary, padding: 0 }}
+              placeholder={`Search ${config.title.toLowerCase()}...`}
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
         {pasting && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
@@ -660,7 +682,7 @@ export default function CategoryScreen() {
           </Text>
           <MediaGridView
             style={{ flex: 1 }}
-            key={`grid-${sortKey}`}
+            key={`grid-${sortKey}-${searchQuery}`}
             uris={filteredItems.map(i => i.uri)}
             selectedUris={Array.from(selectedUris)}
             selectMode={selectMode}
