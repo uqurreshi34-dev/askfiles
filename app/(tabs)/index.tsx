@@ -44,6 +44,7 @@ export default function HomeScreen() {
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -89,6 +90,11 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => {
     setAppLockEnabled(isAppLockEnabled());
   }, []));
+
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const QUICK_ACCESS = [
     { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: colors.blueBg, iconColor: colors.blue, icon: 'image-outline', route: '/category?category=images' },
