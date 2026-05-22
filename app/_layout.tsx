@@ -266,7 +266,7 @@ export default function RootLayout() {
   const showMic = onboardingChecked && !!pathname && !HIDDEN_ON.some(p => pathname.startsWith(p)) && SH > SW;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, paddingTop: insets.top }}>
       {cloudSyncing && (
         <Animated.View style={{
           position: 'absolute',

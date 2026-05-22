@@ -775,7 +775,7 @@ export default function BrowseScreen() {
     : items;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerRow}>
           {breadcrumbs.length > 1 ? (

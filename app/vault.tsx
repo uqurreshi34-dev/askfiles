@@ -446,7 +446,7 @@ export default function VaultScreen() {
   
     if (!isPro) {
       return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -471,7 +471,7 @@ export default function VaultScreen() {
       );
     }
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => {
             if (selectMode) { setSelectMode(false); setSelectedUris(new Set()); setSelectedFilesMap(new Map()); }

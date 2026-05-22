@@ -117,7 +117,7 @@ export default function HomeScreen() {
   if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={dark ? 'light' : 'dark'} />
       <ScrollView showsVerticalScrollIndicator={false}>
 

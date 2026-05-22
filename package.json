@@ -22,6 +22,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.0.1",
     "@react-native-google-signin/google-signin": "^16.1.2",
+    "@shopify/flash-list": "2.0.2",
     "doc-indexer": "file:modules/doc-indexer",
     "expo": "~54.0.34",
     "expo-auth-session": "~7.0.11",

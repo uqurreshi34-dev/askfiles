@@ -18,24 +18,6 @@ export default function LockScreen() {
     tryBiometric();
   }, []);
 
-  // async function tryBiometric() {
-  //   try {
-  //     const [hasHardware, isEnrolled] = await Promise.all([
-  //       LocalAuthentication.hasHardwareAsync(),
-  //       LocalAuthentication.isEnrolledAsync(),
-  //     ]);
-  //     if (!hasHardware || !isEnrolled) return;
-  //     const result = await LocalAuthentication.authenticateAsync({
-  //       promptMessage: 'Unlock AskFiles',
-  //       cancelLabel: 'Use PIN',
-  //       disableDeviceFallback: true,
-  //     });
-  //     if (result.success) {
-  //       router.replace('/(tabs)');
-  //     }
-  //   } catch {}
-  // }
-
   async function tryBiometric() {
     try {
       const result = await showBiometricPrompt('Unlock AskFiles', 'Use your fingerprint or face to unlock');
@@ -95,7 +77,7 @@ export default function LockScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="lock-closed" size={36} color={colors.blue} />

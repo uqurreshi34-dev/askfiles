@@ -159,7 +159,7 @@ export default function SensitiveFilesScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
       <TouchableOpacity 
         onPress={() => !scanning && router.back()} 
