@@ -21,6 +21,9 @@ class StorageStatsModule : Module() {
         AsyncFunction("getStorageStats") {
             val context = appContext.reactContext ?: return@AsyncFunction mapOf("error" to "No context")
 
+            val GB = 1_073_741_824L
+            val sizes = listOf(32L, 64L, 128L, 256L, 512L, 1024L, 2048L).map { it * GB }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 try {
                     val storageStatsManager = context.getSystemService(Context.STORAGE_STATS_SERVICE) as StorageStatsManager
@@ -28,9 +31,7 @@ class StorageStatsModule : Module() {
                     val total = storageStatsManager.getTotalBytes(uuid)
                     val free = storageStatsManager.getFreeBytes(uuid)
                     val used = total - free
-                    val GB = 1_073_741_824L
-                    val sizes = listOf(32L, 64L, 128L, 256L, 512L, 1024L, 2048L).map { it * GB }
-                    val marketedTotal = sizes.firstOrNull { it >= total } ?: total
+                    val marketedTotal = sizes.minByOrNull { kotlin.math.abs(it - total) } ?: total
                     return@AsyncFunction mapOf(
                         "total" to marketedTotal.toDouble(),
                         "used" to used.toDouble(),
@@ -47,9 +48,7 @@ class StorageStatsModule : Module() {
             val rawTotal = extStat.blockCountLong * extStat.blockSizeLong
             val free = extStat.availableBlocksLong * extStat.blockSizeLong
             val used = rawTotal - free
-            val GB = 1_073_741_824L
-            val sizes = listOf(32L, 64L, 128L, 256L, 512L, 1024L, 2048L).map { it * GB }
-            val marketedTotal = sizes.firstOrNull { it >= rawTotal } ?: rawTotal
+            val marketedTotal = sizes.minByOrNull { kotlin.math.abs(it - rawTotal) } ?: rawTotal
             mapOf(
                 "total" to marketedTotal.toDouble(),
                 "used" to used.toDouble(),
