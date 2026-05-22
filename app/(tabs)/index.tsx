@@ -68,7 +68,7 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => {
     reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
-    reloadCounts();  // fresh card counts
+    // reloadCounts();  // fresh card counts
     reloadTrash();   // fresh trash count
     isStorageManager().then(setHasAllFilesAccess);
   }, [reload, reloadCounts]));

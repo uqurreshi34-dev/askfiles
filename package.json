@@ -48,6 +48,7 @@
     "expo-web-browser": "~15.0.11",
     "file-reader": "file:modules/file-reader",
     "file-watcher": "file:modules/file-watcher",
+    "media-store": "file:modules/media-store",
     "jszip": "^3.10.1",
     "media-grid": "file:modules/media-grid",
     "react": "19.1.0",

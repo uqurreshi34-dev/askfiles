@@ -22,6 +22,8 @@ import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { queryDocuments, queryDownloads } from 'media-store';
+import { useStorage } from '@/hooks/useStorage';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -377,30 +379,11 @@ export default function CategoryScreen() {
           }
         }
       } else if (category === 'downloads') {
-        const dlItems = await scanDirForDownloads('file:///storage/emulated/0/Download/');
-        setItems(dlItems.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')));
+        const dlItems = await queryDownloads();
+        setItems(dlItems.sort((a, b) => a.name.localeCompare(b.name)));
       } else if (category === 'documents') {
-        const docPaths = [
-          'file:///storage/emulated/0/Documents/',
-          'file:///storage/emulated/0/Download/',
-          'file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-          'file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/',
-          'file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/',
-        ];
-        const STANDARD_ROOT = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-        try {
-          const rootItems = await RNFS.readDir('/storage/emulated/0/');
-          for (const item of rootItems) {
-            if (!item.isDirectory()) continue;
-            if (item.name.startsWith('.')) continue;
-            if (STANDARD_ROOT.includes(item.name)) continue;
-            docPaths.push(`file://${item.path}/`);
-          }
-        } catch {}
-        const results = await Promise.all(docPaths.map(p => scanDirForDocs(p)));
-        const all = results.flat();
-        const unique = all.filter((f, i, arr) => arr.findIndex(x => x.uri === f.uri) === i);
-        setItems(unique.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')));
+        const docItems = await queryDocuments();
+        setItems(docItems.sort((a, b) => a.name.localeCompare(b.name)));
       }
     } catch (e) {
     } finally {

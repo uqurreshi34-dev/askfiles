@@ -7,6 +7,8 @@ import RNFS from 'react-native-fs';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queryDocuments, queryDownloads } from 'media-store';
+import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 
 interface StorageInfo {
   totalBytes: number;
@@ -497,26 +499,12 @@ async function doLoadCounts(): Promise<void> {
   cache.fileCounts.images = allImages.length;
   cache.fileCounts.videos = allVideos.length;
 
-  const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-  let extraDocCount = 0;
-  try {
-    const rootItems = await RNFS.readDir('/storage/emulated/0/');
-    for (const item of rootItems) {
-      if (!item.isDirectory() || item.name.startsWith('.') || STANDARD_ROOT_DIRS.includes(item.name)) continue;
-      extraDocCount += await countFilesInDir(`file://${item.path}/`, DOCUMENT_EXTENSIONS);
-    }
-  } catch {}
-
-  const [docCount, dlCount] = await Promise.all([
-    Promise.all([
-      countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Android/media/org.telegram.messenger/Telegram/Telegram Documents/', DOCUMENT_EXTENSIONS),
-    ]).then(counts => counts.reduce((a, b) => a + b, 0) + extraDocCount),
-    countFilesInDir('file:///storage/emulated/0/Download/'),
+  const [docItems, dlItems] = await Promise.all([
+    queryDocuments(),
+    queryDownloads(),
   ]);
+  const docCount = docItems.length;
+  const dlCount = dlItems.length;
 
   cache.fileCounts.documents = docCount;
   cache.fileCounts.downloads = dlCount;
@@ -560,6 +548,15 @@ export function useStorage() {
       }
     });
     return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    const subscription = addMediaStoreChangeListener(() => {
+      if (cache.loaded) {
+        doLoadCounts().then(() => setTick(t => t + 1));
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   const silentReload = useCallback(async () => {
