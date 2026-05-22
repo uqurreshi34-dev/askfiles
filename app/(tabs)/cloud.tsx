@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, marginBottom: -8 },
   homeBtn: { width: 40, height: 40, justifyContent: 'center' },
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 28 },
-  iconWrap: { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  iconWrap: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   title: { fontSize: 24, fontWeight: '600', letterSpacing: -0.5 },
   subtitle: { fontSize: 14, marginTop: 6, textAlign: 'center', lineHeight: 20 },
   featuresList: { borderRadius: 16, paddingVertical: 8, paddingHorizontal: 16, marginBottom: 24 },

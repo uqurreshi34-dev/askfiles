@@ -183,7 +183,7 @@ export default function LargeFilesScreen() {
   }
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
       <TouchableOpacity 
         onPress={() => !scanning && router.back()} 

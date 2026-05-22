@@ -121,7 +121,7 @@ export default function StorageBreakdownScreen() {
             })}
           </View>
 
-          <Text style={[styles.note, { color: colors.textDisabled }]}>Sizes shown are for files you can see and manage in AskFiles.</Text>
+          <Text style={[styles.note, { color: colors.textMuted }]}>Sizes shown are for files you can see and manage in AskFiles.</Text>
         </ScrollView>
       )}
     </SafeAreaView>

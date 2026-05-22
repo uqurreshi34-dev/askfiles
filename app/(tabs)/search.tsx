@@ -586,7 +586,10 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center' }]}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)')} style={{ width: 40, height: 40, justifyContent: 'center', marginRight: 8 }}>
+          <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Search</Text>
       </View>
       {pasting && (
@@ -1148,7 +1151,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  title: { fontSize: 26, fontWeight: '500', letterSpacing: -0.5 },
+  title: { fontSize: 20, fontWeight: '500', letterSpacing: -0.5 },
   modeToggle: { flexDirection: 'row', marginHorizontal: 16, marginVertical: 12, borderRadius: 10, padding: 4 },
   modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8 },
   modeBtnActive: {},

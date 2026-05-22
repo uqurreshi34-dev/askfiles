@@ -1184,7 +1184,7 @@ const styles = StyleSheet.create({
   pathSegment: { fontSize: 12 },
   pathSegmentActive: { color: '#2E7D32', fontWeight: '600' },
   backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  title: { flex: 1, fontSize: 22, fontWeight: '500', letterSpacing: -0.5, textAlign: 'center' },
+  title: { flex: 1, fontSize: 20, fontWeight: '500', letterSpacing: -0.5, textAlign: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14 },
   listContent: { paddingHorizontal: 16 },

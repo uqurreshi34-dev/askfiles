@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
+import appIcon from '@/assets/icon.png';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions, AppState, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -122,7 +123,15 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
       <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 30, height: 30, marginRight: 8, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="folder" size={30} color="#F5B731" />
+            <View style={{ position: 'absolute', top: 14, backgroundColor: '#3A7FD4', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 0.5 }}>
+              <Text style={{ fontSize: 7, fontWeight: '700', color: '#fff' }}>AI</Text>
+            </View>
+          </View>
           <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
+        </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <TouchableOpacity
               style={styles.settingsBtn}
@@ -447,7 +456,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
-  appName: { fontSize: 26, fontWeight: '500', letterSpacing: -0.5 },
+  appName: { fontSize: 20, fontWeight: '600', letterSpacing: -0.5 },
   settingsBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 12 },
   searchText: { fontSize: 14 },
