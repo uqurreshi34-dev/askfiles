@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 import { useTheme } from '@/hooks/useTheme';
+import { useCallback } from 'react';
 
 interface Category {
   label: string;
@@ -26,7 +27,7 @@ function parseSize(readable: string): number {
 export default function StorageBreakdownScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { storageInfo, folderSizes, loading } = useStorage();
+  const { storageInfo, folderSizes, loading, silentReload } = useStorage();
 
   const categories: Category[] = [
     { label: 'Images',    size: folderSizes.pictures, bytes: parseSize(folderSizes.pictures), color: '#185FA5', icon: 'image-outline',      route: '/category?category=images' },
@@ -40,6 +41,10 @@ export default function StorageBreakdownScreen() {
   const totalBytes = storageInfo?.totalBytes ?? 1;
   const freeBytes = storageInfo?.freeBytes ?? 0;
   const usedBytes = storageInfo?.usedBytes ?? 0;
+
+  useFocusEffect(useCallback(() => {
+    silentReload();
+  }, []));
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>

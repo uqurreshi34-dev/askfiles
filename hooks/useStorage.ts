@@ -562,6 +562,12 @@ export function useStorage() {
     return () => sub.remove();
   }, []);
 
+  const silentReload = useCallback(async () => {
+    loadingPromise = null;
+    await doLoad();
+    setTick(t => t + 1);
+  }, []);
+
   const reload = useCallback(async () => {
     cache.loaded = false;
     loadingPromise = null;
@@ -593,5 +599,6 @@ export function useStorage() {
     loading,
     reload,
     reloadCounts,
+    silentReload,
   };
 }
