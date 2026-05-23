@@ -167,7 +167,7 @@ export default function CategoryScreen() {
   type SortKey = 'name' | 'size' | 'date';
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [showSortSheet, setShowSortSheet] = useState(false);
-  const [gridView, setGridView] = useState(false);
+  const [gridView, setGridView] = useState(true);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
@@ -655,6 +655,7 @@ export default function CategoryScreen() {
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={config.color} />
+          <Text style={[styles.empty, { color: colors.textMuted, marginTop: 8 }]}>Loading...</Text>
         </View>
       ) : filteredItems.length === 0 ? (
         <View style={styles.centered}>
