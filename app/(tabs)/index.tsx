@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
 import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
-import { useFavourites } from '@/hooks/useFavourites';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
