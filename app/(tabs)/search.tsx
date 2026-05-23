@@ -548,17 +548,17 @@ export default function SearchScreen() {
     if (indexing) return;
     setIndexing(true);
     try {
-      const DOC_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.txt', '.csv', '.rtf'];
-      const docPaths = [
-        'file:///storage/emulated/0/Documents/',
-        'file:///storage/emulated/0/Download/',
-      ];
-      const files: { uri: string; name: string }[] = [];
-      const remaining = { count: 200 };
-      for (const base of docPaths) {
-        await scanDir(base, DOC_EXTENSIONS, files, remaining);
+      const { queryDocuments } = require('media-store');
+      const allDocs = await queryDocuments();
+      const unindexed: { uri: string; name: string }[] = [];
+      for (const doc of allDocs) {
+        if (unindexed.length >= 200) break;
+        const alreadyIndexed = await DocIndexer.isIndexed(doc.uri);
+        if (!alreadyIndexed) {
+          unindexed.push({ uri: doc.uri, name: doc.name });
+        }
       }
-      await DocIndexer.indexFiles(files);
+      await DocIndexer.indexFiles(unindexed);
     } catch {} finally {
       setIndexing(false);
       try {

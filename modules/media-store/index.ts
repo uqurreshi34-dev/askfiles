@@ -15,3 +15,15 @@ export async function queryDocuments(): Promise<MediaFile[]> {
 export async function queryDownloads(): Promise<MediaFile[]> {
   return MediaStore.queryDownloads();
 }
+
+export async function queryImageSize(): Promise<number> {
+  return MediaStore.queryImageSize();
+}
+
+export async function queryVideoSize(): Promise<number> {
+  return MediaStore.queryVideoSize();
+}
+
+export async function queryFolderSize(folderPath: string): Promise<number> {
+  return MediaStore.queryFolderSize(folderPath);
+}

@@ -40,9 +40,10 @@ async function searchDir(path: string, query: string, results: SearchResult[]): 
     const dir = new FileSystem.Directory(path);
     const contents = dir.list();
     for (const item of contents) {
-      const name = item instanceof FileSystem.File
+      const rawName = item instanceof FileSystem.File
         ? item.name
         : item.uri.split('/').filter(Boolean).pop() ?? '';
+      const name = (() => { try { return decodeURIComponent(rawName); } catch { return rawName; } })();
       if (name.startsWith('.')) continue;
       if (name.toLowerCase().includes(query.toLowerCase())) {
         results.push({
@@ -75,7 +76,8 @@ export function useSearch() {
       const searchDirs = await getSearchDirs();
       // Check if any root folder name matches the query
       for (const dir of searchDirs) {
-        const folderName = dir.replace(/\/$/, '').split('/').pop() ?? '';
+        const rawFolder = dir.replace(/\/$/, '').split('/').pop() ?? '';
+        const folderName = (() => { try { return decodeURIComponent(rawFolder); } catch { return rawFolder; } })();
         if (folderName.toLowerCase().includes(query.toLowerCase())) {
           found.push({ name: folderName, uri: dir, isDirectory: true });
         }

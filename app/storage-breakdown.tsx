@@ -34,7 +34,6 @@ export default function StorageBreakdownScreen() {
     { label: 'Videos',    size: folderSizes.videos,   bytes: parseSize(folderSizes.videos),   color: '#993C1D', icon: 'videocam-outline',    route: '/category?category=videos' },
     { label: 'Downloads', size: folderSizes.downloads,bytes: parseSize(folderSizes.downloads),color: '#3B6D11', icon: 'download-outline',    route: '/category?category=downloads' },
     { label: 'Documents', size: folderSizes.documents,bytes: parseSize(folderSizes.documents),color: '#534AB7', icon: 'document-outline',    route: '/category?category=documents' },
-    { label: 'Music', size: folderSizes.music, bytes: parseSize(folderSizes.music), color: '#854F0B', icon: 'musical-notes-outline', route: '/(tabs)/browse?initialPath=file:///storage/emulated/0/Music/' },
     { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: null },
   ].sort((a, b) => b.bytes - a.bytes);
 
@@ -42,9 +41,9 @@ export default function StorageBreakdownScreen() {
   const freeBytes = storageInfo?.freeBytes ?? 0;
   const usedBytes = storageInfo?.usedBytes ?? 0;
 
-  useFocusEffect(useCallback(() => {
-    silentReload();
-  }, []));
+  // useFocusEffect(useCallback(() => {
+  //   silentReload();
+  // }, []));
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>

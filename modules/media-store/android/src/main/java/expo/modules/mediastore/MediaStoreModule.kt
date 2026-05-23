@@ -111,5 +111,58 @@ class MediaStoreModule : Module() {
 
       results
     }
+
+      AsyncFunction("queryImageSize") {
+        val context = appContext.reactContext ?: return@AsyncFunction 0L
+        var totalSize = 0L
+        try {
+            val uri = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            val projection = arrayOf(android.provider.MediaStore.Images.Media.SIZE)
+            val cursor = context.contentResolver.query(uri, projection, null, null, null)
+            cursor?.use {
+                val sizeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.SIZE)
+                while (it.moveToNext()) {
+                    totalSize += it.getLong(sizeCol)
+                }
+            }
+        } catch (e: Exception) {}
+        totalSize.toDouble()
+    }
+
+    AsyncFunction("queryVideoSize") {
+        val context = appContext.reactContext ?: return@AsyncFunction 0L
+        var totalSize = 0L
+        try {
+            val uri = android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            val projection = arrayOf(android.provider.MediaStore.Video.Media.SIZE)
+            val cursor = context.contentResolver.query(uri, projection, null, null, null)
+            cursor?.use {
+                val sizeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.SIZE)
+                while (it.moveToNext()) {
+                    totalSize += it.getLong(sizeCol)
+                }
+            }
+        } catch (e: Exception) {}
+        totalSize.toDouble()
+    }
+
+    AsyncFunction("queryFolderSize") { folderPath: String ->
+      val context = appContext.reactContext ?: return@AsyncFunction 0.0
+      var totalSize = 0L
+      try {
+          val uri = android.provider.MediaStore.Files.getContentUri("external")
+          val projection = arrayOf(android.provider.MediaStore.Files.FileColumns.SIZE)
+          val selection = "${android.provider.MediaStore.Files.FileColumns.DATA} LIKE ?"
+          val selectionArgs = arrayOf("$folderPath%")
+          val cursor = context.contentResolver.query(uri, projection, selection, selectionArgs, null)
+          cursor?.use {
+              val sizeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.SIZE)
+              while (it.moveToNext()) {
+                  totalSize += it.getLong(sizeCol)
+              }
+          }
+      } catch (e: Exception) {}
+      totalSize.toDouble()
+  }
   }
 }

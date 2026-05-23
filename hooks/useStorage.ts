@@ -7,7 +7,7 @@ import RNFS from 'react-native-fs';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryDocuments, queryDownloads } from 'media-store';
+import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize } from 'media-store';
 
 interface StorageInfo {
   totalBytes: number;
@@ -30,7 +30,6 @@ export interface FolderSizes {
   videos: string;
   downloads: string;
   documents: string;
-  music: string;
   dcim: string;
   other: string;
 }
@@ -66,7 +65,6 @@ const cache: StorageCache = {
     videos: '0 MB',
     downloads: '0 MB',
     documents: '0 MB',
-    music: '0 MB',
     dcim: '0 MB',
     other: '0 MB',
   },
@@ -83,6 +81,7 @@ const cache: StorageCache = {
 
 let loadingPromise: Promise<void> | null = null;
 let appStateHandling = false;
+let onPhase1Complete: (() => void) | null = null;
 
 export function pluralise(count: number, word: string): string {
   return `${count.toLocaleString()} ${word}${count === 1 ? '' : 's'}`;
@@ -236,28 +235,26 @@ async function getAllFilenames(paths: string[], extensions?: string[]): Promise<
   return names;
 }
 
-async function getAllAssets(mediaType: 'photo' | 'video'): Promise<MediaLibrary.Asset[]> {
-  const assets: MediaLibrary.Asset[] = [];
-  let after: string | undefined = undefined;
-
-  for (let page = 0; page < 50; page++) {
-    const result = await MediaLibrary.getAssetsAsync({
-      mediaType,
-      first: 100,
-      after,
-    });
-    for (const asset of result.assets) {
-      assets.push(asset);
-    }
-    if (!result.hasNextPage || !result.endCursor) break;
-    after = result.endCursor;
+async function getAllAssets(mediaType: 'photo' | 'video'): Promise<{
+  count: number;
+  recentNames: string[];
+  screenshotCount: number;
+}> {
+  // First page only for recent filenames
+  const first = await MediaLibrary.getAssetsAsync({ mediaType, first: 500 });
+  
+  const recentNames: string[] = [];
+  let screenshotCount = 0;
+  for (const asset of first.assets) {
+    recentNames.push(asset.filename);
+    if (mediaType === 'photo' && asset.filename.toLowerCase().startsWith('screenshot')) screenshotCount++;
   }
 
-  return assets.sort((a, b) => {
-    const aTime = a.creationTime > 0 ? a.creationTime : a.modificationTime;
-    const bTime = b.creationTime > 0 ? b.creationTime : b.modificationTime;
-    return bTime - aTime;
-  });
+  // Get total count separately — instant, no pagination
+  const countResult = await MediaLibrary.getAssetsAsync({ mediaType, first: 1 });
+  const count = countResult.totalCount ?? first.assets.length;
+
+  return { count, recentNames, screenshotCount };
 }
 
 async function requestManageStoragePermission(): Promise<void> {
@@ -290,12 +287,11 @@ async function doLoad(): Promise<void> {
     await AsyncStorage.setItem('askfiles-asked-manage-storage', 'true');
     await requestManageStoragePermission();
   }
-
-  const stats = await getStorageStats();
+// Start storage stats — slow on cold start, don't block
+const statsPromise = getStorageStats().then(stats => {
   const total = stats.total;
   const free = stats.free;
   const used = (stats as any).used ?? (total - free);
-
   cache.storageInfo = {
     totalBytes: total,
     freeBytes: free,
@@ -304,96 +300,73 @@ async function doLoad(): Promise<void> {
     totalReadable: formatSize(total),
     usedReadable: formatSize(used),
   };
+}).catch(() => {});
 
-  const [allImages, allVideos] = await Promise.all([
-    getAllAssets('photo'),
-    getAllAssets('video'),
+cache.mediaContext = {
+  recentImages: [],
+  recentVideos: [],
+  screenshotCount: 0,
+  allDocuments: [],
+  allDownloads: [],
+};
+
+const t3 = Date.now();
+const [downloadsSize, documentsSize, dcimSize, documentsInDownloadSize, totalImagesSize, totalVideosSize] =
+  await Promise.all([
+    queryFolderSize('/storage/emulated/0/Download/'),
+    queryFolderSize('/storage/emulated/0/Documents/'),
+    queryFolderSize('/storage/emulated/0/DCIM/'),
+    queryFolderSize('/storage/emulated/0/Download/'),
+    queryImageSize(),
+    queryVideoSize(),
   ]);
+  console.log('folderSizes:', Date.now() - t3, 'ms');
 
-  const screenshotCount = allImages.filter(a =>
-    a.filename.toLowerCase().startsWith('screenshot')
-  ).length;
+cache.folderSizes = {
+  pictures: formatSize(totalImagesSize),
+  videos: formatSize(totalVideosSize),
+  downloads: formatSize(downloadsSize),
+  documents: formatSize(documentsSize + documentsInDownloadSize),
+  dcim: formatSize(dcimSize),
+  other: '0 MB', // updated after statsPromise resolves
+};
 
-  cache.fileCounts.images = allImages.length;
-  cache.fileCounts.videos = allVideos.length;
+// App is ready — show UI now (~2 seconds)
+cache.loaded = true;
+onPhase1Complete?.();
+onPhase1Complete = null;
 
-  cache.mediaContext = {
-    recentImages: allImages.map(a => a.filename),
-    recentVideos: allVideos.map(a => a.filename),
-    screenshotCount,
-    allDocuments: [],
-    allDownloads: [],
-  };
+// Wait for storage stats then update other size
+statsPromise.then(() => {
+  const usedBytes = cache.storageInfo?.usedBytes ?? 0;
+  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize;
+  cache.folderSizes.other = formatSize(Math.max(0, usedBytes - knownBytes));
+});
 
-  // Dynamically find non-standard root folders (e.g. Samsung My Files)
-  const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-  let extraDocCount = 0;
-  try {
-    const rootItems = await RNFS.readDir('/storage/emulated/0/');
-    for (const item of rootItems) {
-      if (!item.isDirectory()) continue;
-      if (item.name.startsWith('.')) continue;
-      if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
-      extraDocCount += await countFilesInDir(`file://${item.path}/`, DOCUMENT_EXTENSIONS);
-    }
-  } catch {}
+  // ── PHASE 2: Slow filesystem scans — AI context, runs silently ────────────
 
-  const [docItems, dlItems] = await Promise.all([
-    queryDocuments(),
-    queryDownloads(),
-  ]);
-  const docCount = docItems.length;
-  const dlCount = dlItems.length;
+const [imgScan, vidScan] = await Promise.all([
+  getAllAssets('photo'),
+  getAllAssets('video'),
+]);
 
-  cache.fileCounts.documents = docCount;
-  cache.fileCounts.downloads = dlCount;
+const t2 = Date.now();
+const [docItems, dlItems] = await Promise.all([
+  queryDocuments(),
+  queryDownloads(),
+]);
+console.log('queryDocs/downloads:', Date.now() - t2, 'ms');
 
+cache.fileCounts.documents = docItems.length;
+cache.fileCounts.downloads = dlItems.length;
+  cache.fileCounts.images = imgScan.count;
+  cache.fileCounts.videos = vidScan.count;
+  cache.mediaContext.recentImages = imgScan.recentNames;
+  cache.mediaContext.recentVideos = vidScan.recentNames;
+  cache.mediaContext.screenshotCount = imgScan.screenshotCount;
   const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'];
   const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.3gp', '.m4v', '.ts', '.wmv', '.flv'];
-
-  const [
-    downloadsSize, documentsSize, musicSize, dcimSize, documentsInDownloadSize] =
-    await Promise.all([
-      getFolderSize('file:///storage/emulated/0/Download/'),
-      getFolderSize('file:///storage/emulated/0/Documents/'),
-      getFolderSize('file:///storage/emulated/0/Music/'),
-      getFolderSize('file:///storage/emulated/0/DCIM/'),
-      getFolderSizeByExtension('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-    ]);
-
-// Get sizes directly from MediaLibrary assets — matches home card counts exactly
-  const videoSizeBytes = (await Promise.all(
-    allVideos.map(async asset => {
-      try {
-        const stat = await RNFS.stat(asset.uri.replace('file://', ''));
-        return Number(stat.size) || 0;
-      } catch { return 0; }
-    })
-  )).reduce((a, b) => a + b, 0);
-
-  const imageSizeBytes = (await Promise.all(
-    allImages.map(async asset => {
-      try {
-        const stat = await RNFS.stat(asset.uri.replace('file://', ''));
-        return Number(stat.size) || 0;
-      } catch { return 0; }
-    })
-  )).reduce((a, b) => a + b, 0);
-
-const totalImagesSize = imageSizeBytes;
-const totalVideosSize = videoSizeBytes;
-  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize + musicSize;
-  const otherBytes = Math.max(0, (cache.storageInfo?.usedBytes ?? 0) - knownBytes);
-
-  cache.folderSizes = {
-    pictures: formatSize(totalImagesSize),
-    videos: formatSize(totalVideosSize),
-    downloads: formatSize(downloadsSize),
-    documents: formatSize(documentsSize + documentsInDownloadSize),
-    music: formatSize(musicSize),
-    dcim: formatSize(dcimSize),
-    other: formatSize(otherBytes),
-  };
+  const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
 
   const [largestImages, largestVideos, largestDocs, largestDownloads, largestOverall] = await Promise.all([
     getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Pictures/'], IMAGE_EXTS, 5, true),
@@ -442,14 +415,11 @@ const totalVideosSize = videoSizeBytes;
 
   cache.mediaContext.allDocuments = allDocNames;
   cache.mediaContext.allDownloads = allDlNames;
-
-  cache.loaded = true;
 }
 
 function getLoadingPromise(): Promise<void> {
   if (!loadingPromise) {
     loadingPromise = doLoad().catch(e => {
-      console.error('Storage load error:', e);
       loadingPromise = null;
     });
   }
@@ -465,17 +435,18 @@ export function useStorage() {
       setLoading(false);
       return;
     }
-    getLoadingPromise().then(() => {
+    onPhase1Complete = () => {
       setLoading(false);
       setTick(t => t + 1);
-    });
+    };
+    getLoadingPromise();
   }, []);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active' && !cache.loaded && !appStateHandling) {
         appStateHandling = true;
-        loadingPromise = null;
+     
         getLoadingPromise().then(() => {
           setLoading(false);
           setTick(t => t + 1);
