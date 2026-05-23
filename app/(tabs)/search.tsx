@@ -832,7 +832,7 @@ export default function SearchScreen() {
                   <Ionicons name="document-text-outline" size={40} color={colors.textDisabled} />
                   <Text style={[styles.hint, { color: colors.textMuted }]}>Search inside your documents</Text>
                   <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>
-                    {indexCount > 0 ? `${indexCount} file${indexCount !== 1 ? 's' : ''} ready to search` : 'PDFs, Word, Excel and text files'}
+                    {indexCount > 0 ? `${indexCount} file${indexCount !== 1 ? 's' : ''} ready to search - scans up to 200 files per visit` : 'PDFs, Word, Excel and text files'}
                   </Text>
                 </>
               )}
