@@ -473,42 +473,6 @@ const totalVideosSize = videoSizeBytes;
   cache.loaded = true;
 }
 
-async function doLoadCounts(): Promise<void> {
-  if (!cache.loaded) return;
-  
-  const stats = await getStorageStats();
-  const total = stats.total;
-  const free = stats.free;
-  const used = (stats as any).used ?? (total - free);
-  
-  cache.storageInfo = {
-    totalBytes: total,
-    freeBytes: free,
-    usedBytes: used,
-    usedPercent: Math.round((used / total) * 100),
-    totalReadable: formatSize(total),
-    usedReadable: formatSize(used),
-  };
-
-  const [allImages, allVideos] = await Promise.all([
-    getAllAssets('photo'),
-    getAllAssets('video'),
-  ]);
-
-  cache.fileCounts.images = allImages.length;
-  cache.fileCounts.videos = allVideos.length;
-
-  const [docItems, dlItems] = await Promise.all([
-    queryDocuments(),
-    queryDownloads(),
-  ]);
-  const docCount = docItems.length;
-  const dlCount = dlItems.length;
-
-  cache.fileCounts.documents = docCount;
-  cache.fileCounts.downloads = dlCount;
-}
-
 function getLoadingPromise(): Promise<void> {
   if (!loadingPromise) {
     loadingPromise = doLoad().catch(e => {
@@ -549,14 +513,6 @@ export function useStorage() {
     return () => sub.remove();
   }, []);
 
-  useEffect(() => {
-    const subscription = addMediaStoreChangeListener(() => {
-      if (cache.loaded) {
-        doLoadCounts().then(() => setTick(t => t + 1));
-      }
-    });
-    return () => subscription.remove();
-  }, []);
 
   const silentReload = useCallback(async () => {
     loadingPromise = null;
@@ -570,12 +526,6 @@ export function useStorage() {
     setLoading(true);
     await doLoad();
     setLoading(false);
-    setTick(t => t + 1);
-  }, []);
-
-  const reloadCounts = useCallback(async () => {
-    if (!cache.loaded) return;
-    await doLoadCounts();
     setTick(t => t + 1);
   }, []);
 
@@ -594,7 +544,6 @@ export function useStorage() {
     permissionGranted: cache.loaded,
     loading,
     reload,
-    reloadCounts,
     silentReload,
   };
 }

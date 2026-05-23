@@ -4,7 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Lin
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useStorage, pluralise } from '@/hooks/useStorage';
+import { useStorage } from '@/hooks/useStorage';
 import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
 import { useFavourites } from '@/hooks/useFavourites';
@@ -32,7 +32,7 @@ export default function HomeScreen() {
   const { colors, dark, toggleTheme } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
-  const { storageInfo, fileCounts, loading, permissionGranted, reload: reloadStorage, reloadCounts } = useStorage();
+  const { storageInfo, loading, permissionGranted, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const { count: favCount } = useFavourites();
   const router = useRouter();
@@ -68,10 +68,9 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => {
     reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
-    // reloadCounts();  // fresh card counts
     reloadTrash();   // fresh trash count
     isStorageManager().then(setHasAllFilesAccess);
-  }, [reload, reloadCounts]));
+  }, [reload]));
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
@@ -97,12 +96,12 @@ export default function HomeScreen() {
   }, []);
 
   const QUICK_ACCESS = [
-    { id: '1', label: 'Images', count: pluralise(fileCounts.images, 'file'), color: colors.blueBg, iconColor: colors.blue, icon: 'image-outline', route: '/category?category=images' },
-    { id: '2', label: 'Videos', count: pluralise(fileCounts.videos, 'file'), color: colors.redBrownBg, iconColor: colors.redBrown, icon: 'videocam-outline', route: '/category?category=videos' },
-    { id: '3', label: 'Documents', count: pluralise(fileCounts.documents, 'file'), color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
-    { id: '4', label: 'Downloads', count: pluralise(fileCounts.downloads, 'file'), color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
-    { id: '5', label: 'Favourites', count: pluralise(favCount, 'file'), color: colors.favRedBg, iconColor: colors.favRed, icon: 'heart-outline', route: '/favourites' },
-    { id: '6', label: 'Trash', count: trashFiles.length > 0 ? pluralise(trashFiles.length, 'file') : '', color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
+    { id: '1', label: 'Images', color: colors.blueBg, iconColor: colors.blue, icon: 'image-outline', route: '/category?category=images' },
+    { id: '2', label: 'Videos', color: colors.redBrownBg, iconColor: colors.redBrown, icon: 'videocam-outline', route: '/category?category=videos' },
+    { id: '3', label: 'Documents', color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
+    { id: '4', label: 'Downloads', color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
+    { id: '5', label: 'Favourites', color: colors.favRedBg, iconColor: colors.favRed, icon: 'heart-outline', route: '/favourites' },
+    { id: '6', label: 'Trash', color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
   ];
 
   function toPath(uri: string): string {
@@ -316,17 +315,6 @@ export default function HomeScreen() {
             >
               <Ionicons name={item.icon as any} size={24} color={item.iconColor} style={{ marginBottom: 8 }} />
               <Text style={[styles.cardName, { color: colors.textPrimary }]}>{item.label}</Text>
-              {loading || !hasAllFilesAccess ? (
-                <View style={{
-                  height: 12,
-                  width: 48,
-                  borderRadius: 6,
-                  backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-                  marginTop: 2,
-                }} />
-              ) : (
-                <Text style={[styles.cardCount, { color: colors.textSecondary }]}>{item.count}</Text>
-              )}
             </TouchableOpacity>
           ))}
         </View>
