@@ -34,7 +34,6 @@ export default function HomeScreen() {
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
   const { storageInfo, loading, permissionGranted, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
-  const { count: favCount } = useFavourites();
   const router = useRouter();
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
@@ -67,8 +66,7 @@ export default function HomeScreen() {
   }, [isPro]);
 
   useFocusEffect(useCallback(() => {
-    reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizescls
-    reloadTrash();   // fresh trash count
+    reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
     isStorageManager().then(setHasAllFilesAccess);
   }, [reload]));
 
