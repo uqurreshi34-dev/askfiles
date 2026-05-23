@@ -8,7 +8,6 @@ import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryDocuments, queryDownloads } from 'media-store';
-import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 
 interface StorageInfo {
   totalBytes: number;
@@ -339,32 +338,6 @@ async function doLoad(): Promise<void> {
     }
   } catch {}
 
-  // Dynamically scan Android/media/ for any app document folders
-  let appDocCount = 0;
-  let appDocSize = 0;
-  try {
-    const mediaApps = await RNFS.readDir('/storage/emulated/0/Android/media/');
-    for (const app of mediaApps) {
-      if (!app.isDirectory()) continue;
-      try {
-        const appMedia = await RNFS.readDir(app.path);
-        for (const appFolder of appMedia) {
-          if (!appFolder.isDirectory()) continue;
-          try {
-            const mediaFolders = await RNFS.readDir(appFolder.path + '/Media/');
-            for (const mf of mediaFolders) {
-              if (!mf.isDirectory()) continue;
-              if (mf.name.toLowerCase().includes('document')) {
-                appDocCount += await countFilesInDir(`file://${mf.path}/`, DOCUMENT_EXTENSIONS);
-                appDocSize += await getFolderSizeByExtension(`file://${mf.path}/`, DOCUMENT_EXTENSIONS);
-              }
-            }
-          } catch {}
-        }
-      } catch {}
-    }
-  } catch {}
-
   const [docItems, dlItems] = await Promise.all([
     queryDocuments(),
     queryDownloads(),
@@ -416,7 +389,7 @@ const totalVideosSize = videoSizeBytes;
     pictures: formatSize(totalImagesSize),
     videos: formatSize(totalVideosSize),
     downloads: formatSize(downloadsSize),
-    documents: formatSize(documentsSize + documentsInDownloadSize + appDocSize),
+    documents: formatSize(documentsSize + documentsInDownloadSize),
     music: formatSize(musicSize),
     dcim: formatSize(dcimSize),
     other: formatSize(otherBytes),
