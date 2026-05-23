@@ -4,10 +4,8 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Lin
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useStorage } from '@/hooks/useStorage';
 import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
 import { isImageFile } from '@/utils/files';
-import StorageSummaryCard from '@/components/StorageSummaryCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
@@ -31,7 +29,6 @@ export default function HomeScreen() {
   const { colors, dark, toggleTheme } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
-  const { storageInfo, loading, permissionGranted, reload: reloadStorage } = useStorage();
   const { recents, reload } = useRecents();
   const router = useRouter();
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -39,7 +36,7 @@ export default function HomeScreen() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
   const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
-  const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
+  const { files: trashFiles } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -72,16 +69,11 @@ export default function HomeScreen() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') {
-        isStorageManager().then(granted => {
-          setHasAllFilesAccess(granted);
-          if (granted && !hasAllFilesAccess) {
-            reloadStorage();
-          }
-        });
+        isStorageManager().then(setHasAllFilesAccess);
       }
     });
     return () => sub.remove();
-  }, [hasAllFilesAccess, reloadStorage]);
+  }, []);
 
   useFocusEffect(useCallback(() => {
     setAppLockEnabled(isAppLockEnabled());
@@ -168,12 +160,6 @@ export default function HomeScreen() {
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
-              <View style={styles.modalRow}>
-                <Ionicons name="phone-portrait-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
-                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>
-                  Device storage: {Math.round((storageInfo?.totalBytes ?? 0) / 1_073_741_824)} GB
-                </Text>
-              </View>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
 
               <TouchableOpacity style={styles.modalRow} activeOpacity={0.7} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
@@ -315,38 +301,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
-
-        {!loading && !permissionGranted ? (
-          <TouchableOpacity activeOpacity={0.8} style={[styles.permissionCard, { backgroundColor: colors.amberTint }]} onPress={() => Linking.openSettings()}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="warning-outline" size={18} color={colors.amber} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Storage permission needed</Text>
-                <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>Tap to open Settings and grant access</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(tabs)/browse')}>
-            {loading ? (
-              <View style={{ marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 16, backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
-                <View style={{ height: 14, width: 120, borderRadius: 7, backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', marginBottom: 12 }} />
-                <View style={{ height: 4, borderRadius: 2, backgroundColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', marginBottom: 8 }} />
-                <View style={{ height: 10, width: 80, borderRadius: 5, backgroundColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-              </View>
-            ) : (
-              <StorageSummaryCard
-                usedBytes={storageInfo?.usedBytes ?? 0}
-                totalBytes={storageInfo?.totalBytes ?? 0}
-                freeBytes={storageInfo?.freeBytes ?? 0}
-                note="Includes apps and user files"
-                showChevron={true}
-              />
-            )}
-          </TouchableOpacity>
-        )}
-
         <TouchableOpacity activeOpacity={0.8} style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} onPress={() => router.push('/large-files')}>
           <View style={styles.largeFilesLeft}>
             <View style={[styles.largeFilesIcon, { backgroundColor: colors.redBrownTint }]}>
