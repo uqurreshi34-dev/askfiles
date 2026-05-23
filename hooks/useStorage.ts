@@ -365,13 +365,12 @@ async function doLoad(): Promise<void> {
     }
   } catch {}
 
-  const [docCount, dlCount] = await Promise.all([
-    Promise.all([
-      countFilesInDir('file:///storage/emulated/0/Documents/', DOCUMENT_EXTENSIONS),
-      countFilesInDir('file:///storage/emulated/0/Download/', DOCUMENT_EXTENSIONS),
-    ]).then(counts => counts.reduce((a, b) => a + b, 0) + extraDocCount + appDocCount),
-    countFilesInDir('file:///storage/emulated/0/Download/'),
+  const [docItems, dlItems] = await Promise.all([
+    queryDocuments(),
+    queryDownloads(),
   ]);
+  const docCount = docItems.length;
+  const dlCount = dlItems.length;
 
   cache.fileCounts.documents = docCount;
   cache.fileCounts.downloads = dlCount;
