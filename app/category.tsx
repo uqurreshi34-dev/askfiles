@@ -172,6 +172,7 @@ export default function CategoryScreen() {
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
   const [sharing, setSharing] = useState(false);
+  const [vaulting, setVaulting] = useState(false);
   const isMediaCategory = category === 'images' || category === 'videos';
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
@@ -520,9 +521,11 @@ export default function CategoryScreen() {
     Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
+        setVaulting(true);
         for (const file of files) { await addToVault(file.uri, file.name); }
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
         files.forEach(f => DocIndexer.removeFromIndex(f.uri));
+        setVaulting(false);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
       }},
     ]);
@@ -1003,7 +1006,7 @@ export default function CategoryScreen() {
         <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
           <TouchableOpacity
             onPress={handleMultiShare}
-            disabled={sharing}
+            disabled={sharing || vaulting || deleting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
@@ -1011,6 +1014,7 @@ export default function CategoryScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiVault}
+            disabled={sharing || vaulting || deleting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
@@ -1025,6 +1029,7 @@ export default function CategoryScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiDelete}
+            disabled={sharing || vaulting || deleting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />

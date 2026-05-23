@@ -21,7 +21,6 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
 
-
 export default function VaultScreen() {
   const { colors } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
@@ -36,7 +35,8 @@ export default function VaultScreen() {
   const [showSheet, setShowSheet] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
-  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string }[]>([]);
+  const [pickerItems, setPickerItems] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
+  const [pickerFiles, setPickerFiles] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const pendingFile = useRef<VaultFile | null>(null);
   const sheetAnim = useRef(new Animated.Value(400)).current;
@@ -82,20 +82,29 @@ export default function VaultScreen() {
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
-      const dir = new FileSystem.Directory(path.endsWith('/') ? path : path + '/');
-      const contents = dir.list();
-      const folders = contents
-        .filter((item: any) => item instanceof FileSystem.Directory)
-        .map((item: any) => {
-          const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
-          let name = raw;
-          try { name = decodeURIComponent(raw); } catch {}
-          return { name, uri: item.uri };
-        })
+      const rawPath = path.replace('file://', '').replace(/\/$/, '');
+      const contents = await RNFS.readDir(rawPath);
+      const folderItems = contents
+        .filter((item: any) => item.isDirectory())
+        .map((item: any) => ({
+          name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(),
+          uri: `file://${item.path}/`,
+          isDirectory: true,
+        }))
         .filter((f: any) => !f.name.startsWith('.'))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
-      setPickerItems(folders);
-    } catch { setPickerItems([]); }
+      const fileItems = contents
+        .filter((item: any) => !item.isDirectory())
+        .map((item: any) => ({
+          name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(),
+          uri: `file://${item.path}`,
+          isDirectory: false,
+        }))
+        .filter((f: any) => !f.name.startsWith('.'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setPickerItems(folderItems);
+      setPickerFiles(fileItems);
+    } catch { setPickerItems([]); setPickerFiles([]); }
     finally { setPickerLoading(false); }
   }
 
@@ -513,15 +522,17 @@ export default function VaultScreen() {
         {selectMode && selectedUris.size > 0 && (
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
           <TouchableOpacity
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.blue, borderRadius: 10, paddingVertical: 10 }}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: movingFile || busy ? colors.surface : colors.blue, borderRadius: 10, paddingVertical: 10 }}
             onPress={() => { pendingFile.current = null; setPickerPath(ROOT_PATH); loadPickerDir(ROOT_PATH); setShowPicker(true); }}
+            disabled={movingFile || busy}
           >
             <Ionicons name="arrow-redo-outline" size={16} color="#fff" />
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Move out</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 10, paddingVertical: 10 }}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 10, paddingVertical: 10, opacity: movingFile || busy ? 0.5 : 1 }}
             onPress={handleMultiDelete}
+            disabled={movingFile || busy}
           >
             <Ionicons name="trash-outline" size={16} color={colors.deleteRed} />
             <Text style={{ fontSize: 13, fontWeight: '600', color: colors.deleteRed }}>Delete</Text>
@@ -659,27 +670,35 @@ export default function VaultScreen() {
           </Text>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
-          ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.textMuted }]}>No folders here</Text></View>
+          ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
+            <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.textMuted }]}>This folder is empty</Text></View>
           ) : (
             <FlatList
-              data={pickerItems}
+              data={[...pickerItems, ...pickerFiles]}
               keyExtractor={item => item.uri}
               contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.row, { borderBottomColor: colors.border }]}
-                  onPress={() => { setPickerPath(item.uri); loadPickerDir(item.uri); }}
-                  activeOpacity={0.6}
+                  onPress={() => { if (item.isDirectory) { setPickerPath(item.uri); loadPickerDir(item.uri); } }}
+                  activeOpacity={item.isDirectory ? 0.6 : 1}
                 >
-                  <View style={[styles.icon, { backgroundColor: colors.yellow + '22' }]}>
-                    <Ionicons name="folder" size={22} color={colors.yellow} />
+                  <View style={[styles.icon, { backgroundColor: (item.isDirectory ? colors.yellow : getFileColor(item.name)) + '22', overflow: 'hidden' }]}>
+                    {item.isDirectory ? (
+                      <Ionicons name="folder" size={22} color={colors.yellow} />
+                    ) : isImageFile(item.name) ? (
+                      <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                    ) : isVideoFile(item.name) ? (
+                      <VideoThumb uri={item.uri} style={styles.thumb} />
+                    ) : (
+                      <Text style={[styles.ext, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                    )}
                   </View>
                   <View style={styles.info}>
                     <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  {item.isDirectory && <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />}
                 </TouchableOpacity>
               )}
             />

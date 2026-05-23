@@ -10,7 +10,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -36,17 +36,6 @@ interface FileItem {
 const dirCacheStore: Record<string, FileItem[]> = {};
 const folderCountsStore: Record<string, number> = {};
 const ROOT_PATH = 'file:///storage/emulated/0/';
-
-function getFileColor(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return '#185FA5';
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
-  if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext ?? '')) return '#534AB7';
-  if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
-  if (['apk'].includes(ext ?? '')) return '#A32D2D';
-  return '#5F5E5A';
-}
 
 function decodeName(name: string): string {
   try { return decodeURIComponent(name); } catch { return name; }
@@ -1135,7 +1124,7 @@ export default function BrowseScreen() {
         <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
           <TouchableOpacity
             onPress={handleMultiShare}
-            disabled={sharing}
+            disabled={sharing || zipping || deleting || vaulting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
@@ -1143,6 +1132,7 @@ export default function BrowseScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiVault}
+            disabled={sharing || zipping || deleting || vaulting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
@@ -1150,6 +1140,7 @@ export default function BrowseScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiZip}
+            disabled={sharing || zipping || deleting || vaulting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="archive-outline" size={20} color={colors.textPrimary} />
@@ -1164,6 +1155,7 @@ export default function BrowseScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiDelete}
+            disabled={sharing || zipping || deleting || vaulting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
             <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
