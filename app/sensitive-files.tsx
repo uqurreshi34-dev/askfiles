@@ -30,8 +30,6 @@ const SENSITIVE_KEYWORDS = [
   'licence', 'license', 'passport', 'insurance', 'contract',
 ];
 
-const SENSITIVE_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.txt'];
-
 export default function SensitiveFilesScreen() {
   const { colors } = useTheme();
   const router = useRouter();

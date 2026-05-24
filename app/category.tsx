@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -126,6 +126,7 @@ export default function CategoryScreen() {
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All');
+  const [visibleCount, setVisibleCount] = useState(100);
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
@@ -570,18 +571,24 @@ export default function CategoryScreen() {
 
   const tabs = category === 'documents' ? DOC_TABS : category === 'downloads' ? DL_TABS : null;
 
-  const filteredItems = (tabs && activeTab !== 'All'
-    ? items.filter(item => {
-        const tab = category === 'documents' ? getDocTab(item.name) : getDlTab(item.name);
-        return tab === activeTab;
-      })
-    : items
-  ).slice().sort((a, b) => {
-    if (sortKey === 'name') return a.name.localeCompare(b.name);
-    if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
-    if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
-    return 0;
-  }).filter(item => !searchQuery.trim() || item.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredItems = useMemo(() => {
+    let result = (tabs && activeTab !== 'All')
+      ? items.filter(item => {
+          const tab = category === 'documents' ? getDocTab(item.name) : getDlTab(item.name);
+          return tab === activeTab;
+        })
+      : items;
+    result = result.slice().sort((a, b) => {
+      if (sortKey === 'name') return a.name.localeCompare(b.name);
+      if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
+      if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
+      return 0;
+    });
+    if (searchQuery.trim()) {
+      result = result.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    return result;
+  }, [items, activeTab, sortKey, searchQuery, category]);
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -622,7 +629,7 @@ export default function CategoryScreen() {
             <TouchableOpacity
               key={tab}
               style={[styles.tab, { backgroundColor: colors.surface }, activeTab === tab && { backgroundColor: colors.textPrimary }]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => { setActiveTab(tab); setVisibleCount(100); }}
             >
               <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === tab && { color: colors.background }]}>{tab}</Text>
             </TouchableOpacity>
@@ -707,10 +714,12 @@ export default function CategoryScreen() {
         </>
       ) : (
         <FlatList
-          data={filteredItems}
+          data={filteredItems.slice(0, visibleCount)}
           keyExtractor={item => item.uri}
           key="list"
           numColumns={1}
+          onEndReached={() => setVisibleCount(prev => prev + 100)}
+          onEndReachedThreshold={0.3}
           renderItem={({ item }) => {
                 const isSelected = selectedUris.has(item.uri);
                 const isImg = isImageFile(item.name);

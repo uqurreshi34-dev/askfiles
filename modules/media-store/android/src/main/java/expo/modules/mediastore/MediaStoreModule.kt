@@ -361,5 +361,36 @@ class MediaStoreModule : Module() {
       } catch (e: Exception) {}
       results
     }
+
+    AsyncFunction("queryDocumentsByMime") { mimeTypes: List<String> ->
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
+      val selectionArgs = mimeTypes.toTypedArray()
+      val projection = arrayOf(
+        MediaStore.Files.FileColumns.DISPLAY_NAME,
+        MediaStore.Files.FileColumns.SIZE,
+        MediaStore.Files.FileColumns.DATA,
+      )
+      try {
+        val cursor = context.contentResolver.query(
+          MediaStore.Files.getContentUri("external"),
+          projection, selection, selectionArgs,
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+        )
+        cursor?.use {
+          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+          val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+          while (it.moveToNext()) {
+            val name = it.getString(nameCol) ?: continue
+            val size = it.getLong(sizeCol)
+            val path = it.getString(dataCol) ?: continue
+            results.add(mapOf("name" to name, "uri" to "file://$path", "size" to size.toDouble()))
+          }
+        }
+      } catch (e: Exception) {}
+      results
+    }
   }
 }

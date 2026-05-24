@@ -71,3 +71,7 @@ export async function searchFiles(query: string): Promise<{
 }[]> {
   return MediaStore.searchFiles(query);
 }
+
+export async function queryDocumentsByMime(mimeTypes: string[]): Promise<MediaFile[]> {
+  return MediaStore.queryDocumentsByMime(mimeTypes);
+}
