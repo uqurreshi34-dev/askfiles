@@ -13,7 +13,6 @@ import { getColors } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 
-const { width: PORTRAIT_WIDTH } = Dimensions.get('window');
 
 const SLIDES = [
   {
@@ -58,6 +57,7 @@ export default function OnboardingScreen() {
   const dark = scheme === 'dark';
   const colors = getColors(dark);
   const { width, height } = useWindowDimensions();
+  const PORTRAIT_WIDTH = Math.min(width, height);
   const isLandscape = width > height;
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
@@ -197,7 +197,7 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
       >
         {SLIDES.map((s, i) => (
-          <View key={i} style={styles.slide}>
+          <View key={i} style={[styles.slide, { width: PORTRAIT_WIDTH }]}>
             <View style={[styles.iconWrap, { backgroundColor: s.iconBg }]}>
               <Ionicons name={s.icon} size={52} color={s.iconColor} />
             </View>
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   // Portrait (unchanged)
-  slide: { width: PORTRAIT_WIDTH, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 40 },
+  slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingBottom: 40 },
   iconWrap: { width: 110, height: 110, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 36 },
   title: { fontSize: 26, fontWeight: '600', textAlign: 'center', letterSpacing: -0.4, marginBottom: 14 },
   body: { fontSize: 15, textAlign: 'center', lineHeight: 23 },

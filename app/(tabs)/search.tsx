@@ -98,7 +98,7 @@ Note: always use the folder name provided in brackets when stating where a file 
 }
 
 export default function SearchScreen() {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const { moveToTrash } = useTrash();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [mode, setMode] = useState<Mode>('search');
@@ -111,6 +111,7 @@ export default function SearchScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [listening, setListening] = useState(false);
+  const [micTooltip, setMicTooltip] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [smartQuery, setSmartQuery] = useState('');
@@ -189,11 +190,8 @@ export default function SearchScreen() {
     }
     const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!granted) {
-      Alert.alert(
-        'Microphone access needed',
-        'To use voice search, please enable microphone access in your device Settings.',
-        [{ text: 'OK' }]
-      );
+      setMicTooltip(true);
+      setTimeout(() => setMicTooltip(false), 2500);
       return;
     }
     setAiQuery('');
@@ -743,9 +741,45 @@ export default function SearchScreen() {
                   }
                 </TouchableOpacity>
               ) : (
+                <View>
+                {micTooltip && (
+                  <View style={{
+                    position: 'absolute',
+                    bottom: 32,
+                    right: 0,
+                    backgroundColor: dark ? '#fff' : '#222',
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    width: 200,
+                    zIndex: 100,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 6,
+                    elevation: 6,
+                  }}>
+                  <Text style={{ color: dark ? '#111' : '#fff', fontSize: 12, fontWeight: '600', marginBottom: 3 }}>
+                    🎤 Microphone access needed
+                  </Text>
+                  <Text style={{ color: dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.75)', fontSize: 11 }}>
+                    Enable microphone access in Settings to use voice search
+                  </Text>
+                    <View style={{
+                      position: 'absolute',
+                      bottom: -5,
+                      right: 6,
+                      width: 10,
+                      height: 10,
+                      backgroundColor: dark ? '#fff' : '#222',
+                      transform: [{ rotate: '45deg' }],
+                    }} />
+                  </View>
+                )}
                 <TouchableOpacity onPress={toggleListening} style={{ opacity: thinking ? 0.4 : 1 }} disabled={thinking}>
                   <Ionicons name={listening ? 'stop-circle' : 'mic-outline'} size={18} color={listening ? colors.deleteRed : colors.textMuted} />
                 </TouchableOpacity>
+              </View>
               )}
             </>
           </View>

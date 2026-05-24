@@ -21,6 +21,7 @@ import RNFS from 'react-native-fs';
 import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
 import Constants from 'expo-constants';
+import * as MediaLibrary from 'expo-media-library';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
   const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
+  const [hasMediaAccess, setHasMediaAccess] = useState(true);
   const { files: trashFiles } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
@@ -64,12 +66,14 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => {
     reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
     isStorageManager().then(setHasAllFilesAccess);
+    MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
   }, [reload]));
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') {
         isStorageManager().then(setHasAllFilesAccess);
+        MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
       }
     });
     return () => sub.remove();
@@ -278,6 +282,30 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         )}
+        {!hasMediaAccess && (
+  <TouchableOpacity
+    style={[styles.permissionCard, { backgroundColor: colors.amberTint }]}
+    onPress={async () => {
+      const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted' && !canAskAgain) {
+        await IntentLauncher.startActivityAsync(
+          'android.settings.APPLICATION_DETAILS_SETTINGS',
+          { data: 'package:com.askfiles.mobile' }
+        );
+      }
+    }}
+    activeOpacity={0.8}
+  >
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <Ionicons name="images-outline" size={18} color={colors.amber} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Media access needed</Text>
+        <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>Tap to enable — required for Images, Videos and Storage Breakdown</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+    </View>
+  </TouchableOpacity>
+)}
         <TouchableOpacity
           style={[styles.searchBar, { backgroundColor: colors.surface }]}
           onPress={() => router.push('/(tabs)/search?autofocus=1')}
@@ -301,7 +329,14 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity activeOpacity={0.8} style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} onPress={() => router.push('/large-files')}>
+        <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
+          <TouchableOpacity 
+            disabled={!hasMediaAccess}
+            activeOpacity={0.8} 
+            style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} 
+            onPress={() => router.push('/large-files')}
+          >
+
           <View style={styles.largeFilesLeft}>
             <View style={[styles.largeFilesIcon, { backgroundColor: colors.redBrownTint }]}>
               <Ionicons name="folder-open-outline" size={22} color={colors.redBrown} />
@@ -313,8 +348,15 @@ export default function HomeScreen() {
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity activeOpacity={0.8} style={[styles.largeFilesCard, { backgroundColor: colors.amberTint }]} onPress={() => router.push('/sensitive-files' as any)}>
+        <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
+          <TouchableOpacity 
+            disabled={!hasMediaAccess}
+            activeOpacity={0.8} 
+            style={[styles.largeFilesCard, { backgroundColor: colors.amberTint }]} 
+            onPress={() => router.push('/sensitive-files')}
+          >
           <View style={styles.largeFilesLeft}>
             <View style={[styles.largeFilesIcon, { backgroundColor: colors.amberTint }]}>
               <Ionicons name="shield-outline" size={22} color={colors.amber} />
@@ -326,8 +368,15 @@ export default function HomeScreen() {
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
+      </View>
 
-        <TouchableOpacity activeOpacity={0.8} style={[styles.breakdownCard, { backgroundColor: colors.purpleBg }]} onPress={() => router.push('/storage-breakdown')}>
+      <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
+          <TouchableOpacity 
+            disabled={!hasMediaAccess}
+            activeOpacity={0.8} 
+            style={[styles.breakdownCard, { backgroundColor: colors.purpleBg }]} 
+            onPress={() => router.push('/storage-breakdown')}
+          >
           <View style={styles.largeFilesLeft}>
             <View style={[styles.breakdownIcon, { backgroundColor: colors.purpleTint }]}>
               <Ionicons name="pie-chart-outline" size={22} color={colors.purple} />
@@ -339,6 +388,7 @@ export default function HomeScreen() {
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
+      </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
