@@ -39,7 +39,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         }
     }
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val executor = Executors.newFixedThreadPool(8)
+    private val executor = Executors.newFixedThreadPool(4)
 
     init {
         recyclerView.layoutParams = LayoutParams(
@@ -121,7 +121,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         private val cache = java.util.Collections.synchronizedMap(
             object : java.util.LinkedHashMap<String, Bitmap>(64, 0.75f, true) {
                 override fun removeEldestEntry(eldest: Map.Entry<String, Bitmap>): Boolean {
-                    return size > 500
+                    return size > 150
                 }
             }
         )
