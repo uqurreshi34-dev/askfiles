@@ -8,6 +8,12 @@ export interface MediaFile {
   size: number;
 }
 
+export interface LargestFile {
+  name: string;
+  size: number;
+  folder: string;
+}
+
 export async function queryDocuments(): Promise<MediaFile[]> {
   return MediaStore.queryDocuments();
 }
@@ -26,4 +32,12 @@ export async function queryVideoSize(): Promise<number> {
 
 export async function queryFolderSize(folderPath: string): Promise<number> {
   return MediaStore.queryFolderSize(folderPath);
+}
+
+export async function queryLargestFiles(
+  folderPath: string,
+  mimePrefix: string,
+  limit: number
+): Promise<LargestFile[]> {
+  return MediaStore.queryLargestFiles(folderPath, mimePrefix, limit);
 }

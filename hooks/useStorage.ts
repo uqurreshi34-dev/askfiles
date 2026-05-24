@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform, AppState } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import RNFS from 'react-native-fs';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize } from 'media-store';
+import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles } from 'media-store';
 
 interface StorageInfo {
   totalBytes: number;
@@ -87,154 +85,6 @@ export function pluralise(count: number, word: string): string {
   return `${count.toLocaleString()} ${word}${count === 1 ? '' : 's'}`;
 }
 
-const DOCUMENT_EXTENSIONS = [
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx',
-  '.ppt', '.pptx', '.txt', '.csv', '.rtf',
-  '.odt', '.ods', '.odp', '.pages', '.numbers',
-];
-
-function ensureTrailingSlash(uri: string): string {
-  return uri.endsWith('/') ? uri : uri + '/';
-}
-
-async function countFilesInDir(path: string, extensions?: string[]): Promise<number> {
-  try {
-    const dir = new FileSystem.Directory(ensureTrailingSlash(path));
-    const contents = dir.list();
-    let count = 0;
-    for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        if (!extensions) {
-          if (!item.name.startsWith('.')) count++;
-        } else {
-          const lower = item.name.toLowerCase();
-          if (extensions.some(ext => lower.endsWith(ext))) count++;
-        }
-      } else if (item instanceof FileSystem.Directory) {
-        count += await countFilesInDir(ensureTrailingSlash(item.uri), extensions);
-      }
-    }
-    return count;
-  } catch {
-    return 0;
-  }
-}
-
-async function getFolderSize(path: string): Promise<number> {
-  // Strip file:// prefix — RNFS works on raw paths
-  const rawPath = path.replace('file://', '').replace(/\/$/, '');
-  try {
-    const contents = await RNFS.readDir(rawPath);
-    let size = 0;
-    for (const item of contents) {
-      if (item.isFile()) {
-        size += Number(item.size) || 0;
-      } else if (item.isDirectory()) {
-        size += await getFolderSize(item.path);
-      }
-    }
-    return size;
-  } catch {
-    return 0;
-  }
-}
-
-async function getFolderSizeByExtension(path: string, extensions: string[]): Promise<number> {
-  const rawPath = path.replace('file://', '').replace(/\/$/, '');
-  try {
-    const contents = await RNFS.readDir(rawPath);
-    let size = 0;
-    for (const item of contents) {
-      if (item.isFile()) {
-        const lower = item.name.toLowerCase();
-        if (extensions.some(ext => lower.endsWith(ext))) {
-          size += Number(item.size) || 0;
-        }
-      } else if (item.isDirectory()) {
-        size += await getFolderSizeByExtension(item.path, extensions);
-      }
-    }
-    return size;
-  } catch {
-    return 0;
-  }
-}
-
-async function getLargestFiles(
-  paths: string[],
-  extensions?: string[],
-  topN = 5,
-  includeNonStandardRoot = false
-): Promise<{ name: string; size: string; folder: string }[]> {
-  const files: { name: string; size: number; folder: string }[] = [];
-
-  const scanDir = async (rawPath: string) => {
-    const folderName = rawPath.split('/').filter(Boolean).pop() ?? 'Storage';
-    try {
-      const contents = await RNFS.readDir(rawPath);
-      for (const item of contents) {
-        if (!item.isFile()) continue;
-        if (item.name.startsWith('.')) continue;
-        if (extensions) {
-          const lower = item.name.toLowerCase();
-          if (!extensions.some(ext => lower.endsWith(ext))) continue;
-        }
-        files.push({ name: item.name, size: Number(item.size) || 0, folder: folderName });
-      }
-    } catch {}
-  };
-
-  for (const path of paths) {
-    await scanDir(path.replace('file://', '').replace(/\/$/, ''));
-  }
-
-  // Also scan non-standard root folders (e.g. Samsung My Files)
-  if (includeNonStandardRoot) {
-    const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-    try {
-      const rootItems = await RNFS.readDir('/storage/emulated/0/');
-      for (const item of rootItems) {
-        if (!item.isDirectory()) continue;
-        if (item.name.startsWith('.')) continue;
-        if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
-        await scanDir(item.path);
-      }
-    } catch {}
-  }
-
-  return files
-    .sort((a, b) => b.size - a.size)
-    .slice(0, topN)
-    .map(f => ({ name: f.name, size: formatSize(f.size), folder: f.folder }));
-}
-
-async function getAllFilenames(paths: string[], extensions?: string[]): Promise<string[]> {
-  const names: string[] = [];
-  
-  async function scanDir(rawPath: string) {
-    try {
-      const contents = await RNFS.readDir(rawPath);
-      for (const item of contents) {
-        if (item.name.startsWith('.')) continue;
-        if (item.isDirectory()) {
-          await scanDir(item.path);
-        } else if (item.isFile()) {
-          if (extensions) {
-            const lower = item.name.toLowerCase();
-            if (!extensions.some(ext => lower.endsWith(ext))) continue;
-          }
-          names.push(item.name);
-        }
-      }
-    } catch {}
-  }
-
-  for (const path of paths) {
-    await scanDir(path.replace('file://', '').replace(/\/$/, ''));
-  }
-  return names;
-}
-
 async function getAllAssets(mediaType: 'photo' | 'video'): Promise<{
   count: number;
   recentNames: string[];
@@ -310,7 +160,6 @@ cache.mediaContext = {
   allDownloads: [],
 };
 
-const t3 = Date.now();
 const [downloadsSize, documentsSize, dcimSize, documentsInDownloadSize, totalImagesSize, totalVideosSize] =
   await Promise.all([
     queryFolderSize('/storage/emulated/0/Download/'),
@@ -320,7 +169,6 @@ const [downloadsSize, documentsSize, dcimSize, documentsInDownloadSize, totalIma
     queryImageSize(),
     queryVideoSize(),
   ]);
-  console.log('folderSizes:', Date.now() - t3, 'ms');
 
 cache.folderSizes = {
   pictures: formatSize(totalImagesSize),
@@ -350,12 +198,10 @@ const [imgScan, vidScan] = await Promise.all([
   getAllAssets('video'),
 ]);
 
-const t2 = Date.now();
 const [docItems, dlItems] = await Promise.all([
   queryDocuments(),
   queryDownloads(),
 ]);
-console.log('queryDocs/downloads:', Date.now() - t2, 'ms');
 
 cache.fileCounts.documents = docItems.length;
 cache.fileCounts.downloads = dlItems.length;
@@ -364,57 +210,28 @@ cache.fileCounts.downloads = dlItems.length;
   cache.mediaContext.recentImages = imgScan.recentNames;
   cache.mediaContext.recentVideos = vidScan.recentNames;
   cache.mediaContext.screenshotCount = imgScan.screenshotCount;
-  const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'];
-  const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.3gp', '.m4v', '.ts', '.wmv', '.flv'];
-  const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-
-  const [largestImages, largestVideos, largestDocs, largestDownloads, largestOverall] = await Promise.all([
-    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Pictures/'], IMAGE_EXTS, 5, true),
-    getLargestFiles(['/storage/emulated/0/DCIM/Camera/', '/storage/emulated/0/Movies/'], VIDEO_EXTS, 5, true),
-    getLargestFiles([
-      '/storage/emulated/0/Documents/',
-      '/storage/emulated/0/Download/',
-      '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-    ], DOCUMENT_EXTENSIONS, 5, true),
-    getLargestFiles(['/storage/emulated/0/Download/'], undefined, 5, false),
-    getLargestFiles([
-      '/storage/emulated/0/Download/',
-      '/storage/emulated/0/DCIM/Camera/',
-      '/storage/emulated/0/Pictures/',
-      '/storage/emulated/0/Movies/',
-      '/storage/emulated/0/Documents/',
-    ], undefined, 10, true),
+  const [largestImages, largestVideos, largestDocs, largestDownloads] = await Promise.all([
+    queryLargestFiles('/storage/emulated/0/DCIM/', 'image/', 5),
+    queryLargestFiles('/storage/emulated/0/DCIM/', 'video/', 5),
+    queryLargestFiles('/storage/emulated/0/Documents/', 'application/', 5),
+    queryLargestFiles('/storage/emulated/0/Download/', '', 5),
   ]);
-
+  
   cache.largestFiles = {
-    images: largestImages,
-    videos: largestVideos,
-    documents: largestDocs,
-    downloads: largestDownloads,
-    overall: largestOverall,
+    images: largestImages.map(f => ({ ...f, size: formatSize(f.size) })),
+    videos: largestVideos.map(f => ({ ...f, size: formatSize(f.size) })),
+    documents: largestDocs.map(f => ({ ...f, size: formatSize(f.size) })),
+    downloads: largestDownloads.map(f => ({ ...f, size: formatSize(f.size) })),
+    overall: [], // derived below
   };
 
-  const extraDocPaths: string[] = [];
-  try {
-    const rootItems = await RNFS.readDir('/storage/emulated/0/');
-    for (const item of rootItems) {
-      if (!item.isDirectory() || item.name.startsWith('.') || STANDARD_ROOT_DIRS.includes(item.name)) continue;
-      extraDocPaths.push(item.path);
-    }
-  } catch {}
+  cache.largestFiles.overall = [...largestImages, ...largestVideos, ...largestDocs, ...largestDownloads]
+  .sort((a, b) => b.size - a.size)
+  .slice(0, 5)
+  .map(f => ({ ...f, size: formatSize(f.size) }));
 
-  const [allDocNames, allDlNames] = await Promise.all([
-    getAllFilenames([
-      '/storage/emulated/0/Documents/',
-      '/storage/emulated/0/Download/',
-      '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/',
-      ...extraDocPaths,
-    ], DOCUMENT_EXTENSIONS),
-    getAllFilenames(['/storage/emulated/0/Download/']),
-  ]);
-
-  cache.mediaContext.allDocuments = allDocNames;
-  cache.mediaContext.allDownloads = allDlNames;
+  cache.mediaContext.allDocuments = docItems.map(d => d.name);
+  cache.mediaContext.allDownloads = dlItems.map(d => d.name);
 }
 
 function getLoadingPromise(): Promise<void> {
