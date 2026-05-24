@@ -17,7 +17,9 @@ interface Category {
 }
 
 function parseSize(readable: string): number {
+  if (!readable) return 0;
   const num = parseFloat(readable);
+  if (isNaN(num)) return 0;
   if (readable.includes('GB')) return num * 1073741824;
   if (readable.includes('MB')) return num * 1048576;
   if (readable.includes('KB')) return num * 1024;
@@ -27,7 +29,7 @@ function parseSize(readable: string): number {
 export default function StorageBreakdownScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { storageInfo, folderSizes, loading, silentReload } = useStorage();
+  const { storageInfo, folderSizes, loading, permissionGranted, refreshSizes } = useStorage();
 
   const categories: Category[] = [
     { label: 'Images',    size: folderSizes.pictures, bytes: parseSize(folderSizes.pictures), color: '#185FA5', icon: 'image-outline',      route: '/category?category=images' },
@@ -41,9 +43,9 @@ export default function StorageBreakdownScreen() {
   const freeBytes = storageInfo?.freeBytes ?? 0;
   const usedBytes = storageInfo?.usedBytes ?? 0;
 
-  // useFocusEffect(useCallback(() => {
-  //   silentReload();
-  // }, []));
+  useFocusEffect(useCallback(() => {
+    if (permissionGranted) refreshSizes();
+  }, [refreshSizes, permissionGranted]));
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -136,8 +138,6 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14 },
   content: { paddingBottom: 32 },
   sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 8 },
-  barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 3 },
   segmentCard: { marginHorizontal: 16, marginBottom: 16, borderRadius: 14, padding: 14 },
   segmentBar: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
   segment: { height: '100%' },
@@ -156,11 +156,4 @@ const styles = StyleSheet.create({
   catBarTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   catBarFill: { height: '100%', borderRadius: 2 },
   note: { fontSize: 10, textAlign: 'center', marginTop: 16, marginHorizontal: 16 },
-  storageNote: { fontSize: 10, marginTop: 6 },
-  overallCard: { marginHorizontal: 16, marginBottom: 16, borderRadius: 14, padding: 14 },
-  overallRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  overallLabel: { fontSize: 13, fontWeight: '500' },
-  overallVal: { fontSize: 13, fontWeight: '600' },
-  overallFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  overallSub: { fontSize: 11 },
 });

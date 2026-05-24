@@ -127,6 +127,30 @@ async function requestManageStoragePermission(): Promise<void> {
   }
 }
 
+async function loadFolderSizes(): Promise<void> {
+  const [downloadsSize, documentsSize, dcimSize, documentsInDownloadSize, totalImagesSize, totalVideosSize] =
+    await Promise.all([
+      queryFolderSize('/storage/emulated/0/Download/'),
+      queryFolderSize('/storage/emulated/0/Documents/'),
+      queryFolderSize('/storage/emulated/0/DCIM/'),
+      queryFolderSize('/storage/emulated/0/Download/'),
+      queryImageSize(),
+      queryVideoSize(),
+    ]);
+
+  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize;
+  const usedBytes = cache.storageInfo?.usedBytes ?? 0;
+
+  cache.folderSizes = {
+    pictures: formatSize(totalImagesSize),
+    videos: formatSize(totalVideosSize),
+    downloads: formatSize(downloadsSize),
+    documents: formatSize(documentsSize + documentsInDownloadSize),
+    dcim: formatSize(dcimSize),
+    other: formatSize(Math.max(0, usedBytes - knownBytes)),
+  };
+}
+
 async function doLoad(): Promise<void> {
   const onboardingDone = await AsyncStorage.getItem('askfiles-onboarding-done');
   if (!onboardingDone) return;
@@ -160,36 +184,13 @@ cache.mediaContext = {
   allDownloads: [],
 };
 
-const [downloadsSize, documentsSize, dcimSize, documentsInDownloadSize, totalImagesSize, totalVideosSize] =
-  await Promise.all([
-    queryFolderSize('/storage/emulated/0/Download/'),
-    queryFolderSize('/storage/emulated/0/Documents/'),
-    queryFolderSize('/storage/emulated/0/DCIM/'),
-    queryFolderSize('/storage/emulated/0/Download/'),
-    queryImageSize(),
-    queryVideoSize(),
-  ]);
-
-cache.folderSizes = {
-  pictures: formatSize(totalImagesSize),
-  videos: formatSize(totalVideosSize),
-  downloads: formatSize(downloadsSize),
-  documents: formatSize(documentsSize + documentsInDownloadSize),
-  dcim: formatSize(dcimSize),
-  other: '0 MB', // updated after statsPromise resolves
-};
-
-// App is ready — show UI now (~2 seconds)
+await loadFolderSizes();
+// App is ready — show UI now
 cache.loaded = true;
 onPhase1Complete?.();
 onPhase1Complete = null;
 
-// Wait for storage stats then update other size
-statsPromise.then(() => {
-  const usedBytes = cache.storageInfo?.usedBytes ?? 0;
-  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize;
-  cache.folderSizes.other = formatSize(Math.max(0, usedBytes - knownBytes));
-});
+statsPromise.then(() => loadFolderSizes());
 
   // ── PHASE 2: Slow filesystem scans — AI context, runs silently ────────────
 
@@ -290,6 +291,11 @@ export function useStorage() {
     setTick(t => t + 1);
   }, []);
 
+  const refreshSizes = useCallback(async () => {
+    await loadFolderSizes();
+    setTick(t => t + 1);
+  }, []);
+
   return {
     storageInfo: cache.storageInfo,
     fileCounts: { ...cache.fileCounts },
@@ -306,5 +312,6 @@ export function useStorage() {
     loading,
     reload,
     silentReload,
+    refreshSizes,
   };
 }
