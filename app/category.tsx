@@ -22,7 +22,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { queryDocuments, queryDownloads } from 'media-store';
+import { queryDocuments, queryDownloads, queryDocumentsByMime } from 'media-store';
 import { scanFile } from '@/modules/share-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
@@ -49,55 +49,6 @@ const CATEGORY_CONFIG: Record<Category, { title: string; icon: string; color: st
   downloads: { title: 'Downloads', icon: 'download-outline', color: '#3B6D11' },
 };
 
-const DOCUMENT_EXTENSIONS = [
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx',
-  '.ppt', '.pptx', '.txt', '.csv', '.rtf',
-  '.odt', '.ods', '.odp', '.pages', '.numbers',
-];
-
-function ensureTrailingSlash(uri: string): string {
-  return uri.endsWith('/') ? uri : uri + '/';
-}
-
-async function scanDirForDocs(path: string): Promise<FileItem[]> {
-  const found: FileItem[] = [];
-  try {
-    const dir = new FileSystem.Directory(ensureTrailingSlash(path));
-    const contents = dir.list();
-    for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        const lower = item.name.toLowerCase();
-        if (DOCUMENT_EXTENSIONS.some(ext => lower.endsWith(ext))) {
-          found.push({ name: item.name, uri: item.uri, size: item.size ?? 0 });
-        }
-      } else if (item instanceof FileSystem.Directory) {
-        const subDocs = await scanDirForDocs(ensureTrailingSlash(item.uri));
-        found.push(...subDocs);
-      }
-    }
-  } catch {}
-  return found;
-}
-
-async function scanDirForDownloads(path: string): Promise<FileItem[]> {
-  const found: FileItem[] = [];
-  try {
-    const dir = new FileSystem.Directory(ensureTrailingSlash(path));
-    const contents = dir.list();
-    for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        if (!item.name.startsWith('.')) {
-          found.push({ name: item.name, uri: item.uri, size: item.size ?? 0 });
-        }
-      } else if (item instanceof FileSystem.Directory) {
-        const subItems = await scanDirForDownloads(ensureTrailingSlash(item.uri));
-        found.push(...subItems);
-      }
-    }
-  } catch {}
-  return found;
-}
-
 const DOC_TABS = ['All', 'PDF', 'Word', 'Excel', 'Other'] as const;
 const DL_TABS  = ['All', 'APK', 'PDF', 'Docs', 'Other'] as const;
 
@@ -117,6 +68,15 @@ function getDlTab(name: string): string {
   if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'].includes(ext)) return 'Docs';
   return 'Other';
 }
+
+const TAB_MIMES: Record<string, string[]> = {
+  'PDF': ['application/pdf'],
+  'Word': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/rtf', 'application/vnd.oasis.opendocument.text'],
+  'Excel': ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/vnd.oasis.opendocument.spreadsheet'],
+  'Other': ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.oasis.opendocument.presentation'],
+  'APK': ['application/vnd.android.package-archive'],
+  'Docs': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain', 'text/csv'],
+};
 
 export default function CategoryScreen() {
   const { colors } = useTheme();
@@ -578,12 +538,13 @@ export default function CategoryScreen() {
           return tab === activeTab;
         })
       : items;
-    result = result.slice().sort((a, b) => {
-      if (sortKey === 'name') return a.name.localeCompare(b.name);
-      if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
-      if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
-      return 0;
-    });
+      if (sortKey !== 'name') {
+        result = result.slice().sort((a, b) => {
+          if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
+          if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
+          return 0;
+        });
+      }
     if (searchQuery.trim()) {
       result = result.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
@@ -629,7 +590,22 @@ export default function CategoryScreen() {
             <TouchableOpacity
               key={tab}
               style={[styles.tab, { backgroundColor: colors.surface }, activeTab === tab && { backgroundColor: colors.textPrimary }]}
-              onPress={() => { setActiveTab(tab); setVisibleCount(100); }}
+              onPress={async () => {
+                setActiveTab(tab);
+                setVisibleCount(100);
+                setLoading(true); 
+                if (tab === 'All') {
+                  const all = category === 'documents' ? await queryDocuments() : await queryDownloads();
+                  setItems(all.sort((a, b) => a.name.localeCompare(b.name)));
+                } else {
+                  const mimes = TAB_MIMES[tab] ?? [];
+                  if (mimes.length > 0) {
+                    const result = await queryDocumentsByMime(mimes);
+                    setItems(result.sort((a, b) => a.name.localeCompare(b.name)));
+                  }
+                }
+                setLoading(false);
+              }}
             >
               <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === tab && { color: colors.background }]}>{tab}</Text>
             </TouchableOpacity>
