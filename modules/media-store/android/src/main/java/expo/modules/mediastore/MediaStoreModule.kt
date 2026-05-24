@@ -392,5 +392,65 @@ class MediaStoreModule : Module() {
       } catch (e: Exception) {}
       results
     }
+
+    AsyncFunction("queryImages") {
+      val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+      val projection = arrayOf(
+        MediaStore.Images.Media._ID,
+        MediaStore.Images.Media.DISPLAY_NAME,
+        MediaStore.Images.Media.DATE_ADDED,
+        MediaStore.Images.Media.SIZE,
+      )
+      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC") ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      cursor.use {
+        val idCol = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+        val nameCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+        val dateCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+        val sizeCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
+        while (it.moveToNext()) {
+          val id = it.getLong(idCol)
+          val contentUri = android.net.Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id.toString())
+          results.add(mapOf(
+            "name" to (it.getString(nameCol) ?: ""),
+            "uri" to contentUri.toString(),
+            "date" to it.getLong(dateCol),
+            "size" to it.getLong(sizeCol),
+          ))
+        }
+      }
+      results
+    }
+
+    AsyncFunction("queryVideos") {
+      val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+      val projection = arrayOf(
+        MediaStore.Video.Media._ID,
+        MediaStore.Video.Media.DISPLAY_NAME,
+        MediaStore.Video.Media.DATE_ADDED,
+        MediaStore.Video.Media.SIZE,
+      )
+      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC") ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      cursor.use {
+        val idCol = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+        val nameCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+        val dateCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
+        val sizeCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+        while (it.moveToNext()) {
+          val id = it.getLong(idCol)
+          val contentUri = android.net.Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString())
+          results.add(mapOf(
+            "name" to (it.getString(nameCol) ?: ""),
+            "uri" to contentUri.toString(),
+            "date" to it.getLong(dateCol),
+            "size" to it.getLong(sizeCol),
+          ))
+        }
+      }
+      results
+    }
   }
 }

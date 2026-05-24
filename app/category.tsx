@@ -22,7 +22,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { queryDocuments, queryDownloads, queryDocumentsByMime } from 'media-store';
+import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos } from 'media-store';
 import { scanFile } from '@/modules/share-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
@@ -313,36 +313,8 @@ export default function CategoryScreen() {
     setLoading(true);
     try {
       if (category === 'images' || category === 'videos') {
-        const mediaType = category === 'images' ? 'photo' : 'video';
-        const sortAssets = (assets: MediaLibrary.Asset[]) =>
-          assets.sort((a, b) => {
-            const at = a.creationTime > 0 ? a.creationTime : a.modificationTime;
-            const bt = b.creationTime > 0 ? b.creationTime : b.modificationTime;
-            return bt - at;
-          });
-        const toItems = (assets: MediaLibrary.Asset[]) =>
-          assets.map(a => ({
-            name: a.filename,
-            uri: a.uri,
-            date: a.creationTime > 0 ? a.creationTime : a.modificationTime,
-          }));
-
-        // First page — show immediately
-        const first = await MediaLibrary.getAssetsAsync({ mediaType, first: 500, sortBy: [MediaLibrary.SortBy.creationTime] });
-        setItems(toItems(sortAssets([...first.assets])));
-        setLoading(false);
-
-        // Background pages — append silently
-        if (first.hasNextPage) {
-          const all = [...first.assets];
-          let cursor: string | undefined = first.endCursor;
-          while (cursor) {
-            const page = await MediaLibrary.getAssetsAsync({ mediaType, first: 500, after: cursor, sortBy: [MediaLibrary.SortBy.creationTime] });
-            all.push(...page.assets);
-            setItems(toItems(sortAssets([...all])));
-            cursor = page.hasNextPage && page.endCursor ? page.endCursor : undefined;
-          }
-        }
+        const assets = category === 'images' ? await queryImages() : await queryVideos();
+        setItems(assets.map(a => ({ name: a.name, uri: a.uri, date: a.date, size: a.size })));
       } else if (category === 'downloads') {
         const dlItems = await queryDownloads();
         setItems(dlItems.sort((a, b) => a.name.localeCompare(b.name)));
