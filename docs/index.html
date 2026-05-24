@@ -9,41 +9,48 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700;800&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --blue: #185FA5; --yellow: #F5B731; --dark: #111111;
-      --white: #ffffff; --purple: #534AB7; --green: #3B6D11;
-      --red: #993C1D; --amber: #854F0B;
-    }
-    html { scroll-behavior: smooth; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--dark); color: var(--white); overflow-x: hidden; max-width: 100vw; }
+    html, body { overflow-x: hidden; width: 100%; }
+    :root { --blue: #185FA5; --yellow: #F5B731; --dark: #111111; --white: #ffffff; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--dark); color: var(--white); }
 
-    /* NAV */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 14px 24px; background: rgba(17,17,17,0.92);
       backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
-    .nav-logo-icon { width: 28px; height: 28px; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
+    .nav-logo-icon { width: 28px; height: 28px; flex-shrink: 0; }
     .nav-logo-icon svg { width: 28px; height: 28px; }
-    .nav-logo-text { font-size: 17px; font-weight: 700; color: var(--white); }
-    .nav-links { display: flex; align-items: center; gap: 24px; }
-    .nav-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+    .nav-logo-text { font-size: 17px; font-weight: 700; color: var(--white); white-space: nowrap; }
+    .nav-links { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
+    .nav-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; transition: color 0.2s; white-space: nowrap; }
     .nav-links a:hover { color: var(--white); }
-    .btn-primary {
+    .nav-btn {
       background: var(--blue); color: #fff; padding: 10px 18px; border-radius: 10px;
-      font-size: 14px; font-weight: 500; text-decoration: none;
-      transition: opacity 0.2s, transform 0.2s; display: inline-flex; align-items: center; gap: 8px;
-      white-space: nowrap;
+      font-size: 14px; font-weight: 500; text-decoration: none; flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .nav-btn:hover { opacity: 0.85; }
+    .nav-btn-text { display: inline; }
+
+    .btn-primary {
+      background: var(--blue); color: #fff; padding: 13px 24px; border-radius: 10px;
+      font-size: 15px; font-weight: 500; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.2s;
     }
     .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-secondary {
+      color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
 
-    /* HERO */
     .hero {
       min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center; text-align: center;
-      padding: 100px 20px 60px; position: relative;
+      padding: 100px 24px 80px; position: relative;
     }
     .hero::before {
       content: ''; position: absolute; top: -200px; left: 50%;
@@ -55,117 +62,76 @@
       display: inline-flex; align-items: center; gap: 6px;
       background: rgba(24,95,165,0.15); border: 1px solid rgba(24,95,165,0.3);
       border-radius: 100px; padding: 6px 14px; font-size: 12px; color: #5BA8E8;
-      margin-bottom: 24px; animation: fadeUp 0.6s ease both;
+      margin-bottom: 24px;
     }
-    .hero-title {
-      font-size: clamp(32px, 7vw, 72px); font-weight: 800;
-      margin-bottom: 20px; max-width: 700px;
-      animation: fadeUp 0.6s ease 0.1s both;
-    }
+    .hero-title { font-size: clamp(32px, 6vw, 72px); font-weight: 800; margin-bottom: 20px; max-width: 700px; }
     .hero-title span { color: var(--blue); }
-    .hero-sub {
-      font-size: clamp(15px, 2.5vw, 18px); color: rgba(255,255,255,0.55);
-      max-width: 500px; margin-bottom: 36px; font-weight: 300;
-      animation: fadeUp 0.6s ease 0.2s both;
-    }
-    .hero-actions {
-      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-      justify-content: center; animation: fadeUp 0.6s ease 0.3s both;
-    }
-    .btn-secondary {
-      color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px;
-      display: inline-flex; align-items: center; gap: 6px; transition: color 0.2s;
-    }
-    .btn-secondary:hover { color: var(--white); }
+    .hero-sub { font-size: clamp(15px, 2vw, 18px); color: rgba(255,255,255,0.55); max-width: 500px; margin-bottom: 36px; font-weight: 300; }
+    .hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
     .hero-scroll {
       position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: 6px;
-      color: rgba(255,255,255,0.3); font-size: 11px; animation: bounce 2s ease infinite;
+      color: rgba(255,255,255,0.3); font-size: 11px;
     }
 
-    /* SECTIONS */
-    .section { padding: 80px 20px; max-width: 1100px; margin: 0 auto; }
-    .section-label {
-      font-size: 11px; font-weight: 600; letter-spacing: 2px;
-      text-transform: uppercase; color: var(--blue); margin-bottom: 12px;
-    }
-    .section-title {
-      font-size: clamp(24px, 4vw, 40px); font-weight: 800;
-      margin-bottom: 48px; color: var(--white);
-    }
+    .section { padding: 80px 24px; max-width: 1100px; margin: 0 auto; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); margin-bottom: 12px; }
+    .section-title { font-size: clamp(24px, 4vw, 40px); font-weight: 800; margin-bottom: 48px; color: var(--white); }
 
-    /* FEATURES */
     .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-    .feature-card {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 16px; padding: 24px; transition: border-color 0.3s, transform 0.3s;
-    }
+    .feature-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; transition: border-color 0.3s, transform 0.3s; }
     .feature-card:hover { border-color: rgba(24,95,165,0.4); transform: translateY(-4px); }
     .feature-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; font-size: 22px; }
     .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--white); }
     .feature-desc { font-size: 13px; color: rgba(255,255,255,0.5); }
 
-    /* PRO */
     .pro-section {
       background: linear-gradient(135deg, rgba(24,95,165,0.12) 0%, rgba(83,74,183,0.08) 100%);
       border: 1px solid rgba(24,95,165,0.2); border-radius: 24px;
-      padding: 48px 24px; text-align: center; margin: 0 16px;
+      padding: 56px 48px; text-align: center; margin: 0 24px;
     }
     .pro-heading { font-size: clamp(22px, 4vw, 36px); font-weight: 800; margin-top: 8px; }
     .pro-price { font-size: clamp(40px, 8vw, 56px); font-weight: 800; color: var(--yellow); margin: 16px 0 8px; }
     .pro-price-sub { color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 28px; }
     .pro-features { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 32px; }
-    .pro-pill {
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 100px; padding: 7px 14px; font-size: 13px; color: rgba(255,255,255,0.7);
-      display: flex; align-items: center; gap: 6px;
-    }
+    .pro-pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; padding: 7px 14px; font-size: 13px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px; }
 
-    /* OPEN SOURCE */
-    .opensource-section { padding: 60px 20px; max-width: 700px; margin: 0 auto; text-align: center; }
+    .opensource-section { padding: 80px 24px; max-width: 700px; margin: 0 auto; text-align: center; }
     .opensource-heading { font-size: clamp(22px, 4vw, 36px); font-weight: 800; margin-top: 8px; }
-    .github-card {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px; padding: 36px 24px; margin-top: 32px;
-    }
-    .github-heading { font-size: clamp(14px, 3vw, 20px); font-weight: 700; margin-bottom: 12px; word-break: break-all; }
+    .github-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 48px; margin-top: 32px; }
+    .github-heading { font-size: clamp(13px, 2.5vw, 20px); font-weight: 700; margin-bottom: 12px; word-break: break-all; }
     .github-icon { width: 56px; height: 56px; margin: 0 auto 16px; }
 
-    /* FOOTER */
-    footer {
-      border-top: 1px solid rgba(255,255,255,0.06); padding: 32px 20px;
-      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
-    }
+    footer { border-top: 1px solid rgba(255,255,255,0.06); padding: 32px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
     .footer-links { display: flex; flex-wrap: wrap; gap: 16px; }
-    .footer-links a { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; transition: color 0.2s; }
+    .footer-links a { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; }
     .footer-links a:hover { color: var(--white); }
     .footer-copy { color: rgba(255,255,255,0.25); font-size: 13px; }
 
-    /* ANIMATIONS */
+    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 24px; }
+
     @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes bounce {
-      0%, 100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(8px); }
-    }
-    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 16px; }
 
-    /* MOBILE */
-    @media (max-width: 900px) {
+    /* MOBILE & LANDSCAPE */
+    @media (max-width: 768px) {
+      nav { padding: 12px 16px; }
       .nav-links { display: none; }
-      .btn-primary { font-size: 12px; padding: 8px 12px; white-space: nowrap; }
-      .features-grid { grid-template-columns: repeat(2, 1fr); }
-      footer { flex-direction: column; align-items: flex-start; }
+      .nav-btn-text { display: none; }
+      .nav-btn { padding: 9px 12px; gap: 0; }
+      .hero { padding: 80px 16px 50px; min-height: 100svh; }
       .hero-scroll { display: none; }
-    }
-
-    @media (max-width: 480px) {
+      .section { padding: 56px 16px; }
       .features-grid { grid-template-columns: 1fr; }
-      .pro-section { margin: 0; }
-      footer { flex-direction: column; }
+      .pro-section { margin: 0 8px; padding: 36px 16px; }
+      .opensource-section { padding: 56px 16px; }
+      .github-card { padding: 24px 16px; }
+      footer { flex-direction: column; align-items: flex-start; padding: 24px 16px; }
+      .divider { margin: 0 8px; }
     }
   </style>
 </head>
 <body>
+
 <nav>
   <a href="#" class="nav-logo">
     <div class="nav-logo-icon">
@@ -184,14 +150,14 @@
     <a href="#opensource">Open Source</a>
     <a href="https://uqurreshi34-dev.github.io/askfiles-privacy/" target="_blank">Privacy</a>
   </div>
-  <a href="https://play.google.com/store/apps/details?id=com.askfiles.mobile" target="_blank" class="btn-primary">
+  <a href="https://play.google.com/store/apps/details?id=com.askfiles.mobile" target="_blank" class="nav-btn">
     <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92z" fill="#00C4FF"/>
       <path d="M14.524 10.892l2.302-2.302L5.864 2.658l8.66 8.234z" fill="#FF3D5A"/>
       <path d="M17.698 13.14c.584-.337.584-1.177 0-1.514l-2.006-1.345L13.207 12l2.485 2.485 2.006-1.345z" fill="#FFD600"/>
       <path d="M5.864 21.342l10.937-6.333-2.302-2.302-8.635 8.635z" fill="#00E676"/>
     </svg>
-    Get on Google Play
+    <span class="nav-btn-text">Get on Google Play</span>
   </a>
 </nav>
 
@@ -200,7 +166,7 @@
   <h1 class="hero-title">Your files.<br/><span>Your device.</span><br/>Your control.</h1>
   <p class="hero-sub">AskFiles is a powerful Android file manager with AI search, secure vault, duplicate finder and storage insights — all private, no cloud required.</p>
   <div class="hero-actions">
-    <a href="https://play.google.com/store/apps/details?id=com.askfiles.mobile" target="_blank" class="btn-primary" style="padding:13px 24px; font-size:15px;">
+    <a href="https://play.google.com/store/apps/details?id=com.askfiles.mobile" target="_blank" class="btn-primary">
       <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92z" fill="#00C4FF"/>
         <path d="M14.524 10.892l2.302-2.302L5.864 2.658l8.66 8.234z" fill="#FF3D5A"/>
@@ -237,7 +203,7 @@
 
 <div class="divider"></div>
 
-<section style="padding: 60px 0;" id="pro">
+<section style="padding:60px 0;" id="pro">
   <div class="pro-section">
     <div class="section-label" style="text-align:center;">Pro</div>
     <h2 class="pro-heading">One payment. Forever.</h2>
@@ -251,7 +217,7 @@
       <div class="pro-pill">🗂️ Duplicate Finder</div>
       <div class="pro-pill">🔔 Daily reminders</div>
     </div>
-    <a href="https://play.google.com/store/apps/details?id=com.askfiles.mobile" target="_blank" class="btn-primary" style="padding:13px 28px; font-size:15px;">Upgrade in app →</a>
+    <a href="https://play.google.com/store/apps/details?id=com.askfiles.mobile" target="_blank" class="btn-primary">Upgrade in app →</a>
   </div>
 </section>
 
@@ -260,11 +226,11 @@
 <section class="opensource-section" id="opensource">
   <div class="section-label" style="text-align:center;">Open Source</div>
   <h2 class="opensource-heading">Built in the open.</h2>
-  <p style="color:rgba(255,255,255,0.5); font-size:15px; margin-top:14px;">AskFiles is open source. Inspect the code, contribute, report issues or learn how it's built. Privacy isn't just a promise — you can verify it yourself.</p>
+  <p style="color:rgba(255,255,255,0.5);font-size:15px;margin-top:14px;">AskFiles is open source. Inspect the code, contribute, report issues or learn how it's built. Privacy isn't just a promise — you can verify it yourself.</p>
   <div class="github-card">
     <svg class="github-icon" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
     <h3 class="github-heading">github.com/uqurreshi34-dev/askfiles</h3>
-    <p style="color:rgba(255,255,255,0.45); font-size:14px; margin-bottom:24px;">Built with React Native / Expo, Django REST Framework, and native Kotlin modules. Stars, forks and contributions welcome.</p>
+    <p style="color:rgba(255,255,255,0.45);font-size:14px;margin-bottom:24px;">Built with React Native / Expo, Django REST Framework, and native Kotlin modules. Stars, forks and contributions welcome.</p>
     <a href="https://github.com/uqurreshi34-dev/askfiles" target="_blank" class="btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
       View on GitHub
@@ -294,5 +260,6 @@
   </div>
   <div class="footer-copy">© 2026 AskFiles · AvidCoder</div>
 </footer>
+
 </body>
 </html>
