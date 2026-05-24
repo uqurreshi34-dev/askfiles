@@ -284,7 +284,7 @@ export default function HomeScreen() {
           activeOpacity={0.7}
         >
           <Ionicons name="search-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
-          <Text style={[styles.searchText, { color: colors.textMuted }]}>Search files, folders...</Text>
+          <Text style={[styles.searchText, { color: colors.textMuted }]}>Search files...</Text>
         </TouchableOpacity>
 
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Quick access</Text>

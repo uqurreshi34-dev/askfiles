@@ -639,7 +639,7 @@ export default function SearchScreen() {
             <TextInput
               ref={searchInputRef}
               style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="Search files, folders..."
+              placeholder="Search files..."
               placeholderTextColor={colors.textMuted}
               value={query}
               onChangeText={handleSearchChange}

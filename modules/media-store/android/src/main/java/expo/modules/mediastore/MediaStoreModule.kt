@@ -1,13 +1,52 @@
 package expo.modules.mediastore
 
-import android.content.ContentUris
-import android.content.Context
 import android.database.Cursor
 import android.provider.MediaStore
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class MediaStoreModule : Module() {
+
+  private val DOCUMENT_MIME_TYPES = listOf(
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/csv",
+    "application/rtf",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.oasis.opendocument.presentation",
+  )
+
+  private val SENSITIVE_MIME_TYPES = listOf(
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "text/plain",
+  )
+
+  private val ALL_FILE_MIME_TYPES = listOf(
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "image/heic", "image/heif", "image/bmp",
+    "video/mp4", "video/3gpp", "video/x-matroska",
+    "video/quicktime", "video/webm", "video/avi",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/ogg",
+    "application/zip", "application/x-rar-compressed",
+    "application/vnd.android.package-archive",
+  )
   override fun definition() = ModuleDefinition {
     Name("MediaStore")
 
@@ -15,21 +54,7 @@ class MediaStoreModule : Module() {
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
 
-      val mimeTypes = listOf(
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-powerpoint",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "text/plain",
-        "text/csv",
-        "application/rtf",
-        "application/vnd.oasis.opendocument.text",
-        "application/vnd.oasis.opendocument.spreadsheet",
-        "application/vnd.oasis.opendocument.presentation",
-      )
+      val mimeTypes = DOCUMENT_MIME_TYPES
 
       val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
       val selectionArgs = mimeTypes.toTypedArray()
@@ -228,12 +253,7 @@ class MediaStoreModule : Module() {
         val keywordClause = keywords.joinToString(" OR ") {
           "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
         }
-        val mimeTypes = listOf(
-          "application/pdf",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "text/plain",
-        )
+        val mimeTypes = SENSITIVE_MIME_TYPES
         val mimeClause = mimeTypes.joinToString(" OR ") {
           "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
         }
@@ -273,21 +293,7 @@ class MediaStoreModule : Module() {
           MediaStore.Files.FileColumns.SIZE,
           MediaStore.Files.FileColumns.DATA,
         )
-        val mimeTypes = listOf(
-          // Images
-          "image/jpeg", "image/png", "image/gif", "image/webp",
-          "image/heic", "image/heif", "image/bmp",
-          // Videos
-          "video/mp4", "video/3gpp", "video/x-matroska",
-          "video/quicktime", "video/webm", "video/avi",
-          // Documents
-          "application/pdf",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "application/vnd.ms-excel",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "text/plain",
-        )
+        val mimeTypes = ALL_FILE_MIME_TYPES
         val selection = mimeTypes.joinToString(" OR ") {
           "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
         } + " AND ${MediaStore.Files.FileColumns.SIZE} > 0"
@@ -309,6 +315,46 @@ class MediaStoreModule : Module() {
               "name" to name,
               "size" to size.toDouble(),
               "uri" to "file://$path",
+            ))
+          }
+        }
+      } catch (e: Exception) {}
+      results
+    }
+
+    AsyncFunction("searchFiles") { query: String ->
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      try {
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+          MediaStore.Files.FileColumns.DISPLAY_NAME,
+          MediaStore.Files.FileColumns.DATA,
+          MediaStore.Files.FileColumns.MIME_TYPE,
+        )
+        val mimeClause = ALL_FILE_MIME_TYPES.joinToString(" OR ") {
+          "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
+        }
+        val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? AND ($mimeClause)"
+        val selectionArgs = (listOf("%$query%") + ALL_FILE_MIME_TYPES).toTypedArray()
+        val cursor = context.contentResolver.query(
+          uri, projection, selection, selectionArgs,
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+        )
+        cursor?.use {
+          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+          val mimeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+          while (it.moveToNext()) {
+            val name = it.getString(nameCol) ?: continue
+            if (name.startsWith('.')) continue
+            val path = it.getString(dataCol) ?: continue
+            val mime = it.getString(mimeCol) ?: ""
+            results.add(mapOf(
+              "name" to name,
+              "uri" to "file://$path",
+              "isDirectory" to false,
+              "mimeType" to mime,
             ))
           }
         }

@@ -62,3 +62,12 @@ export async function querySensitiveFiles(keywords: string[]): Promise<Sensitive
 export async function queryAllFiles(): Promise<FileEntry[]> {
   return MediaStore.queryAllFiles();
 }
+
+export async function searchFiles(query: string): Promise<{
+  name: string;
+  uri: string;
+  isDirectory: boolean;
+  mimeType: string;
+}[]> {
+  return MediaStore.searchFiles(query);
+}
