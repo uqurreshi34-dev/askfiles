@@ -1,22 +1,20 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Alert,
 } from 'react-native';
-import RNFS from 'react-native-fs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
-import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
-import { isImageFile, getFileColor, formatSize, getMimeType } from '@/utils/files';
+import { getFileColor, formatSize, getMimeType } from '@/utils/files';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { useTrash } from '@/hooks/useTrash';
+import { querySensitiveFiles } from 'media-store';
 
 interface SensitiveFile {
   name: string;
@@ -26,54 +24,13 @@ interface SensitiveFile {
 }
 
 const SENSITIVE_KEYWORDS = [
-  'password', 'passwd', 'credentials',
-  'bank', 'banking',
-  'statement', 'payslip', 'salary', 'invoice', 'receipt',
-  'passport', 'national id', 'nid', 'license', 'licence',
-  'insurance', 'tax', 'tax return',
-  'cv', 'resume', 'curriculum',
-  'credit card', 'pin', 'secret',
-  'medical', 'prescription',
-  'contract', 'agreement',
-  'personal',
+  'personal', 'private', 'bank', 'statement',
+  'invoice', 'salary', 'payslip', 'tax', 'secret',
+  'prescription', 'medical', 'hospital',
+  'licence', 'license', 'passport', 'insurance', 'contract',
 ];
 
-const SCAN_DIRS = [
-    'file:///storage/emulated/0/Download/',
-    'file:///storage/emulated/0/Documents/',
-    'file:///storage/emulated/0/Pictures/',
-    'file:///storage/emulated/0/Movies/',
-    'file:///storage/emulated/0/DCIM/',
-  ];
-
-const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Android'];
-
-function matchesKeyword(name: string): string | null {
-  const lower = name.toLowerCase();
-  for (const kw of SENSITIVE_KEYWORDS) {
-    if (lower.includes(kw)) return kw;
-  }
-  return null;
-}
-
-async function scanDir(path: string, results: SensitiveFile[]) {
-  try {
-    const uri = path.endsWith('/') ? path : path + '/';
-    const dir = new FileSystem.Directory(uri);
-    const contents = dir.list();
-    for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        if (item.name.startsWith('.')) continue;
-        const keyword = matchesKeyword(item.name);
-        if (keyword) {
-          results.push({ name: item.name, uri: item.uri, size: item.size ?? 0, matchedKeyword: keyword });
-        }
-      } else if (item instanceof FileSystem.Directory) {
-        await scanDir(item.uri, results);
-      }
-    }
-  } catch {}
-}
+const SENSITIVE_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.txt'];
 
 export default function SensitiveFilesScreen() {
   const { colors } = useTheme();
@@ -94,21 +51,16 @@ export default function SensitiveFilesScreen() {
     setFiles([]);
     await new Promise(r => setTimeout(r, 50));
     try {
-      const results: SensitiveFile[] = [];
-      const dynamicDirs = [...SCAN_DIRS];
-      try {
-        const rootItems = await RNFS.readDir('/storage/emulated/0/');
-        for (const item of rootItems) {
-          if (!item.isDirectory() || item.name.startsWith('.') || STANDARD_ROOT_DIRS.includes(item.name)) continue;
-          dynamicDirs.push(`file://${item.path}/`);
-        }
-      } catch {}
-      for (const dir of dynamicDirs) {
-        await scanDir(dir, results);
-      }
-      const unique = results.filter((f, i, arr) => arr.findIndex(x => x.uri === f.uri) === i);
-      unique.sort((a, b) => a.name.localeCompare(b.name));
-      setFiles(unique);
+      const results = await querySensitiveFiles(SENSITIVE_KEYWORDS);
+      const withKeyword = results
+        .map(f => ({
+          ...f,
+          matchedKeyword: SENSITIVE_KEYWORDS.find(kw =>
+            f.name.toLowerCase().includes(kw)
+          ) ?? '',
+        }))
+        .filter(f => f.matchedKeyword !== '');
+      setFiles(withKeyword);
     } catch {}
     finally {
       setScanning(false);
@@ -241,15 +193,6 @@ export default function SensitiveFilesScreen() {
                   setOpeningUri(null);
                 }}
               >
-                <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
-                  {isImageFile(item.name) ? (
-                    <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
-                  ) : isVideoFile(item.name) ? (
-                    <VideoThumb uri={item.uri} style={styles.thumbnail} />
-                  ) : (
-                    <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
-                  )}
-                </View>
                 <View style={styles.fileInfo}>
                   <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>

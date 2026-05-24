@@ -12,6 +12,19 @@ export interface LargestFile {
   name: string;
   size: number;
   folder: string;
+  uri: string;
+}
+
+export interface SensitiveFile {
+  name: string;
+  size: number;
+  uri: string;
+}
+
+export interface FileEntry {
+  name: string;
+  size: number;
+  uri: string;
 }
 
 export async function queryDocuments(): Promise<MediaFile[]> {
@@ -40,4 +53,12 @@ export async function queryLargestFiles(
   limit: number
 ): Promise<LargestFile[]> {
   return MediaStore.queryLargestFiles(folderPath, mimePrefix, limit);
+}
+
+export async function querySensitiveFiles(keywords: string[]): Promise<SensitiveFile[]> {
+  return MediaStore.querySensitiveFiles(keywords);
+}
+
+export async function queryAllFiles(): Promise<FileEntry[]> {
+  return MediaStore.queryAllFiles();
 }

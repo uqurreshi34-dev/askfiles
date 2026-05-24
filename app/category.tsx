@@ -23,7 +23,7 @@ import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { queryDocuments, queryDownloads } from 'media-store';
-import { useStorage } from '@/hooks/useStorage';
+import { scanFile } from '@/modules/share-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -245,9 +245,11 @@ export default function CategoryScreen() {
     try {
       if (pickerMode === 'copy') {
         await RNFS.copyFile(src, dst);
+        await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
         await RNFS.moveFile(src, dst);
+        await scanFile(dst).catch(() => {});
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
           const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
@@ -281,6 +283,7 @@ export default function CategoryScreen() {
         return;
       }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      await scanFile(toPath(newUri)).catch(() => {});
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
         const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });

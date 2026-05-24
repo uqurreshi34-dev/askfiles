@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
-import RNFS from 'react-native-fs';
+import { queryAllFiles } from 'media-store';
 
 export interface DuplicateFile {
   name: string;
@@ -16,45 +16,11 @@ export interface DuplicateGroup {
   files: DuplicateFile[];
 }
 
-const SCAN_DIRS = [
-  'file:///storage/emulated/0/Download/',
-  'file:///storage/emulated/0/Documents/',
-  'file:///storage/emulated/0/Pictures/',
-  'file:///storage/emulated/0/Movies/',
-  'file:///storage/emulated/0/DCIM/',
-  'file:///storage/emulated/0/Music/',
-  'file:///storage/emulated/0/Recordings/',
-  'file:///storage/emulated/0/Ringtones/',
-  'file:///storage/emulated/0/Alarms/',
-  'file:///storage/emulated/0/Notifications/',
-  'file:///storage/emulated/0/Audiobooks/',
-  'file:///storage/emulated/0/Podcasts/',
-  'file:///storage/emulated/0/Android/media/',
-];
-
 function formatSize(bytes: number): string {
   if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
   if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return bytes + ' B';
-}
-
-async function scanDir(path: string, results: DuplicateFile[]) {
-  try {
-    const uri = path.endsWith('/') ? path : path + '/';
-    const dir = new FileSystem.Directory(uri);
-    const contents = dir.list();
-    for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        if (!item.name.startsWith('.') && (item.size ?? 0) > 0) {
-          results.push({ name: item.name, uri: item.uri, size: item.size ?? 0 });
-        }
-      } else if (item instanceof FileSystem.Directory) {
-        const subUri = item.uri.endsWith('/') ? item.uri : item.uri + '/';
-        await scanDir(subUri, results);
-      }
-    }
-  } catch {}
 }
 
 export function useDuplicates() {
@@ -69,53 +35,22 @@ export function useDuplicates() {
     setScanned(false);
     setGroups([]);
     await new Promise(resolve => setTimeout(resolve, 50));
-
     try {
-      const allFiles: DuplicateFile[] = [];
-
-      const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Ringtones', 'Alarms', 'Notifications', 'Audiobooks', 'Podcasts', 'Android'];
-      const dynamicDirs = [...SCAN_DIRS];
-      try {
-        const rootItems = await RNFS.readDir('/storage/emulated/0/');
-        for (const item of rootItems) {
-          if (!item.isDirectory()) continue;
-          if (item.name.startsWith('.')) continue;
-          if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
-          dynamicDirs.push(`file://${item.path}/`);
-        }
-      } catch {}
-
-      for (const dir of dynamicDirs) {
-        await scanDir(dir, allFiles);
-      }
-
-      let after: string | undefined;
-      for (let page = 0; page < 100; page++) {
-        const result = await MediaLibrary.getAssetsAsync({
-          mediaType: ['photo', 'video'],
-          first: 50,
-          after,
-        });
-        for (const asset of result.assets) {
-          allFiles.push({ name: asset.filename, uri: asset.uri, size: 0 });
-        }
-        if (!result.hasNextPage || !result.endCursor || result.assets.length === 0) break;
-        after = result.endCursor;
-      }
-
+      const allFiles = await queryAllFiles();
+  
       const map: Record<string, DuplicateFile[]> = {};
       for (const file of allFiles) {
         const key = `${file.name.toLowerCase()}__${file.size}`;
         if (!map[key]) map[key] = [];
         const dir = file.uri.substring(0, file.uri.lastIndexOf('/'));
-        if (!map[key].find(f => f.uri === file.uri) && !map[key].find(f => f.uri.substring(0, f.uri.lastIndexOf('/')) === dir)) {
+        if (!map[key].find(f => f.uri === file.uri) &&
+            !map[key].find(f => f.uri.substring(0, f.uri.lastIndexOf('/')) === dir)) {
           map[key].push(file);
         }
       }
-
+  
       const dupGroups: DuplicateGroup[] = Object.entries(map)
         .filter(([, files]) => files.length >= 2)
-        .filter(([, files]) => files[0].size > 0)
         .map(([key, files]) => ({
           key,
           name: files[0].name,
@@ -123,13 +58,12 @@ export function useDuplicates() {
           files,
         }))
         .sort((a, b) => (b.size * (b.files.length - 1)) - (a.size * (a.files.length - 1)));
-
+  
       const wasted = dupGroups.reduce((sum, g) => sum + g.size * (g.files.length - 1), 0);
-
       setGroups(dupGroups);
       setTotalWasted(wasted);
-    } catch (e) {
-    } finally {
+    } catch {}
+    finally {
       setScanning(false);
       setScanned(true);
     }

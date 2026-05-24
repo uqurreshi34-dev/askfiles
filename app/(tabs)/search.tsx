@@ -29,7 +29,8 @@ import { setAiSearchListening } from '@/app/_layout';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative } from '@/modules/share-module';
-import { DocIndexer, IndexedFile } from '@/modules/doc-indexer'
+import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
+import { scanFile } from '@/modules/share-module';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -283,9 +284,11 @@ export default function SearchScreen() {
     try {
       if (pickerMode === 'copy') {
         await RNFS.copyFile(src, dst);
+        await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
         await RNFS.moveFile(src, dst);
+        await scanFile(dst).catch(() => {});
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
           const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
@@ -320,6 +323,7 @@ export default function SearchScreen() {
         return;
       }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      await scanFile(toPath(newUri)).catch(() => {});
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
         const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });

@@ -26,6 +26,7 @@ import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { readDirectory } from 'file-reader';
+import { scanFile } from '@/modules/share-module';
 
 interface FileItem {
   name: string;
@@ -613,9 +614,11 @@ export default function BrowseScreen() {
     try {
       if (pickerMode === 'copy') {
         await RNFS.copyFile(src, dst);
+        await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
         await RNFS.moveFile(src, dst);
+        await scanFile(dst).catch(() => {});
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
           const sourcePath = toPath(item.uri);
@@ -655,6 +658,7 @@ export default function BrowseScreen() {
         return;
       }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      await scanFile(toPath(newUri)).catch(() => {});
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
         const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });

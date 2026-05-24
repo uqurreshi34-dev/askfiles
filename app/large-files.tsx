@@ -3,7 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
 } from 'react-native';
-import RNFS from 'react-native-fs';
+import { queryLargestFiles } from 'media-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,45 +21,11 @@ interface LargeFile {
   size: number;
 }
 
-const SCAN_DIRS = [
-  'file:///storage/emulated/0/Download/',
-  'file:///storage/emulated/0/Documents/',
-  'file:///storage/emulated/0/Pictures/',
-  'file:///storage/emulated/0/Movies/',
-  'file:///storage/emulated/0/DCIM/',
-  'file:///storage/emulated/0/Music/',
-  'file:///storage/emulated/0/Recordings/',
-  'file:///storage/emulated/0/Ringtones/',
-  'file:///storage/emulated/0/Alarms/',
-  'file:///storage/emulated/0/Notifications/',
-  'file:///storage/emulated/0/Audiobooks/',
-  'file:///storage/emulated/0/Podcasts/',
-  'file:///storage/emulated/0/Android/media/',
-];
-
 const SIZE_GROUPS = [
   { label: 'Over 75 MB',  min: 75 * 1024 * 1024, max: Infinity },
   { label: '51 – 75 MB',  min: 51 * 1024 * 1024, max: 75 * 1024 * 1024 },
   { label: '25 – 50 MB',  min: 25 * 1024 * 1024, max: 51 * 1024 * 1024 },
 ];
-
-async function scanDir(path: string, results: LargeFile[], minSize: number) {
-  try {
-    const uri = path.endsWith('/') ? path : path + '/';
-    const dir = new FileSystem.Directory(uri);
-    const contents = dir.list();
-    for (const item of contents) {
-      if (item instanceof FileSystem.File) {
-        const size = item.size ?? 0;
-        if (!item.name.startsWith('.') && size >= minSize) {
-          results.push({ name: item.name, uri: item.uri, size });
-        }
-      } else if (item instanceof FileSystem.Directory) {
-        await scanDir(item.uri, results, minSize);
-      }
-    }
-  } catch {}
-}
 
 export default function LargeFilesScreen() {
   const { colors } = useTheme();
@@ -76,23 +42,12 @@ export default function LargeFilesScreen() {
     setFiles([]);
     await new Promise(r => setTimeout(r, 50));
     try {
-      const results: LargeFile[] = [];
-      const STANDARD_ROOT_DIRS = ['Download', 'Documents', 'Pictures', 'Movies', 'Music', 'DCIM', 'Recordings', 'Ringtones', 'Alarms', 'Notifications', 'Audiobooks', 'Podcasts', 'Android'];
-      const dynamicDirs = [...SCAN_DIRS];
-      try {
-        const rootItems = await RNFS.readDir('/storage/emulated/0/');
-        for (const item of rootItems) {
-          if (!item.isDirectory()) continue;
-          if (item.name.startsWith('.')) continue;
-          if (STANDARD_ROOT_DIRS.includes(item.name)) continue;
-          dynamicDirs.push(`file://${item.path}/`);
-        }
-      } catch {}
-      for (const dir of dynamicDirs) {
-        await scanDir(dir, results, 25 * 1024 * 1024);
-      }
-      results.sort((a, b) => b.size - a.size);
-      setFiles(results);
+      const results = await queryLargestFiles('/storage/emulated/0/', '', 500);
+      setFiles(
+        results
+          .filter(f => f.size >= 25 * 1024 * 1024)
+          .map(f => ({ name: f.name, uri: f.uri, size: f.size }))
+      );
     } catch {}
     finally {
       setScanning(false);

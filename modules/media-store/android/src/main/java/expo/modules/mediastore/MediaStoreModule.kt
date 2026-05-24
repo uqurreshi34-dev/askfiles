@@ -206,8 +206,110 @@ class MediaStoreModule : Module() {
               "name" to name,
               "size" to size.toDouble(),
               "folder" to folder,
+              "uri" to "file://$path",
             ))
             count++
+          }
+        }
+      } catch (e: Exception) {}
+      results
+    }
+
+    AsyncFunction("querySensitiveFiles") { keywords: List<String> ->
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      try {
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+          MediaStore.Files.FileColumns.DISPLAY_NAME,
+          MediaStore.Files.FileColumns.SIZE,
+          MediaStore.Files.FileColumns.DATA,
+        )
+        val keywordClause = keywords.joinToString(" OR ") {
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        }
+        val mimeTypes = listOf(
+          "application/pdf",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/plain",
+        )
+        val mimeClause = mimeTypes.joinToString(" OR ") {
+          "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
+        }
+        val selection = "($keywordClause) AND ($mimeClause)"
+        val selectionArgs = (keywords.map { "%$it%" } + mimeTypes).toTypedArray()
+        val cursor = context.contentResolver.query(
+          uri, projection, selection, selectionArgs,
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+        )
+        cursor?.use {
+          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+          val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+          while (it.moveToNext()) {
+            val name = it.getString(nameCol) ?: continue
+            if (name.startsWith('.')) continue
+            val size = it.getLong(sizeCol)
+            val path = it.getString(dataCol) ?: continue
+            results.add(mapOf(
+              "name" to name,
+              "size" to size.toDouble(),
+              "uri" to "file://$path",
+            ))
+          }
+        }
+      } catch (e: Exception) {}
+      results
+    }
+
+    AsyncFunction("queryAllFiles") {
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      try {
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+          MediaStore.Files.FileColumns.DISPLAY_NAME,
+          MediaStore.Files.FileColumns.SIZE,
+          MediaStore.Files.FileColumns.DATA,
+        )
+        val mimeTypes = listOf(
+          // Images
+          "image/jpeg", "image/png", "image/gif", "image/webp",
+          "image/heic", "image/heif", "image/bmp",
+          // Videos
+          "video/mp4", "video/3gpp", "video/x-matroska",
+          "video/quicktime", "video/webm", "video/avi",
+          // Documents
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/plain",
+        )
+        val selection = mimeTypes.joinToString(" OR ") {
+          "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
+        } + " AND ${MediaStore.Files.FileColumns.SIZE} > 0"
+        val selectionArgs = mimeTypes.toTypedArray()
+        val cursor = context.contentResolver.query(
+          uri, projection, selection, selectionArgs,
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+        )
+        cursor?.use {
+          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+          val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+          while (it.moveToNext()) {
+            val name = it.getString(nameCol) ?: continue
+            if (name.startsWith('.')) continue
+            val size = it.getLong(sizeCol)
+            val path = it.getString(dataCol) ?: continue
+            results.add(mapOf(
+              "name" to name,
+              "size" to size.toDouble(),
+              "uri" to "file://$path",
+            ))
           }
         }
       } catch (e: Exception) {}
