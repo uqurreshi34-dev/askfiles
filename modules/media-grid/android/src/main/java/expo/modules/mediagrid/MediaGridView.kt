@@ -39,7 +39,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         }
     }
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val executor = Executors.newFixedThreadPool(4)
+    private val executor = Executors.newFixedThreadPool(8)
 
     init {
         recyclerView.layoutParams = LayoutParams(
@@ -121,7 +121,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         private val cache = java.util.Collections.synchronizedMap(
             object : java.util.LinkedHashMap<String, Bitmap>(64, 0.75f, true) {
                 override fun removeEldestEntry(eldest: Map.Entry<String, Bitmap>): Boolean {
-                    return size > 150
+                    return size > 500
                 }
             }
         )
@@ -310,7 +310,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                             mainHandler?.post {
                                 // Only set if view is still showing same URI
                                 val currentPos = bindingAdapterPosition
-                                if (currentPos != RecyclerView.NO_ID.toInt() &&
+                                if (currentPos != RecyclerView.NO_POSITION &&
                                     currentPos < uris.size &&
                                     uris[currentPos] == uri
                                 ) {
