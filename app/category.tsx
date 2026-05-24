@@ -493,10 +493,14 @@ export default function CategoryScreen() {
     const files = Array.from(selectedItemsMap.values());
     let totalSize = 0;
     for (const file of files) {
-      try {
-        const f = new FileSystem.File(file.uri);
-        totalSize += f.size ?? 0;
-      } catch {}
+      if (file.size && file.size > 0) {
+        totalSize += file.size;
+      } else {
+        try {
+          const f = new FileSystem.File(file.uri);
+          totalSize += f.size ?? 0;
+        } catch {}
+      }
     }
     Alert.alert(`${files.length} file${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
   }

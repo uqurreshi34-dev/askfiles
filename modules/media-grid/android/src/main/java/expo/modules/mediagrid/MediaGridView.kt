@@ -1,13 +1,7 @@
 package expo.modules.mediagrid
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.media.ThumbnailUtils
-import android.os.Handler
-import android.os.Looper
-import android.provider.MediaStore
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -15,21 +9,24 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
-import java.util.concurrent.Executors
-import android.os.Build
-import java.io.File
 
 class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
 
     private var thumbSizeDp = 110
     private val onItemPress by EventDispatcher()
     private val onItemLongPress by EventDispatcher()
+    private var isActive = true
 
     private val recyclerView = RecyclerView(context)
+
     private var adapter = MediaGridAdapter()
+
     private var layoutManager = object : GridLayoutManager(context, 3) {
         override fun checkLayoutParams(lp: RecyclerView.LayoutParams?): Boolean {
             val thumbPx = (thumbSizeDp * context.resources.displayMetrics.density).toInt()
@@ -37,9 +34,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             lp?.height = thumbPx
             return true
         }
+        override fun scrollVerticallyBy(dy: Int, recycler: RecyclerView.Recycler, state: RecyclerView.State): Int {
+            if (!isActive) return 0
+            return super.scrollVerticallyBy(dy, recycler, state)
+        }
     }
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val executor = Executors.newFixedThreadPool(4)
 
     init {
         recyclerView.layoutParams = LayoutParams(
@@ -48,7 +47,9 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         )
         recyclerView.layoutManager = layoutManager
         recyclerView.adapter = adapter
+        adapter.stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
         recyclerView.setHasFixedSize(false)
+        recyclerView.itemAnimator = null
         recyclerView.addItemDecoration(object : RecyclerView.ItemDecoration() {
             override fun getItemOffsets(
                 outRect: android.graphics.Rect,
@@ -62,14 +63,22 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         })
         addView(recyclerView)
 
-        adapter.onItemClick = { uri, index ->
-            onItemPress(mapOf("uri" to uri, "index" to index))
-        }
-        adapter.onItemLongClick = { uri, index ->
-            onItemLongPress(mapOf("uri" to uri, "index" to index))
-        }
-        adapter.executor = executor
-        adapter.mainHandler = mainHandler
+        adapter.onItemClick = { uri, index -> onItemPress(mapOf("uri" to uri, "index" to index)) }
+        adapter.onItemLongClick = { uri, index -> onItemLongPress(mapOf("uri" to uri, "index" to index)) }
+    }
+
+    override fun onStartTemporaryDetach() {
+        isActive = false
+        recyclerView.stopScroll()
+        super.onStartTemporaryDetach()
+    }
+
+    override fun onDetachedFromWindow() {
+        isActive = false
+        recyclerView.stopScroll()
+        adapter.onItemClick = null
+        adapter.onItemLongClick = null
+        super.onDetachedFromWindow()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -77,32 +86,17 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         if (w != oldw && w > 0) {
             val thumbPx = (thumbSizeDp * context.resources.displayMetrics.density).toInt()
             val cols = maxOf(2, w / thumbPx)
-            layoutManager.spanCount = cols
-            adapter.notifyDataSetChanged()
+            if (layoutManager.spanCount != cols) {
+                layoutManager.spanCount = cols
+            }
         }
     }
 
-    fun setUris(uris: List<String>) {
-        adapter.setUris(uris)
-    }
-
-    fun setSelectedUris(selectedUris: Set<String>) {
-        adapter.setSelectedUris(selectedUris)
-    }
-
-    fun setSelectMode(selectMode: Boolean) {
-        adapter.setSelectMode(selectMode)
-    }
-
-    fun setCategory(category: String) {
-        adapter.setCategory(category)
-    }
-
-    fun setOpeningUri(openingUri: String) {
-        adapter.setOpeningUri(openingUri)
-    }
-
-    // ── Adapter ──────────────────────────────────────────────────────────────
+    fun setUris(uris: List<String>) { adapter.setUris(uris) }
+    fun setSelectedUris(selectedUris: Set<String>) { adapter.setSelectedUris(selectedUris) }
+    fun setSelectMode(selectMode: Boolean) { adapter.setSelectMode(selectMode) }
+    fun setCategory(category: String) { adapter.setCategory(category) }
+    fun setOpeningUri(openingUri: String) { adapter.setOpeningUri(openingUri) }
 
     inner class MediaGridAdapter : RecyclerView.Adapter<MediaGridAdapter.GridViewHolder>() {
 
@@ -114,17 +108,6 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
         var onItemClick: ((String, Int) -> Unit)? = null
         var onItemLongClick: ((String, Int) -> Unit)? = null
-        var executor: java.util.concurrent.ExecutorService? = null
-        var mainHandler: Handler? = null
-
-        // Thumbnail cache
-        private val cache = java.util.Collections.synchronizedMap(
-            object : java.util.LinkedHashMap<String, Bitmap>(64, 0.75f, true) {
-                override fun removeEldestEntry(eldest: Map.Entry<String, Bitmap>): Boolean {
-                    return size > 150
-                }
-            }
-        )
 
         fun setUris(newUris: List<String>) {
             uris = newUris
@@ -134,18 +117,10 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         fun setSelectedUris(newSelected: Set<String>) {
             val old = selectedUris
             selectedUris = newSelected
-            val changed = mutableListOf<Int>()
             uris.forEachIndexed { index, uri ->
                 if (old.contains(uri) != newSelected.contains(uri)) {
-                    changed.add(index)
+                    notifyItemChanged(index, "selection")
                 }
-            }
-            mainHandler?.post {
-                changed.forEach { index -> 
-                recyclerView.findViewHolderForAdapterPosition(index)?.let { holder ->
-                    (holder as? GridViewHolder)?.updateSelection(selectedUris.contains(uris[index]))
-                }
-              }
             }
         }
 
@@ -156,9 +131,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             }
         }
 
-        fun setCategory(newCategory: String) {
-            category = newCategory
-        }
+        fun setCategory(newCategory: String) { category = newCategory }
 
         fun setOpeningUri(uri: String) {
             val oldUri = openingUri
@@ -183,24 +156,30 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
         override fun onBindViewHolder(holder: GridViewHolder, position: Int) {
             val uri = uris[position]
-            val isSelected = selectedUris.contains(uri)
-            val isOpening = openingUri == uri
-            holder.bind(uri, isSelected, isOpening, category, selectMode)
+            holder.bind(uri, selectedUris.contains(uri), openingUri == uri, category, selectMode)
         }
 
-        override fun onBindViewHolder(holder: GridViewHolder, position: Int, payloads: List<Any>) {
-            if (payloads.contains("selection")) {
-                // Only update selection state — don't reload thumbnail
+        override fun onBindViewHolder(holder: GridViewHolder, position: Int, payloads: MutableList<Any>) {
+            if (payloads.isNotEmpty() && payloads[0] == "selection") {
                 holder.updateSelection(selectedUris.contains(uris[position]))
             } else {
-                onBindViewHolder(holder, position)
+                super.onBindViewHolder(holder, position, payloads)
+            }
+        }
+
+        override fun onViewRecycled(holder: GridViewHolder) {
+            super.onViewRecycled(holder)
+            try {
+                Glide.with(holder.imageView.context.applicationContext).clear(holder.imageView)
+            } catch (e: Exception) {
+                // context already destroyed, nothing to clear
             }
         }
 
         inner class GridViewHolder(private val container: FrameLayout) :
             RecyclerView.ViewHolder(container) {
 
-            private val imageView = ImageView(container.context).apply {
+            val imageView = ImageView(container.context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
@@ -269,16 +248,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     overlay.setBackgroundColor(Color.argb(80, 24, 95, 165))
                     overlay.visibility = View.VISIBLE
                     checkView.visibility = View.VISIBLE
-                } else {
-                    overlay.visibility = View.GONE
-                    checkView.visibility = View.INVISIBLE
-                }
-
-                // Border for selected
-                if (isSelected) {
                     container.setPadding(dpToPx(3), dpToPx(3), dpToPx(3), dpToPx(3))
                     container.setBackgroundColor(Color.parseColor("#185FA5"))
                 } else {
+                    overlay.visibility = View.GONE
+                    checkView.visibility = View.INVISIBLE
                     container.setPadding(0, 0, 0, 0)
                     container.setBackgroundColor(Color.TRANSPARENT)
                 }
@@ -297,45 +271,34 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     spinner.visibility = View.GONE
                 }
 
-                // Load thumbnail
-                imageView.setImageBitmap(null)
-                val cached = cache[uri]
-                if (cached != null) {
-                    imageView.setImageBitmap(cached)
-                } else {
-                    executor?.execute {
-                        val bitmap = loadThumbnail(uri, category)
-                        if (bitmap != null) {
-                            cache[uri] = bitmap
-                            mainHandler?.post {
-                                // Only set if view is still showing same URI
-                                val currentPos = bindingAdapterPosition
-                                if (currentPos != RecyclerView.NO_POSITION &&
-                                    currentPos < uris.size &&
-                                    uris[currentPos] == uri
-                                ) {
-                                    imageView.setImageBitmap(bitmap)
-                                }
-                            }
-                        }
-                    }
-                }
+                // Load thumbnail with Glide
+                val requestOptions = RequestOptions()
+                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                    .override(256, 256)
+                    .centerCrop()
+
+                Glide.with(container.context.applicationContext)
+                    .load(android.net.Uri.parse(uri))
+                    .apply(requestOptions)
+                    .into(imageView)
 
                 // Click handlers
                 container.setOnClickListener {
+                    val pos = bindingAdapterPosition
+                    if (pos == RecyclerView.NO_POSITION || !isActive) return@setOnClickListener
                     if (selectMode) {
                         val isNowSelected = !selectedUris.contains(uri)
-                        // Update visuals immediately — don't wait for JS round trip
                         updateSelection(isNowSelected)
-                        // Update local state so subsequent taps are correct
                         val newSet = selectedUris.toMutableSet()
                         if (isNowSelected) newSet.add(uri) else newSet.remove(uri)
                         selectedUris = newSet
                     }
-                    onItemClick?.invoke(uri, bindingAdapterPosition)
+                    onItemClick?.invoke(uri, pos)
                 }
                 container.setOnLongClickListener {
-                    onItemLongClick?.invoke(uri, bindingAdapterPosition)
+                    val pos = bindingAdapterPosition
+                    if (pos == RecyclerView.NO_POSITION || !isActive) return@setOnLongClickListener true
+                    onItemLongClick?.invoke(uri, pos)
                     true
                 }
             }
@@ -357,86 +320,8 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                 container.invalidate()
             }
 
-            private fun loadThumbnail(uri: String, category: String): Bitmap? {
-                return try {
-                    // Try MediaStore thumbnail first — instant, pre-generated by Android
-                    if (uri.startsWith("content://") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        try {
-                            return context.contentResolver.loadThumbnail(
-                                android.net.Uri.parse(uri),
-                                android.util.Size(256, 256),
-                                null
-                            )
-                        } catch (e: Exception) {
-                            // Fall through to manual decode
-                        }
-                    }
-
-                    // Manual decode fallback
-                    val path = uri.replace("file://", "")
-                        .let { java.net.URLDecoder.decode(it, "UTF-8") }
-
-                    if (category == "videos") {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            ThumbnailUtils.createVideoThumbnail(File(path), android.util.Size(512, 512), null)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            ThumbnailUtils.createVideoThumbnail(path, MediaStore.Images.Thumbnails.MINI_KIND)
-                        }
-                    } else {
-                        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        BitmapFactory.decodeFile(path, opts)
-                        opts.inSampleSize = calculateInSampleSize(opts, 200, 200)
-                        opts.inJustDecodeBounds = false
-                        val bitmap = BitmapFactory.decodeFile(path, opts) ?: return null
-                        val exif = androidx.exifinterface.media.ExifInterface(path)
-                        val degrees = when (exif.getAttributeInt(
-                            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
-                            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
-                        )) {
-                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-                            else -> 0f
-                        }
-                        if (degrees != 0f) {
-                            val matrix = android.graphics.Matrix()
-                            matrix.postRotate(degrees)
-                            android.graphics.Bitmap.createBitmap(
-                                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
-                            ).also { bitmap.recycle() }
-                        } else {
-                            bitmap
-                        }
-                    }
-                } catch (e: Exception) {
-                    null
-                }
-            }
-
-            private fun calculateInSampleSize(
-                options: BitmapFactory.Options,
-                reqWidth: Int,
-                reqHeight: Int
-            ): Int {
-                val height = options.outHeight
-                val width = options.outWidth
-                var inSampleSize = 1
-                if (height > reqHeight || width > reqWidth) {
-                    val halfHeight = height / 2
-                    val halfWidth = width / 2
-                    while (halfHeight / inSampleSize >= reqHeight &&
-                        halfWidth / inSampleSize >= reqWidth
-                    ) {
-                        inSampleSize *= 2
-                    }
-                }
-                return inSampleSize
-            }
-
-            private fun dpToPx(dp: Int): Int {
-                return (dp * container.context.resources.displayMetrics.density).toInt()
-            }
+            private fun dpToPx(dp: Int): Int =
+                (dp * container.context.resources.displayMetrics.density).toInt()
         }
     }
 }
