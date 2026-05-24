@@ -149,37 +149,19 @@
     }
     .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 16px; }
 
-    /* MOBILE PORTRAIT */
-    @media (max-width: 600px) {
-      nav { padding: 10px 12px; gap: 8px; }
+    /* MOBILE */
+    @media (max-width: 900px) {
       .nav-links { display: none; }
-      .nav-logo-text { font-size: 15px; }
-      .btn-primary { padding: 8px 10px; font-size: 12px; gap: 5px; }
-      .btn-primary svg { width: 13px; height: 13px; }
-      .hero { padding: 80px 16px 60px; }
-      .hero-title { font-size: clamp(28px, 8vw, 40px); }
-      .section { padding: 50px 16px; }
-      .features-grid { grid-template-columns: 1fr; }
-      .pro-section { margin: 0; padding: 32px 16px; }
-      .github-card { padding: 20px 14px; }
+      .btn-primary { font-size: 12px; padding: 8px 12px; white-space: nowrap; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
       footer { flex-direction: column; align-items: flex-start; }
       .hero-scroll { display: none; }
-      .divider { margin: 0; }
     }
 
-    /* TABLET */
-    @media (min-width: 601px) and (max-width: 900px) {
-      .nav-links { display: none; }
-      .features-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    /* LANDSCAPE MOBILE */
-    @media (max-height: 500px) and (max-width: 900px) {
-      nav { padding: 8px 16px; }
-      .nav-links { display: none; }
-      .hero { min-height: auto; padding: 80px 16px 40px; }
-      .hero-scroll { display: none; }
-      .section { padding: 40px 16px; }
+    @media (max-width: 480px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .pro-section { margin: 0; }
+      footer { flex-direction: column; }
     }
   </style>
 </head>
