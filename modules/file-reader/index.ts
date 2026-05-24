@@ -9,3 +9,6 @@ export async function readDirectory(path: string): Promise<{
 }[]> {
   return FileReaderNative.readDirectory(path);
 }
+
+export const countFolder = async (path: string): Promise<number> =>
+  FileReaderNative.countFolder(path);

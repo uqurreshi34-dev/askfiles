@@ -25,7 +25,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { readDirectory } from 'file-reader';
+import { readDirectory, countFolder } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 
 interface FileItem {
@@ -160,9 +160,8 @@ export default function BrowseScreen() {
         fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
           const folderPath = toPath(folder.uri);
           if (folderPath.includes('/Android/data')) return;
-          RNFS.readDir(folderPath)
-            .then(contents => {
-              const count = contents.filter((f: { name: string }) => !f.name.startsWith('.')).length;
+          countFolder(folderPath)
+            .then(count => {
               setFolderCounts(prev => {
                 const updated = { ...prev, [folder.uri]: count };
                 Object.assign(folderCountsStore, updated);
@@ -184,9 +183,8 @@ export default function BrowseScreen() {
       fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
         const folderPath = toPath(folder.uri);
         if (folderPath.includes('/Android/data')) return;
-        RNFS.readDir(folderPath)
-          .then(contents => {
-            const count = contents.filter((f: { name: string }) => !f.name.startsWith('.')).length;
+        countFolder(folderPath)
+          .then(count => {
             setFolderCounts(prev => {
               const updated = { ...prev, [folder.uri]: count };
               Object.assign(folderCountsStore, updated);
@@ -683,9 +681,8 @@ export default function BrowseScreen() {
     if (item.isDirectory && folderCounts[item.uri] === undefined) {
       const folderPath = toPath(item.uri);
       if (!folderPath.includes('/Android/data')) {
-        RNFS.readDir(folderPath)
-          .then(contents => {
-            const count = contents.filter((f: { name: string }) => !f.name.startsWith('.')).length;
+        countFolder(folderPath)
+          .then(count => {
             setFolderCounts(prev => {
               const updated = { ...prev, [item.uri]: count };
               Object.assign(folderCountsStore, updated);

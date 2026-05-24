@@ -24,5 +24,13 @@ class FileReaderModule : Module() {
         ?.sortedWith(compareBy({ if (it["isDirectory"] as Boolean) 0 else 1 }, { it["name"] as String }))
         ?: emptyList()
     }
+
+    AsyncFunction("countFolder") { path: String ->
+      val dir = File(path)
+      if (!dir.exists() || !dir.isDirectory) return@AsyncFunction 0
+      dir.listFiles()
+        ?.count { !it.name.startsWith('.') }
+        ?: 0
+    }
   }
 }
