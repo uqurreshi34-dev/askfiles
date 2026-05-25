@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.load.DecodeFormat
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
@@ -38,7 +40,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private val openingUri = mutableStateOf("")
 
     fun setUris(newUris: List<String>) {
-        if (newUris.size == uris.size && newUris.toSet() == uris.toSet()) return
+        if (newUris == uris) return
         uris.clear()
         uris.addAll(newUris)
     }
@@ -55,8 +57,9 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         @OptIn(ExperimentalGlideComposeApi::class)
         @Composable
         override fun Content() {
-            val currentUris = uris.toList()
-            val currentSelected = selectedUris.toSet()
+            // Use state lists directly — no copy allocation on every recomposition
+            val currentUris = uris
+            val currentSelected = selectedUris
             val currentSelectMode = selectMode.value
             val currentCategory = category.value
             val currentOpeningUri = openingUri.value
@@ -78,6 +81,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     ) { index, uri ->
                         val isSelected = currentSelected.contains(uri)
                         val isOpening = currentOpeningUri == uri
+
+                        // Parse URI once per item, not every recomposition
+                        val parsedUri = remember(uri) {
+                            android.net.Uri.parse(uri)
+                        }
 
                         Box(
                             modifier = Modifier
@@ -105,11 +113,17 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                 }
                         ) {
                             GlideImage(
-                                model = android.net.Uri.parse(uri),
+                                model = parsedUri,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
-                            )
+                            ) {
+                                it.override(256, 256)
+                                  .dontAnimate()
+                                  .centerCrop()
+                                  .format(DecodeFormat.PREFER_RGB_565)
+                                  .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                            }
 
                             if (isSelected) {
                                 Box(
@@ -159,5 +173,15 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
     init {
         addView(composeView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        composeView.disposeComposition()
+        try {
+            com.bumptech.glide.Glide
+                .get(context)
+                .trimMemory(android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN)
+        } catch (e: Exception) {}
     }
 }

@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/drawable-anydpi-v21/ic_call_answer.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/drawable-anydpi-v21/ic_call_answer.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/drawable-anydpi-v21/ic_call_decline_low.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/drawable-anydpi-v21/ic_call_decline_low.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/drawable-anydpi-v21/ic_call_answer_low.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/drawable-anydpi-v21/ic_call_answer_low.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/drawable-anydpi-v21/ic_call_decline.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/drawable-anydpi-v21/ic_call_decline.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/drawable-anydpi-v21/ic_call_answer_video_low.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/drawable-anydpi-v21/ic_call_answer_video_low.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/drawable-anydpi-v21/ic_call_answer_video.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/drawable-anydpi-v21/ic_call_answer_video.xml"
+    }
+]

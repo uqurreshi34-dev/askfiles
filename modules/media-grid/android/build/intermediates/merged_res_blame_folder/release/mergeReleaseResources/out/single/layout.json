@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/layout/custom_dialog.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/layout/custom_dialog.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/layout/ime_secondary_split_test_activity.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/layout/ime_secondary_split_test_activity.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/layout/ime_base_split_test_activity.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/layout/ime_base_split_test_activity.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/layout/notification_template_part_chronometer.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/layout/notification_template_part_chronometer.xml"
+    },
+    {
+        "merged": "expo.modules.mediagrid.media-grid-release-43:/layout/notification_template_part_time.xml",
+        "source": "expo.modules.mediagrid.media-grid-core-1.13.0-22:/layout/notification_template_part_time.xml"
+    }
+]
