@@ -118,7 +118,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                it.override(256, 256)
+                                it.override(128, 128)
                                   .dontAnimate()
                                   .centerCrop()
                                   .format(DecodeFormat.PREFER_RGB_565)
