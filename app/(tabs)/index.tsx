@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const { isPro } = usePro();
   const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
   const [hasMediaAccess, setHasMediaAccess] = useState(true);
-  const { files: trashFiles } = useTrash();
+  const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -65,6 +65,7 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => {
     reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
+    reloadTrash();
     isStorageManager().then(setHasAllFilesAccess);
     MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
   }, [reload]));
