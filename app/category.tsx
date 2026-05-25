@@ -1,3 +1,4 @@
+import { copyFileStream, moveFileStream, addCopyProgressListener } from '@/modules/file-reader';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -139,6 +140,7 @@ export default function CategoryScreen() {
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [pasting, setPasting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copyProgress, setCopyProgress] = useState<number | null>(null);
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
@@ -188,41 +190,31 @@ export default function CategoryScreen() {
     const destUri = destDir + item.name;
     const src = toPath(item.uri);
     const dst = toPath(destUri);
-    if (pickerMode === 'copy') {
-      const alreadyExists = await RNFS.exists(dst);
-      if (alreadyExists) {
-        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-        return;
-      }
-    } else {
-      const moveExists = await RNFS.exists(dst);
-      if (moveExists) {
-        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-        return;
-      }
+    const exists = await RNFS.exists(dst);
+    if (exists) {
+      Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      return;
     }
     setShowPicker(false);
     setPasting(true);
+    setCopyProgress(0);
+    const sub = addCopyProgressListener(({ percent }) => setCopyProgress(percent));
     try {
       if (pickerMode === 'copy') {
-        await RNFS.copyFile(src, dst);
+        await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-        await RNFS.moveFile(src, dst);
+        await moveFileStream(src, dst);
         await scanFile(dst).catch(() => {});
-        try {
-          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
-          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === src);
-          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-        } catch {}
         setItems(prev => prev.filter(f => f.uri !== item.uri));
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
-    } catch (e: any) {
+    } catch {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
     } finally {
+      sub.remove();
+      setCopyProgress(null);
       setPasting(false);
     }
   }
@@ -613,7 +605,10 @@ export default function CategoryScreen() {
         {pasting && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{pickerMode === 'copy' ? 'Copying...' : 'Moving...'} {pendingItem.current?.name}</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            {pickerMode === 'copy' ? 'Copying' : 'Moving'} {pendingItem.current?.name}
+            {copyProgress !== null && copyProgress > 0 ? ` ${copyProgress}%` : '...'}
+          </Text>
         </View>
       )}
       {loading ? (

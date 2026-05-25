@@ -1,14 +1,24 @@
 import { requireNativeModule } from 'expo-modules-core';
 
-const FileReaderNative = requireNativeModule('FileReader');
+const FileReader = requireNativeModule('FileReader');
 
-export async function readDirectory(path: string): Promise<{
-  name: string;
-  uri: string;
-  isDirectory: boolean;
-}[]> {
-  return FileReaderNative.readDirectory(path);
+export async function readDirectory(path: string): Promise<{ name: string; uri: string; isDirectory: boolean }[]> {
+  return FileReader.readDirectory(path);
 }
 
 export const countFolder = async (path: string): Promise<number> =>
-  FileReaderNative.countFolder(path);
+  FileReader.countFolder(path);
+
+export function copyFileStream(srcUri: string, destPath: string): Promise<string> {
+  return FileReader.copyFileStream(srcUri, destPath);
+}
+
+export function moveFileStream(srcUri: string, destPath: string): Promise<string> {
+  return FileReader.moveFileStream(srcUri, destPath);
+}
+
+export function addCopyProgressListener(
+  callback: (event: { percent: number; bytesCopied: number; totalBytes: number }) => void
+) {
+  return FileReader.addListener('onCopyProgress', callback);
+}
