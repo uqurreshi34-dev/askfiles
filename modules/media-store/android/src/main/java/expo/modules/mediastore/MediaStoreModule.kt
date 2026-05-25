@@ -401,6 +401,7 @@ class MediaStoreModule : Module() {
         MediaStore.Images.Media.DISPLAY_NAME,
         MediaStore.Images.Media.DATE_ADDED,
         MediaStore.Images.Media.SIZE,
+        MediaStore.Images.Media.DATA,
       )
       val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC") ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
@@ -409,12 +410,14 @@ class MediaStoreModule : Module() {
         val nameCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
         val dateCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
         val sizeCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
+        val dataCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
         while (it.moveToNext()) {
           val id = it.getLong(idCol)
           val contentUri = android.net.Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id.toString())
+          val filePath = it.getString(dataCol) ?: ""
           results.add(mapOf(
             "name" to (it.getString(nameCol) ?: ""),
-            "uri" to contentUri.toString(),
+            "uri" to if (filePath.isNotEmpty()) "file://$filePath" else contentUri.toString(),
             "date" to it.getLong(dateCol),
             "size" to it.getLong(sizeCol),
           ))
@@ -431,6 +434,7 @@ class MediaStoreModule : Module() {
         MediaStore.Video.Media.DISPLAY_NAME,
         MediaStore.Video.Media.DATE_ADDED,
         MediaStore.Video.Media.SIZE,
+        MediaStore.Video.Media.DATA,
       )
       val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC") ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
@@ -439,12 +443,14 @@ class MediaStoreModule : Module() {
         val nameCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
         val dateCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
         val sizeCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+        val dataCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
         while (it.moveToNext()) {
           val id = it.getLong(idCol)
           val contentUri = android.net.Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString())
+          val filePath = it.getString(dataCol) ?: ""
           results.add(mapOf(
             "name" to (it.getString(nameCol) ?: ""),
-            "uri" to contentUri.toString(),
+            "uri" to if (filePath.isNotEmpty()) "file://$filePath" else contentUri.toString(),
             "date" to it.getLong(dateCol),
             "size" to it.getLong(sizeCol),
           ))
