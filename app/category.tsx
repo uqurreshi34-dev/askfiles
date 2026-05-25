@@ -527,6 +527,8 @@ export default function CategoryScreen() {
     return result;
   }, [items, activeTab, sortKey, searchQuery, category]);
 
+  const gridUris = useMemo(() => filteredItems.map(i => i.uri), [filteredItems]);
+
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
@@ -632,35 +634,34 @@ export default function CategoryScreen() {
           <MediaGridView
             style={{ flex: 1 }}
             key={`grid-${sortKey}-${searchQuery}`}
-            uris={filteredItems.map(i => i.uri)}
-            selectedUris={Array.from(selectedUris)}
+            uris={gridUris}
             selectMode={selectMode}
             category={category ?? 'images'}
             openingUri={openingUri ?? ''}
             onItemPress={(e) => {
               const { uri } = e.nativeEvent;
               const item = filteredItems.find(i => i.uri === uri);
-              if (!item) return;
-              if (selectMode) {
-                setSelectedUris(prev => {
-                  const newSet = new Set(prev);
-                  if (newSet.has(uri)) newSet.delete(uri);
-                  else newSet.add(uri);
-                  return newSet;
-                });
-                setSelectedItemsMap(prev => {
-                  const newMap = new Map(prev);
-                  if (newMap.has(uri)) newMap.delete(uri);
-                  else newMap.set(uri, item!);
-                  return newMap;
-                });
-              } else { openItem(item); }
+              if (!item || selectMode) return;
+              openItem(item);
             }}
             onItemLongPress={(e) => {
               const { uri } = e.nativeEvent;
               const item = filteredItems.find(i => i.uri === uri);
               if (!item || selectMode) return;
               openSheet(item);
+            }}
+            onSelectionChange={(e) => {
+              const uris: string[] = e.nativeEvent.selectedUris;
+              const newSet = new Set(uris);
+              setSelectedUris(newSet);
+              setSelectedItemsMap(() => {
+                const newMap = new Map<string, FileItem>();
+                uris.forEach(uri => {
+                  const item = filteredItems.find(i => i.uri === uri);
+                  if (item) newMap.set(uri, item);
+                });
+                return newMap;
+              });
             }}
           />
         </>

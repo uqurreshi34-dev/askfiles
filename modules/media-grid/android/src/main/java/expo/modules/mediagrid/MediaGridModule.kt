@@ -44,11 +44,6 @@ class MediaGridModule : Module() {
         view.setUris(uris)
       }
 
-      // Set of selected URIs for multi-select mode
-      Prop("selectedUris") { view: MediaGridView, selectedUris: List<String> ->
-        view.setSelectedUris(selectedUris.toSet())
-      }
-
       // Whether select mode is active
       Prop("selectMode") { view: MediaGridView, selectMode: Boolean ->
         view.setSelectMode(selectMode)
@@ -65,7 +60,7 @@ class MediaGridModule : Module() {
       }
 
       // Events back to JS
-      Events("onItemPress", "onItemLongPress")
+      Events("onItemPress", "onItemLongPress", "onSelectionChange")
     }
   }
 }

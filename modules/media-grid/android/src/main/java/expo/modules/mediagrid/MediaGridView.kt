@@ -21,12 +21,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private var thumbSizeDp = 110
     private val onItemPress by EventDispatcher()
     private val onItemLongPress by EventDispatcher()
+    private val onSelectionChange by EventDispatcher()
     private var isActive = true
 
     private val recyclerView = RecyclerView(context)
-
     private var adapter = MediaGridAdapter()
-
     private var layoutManager = object : GridLayoutManager(context, 3) {
         override fun checkLayoutParams(lp: RecyclerView.LayoutParams?): Boolean {
             val thumbPx = (thumbSizeDp * context.resources.displayMetrics.density).toInt()
@@ -63,8 +62,15 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         })
         addView(recyclerView)
 
-        adapter.onItemClick = { uri, index -> onItemPress(mapOf("uri" to uri, "index" to index)) }
-        adapter.onItemLongClick = { uri, index -> onItemLongPress(mapOf("uri" to uri, "index" to index)) }
+        adapter.onItemClick = { uri, index ->
+            onItemPress(mapOf("uri" to uri, "index" to index))
+        }
+        adapter.onItemLongClick = { uri, index ->
+            onItemLongPress(mapOf("uri" to uri, "index" to index))
+        }
+        adapter.onSelectionChanged = { selectedUris ->
+            onSelectionChange(mapOf("selectedUris" to selectedUris.toList()))
+        }
     }
 
     override fun onStartTemporaryDetach() {
@@ -78,6 +84,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         recyclerView.stopScroll()
         adapter.onItemClick = null
         adapter.onItemLongClick = null
+        adapter.onSelectionChanged = null
         super.onDetachedFromWindow()
     }
 
@@ -93,7 +100,6 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     }
 
     fun setUris(uris: List<String>) { adapter.setUris(uris) }
-    fun setSelectedUris(selectedUris: Set<String>) { adapter.setSelectedUris(selectedUris) }
     fun setSelectMode(selectMode: Boolean) { adapter.setSelectMode(selectMode) }
     fun setCategory(category: String) { adapter.setCategory(category) }
     fun setOpeningUri(openingUri: String) { adapter.setOpeningUri(openingUri) }
@@ -101,33 +107,32 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     inner class MediaGridAdapter : RecyclerView.Adapter<MediaGridAdapter.GridViewHolder>() {
 
         private var uris: List<String> = emptyList()
-        private var selectedUris: Set<String> = emptySet()
+        private var selectedUris: MutableSet<String> = mutableSetOf()
         private var selectMode: Boolean = false
         private var category: String = "images"
         private var openingUri: String = ""
 
         var onItemClick: ((String, Int) -> Unit)? = null
         var onItemLongClick: ((String, Int) -> Unit)? = null
+        var onSelectionChanged: ((Set<String>) -> Unit)? = null
+
+        fun isSelectMode(): Boolean = selectMode
 
         fun setUris(newUris: List<String>) {
+            if (newUris.size == uris.size && newUris.containsAll(uris) && uris.containsAll(newUris)) return
             uris = newUris
             notifyDataSetChanged()
-        }
-
-        fun setSelectedUris(newSelected: Set<String>) {
-            val old = selectedUris
-            selectedUris = newSelected
-            uris.forEachIndexed { index, uri ->
-                if (old.contains(uri) != newSelected.contains(uri)) {
-                    notifyItemChanged(index, "selection")
-                }
-            }
         }
 
         fun setSelectMode(newSelectMode: Boolean) {
             if (selectMode != newSelectMode) {
                 selectMode = newSelectMode
-                notifyDataSetChanged()
+                if (!newSelectMode) {
+                    selectedUris.clear()
+                }
+                for (i in uris.indices) {
+                    notifyItemChanged(i, "selectMode")
+                }
             }
         }
 
@@ -140,6 +145,13 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             val newIndex = uris.indexOf(uri)
             if (oldIndex >= 0) notifyItemChanged(oldIndex)
             if (newIndex >= 0) notifyItemChanged(newIndex)
+        }
+
+        fun toggleSelection(uri: String, holder: GridViewHolder) {
+            val isNowSelected = !selectedUris.contains(uri)
+            if (isNowSelected) selectedUris.add(uri) else selectedUris.remove(uri)
+            holder.updateSelection(isNowSelected)
+            onSelectionChanged?.invoke(selectedUris.toSet())
         }
 
         override fun getItemCount() = uris.size
@@ -160,10 +172,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         }
 
         override fun onBindViewHolder(holder: GridViewHolder, position: Int, payloads: MutableList<Any>) {
-            if (payloads.isNotEmpty() && payloads[0] == "selection") {
-                holder.updateSelection(selectedUris.contains(uris[position]))
-            } else {
-                super.onBindViewHolder(holder, position, payloads)
+            when {
+                payloads.isNotEmpty() && payloads[0] == "selectMode" -> {
+                    holder.updateSelection(selectedUris.contains(uris[position]))
+                }
+                else -> super.onBindViewHolder(holder, position, payloads)
             }
         }
 
@@ -243,21 +256,8 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                 category: String,
                 selectMode: Boolean
             ) {
-                // Selection overlay
-                if (isSelected) {
-                    overlay.setBackgroundColor(Color.argb(80, 24, 95, 165))
-                    overlay.visibility = View.VISIBLE
-                    checkView.visibility = View.VISIBLE
-                    container.setPadding(dpToPx(3), dpToPx(3), dpToPx(3), dpToPx(3))
-                    container.setBackgroundColor(Color.parseColor("#185FA5"))
-                } else {
-                    overlay.visibility = View.GONE
-                    checkView.visibility = View.INVISIBLE
-                    container.setPadding(0, 0, 0, 0)
-                    container.setBackgroundColor(Color.TRANSPARENT)
-                }
+                updateSelection(isSelected)
 
-                // Play icon / spinner for videos
                 if (category == "videos" && !selectMode) {
                     if (isOpening) {
                         playIcon.visibility = View.GONE
@@ -271,7 +271,6 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     spinner.visibility = View.GONE
                 }
 
-                // Load thumbnail with Glide
                 val requestOptions = RequestOptions()
                     .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                     .override(256, 256)
@@ -282,16 +281,12 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     .apply(requestOptions)
                     .into(imageView)
 
-                // Click handlers
                 container.setOnClickListener {
                     val pos = bindingAdapterPosition
                     if (pos == RecyclerView.NO_POSITION || !isActive) return@setOnClickListener
-                    if (selectMode) {
-                        val isNowSelected = !selectedUris.contains(uri)
-                        updateSelection(isNowSelected)
-                        val newSet = selectedUris.toMutableSet()
-                        if (isNowSelected) newSet.add(uri) else newSet.remove(uri)
-                        selectedUris = newSet
+                    val currentSelectMode = adapter.isSelectMode()
+                    if (currentSelectMode) {
+                        adapter.toggleSelection(uri, this)
                     }
                     onItemClick?.invoke(uri, pos)
                 }
@@ -316,8 +311,6 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     container.setPadding(0, 0, 0, 0)
                     container.setBackgroundColor(Color.TRANSPARENT)
                 }
-                container.requestLayout()
-                container.invalidate()
             }
 
             private fun dpToPx(dp: Int): Int =
