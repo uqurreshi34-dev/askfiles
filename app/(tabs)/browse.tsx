@@ -25,7 +25,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { readDirectory, countFolder } from 'file-reader';
+import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 
 interface FileItem {
@@ -82,6 +82,7 @@ export default function BrowseScreen() {
   const [pickerFiles, setPickerFiles] = useState<FileItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pasting, setPasting] = useState(false);
+  const [copyProgress, setCopyProgress] = useState<number | null>(null);
   const [vaulting, setVaulting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -594,36 +595,23 @@ export default function BrowseScreen() {
     const destUri = destDir + item.name;
     const src = toPath(item.uri);
     const dst = toPath(destUri);
-    if (pickerMode === 'copy') {
-      const alreadyExists = await RNFS.exists(dst);
-      if (alreadyExists) {
-        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-        return;
-      }
-    } else {
-      const moveExists = await RNFS.exists(dst);
-      if (moveExists) {
-        Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
-        return;
-      }
+    const exists = await RNFS.exists(dst);
+    if (exists) {
+      Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      return;
     }
     setShowPicker(false);
     setPasting(true);
+    setCopyProgress(0);
+    const sub = addCopyProgressListener(({ percent }) => setCopyProgress(percent));
     try {
       if (pickerMode === 'copy') {
-        await RNFS.copyFile(src, dst);
+        await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
-        await RNFS.moveFile(src, dst);
+        await moveFileStream(src, dst);
         await scanFile(dst).catch(() => {});
-        try {
-          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
-          const sourcePath = toPath(item.uri);
-          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-          const ghost = allAssets.assets.find(a => a.filename === sourceFilename && toPath(a.uri) === sourcePath);
-          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-        } catch {}
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
         const isRoot = destFolder === ROOT_PATH;
         const destName = isRoot ? 'Storage' : (() => { try { return decodeURIComponent(destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'); } catch { return destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'; } })();
@@ -632,9 +620,11 @@ export default function BrowseScreen() {
         await loadDirectory(destFolder);
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
-    } catch (e: any) {
+    } catch {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
     } finally {
+      sub.remove();
+      setCopyProgress(null);
       setPasting(false);
     }
   }
@@ -858,12 +848,15 @@ export default function BrowseScreen() {
         </View>
       )}
 
-      {pasting && (
-        <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={[styles.busyText, { color: colors.blue }]}>{pickerMode === 'copy' ? 'Copying...' : 'Moving...'} {pendingItem.current?.name}</Text>
-        </View>
-      )}
+        {pasting && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+            <ActivityIndicator size="small" color={colors.blue} />
+            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+              {pickerMode === 'copy' ? 'Copying' : 'Moving'} {pendingItem.current?.name}
+              {copyProgress !== null && copyProgress > 0 ? ` ${copyProgress}%` : '...'}
+            </Text>
+          </View>
+        )}
       {vaulting && (
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
