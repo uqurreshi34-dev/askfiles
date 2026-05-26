@@ -128,8 +128,8 @@ export default function CategoryScreen() {
   const config = CATEGORY_CONFIG[category ?? 'images'];
   const { addToVault } = useVault();
   const { isPro } = usePro();
-  type SortKey = 'name' | 'size' | 'date';
-  const [sortKey, setSortKey] = useState<SortKey>('name');
+  type SortKey = 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc';
+  const [sortKey, setSortKey] = useState<SortKey>('name_asc');
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [gridView, setGridView] = useState(true);
   const [selectMode, setSelectMode] = useState(false);
@@ -615,13 +615,17 @@ export default function CategoryScreen() {
           return tab === activeTab;
         })
       : items;
-      if (sortKey !== 'name') {
-        result = result.slice().sort((a, b) => {
-          if (sortKey === 'size') return (b.size ?? 0) - (a.size ?? 0);
-          if (sortKey === 'date') return (b.date ?? 0) - (a.date ?? 0);
-          return 0;
-        });
-      }
+      result = result.slice().sort((a, b) => {
+        switch (sortKey) {
+          case 'name_asc': return a.name.localeCompare(b.name);
+          case 'name_desc': return b.name.localeCompare(a.name);
+          case 'size_desc': return (b.size ?? 0) - (a.size ?? 0);
+          case 'size_asc': return (a.size ?? 0) - (b.size ?? 0);
+          case 'date_desc': return (b.date ?? 0) - (a.date ?? 0);
+          case 'date_asc': return (a.date ?? 0) - (b.date ?? 0);
+          default: return a.name.localeCompare(b.name);
+        }
+      });
     if (searchQuery.trim()) {
       result = result.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
@@ -1062,14 +1066,21 @@ export default function CategoryScreen() {
       <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
       <View style={{ backgroundColor: colors.card, borderRadius: SCREEN_WIDTH > SCREEN_HEIGHT ? 20 : 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24, width: SCREEN_WIDTH > SCREEN_HEIGHT ? '50%' : undefined }}>
             <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
-            {(['name', ...(category === 'documents' || category === 'downloads' ? ['size'] : []), 'date'] as SortKey[]).map(key => (
+            {([
+              { key: 'name_asc', label: 'Name A → Z' },
+              { key: 'name_desc', label: 'Name Z → A' },
+              { key: 'size_desc', label: 'Size (largest first)' },
+              { key: 'size_asc', label: 'Size (smallest first)' },
+              { key: 'date_desc', label: 'Date (newest first)' },
+              { key: 'date_asc', label: 'Date (oldest first)' },
+            ] as { key: SortKey; label: string }[]).map(({ key, label }) => (
               <TouchableOpacity
                 key={key}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
                 onPress={() => { setSortKey(key); setShowSortSheet(false); }}
               >
                 <Text style={{ fontSize: 15, color: sortKey === key ? colors.blue : colors.textPrimary, fontWeight: sortKey === key ? '600' : '400' }}>
-                  {key === 'name' ? 'Name' : key === 'size' ? 'Size (largest first)' : 'Date (newest first)'}
+                  {label}
                 </Text>
                 {sortKey === key && <Ionicons name="checkmark" size={18} color={colors.blue} />}
               </TouchableOpacity>
