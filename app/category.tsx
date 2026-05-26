@@ -570,8 +570,17 @@ export default function CategoryScreen() {
                 } else {
                   const mimes = TAB_MIMES[tab] ?? [];
                   if (mimes.length > 0) {
-                    const result = await queryDocumentsByMime(mimes);
-                    setItems(result.sort((a, b) => a.name.localeCompare(b.name)));
+                    if (category === 'downloads') {
+                      const all = await queryDownloads();
+                      const filtered = all.filter(item => {
+                        const tab2 = getDlTab(item.name);
+                        return tab2 === tab;
+                      });
+                      setItems(filtered.sort((a, b) => a.name.localeCompare(b.name)));
+                    } else {
+                      const result = await queryDocumentsByMime(mimes);
+                      setItems(result.sort((a, b) => a.name.localeCompare(b.name)));
+                    }
                   }
                 }
                 setLoading(false);
