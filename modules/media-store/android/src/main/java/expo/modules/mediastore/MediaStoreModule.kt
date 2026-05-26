@@ -78,16 +78,19 @@ class MediaStoreModule : Module() {
           val idCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
           val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
           val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dateCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
           val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
           while (it.moveToNext()) {
             val id = it.getLong(idCol)
             val name = it.getString(nameCol) ?: continue
             val size = it.getLong(sizeCol)
+            val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
             results.add(mapOf(
               "name" to name,
               "uri" to "file://$path",
               "size" to size.toDouble(),
+              "date" to date * 1000L,
             ))
           }
         }
@@ -104,6 +107,7 @@ class MediaStoreModule : Module() {
         MediaStore.Files.FileColumns._ID,
         MediaStore.Files.FileColumns.DISPLAY_NAME,
         MediaStore.Files.FileColumns.SIZE,
+        MediaStore.Files.FileColumns.DATE_MODIFIED,
         MediaStore.Files.FileColumns.DATA,
       )
 
@@ -119,16 +123,19 @@ class MediaStoreModule : Module() {
         cursor?.use {
           val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
           val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dateCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
           val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
           while (it.moveToNext()) {
             val name = it.getString(nameCol) ?: continue
             if (name.startsWith('.')) continue
             val size = it.getLong(sizeCol)
+            val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
             results.add(mapOf(
               "name" to name,
               "uri" to "file://$path",
               "size" to size.toDouble(),
+              "date" to date * 1000L,
             ))
           }
         }
@@ -370,6 +377,7 @@ class MediaStoreModule : Module() {
       val projection = arrayOf(
         MediaStore.Files.FileColumns.DISPLAY_NAME,
         MediaStore.Files.FileColumns.SIZE,
+        MediaStore.Files.FileColumns.DATE_MODIFIED,
         MediaStore.Files.FileColumns.DATA,
       )
       try {
@@ -381,12 +389,14 @@ class MediaStoreModule : Module() {
         cursor?.use {
           val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
           val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dateCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
           val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
           while (it.moveToNext()) {
             val name = it.getString(nameCol) ?: continue
             val size = it.getLong(sizeCol)
+            val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
-            results.add(mapOf("name" to name, "uri" to "file://$path", "size" to size.toDouble()))
+            results.add(mapOf("name" to name, "uri" to "file://$path", "size" to size.toDouble(), "date" to date * 1000L))
           }
         }
       } catch (e: Exception) {}

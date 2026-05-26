@@ -418,10 +418,10 @@ export default function CategoryScreen() {
         setItems(assets.map(a => ({ name: a.name, uri: a.uri, date: a.date, size: a.size })));
       } else if (category === 'downloads') {
         const dlItems = await queryDownloads();
-        setItems(dlItems.sort((a, b) => a.name.localeCompare(b.name)));
+        setItems(dlItems);
       } else if (category === 'documents') {
         const docItems = await queryDocuments();
-        setItems(docItems.sort((a, b) => a.name.localeCompare(b.name)));
+        setItems(docItems);
       }
     } catch (e) {
     } finally {
@@ -679,7 +679,7 @@ export default function CategoryScreen() {
                 setLoading(true); 
                 if (tab === 'All') {
                   const all = category === 'documents' ? await queryDocuments() : await queryDownloads();
-                  setItems(all.sort((a, b) => a.name.localeCompare(b.name)));
+                  setItems(all);
                 } else {
                   const mimes = TAB_MIMES[tab] ?? [];
                   if (mimes.length > 0) {
@@ -689,10 +689,10 @@ export default function CategoryScreen() {
                         const tab2 = getDlTab(item.name);
                         return tab2 === tab;
                       });
-                      setItems(filtered.sort((a, b) => a.name.localeCompare(b.name)));
+                      setItems(filtered);
                     } else {
                       const result = await queryDocumentsByMime(mimes);
-                      setItems(result.sort((a, b) => a.name.localeCompare(b.name)));
+                      setItems(result);
                     }
                   }
                 }
