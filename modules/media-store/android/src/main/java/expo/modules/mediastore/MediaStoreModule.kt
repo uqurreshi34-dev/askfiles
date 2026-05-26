@@ -418,7 +418,7 @@ class MediaStoreModule : Module() {
           results.add(mapOf(
             "name" to (it.getString(nameCol) ?: ""),
             "uri" to if (filePath.isNotEmpty()) "file://$filePath" else contentUri.toString(),
-            "date" to it.getLong(dateCol),
+            "date" to it.getLong(dateCol) * 1000L,
             "size" to it.getLong(sizeCol),
           ))
         }
@@ -451,7 +451,7 @@ class MediaStoreModule : Module() {
           results.add(mapOf(
             "name" to (it.getString(nameCol) ?: ""),
             "uri" to if (filePath.isNotEmpty()) "file://$filePath" else contentUri.toString(),
-            "date" to it.getLong(dateCol),
+            "date" to it.getLong(dateCol) * 1000L,
             "size" to it.getLong(sizeCol),
           ))
         }
