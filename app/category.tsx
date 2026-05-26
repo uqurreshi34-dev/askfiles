@@ -122,6 +122,8 @@ export default function CategoryScreen() {
   const [pickerFiles, setPickerFiles] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const pendingItem = useRef<FileItem | null>(null);
+  const pendingMultiItems = useRef<FileItem[]>([]);
+  const dupeAction = useRef<'skip' | 'replace'>('skip');
   const router = useRouter();
   const config = CATEGORY_CONFIG[category ?? 'images'];
   const { addToVault } = useVault();
@@ -141,6 +143,9 @@ export default function CategoryScreen() {
   const [pasting, setPasting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copyProgress, setCopyProgress] = useState<number | null>(null);
+  const [multiPasting, setMultiPasting] = useState(false);
+  const [multiPasteMode, setMultiPasteMode] = useState<'copy' | 'move'>('copy');
+  const [multiPasteProgress, setMultiPasteProgress] = useState<{ current: number; total: number; name: string } | null>(null);
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
 
@@ -176,6 +181,7 @@ export default function CategoryScreen() {
 
   function openPicker(mode: 'copy' | 'move') {
     pendingItem.current = selectedItem;
+    pendingMultiItems.current = [];
     setPickerMode(mode);
     setPickerPath(ROOT_PATH);
     loadPickerDir(ROOT_PATH);
@@ -299,6 +305,109 @@ export default function CategoryScreen() {
         }
       }},
     ]);
+  }
+
+  function handleMultiCopy() {
+    pendingMultiItems.current = Array.from(selectedItemsMap.values());
+    setMultiPasteMode('copy');
+    setPickerPath(ROOT_PATH);
+    loadPickerDir(ROOT_PATH);
+    setShowPicker(true);
+  }
+
+  function handleMultiMove() {
+    pendingMultiItems.current = Array.from(selectedItemsMap.values());
+    setMultiPasteMode('move');
+    setPickerPath(ROOT_PATH);
+    loadPickerDir(ROOT_PATH);
+    setShowPicker(true);
+  }
+
+  async function handleMultiPaste() {
+    const files = pendingMultiItems.current;
+    if (!files.length) return;
+    setShowPicker(false);
+
+    const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+
+    // Check all duplicates upfront
+    const duplicates: string[] = [];
+    for (const file of files) {
+      const dst = toPath(destDir + file.name);
+      if (await RNFS.exists(dst)) duplicates.push(file.name);
+    }
+
+    // If duplicates exist, ask once before starting
+    if (duplicates.length > 0) {
+      const dupeList = duplicates.slice(0, 3).join(', ') +
+        (duplicates.length > 3 ? ` and ${duplicates.length - 3} more` : '');
+      const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
+        Alert.alert(
+          duplicates.length === 1 ? 'File already exists' : 'Files already exist',
+          `${dupeList} already ${duplicates.length === 1 ? 'exists' : 'exist'} in this folder.`,
+          [
+            { text: 'Skip existing', onPress: () => resolve('skip') },
+            { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+          ]
+        );
+      });
+      if (action === 'cancel') return;
+      dupeAction.current = action;
+    } else {
+      dupeAction.current = 'skip';
+    }
+
+    const actualTotal = dupeAction.current === 'skip'
+      ? files.length - duplicates.length
+      : files.length;
+
+    if (actualTotal === 0) {
+      Alert.alert('Nothing to do', 'All selected files already exist at the destination and were skipped.');
+      return;
+    }
+
+    setMultiPasting(true);
+    let copiedCount = 0;
+    const sub = addCopyProgressListener(() => {});
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const dst = toPath(destDir + file.name);
+        const src = toPath(file.uri);
+        setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+
+        const exists = await RNFS.exists(dst);
+        if (exists && dupeAction.current === 'skip') continue;
+
+        if (multiPasteMode === 'copy') {
+          await copyFileStream(file.uri, dst);
+          await scanFile(dst).catch(() => {});
+        } else {
+          await moveFileStream(src, dst);
+          await scanFile(dst).catch(() => {});
+        }
+        copiedCount++;
+      }
+
+      if (multiPasteMode === 'move') {
+        setItems(prev => prev.filter(f => !files.some(mf => mf.uri === f.uri)));
+      }
+      setSelectMode(false);
+      setSelectedUris(new Set());
+      setSelectedItemsMap(new Map());
+      Alert.alert(
+        'Success',
+        `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
+      );
+    } catch {
+      Alert.alert('Error', `Could not ${multiPasteMode} files.`);
+    } finally {
+      sub.remove();
+      setMultiPasting(false);
+      setMultiPasteProgress(null);
+      pendingMultiItems.current = [];
+    }
   }
 
   async function loadCategory() {
@@ -620,6 +729,14 @@ export default function CategoryScreen() {
           </Text>
         </View>
       )}
+      {multiPasting && multiPasteProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            {multiPasteMode === 'copy' ? 'Copying' : 'Moving'} {multiPasteProgress.current} of {multiPasteProgress.total}: {multiPasteProgress.name}
+          </Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={config.color} />
@@ -881,7 +998,9 @@ export default function CategoryScreen() {
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-              {pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}
+              {pendingMultiItems.current.length > 0
+                ? (multiPasteMode === 'copy' ? 'Copy to...' : 'Move to...')
+                : (pickerMode === 'copy' ? 'Copy to...' : 'Move to...')}
             </Text>
             <View style={{ width: 40 }} />
           </View>
@@ -927,9 +1046,13 @@ export default function CategoryScreen() {
             <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
               <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.pickerPasteBtn} onPress={handlePaste}>
+            <TouchableOpacity style={styles.pickerPasteBtn} onPress={pendingMultiItems.current.length > 0 ? handleMultiPaste : handlePaste}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.pickerPasteText}>{pickerMode === 'copy' ? 'Copy here' : 'Move here'}</Text>
+              <Text style={styles.pickerPasteText}>
+                {pendingMultiItems.current.length > 0
+                  ? (multiPasteMode === 'copy' ? 'Copy here' : 'Move here')
+                  : (pickerMode === 'copy' ? 'Copy here' : 'Move here')}
+              </Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -974,6 +1097,22 @@ export default function CategoryScreen() {
             </View>
           )}
         <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
+          <TouchableOpacity
+              onPress={handleMultiCopy}
+              disabled={sharing || vaulting || deleting || multiPasting}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+            >
+              <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+              <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Copy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleMultiMove}
+              disabled={sharing || vaulting || deleting || multiPasting}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+            >
+              <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
+              <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Move</Text>
+            </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiShare}
             disabled={sharing || vaulting || deleting}
