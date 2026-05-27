@@ -21,7 +21,6 @@ import { useVault } from '@/hooks/useVault';
 import * as FileSystem from 'expo-file-system/next';
 import * as MediaLibrary from 'expo-media-library';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
@@ -339,22 +338,7 @@ export default function SearchScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
-      if (isPng) {
-        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
-        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
-        const cacheUri = cacheDir + cacheName;
-        const cacheFile = new FileSystem.File(cacheUri);
-        if (cacheFile.exists) cacheFile.delete();
-        const result = await ImageManipulator.manipulate(selectedItem.uri)
-          .renderAsync()
-          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
-        const convertedFile = new FileSystem.File(result.uri);
-        convertedFile.copy(cacheFile);
-        await Sharing.shareAsync(cacheUri, { dialogTitle: selectedItem.name, mimeType: 'image/jpeg' });
-      } else {
-        await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
-      }
+      await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
     } catch (e) {}
   }
 
