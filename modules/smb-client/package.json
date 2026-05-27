@@ -1,0 +1,9 @@
+{
+    "name": "smb-client",
+    "version": "1.0.0",
+    "description": "Native SMB client module for AskFiles",
+    "main": "src/index.ts",
+    "exports": {
+      ".": "./src/index.ts"
+    }
+  }

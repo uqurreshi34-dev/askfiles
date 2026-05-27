@@ -49,7 +49,7 @@
     "file-reader": "file:modules/file-reader",
     "file-watcher": "file:modules/file-watcher",
     "media-store": "file:modules/media-store",
-    "jszip": "^3.10.1",
+    "smb-client": "file:./modules/smb-client",
     "media-grid": "file:modules/media-grid",
     "react": "19.1.0",
     "react-native": "0.81.5",
