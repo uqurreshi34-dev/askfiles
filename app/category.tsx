@@ -9,7 +9,6 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { isImageFile, getMimeType, formatSize, getFileColor } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { useVault } from '@/hooks/useVault';
@@ -494,22 +493,7 @@ export default function CategoryScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
-      if (isPng) {
-        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
-        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
-        const cacheUri = cacheDir + cacheName;
-        const cacheFile = new FileSystem.File(cacheUri);
-        if (cacheFile.exists) cacheFile.delete();
-        const result = await ImageManipulator.manipulate(selectedItem.uri)
-          .renderAsync()
-          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
-        const convertedFile = new FileSystem.File(result.uri);
-        convertedFile.copy(cacheFile);
-        await Sharing.shareAsync(cacheUri, { dialogTitle: selectedItem.name, mimeType: 'image/jpeg' });
-      } else {
-        await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
-      }
+      await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
     } catch (e) {}
   }
 
@@ -521,24 +505,7 @@ export default function CategoryScreen() {
     try {
       const paths: string[] = [];
       for (const file of files) {
-        const isPng = file.name.toLowerCase().endsWith('.png');
-        if (isPng) {
-          const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
-          const cacheName = file.name.replace(/\.png$/i, '.jpg');
-          const cacheUri = cacheDir + cacheName;
-          const cacheFile = new FileSystem.File(cacheUri);
-          if (cacheFile.exists) cacheFile.delete();
-          const result = await ImageManipulator.manipulate(file.uri)
-            .renderAsync()
-            .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
-          const convertedFile = new FileSystem.File(result.uri);
-          convertedFile.copy(cacheFile);
-          paths.push(cacheUri.replace('file://', ''));
-        } else {
-          const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-          await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
-          paths.push(cachePath);
-        }
+        paths.push(toPath(file.uri));
       }
       const mimeType = files.length === 1 ? getMimeType(files[0].name) : '*/*';
       await shareFiles(paths, mimeType);
