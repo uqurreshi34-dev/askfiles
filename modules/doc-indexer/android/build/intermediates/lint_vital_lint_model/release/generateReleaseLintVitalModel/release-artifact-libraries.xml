@@ -141,8 +141,4 @@
       name="org.bouncycastle:bcutil-jdk15to18:1.72@jar"
       jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.bouncycastle\bcutil-jdk15to18\1.72\74d1589a616f7655a1922d0a773e958e87cd2ea0\bcutil-jdk15to18-1.72.jar"
       resolved="org.bouncycastle:bcutil-jdk15to18:1.72"/>
-  <library
-      name="org.bouncycastle:bcprov-jdk15to18:1.72@jar"
-      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.bouncycastle\bcprov-jdk15to18\1.72\1c53885369e89f9798974bf63b55a764c54b5c61\bcprov-jdk15to18-1.72.jar"
-      resolved="org.bouncycastle:bcprov-jdk15to18:1.72"/>
 </libraries>

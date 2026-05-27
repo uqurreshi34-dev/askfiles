@@ -1,6 +1,6 @@
 <dependencies>
   <compile
-      roots=":@@:expo-modules-core::release,androidx.core:core-ktx:1.13.1@aar,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3@jar,androidx.core:core:1.13.1@aar,androidx.lifecycle:lifecycle-runtime:2.6.2@aar,androidx.lifecycle:lifecycle-common:2.6.2@jar,org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20@jar,androidx.annotation:annotation-experimental:1.4.0@aar,androidx.versionedparcelable:versionedparcelable:1.1.1@aar,androidx.arch.core:core-common:2.2.0@jar,androidx.collection:collection:1.0.0@jar,androidx.annotation:annotation-jvm:1.6.0@jar,org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,com.tom-roush:pdfbox-android:2.0.27.0@aar,org.jetbrains:annotations:13.0@jar,org.bouncycastle:bcpkix-jdk15to18:1.72@jar,org.bouncycastle:bcutil-jdk15to18:1.72@jar,org.bouncycastle:bcprov-jdk15to18:1.72@jar">
+      roots=":@@:expo-modules-core::release,androidx.core:core-ktx:1.13.1@aar,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3@jar,androidx.core:core:1.13.1@aar,androidx.lifecycle:lifecycle-runtime:2.6.2@aar,androidx.lifecycle:lifecycle-common:2.6.2@jar,org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20@jar,androidx.annotation:annotation-experimental:1.4.0@aar,androidx.versionedparcelable:versionedparcelable:1.1.1@aar,androidx.arch.core:core-common:2.2.0@jar,androidx.collection:collection:1.0.0@jar,androidx.annotation:annotation-jvm:1.6.0@jar,org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,com.tom-roush:pdfbox-android:2.0.27.0@aar,org.jetbrains:annotations:13.0@jar,org.bouncycastle:bcpkix-jdk15to18:1.72@jar,org.bouncycastle:bcutil-jdk15to18:1.72@jar">
     <dependency
         name=":@@:expo-modules-core::release"
         simpleName="host.exp.exponent:expo-modules-core"/>
@@ -58,12 +58,9 @@
     <dependency
         name="org.bouncycastle:bcutil-jdk15to18:1.72@jar"
         simpleName="org.bouncycastle:bcutil-jdk15to18"/>
-    <dependency
-        name="org.bouncycastle:bcprov-jdk15to18:1.72@jar"
-        simpleName="org.bouncycastle:bcprov-jdk15to18"/>
   </compile>
   <package
-      roots="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,com.tom-roush:pdfbox-android:2.0.27.0@aar,org.bouncycastle:bcpkix-jdk15to18:1.72@jar,org.bouncycastle:bcutil-jdk15to18:1.72@jar,org.bouncycastle:bcprov-jdk15to18:1.72@jar,org.jetbrains:annotations:13.0@jar">
+      roots="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,com.tom-roush:pdfbox-android:2.0.27.0@aar,org.bouncycastle:bcpkix-jdk15to18:1.72@jar,org.bouncycastle:bcutil-jdk15to18:1.72@jar,org.jetbrains:annotations:13.0@jar">
     <dependency
         name="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar"
         simpleName="org.jetbrains.kotlin:kotlin-stdlib"/>
@@ -79,9 +76,6 @@
     <dependency
         name="org.bouncycastle:bcutil-jdk15to18:1.72@jar"
         simpleName="org.bouncycastle:bcutil-jdk15to18"/>
-    <dependency
-        name="org.bouncycastle:bcprov-jdk15to18:1.72@jar"
-        simpleName="org.bouncycastle:bcprov-jdk15to18"/>
     <dependency
         name="org.jetbrains:annotations:13.0@jar"
         simpleName="org.jetbrains:annotations"/>
