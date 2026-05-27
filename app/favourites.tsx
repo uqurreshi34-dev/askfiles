@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { isImageFile, getMimeType, getFileColor, formatSize } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
@@ -108,22 +107,7 @@ export default function FavouritesScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
-      if (isPng) {
-        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
-        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
-        const cacheUri = cacheDir + cacheName;
-        const cacheFile = new FileSystem.File(cacheUri);
-        if (cacheFile.exists) cacheFile.delete();
-        const result = await ImageManipulator.manipulate(selectedItem.uri)
-          .renderAsync()
-          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
-        const convertedFile = new FileSystem.File(result.uri);
-        convertedFile.copy(cacheFile);
-        await Sharing.shareAsync(cacheUri, { dialogTitle: selectedItem.name, mimeType: 'image/jpeg' });
-      } else {
-        await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
-      }
+      await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
     } catch (e) {}
   }
 
