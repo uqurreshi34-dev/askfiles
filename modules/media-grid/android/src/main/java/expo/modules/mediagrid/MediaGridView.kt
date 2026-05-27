@@ -54,6 +54,12 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     fun setOpeningUri(newOpeningUri: String) { openingUri.value = newOpeningUri }
 
     private val composeView = object : AbstractComposeView(context) {
+        init {
+            setParentCompositionContext(null)
+            setViewCompositionStrategy(
+                androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool
+            )
+        }
         @OptIn(ExperimentalGlideComposeApi::class)
         @Composable
         override fun Content() {
