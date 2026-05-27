@@ -1064,8 +1064,16 @@ export default function CategoryScreen() {
 
       <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
       <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
-      <View style={{ backgroundColor: colors.card, borderRadius: SCREEN_WIDTH > SCREEN_HEIGHT ? 20 : 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24, width: SCREEN_WIDTH > SCREEN_HEIGHT ? '50%' : undefined }}>
+      <View style={{ backgroundColor: colors.card, borderRadius: SCREEN_WIDTH > SCREEN_HEIGHT ? 20 : 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24, width: SCREEN_WIDTH > SCREEN_HEIGHT ? '50%' : undefined, maxHeight: SCREEN_HEIGHT * 0.85 }}>
+        {SCREEN_WIDTH > SCREEN_HEIGHT ? (
+              <TouchableOpacity onPress={() => setShowSortSheet(false)} style={{ alignSelf: 'flex-end', padding: 4, marginBottom: 4 }}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.textDisabled, alignSelf: 'center', marginBottom: 16 }} />
+            )}
             <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
             {([
               { key: 'name_asc', label: 'Name A → Z' },
               { key: 'name_desc', label: 'Name Z → A' },
@@ -1085,6 +1093,7 @@ export default function CategoryScreen() {
                 {sortKey === key && <Ionicons name="checkmark" size={18} color={colors.blue} />}
               </TouchableOpacity>
             ))}
+            </ScrollView>
             <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: colors.surface, borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
               <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
