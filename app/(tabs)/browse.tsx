@@ -14,18 +14,16 @@ import { getMimeType, isImageFile, formatSize, getFileColor } from '@/utils/file
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
-import JSZip from 'jszip';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
+import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 
 interface FileItem {
@@ -255,24 +253,8 @@ export default function BrowseScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      const isPng = selectedItem.name.toLowerCase().endsWith('.png');
-      if (isPng) {
-        const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
-        const cacheName = selectedItem.name.replace(/\.png$/i, '.jpg');
-        const cacheUri = cacheDir + cacheName;
-        const cacheFile = new FileSystem.File(cacheUri);
-        if (cacheFile.exists) cacheFile.delete();
-        const result = await ImageManipulator.manipulate(selectedItem.uri)
-          .renderAsync()
-          .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
-        const convertedFile = new FileSystem.File(result.uri);
-        convertedFile.copy(cacheFile);
-        await Sharing.shareAsync(cacheUri, { dialogTitle: selectedItem.name, mimeType: 'image/jpeg' });
-      } else {
-        await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
-      }
-    } catch (e) {
-    }
+      await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
+    } catch (e) {}
   }
 
   async function handleToggleFavourite() {
@@ -381,27 +363,10 @@ export default function BrowseScreen() {
     setZipping(true);
     try {
       const srcPath = toPath(selectedItem.uri);
-      const content = await RNFS.readFile(srcPath, 'base64');
-      const zip = await JSZip.loadAsync(content, { base64: true });
-      const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1);
-      const folderName = selectedItem.name.replace(/\.zip$/i, '');
-      const extractDir = destDir + folderName + '/';
-      await RNFS.mkdir(extractDir);
-      const promises: Promise<void>[] = [];
-      zip.forEach((relativePath, file) => {
-        if (!file.dir) {
-          const p = file.async('base64').then(async (data) => {
-            const filePath = extractDir + relativePath;
-            const fileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1);
-            await RNFS.mkdir(fileDir);
-            await RNFS.writeFile(filePath, data, 'base64');
-          });
-          promises.push(p);
-        }
-      });
-      await Promise.all(promises);
+      const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1) + selectedItem.name.replace(/\.zip$/i, '') + '/';
+      await unzipFile(srcPath, destDir);
       await loadDirectory(currentPath);
-      Alert.alert('Extracted', `Files extracted to "${folderName}" folder.`);
+      Alert.alert('Extracted', `Files extracted to "${selectedItem.name.replace(/\.zip$/i, '')}" folder.`);
     } catch (e) {
       Alert.alert('Error', 'Could not extract zip file.');
     } finally {
@@ -411,20 +376,9 @@ export default function BrowseScreen() {
 
   async function handleMultiZip() {
     if (selectedItemsMap.size === 0) return;
-    const selectedFiles = Array.from(selectedItemsMap.values()).filter(f => !f.name.toLowerCase().endsWith('.zip'));
+    const selectedFiles = Array.from(selectedItemsMap.values()).filter(f => !f.name.toLowerCase().endsWith('.zip') && !f.isDirectory);
     if (selectedFiles.length === 0) {
-      Alert.alert('No files to zip', 'ZIP files cannot be zipped again.');
-      return;
-    }
-    let totalSize = 0;
-    for (const file of selectedFiles) {
-      try {
-        const f = new FileSystem.File(file.uri);
-        totalSize += f.size ?? 0;
-      } catch {}
-    }
-    if (totalSize > 20 * 1024 * 1024) {
-      Alert.alert('Too large', `Selected files total ${formatSize(totalSize)} which exceeds the 20 MB limit. Deselect some files and try again.`);
+      Alert.alert('No files to zip', 'ZIP files and folders cannot be zipped.');
       return;
     }
     setSelectMode(false);
@@ -432,25 +386,15 @@ export default function BrowseScreen() {
     setSelectedItemsMap(new Map());
     setZipping(true);
     try {
-      const zip = new JSZip();
       const nameCount: Record<string, number> = {};
       for (const file of selectedFiles) {
         nameCount[file.name] = (nameCount[file.name] ?? 0) + 1;
       }
-      for (const file of selectedFiles) {
-        const content = await RNFS.readFile(toPath(file.uri), 'base64');
-        let zipPath = file.name;
-        if (nameCount[file.name] > 1) {
-          const parts = toPath(file.uri).replace('/storage/emulated/0/', '').split('/');
-          const folder = parts.length > 1 ? parts[parts.length - 2] : 'File';
-          zipPath = `${folder}/${file.name}`;
-        }
-        zip.file(zipPath, content, { base64: true });
-      }
+      const srcPaths = selectedFiles.map(f => toPath(f.uri));
       const zipName = `AskFiles_${Date.now()}.zip`;
       const destPath = toPath(currentPath) + zipName;
-      const zipContent = await zip.generateAsync({ type: 'base64' });
-      await RNFS.writeFile(destPath, zipContent, 'base64');
+      await zipFiles(srcPaths, destPath);
+      await scanFile(destPath).catch(() => {});
       await loadDirectory(currentPath);
       Alert.alert('Zipped', `"${zipName}" created with ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}.`);
     } catch (e) {
@@ -468,24 +412,7 @@ export default function BrowseScreen() {
     try {
       const paths: string[] = [];
       for (const file of files) {
-        const isPng = file.name.toLowerCase().endsWith('.png');
-        if (isPng) {
-          const cacheDir = FileSystem.Paths.cache.uri.endsWith('/') ? FileSystem.Paths.cache.uri : FileSystem.Paths.cache.uri + '/';
-          const cacheName = file.name.replace(/\.png$/i, '.jpg');
-          const cacheUri = cacheDir + cacheName;
-          const cacheFile = new FileSystem.File(cacheUri);
-          if (cacheFile.exists) cacheFile.delete();
-          const result = await ImageManipulator.manipulate(file.uri)
-            .renderAsync()
-            .then(img => img.saveAsync({ compress: 0.98, format: SaveFormat.JPEG }));
-          const convertedFile = new FileSystem.File(result.uri);
-          convertedFile.copy(cacheFile);
-          paths.push(cacheUri.replace('file://', ''));
-        } else {
-          const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-          await RNFS.copyFile(file.uri.replace('file://', ''), cachePath);
-          paths.push(cachePath);
-        }
+        paths.push(toPath(file.uri));
       }
       const mimeType = files.length === 1 ? getMimeType(files[0].name) : '*/*';
       await shareFiles(paths, mimeType);

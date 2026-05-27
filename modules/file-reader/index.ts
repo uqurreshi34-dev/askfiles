@@ -22,3 +22,11 @@ export function addCopyProgressListener(
 ) {
   return FileReader.addListener('onCopyProgress', callback);
 }
+
+export function zipFiles(srcPaths: string[], destPath: string): Promise<string> {
+  return FileReader.zipFiles(srcPaths, destPath);
+}
+
+export function unzipFile(srcPath: string, destDir: string): Promise<string> {
+  return FileReader.unzipFile(srcPath, destDir);
+}

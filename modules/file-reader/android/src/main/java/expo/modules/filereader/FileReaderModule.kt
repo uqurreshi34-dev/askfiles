@@ -143,5 +143,53 @@ class FileReaderModule : Module() {
       srcFile.delete()
       destPath
     }
+
+    AsyncFunction("zipFiles") { srcPaths: List<String>, destPath: String ->
+      val dest = File(destPath)
+      dest.parentFile?.mkdirs()
+      val buffer = ByteArray(65536)
+      java.util.zip.ZipOutputStream(FileOutputStream(dest).buffered()).use { zos ->
+        for (srcPath in srcPaths) {
+          val srcFile = File(srcPath)
+          if (!srcFile.exists()) continue
+          val entryName = srcFile.name
+          zos.putNextEntry(java.util.zip.ZipEntry(entryName))
+          FileInputStream(srcFile).use { fis ->
+            var bytes = fis.read(buffer)
+            while (bytes >= 0) {
+              zos.write(buffer, 0, bytes)
+              bytes = fis.read(buffer)
+            }
+          }
+          zos.closeEntry()
+        }
+      }
+      destPath
+    }
+
+    AsyncFunction("unzipFile") { srcPath: String, destDir: String ->
+      val dest = File(destDir)
+      dest.mkdirs()
+      val buffer = ByteArray(65536)
+      java.util.zip.ZipInputStream(FileInputStream(File(srcPath)).buffered()).use { zis ->
+        var entry = zis.nextEntry
+        while (entry != null) {
+          if (!entry.isDirectory) {
+            val outFile = File(dest, entry.name)
+            outFile.parentFile?.mkdirs()
+            FileOutputStream(outFile).use { fos ->
+              var bytes = zis.read(buffer)
+              while (bytes >= 0) {
+                fos.write(buffer, 0, bytes)
+                bytes = zis.read(buffer)
+              }
+            }
+          }
+          zis.closeEntry()
+          entry = zis.nextEntry
+        }
+      }
+      destDir
+    }
   }
 }
