@@ -5,7 +5,7 @@
 AI-powered Android file manager with cloud backup, AI search, Smart search, secure vault, and voice navigation.
 
 ## Live
-[Google Play Store](YOUR_PLAY_STORE_LINK)
+[Google Play Store](https://play.google.com/store/apps/details?id=com.askfiles.mobile)
 [Landing Page](https://uqurreshi34-dev.github.io/askfiles/)
 
 ## Stack
