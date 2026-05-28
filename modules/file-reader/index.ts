@@ -38,3 +38,11 @@ export function zipFilesWithPassword(srcPaths: string[], destPath: string, passw
 export function unzipFileWithPassword(srcPath: string, destDir: string, password: string): Promise<string> {
   return FileReader.unzipFileWithPassword(srcPath, destDir, password);
 }
+
+export function startWifiServer(rootPath: string): Promise<string> {
+  return FileReader.startWifiServer(rootPath);
+}
+
+export function stopWifiServer(): Promise<void> {
+  return FileReader.stopWifiServer();
+}

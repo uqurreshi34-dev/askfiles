@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, useWindowDimensions, AppState, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, Alert, useWindowDimensions, AppState, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
 import { useTrash } from '@/hooks/useTrash';
+import { startWifiServer, stopWifiServer } from 'file-reader';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '@/hooks/useTheme';
@@ -41,6 +42,8 @@ export default function HomeScreen() {
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
+  const [wifiActive, setWifiActive] = useState(false);
+  const [wifiUrl, setWifiUrl] = useState('');
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -87,6 +90,10 @@ export default function HomeScreen() {
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    return () => { stopWifiServer().catch(() => {}); };
   }, []);
 
   const QUICK_ACCESS = [
@@ -390,6 +397,57 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
+      <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.largeFilesCard, {
+            backgroundColor: wifiActive ? colors.greenBg : colors.surface,
+            borderWidth: wifiActive ? 0 : 0.5,
+            borderColor: colors.border,
+          }]}
+          onPress={async () => {
+            if (wifiActive) {
+              await stopWifiServer();
+              setWifiActive(false);
+              setWifiUrl('');
+            } else {
+              try {
+                const url = await startWifiServer('/storage/emulated/0/');
+                setWifiUrl(url);
+                setWifiActive(true);
+              } catch (e: any) {
+                Alert.alert('Error', e?.message ?? 'Failed to start server');
+              }
+            }
+          }}
+        >
+          <View style={styles.largeFilesLeft}>
+            <View style={[styles.largeFilesIcon, {
+              backgroundColor: wifiActive ? colors.greenBg : colors.surface,
+            }]}>
+              <Ionicons
+                name={wifiActive ? 'wifi' : 'wifi-outline'}
+                size={22}
+                color={wifiActive ? colors.green : colors.textMuted}
+              />
+            </View>
+            <View>
+              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
+              {wifiActive
+                ? <>
+                    <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Type this in your PC browser:</Text>
+                    <Text style={[styles.largeFilesSub, { color: colors.green, fontWeight: '600' }]}>{wifiUrl}</Text>
+                  </>
+                : <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Browse & transfer files from your PC browser</Text>
+              }
+            </View>
+          </View>
+          {wifiActive
+            ? <View style={{ backgroundColor: colors.green, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
+              </View>
+            : <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          }
+        </TouchableOpacity>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
