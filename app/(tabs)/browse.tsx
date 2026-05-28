@@ -964,7 +964,7 @@ export default function BrowseScreen() {
       )}
 
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH > SCREEN_HEIGHT ? undefined : Platform.OS === 'android' ? 'height' : 'padding'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? 'height' : undefined}>
           <Pressable style={styles.overlay} onPress={closeSheet}>
           <Animated.View
               style={SCREEN_WIDTH > SCREEN_HEIGHT
@@ -1188,8 +1188,8 @@ export default function BrowseScreen() {
       </Modal>
       {/* Zip password modal */}
       <Modal visible={showZipPassword} transparent animationType="fade" onRequestClose={() => setShowZipPassword(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? (Platform.OS === 'android' ? 'height' : 'padding') : undefined}>
-          <Pressable style={styles.centeredOverlay} onPress={() => setShowZipPassword(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? 'height' : undefined}>
+        <Pressable style={[styles.centeredOverlay, { paddingTop: SCREEN_WIDTH < SCREEN_HEIGHT ? '50%' : '10%' }]} onPress={() => setShowZipPassword(false)}>
             <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
               <View style={styles.passwordModalHeader}>
                 <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>Protect with Password</Text>
@@ -1225,7 +1225,7 @@ export default function BrowseScreen() {
       {/* Unzip password modal */}
       <Modal visible={showUnzipPassword} transparent animationType="fade" onRequestClose={() => { setShowUnzipPassword(false); pendingUnzipItem.current = null; }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? (Platform.OS === 'android' ? 'height' : 'padding') : undefined}>
-          <Pressable style={styles.centeredOverlay} onPress={() => setShowUnzipPassword(false)}>
+        <Pressable style={[styles.centeredOverlay, { paddingTop: SCREEN_WIDTH < SCREEN_HEIGHT ? '50%' : '10%' }]} onPress={() => setShowUnzipPassword(false)}>
             <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
               <View style={styles.passwordModalHeader}>
                 <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>Extract ZIP</Text>
@@ -1402,5 +1402,5 @@ const styles = StyleSheet.create({
   passwordModalSub: {
     fontSize: 13,
   },
-  centeredOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start', alignItems: 'center', paddingTop: '50%' },
+  centeredOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start', alignItems: 'center' },
 });
