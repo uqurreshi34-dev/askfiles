@@ -492,13 +492,11 @@ export default function BrowseScreen() {
           try { new FileSystem.Directory(f.uri).delete(); } catch {}
         });
         
-        await Promise.all(
-          fileItems.map(file => Promise.all([
-            moveToTrash(file.uri, file.name, false),
-            removeFavourite(file.uri),
-            DocIndexer.removeFromIndex(file.uri),
-          ]))
-        );
+        for (const file of fileItems) {
+          await moveToTrash(file.uri, file.name, false);
+          removeFavourite(file.uri);
+          DocIndexer.removeFromIndex(file.uri);
+        }
         setDeleting(false);
         setDeletingCount(0);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());

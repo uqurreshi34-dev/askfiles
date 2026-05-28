@@ -543,11 +543,11 @@ export default function CategoryScreen() {
         suppressWatcherRef.current = true;
         setDeleting(true);
         setDeletingCount(files.length);
-        await Promise.all(files.map(file => Promise.all([
-          moveToTrash(file.uri, file.name, false),
-          removeFavourite(file.uri),
-          DocIndexer.removeFromIndex(file.uri),
-        ])));
+        for (const file of files) {
+          await moveToTrash(file.uri, file.name, false);
+          removeFavourite(file.uri);
+          DocIndexer.removeFromIndex(file.uri);
+        }
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         setDeleting(false);
