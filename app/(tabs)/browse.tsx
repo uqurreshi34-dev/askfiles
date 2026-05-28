@@ -698,7 +698,6 @@ export default function BrowseScreen() {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log('copying file uri:', file.uri, 'dst:', toPath(destDir + file.name));
         const dst = toPath(destDir + file.name);
         const src = toPath(file.uri);
 
