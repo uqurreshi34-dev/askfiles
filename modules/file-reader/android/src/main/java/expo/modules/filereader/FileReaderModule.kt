@@ -200,16 +200,21 @@ class FileReaderModule : Module() {
     AsyncFunction("zipFilesWithPassword") { srcPaths: List<String>, destPath: String, password: String ->
       val dest = File(destPath)
       dest.parentFile?.mkdirs()
-      val zipParameters = net.lingala.zip4j.model.ZipParameters().apply {
-        compressionMethod = net.lingala.zip4j.model.enums.CompressionMethod.DEFLATE
-        encryptionMethod = net.lingala.zip4j.model.enums.EncryptionMethod.AES
-        aesKeyStrength = net.lingala.zip4j.model.enums.AesKeyStrength.KEY_STRENGTH_256
-        isEncryptFiles = true
-      }
-      val zipFile = net.lingala.zip4j.ZipFile(dest, password.toCharArray())
-      for (srcPath in srcPaths) {
-        val srcFile = File(srcPath)
-        if (srcFile.exists()) zipFile.addFile(srcFile, zipParameters)
+      try {
+        val zipParameters = net.lingala.zip4j.model.ZipParameters().apply {
+          compressionMethod = net.lingala.zip4j.model.enums.CompressionMethod.DEFLATE
+          encryptionMethod = net.lingala.zip4j.model.enums.EncryptionMethod.AES
+          aesKeyStrength = net.lingala.zip4j.model.enums.AesKeyStrength.KEY_STRENGTH_256
+          isEncryptFiles = true
+        }
+        val zipFile = net.lingala.zip4j.ZipFile(dest, password.toCharArray())
+        for (srcPath in srcPaths) {
+          val srcFile = File(srcPath)
+          if (srcFile.exists()) zipFile.addFile(srcFile, zipParameters)
+        }
+      } catch (e: Exception) {
+        dest.delete()
+        throw e
       }
       destPath
     }
