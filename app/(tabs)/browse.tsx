@@ -1223,7 +1223,7 @@ export default function BrowseScreen() {
       </Modal>
 
       {/* Unzip password modal */}
-      <Modal visible={showUnzipPassword} transparent animationType="fade" onRequestClose={() => setShowUnzipPassword(false)}>
+      <Modal visible={showUnzipPassword} transparent animationType="fade" onRequestClose={() => { setShowUnzipPassword(false); pendingUnzipItem.current = null; }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? (Platform.OS === 'android' ? 'height' : 'padding') : undefined}>
           <Pressable style={styles.centeredOverlay} onPress={() => setShowUnzipPassword(false)}>
             <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
