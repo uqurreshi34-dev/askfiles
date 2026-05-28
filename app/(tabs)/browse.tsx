@@ -23,7 +23,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile } from 'file-reader';
+import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 
 interface FileItem {
@@ -70,6 +70,10 @@ export default function BrowseScreen() {
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const [zipping, setZipping] = useState(false);
+  const [showZipPassword, setShowZipPassword] = useState(false);
+  const [zipPasswordValue, setZipPasswordValue] = useState('');
+  const [showUnzipPassword, setShowUnzipPassword] = useState(false);
+  const [unzipPasswordValue, setUnzipPasswordValue] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
@@ -357,46 +361,76 @@ export default function BrowseScreen() {
     }
   }
 
-  async function handleUnzip() {
-    if (!selectedItem) return;
-    closeSheet();
+  const pendingUnzipItem = useRef<FileItem | null>(null);
+
+  async function handleUnzip(password?: string) {
+    if (password === undefined) {
+      if (!selectedItem) return;
+      pendingUnzipItem.current = selectedItem;
+      closeSheet();
+      setUnzipPasswordValue('');
+      setShowUnzipPassword(true);
+      return;
+    }
+    const item = pendingUnzipItem.current;
+    if (!item) return;
+    setShowUnzipPassword(false);
     setZipping(true);
     try {
-      const srcPath = toPath(selectedItem.uri);
-      const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1) + selectedItem.name.replace(/\.zip$/i, '') + '/';
-      await unzipFile(srcPath, destDir);
+      const srcPath = toPath(item.uri);
+      const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1) + item.name.replace(/\.zip$/i, '') + '/';
+      if (password.length > 0) {
+        await unzipFileWithPassword(srcPath, destDir, password);
+      } else {
+        await unzipFile(srcPath, destDir);
+      }
       await loadDirectory(currentPath);
-      Alert.alert('Extracted', `Files extracted to "${selectedItem.name.replace(/\.zip$/i, '')}" folder.`);
-    } catch (e) {
+      Alert.alert('Extracted', `Files extracted to "${item.name.replace(/\.zip$/i, '')}" folder.`);
+    } catch (e: any) {
+      if (e?.message?.includes('WRONG_PASSWORD')) {
+        setShowUnzipPassword(false);
+        setTimeout(() => {
+          Alert.alert('Incorrect Password', 'The password you entered is wrong. Please try again.', [
+            { text: 'Try Again', onPress: () => setShowUnzipPassword(true) }
+          ]);
+        }, 300);
+        return;
+      }
       Alert.alert('Error', 'Could not extract zip file.');
     } finally {
       setZipping(false);
     }
   }
 
-  async function handleMultiZip() {
+  async function handleMultiZip(password?: string) {
     if (selectedItemsMap.size === 0) return;
     const selectedFiles = Array.from(selectedItemsMap.values()).filter(f => !f.name.toLowerCase().endsWith('.zip') && !f.isDirectory);
     if (selectedFiles.length === 0) {
       Alert.alert('No files to zip', 'ZIP files and folders cannot be zipped.');
       return;
     }
+    const srcPaths = selectedFiles.map(f => toPath(f.uri));
+    if (password === undefined) {
+      setZipPasswordValue('');
+      setShowZipPassword(true);
+      return;
+    }
     setSelectMode(false);
     setSelectedUris(new Set());
     setSelectedItemsMap(new Map());
+    setShowZipPassword(false);
     setZipping(true);
     try {
-      const nameCount: Record<string, number> = {};
-      for (const file of selectedFiles) {
-        nameCount[file.name] = (nameCount[file.name] ?? 0) + 1;
-      }
-      const srcPaths = selectedFiles.map(f => toPath(f.uri));
       const zipName = `AskFiles_${Date.now()}.zip`;
       const destPath = toPath(currentPath) + zipName;
-      await zipFiles(srcPaths, destPath);
+      if (password.length > 0) {
+        await zipFilesWithPassword(srcPaths, destPath, password);
+      } else {
+        await zipFiles(srcPaths, destPath);
+      }
       await scanFile(destPath).catch(() => {});
       await loadDirectory(currentPath);
-      Alert.alert('Zipped', `"${zipName}" created with ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}.`);
+      Alert.alert('Zipped', `"${zipName}" created with ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}.${password.length > 0 ? ' Password protected.' : ''}`);
     } catch (e) {
       Alert.alert('Error', 'Could not create zip file.');
     } finally {
@@ -1042,7 +1076,7 @@ export default function BrowseScreen() {
                       <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
                     </TouchableOpacity>
                     {!selectedItem?.isDirectory && selectedItem?.name.toLowerCase().endsWith('.zip') && (
-                      <TouchableOpacity style={styles.sheetAction} onPress={handleUnzip}>
+                      <TouchableOpacity style={styles.sheetAction} onPress={() => handleUnzip()}>
                         <Ionicons name="archive-outline" size={20} color={colors.green} />
                         <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract ZIP</Text>
                       </TouchableOpacity>
@@ -1154,6 +1188,77 @@ export default function BrowseScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+      {/* Zip password modal */}
+      <Modal visible={showZipPassword} transparent animationType="fade" onRequestClose={() => setShowZipPassword(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? (Platform.OS === 'android' ? 'height' : 'padding') : undefined}>
+          <Pressable style={styles.centeredOverlay} onPress={() => setShowZipPassword(false)}>
+            <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
+              <View style={styles.passwordModalHeader}>
+                <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>Protect with Password</Text>
+                <TouchableOpacity onPress={() => setShowZipPassword(false)}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.passwordModalSub, { color: colors.textMuted }]}>Optional — leave blank for a standard zip</Text>
+              <TextInput
+                style={[styles.renameInput, { backgroundColor: colors.surface, color: colors.textPrimary, marginTop: 12 }]}
+                value={zipPasswordValue}
+                onChangeText={setZipPasswordValue}
+                placeholder="Enter password..."
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => handleMultiZip(zipPasswordValue)}
+              />
+              <View style={[styles.renameActions, { marginTop: 12 }]}>
+                <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowZipPassword(false)}>
+                  <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.renameConfirmBtn} onPress={() => handleMultiZip(zipPasswordValue)}>
+                  <Text style={styles.renameConfirmText}>Create ZIP</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+          </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Unzip password modal */}
+      <Modal visible={showUnzipPassword} transparent animationType="fade" onRequestClose={() => setShowUnzipPassword(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? (Platform.OS === 'android' ? 'height' : 'padding') : undefined}>
+          <Pressable style={styles.centeredOverlay} onPress={() => setShowUnzipPassword(false)}>
+            <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
+              <View style={styles.passwordModalHeader}>
+                <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>Extract ZIP</Text>
+                <TouchableOpacity onPress={() => setShowUnzipPassword(false)}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.passwordModalSub, { color: colors.textMuted }]}>Leave blank if not password protected</Text>
+              <TextInput
+                style={[styles.renameInput, { backgroundColor: colors.surface, color: colors.textPrimary, marginTop: 12 }]}
+                value={unzipPasswordValue}
+                onChangeText={setUnzipPasswordValue}
+                placeholder="Enter password..."
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => handleUnzip(unzipPasswordValue)}
+              />
+              <View style={[styles.renameActions, { marginTop: 12 }]}>
+                <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowUnzipPassword(false)}>
+                  <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.renameConfirmBtn} onPress={() => handleUnzip(unzipPasswordValue)}>
+                  <Text style={styles.renameConfirmText}>Extract</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
       {multiPasting && multiPasteProgress && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
@@ -1204,7 +1309,7 @@ export default function BrowseScreen() {
             <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>Vault</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleMultiZip}
+            onPress={() => handleMultiZip()}
             disabled={sharing || zipping || deleting || vaulting || multiPasting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
@@ -1280,4 +1385,24 @@ const styles = StyleSheet.create({
   pickerPasteText: { fontSize: 14, color: '#fff', fontWeight: '600' },
   busyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
   busyText: { fontSize: 13 },
+  passwordModal: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 20,
+  },
+  passwordModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  passwordModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  passwordModalSub: {
+    fontSize: 13,
+  },
+  centeredOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start', alignItems: 'center', paddingTop: '50%' },
 });

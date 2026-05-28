@@ -30,3 +30,11 @@ export function zipFiles(srcPaths: string[], destPath: string): Promise<string> 
 export function unzipFile(srcPath: string, destDir: string): Promise<string> {
   return FileReader.unzipFile(srcPath, destDir);
 }
+
+export function zipFilesWithPassword(srcPaths: string[], destPath: string, password: string): Promise<string> {
+  return FileReader.zipFilesWithPassword(srcPaths, destPath, password);
+}
+
+export function unzipFileWithPassword(srcPath: string, destDir: string, password: string): Promise<string> {
+  return FileReader.unzipFileWithPassword(srcPath, destDir, password);
+}
