@@ -386,6 +386,7 @@ export default function BrowseScreen() {
       }
       await loadDirectory(currentPath);
       Alert.alert('Extracted', `Files extracted to "${item.name.replace(/\.zip$/i, '')}" folder.`);
+      pendingUnzipItem.current = null;
     } catch (e: any) {
       if (e?.message?.includes('WRONG_PASSWORD')) {
         setShowUnzipPassword(false);
@@ -1245,7 +1246,7 @@ export default function BrowseScreen() {
                 onSubmitEditing={() => handleUnzip(unzipPasswordValue)}
               />
               <View style={[styles.renameActions, { marginTop: 12 }]}>
-                <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowUnzipPassword(false)}>
+                <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowUnzipPassword(false); pendingUnzipItem.current = null; }}>
                   <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.renameConfirmBtn} onPress={() => handleUnzip(unzipPasswordValue)}>

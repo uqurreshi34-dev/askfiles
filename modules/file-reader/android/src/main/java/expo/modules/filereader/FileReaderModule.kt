@@ -147,22 +147,27 @@ class FileReaderModule : Module() {
     AsyncFunction("zipFiles") { srcPaths: List<String>, destPath: String ->
       val dest = File(destPath)
       dest.parentFile?.mkdirs()
-      val buffer = ByteArray(65536)
-      java.util.zip.ZipOutputStream(FileOutputStream(dest).buffered()).use { zos ->
-        for (srcPath in srcPaths) {
-          val srcFile = File(srcPath)
-          if (!srcFile.exists()) continue
-          val entryName = srcFile.name
-          zos.putNextEntry(java.util.zip.ZipEntry(entryName))
-          FileInputStream(srcFile).use { fis ->
-            var bytes = fis.read(buffer)
-            while (bytes >= 0) {
-              zos.write(buffer, 0, bytes)
-              bytes = fis.read(buffer)
+      try {
+        val buffer = ByteArray(65536)
+        java.util.zip.ZipOutputStream(FileOutputStream(dest).buffered()).use { zos ->
+          for (srcPath in srcPaths) {
+            val srcFile = File(srcPath)
+            if (!srcFile.exists()) continue
+            val entryName = srcFile.name
+            zos.putNextEntry(java.util.zip.ZipEntry(entryName))
+            FileInputStream(srcFile).use { fis ->
+              var bytes = fis.read(buffer)
+              while (bytes >= 0) {
+                zos.write(buffer, 0, bytes)
+                bytes = fis.read(buffer)
+              }
             }
+            zos.closeEntry()
           }
-          zos.closeEntry()
         }
+      } catch (e: Exception) {
+        dest.delete()
+        throw e
       }
       destPath
     }
