@@ -70,8 +70,7 @@
       "./modules/storage-widget/app.plugin.js",
       "./modules/share-module/app.plugin.js",
       "./modules/smooth-rotation/app.plugin.js",
-      "./modules/upload-service/app.plugin.js",
-      "./modules/smb-client/app.plugin.js"
+      "./modules/upload-service/app.plugin.js"
     ],
     "extra": {
       "router": {},
