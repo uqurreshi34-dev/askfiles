@@ -23,13 +23,14 @@ import { getMimeType } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
 import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
+import QRCode from 'react-native-qrcode-svg';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 export default function HomeScreen() {
   const { colors, dark, toggleTheme } = useTheme();
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
   const { recents, reload } = useRecents();
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function HomeScreen() {
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [wifiActive, setWifiActive] = useState(false);
   const [wifiUrl, setWifiUrl] = useState('');
+  const [wifiQrVisible, setWifiQrVisible] = useState(false);
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -261,6 +263,44 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </Modal>
 
+        {/* WiFi Transfer QR Modal */}
+        <Modal
+          visible={wifiQrVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setWifiQrVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setWifiQrVisible(false)}
+          >
+            <View style={[styles.modalCard, { 
+              backgroundColor: colors.modalCard, 
+              width: modalWidth, 
+              alignItems: 'center', 
+              paddingBottom: 16,
+              overflow: 'hidden'
+            }]} onStartShouldSetResponder={() => true}>
+              <TouchableOpacity
+                onPress={() => setWifiQrVisible(false)}
+                style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 4 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Scan with your PC camera</Text>
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider, width: '100%' }]} />
+              <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
+                <QRCode value={wifiUrl || 'http://localhost:8080'} size={180} />
+              </View>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 4 }}>Or type in your PC browser:</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center', marginBottom: 12 }}>{wifiUrl}</Text>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         {!hasAllFilesAccess && (
           <TouchableOpacity
             style={[styles.permissionCard, { backgroundColor: colors.amberTint }]}
@@ -406,9 +446,7 @@ export default function HomeScreen() {
           }]}
           onPress={async () => {
             if (wifiActive) {
-              await stopWifiServer();
-              setWifiActive(false);
-              setWifiUrl('');
+              setWifiQrVisible(true);
             } else {
               try {
                 const url = await startWifiServer('/storage/emulated/0/');
@@ -436,15 +474,21 @@ export default function HomeScreen() {
                 ? <>
                     <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Type this in your PC browser:</Text>
                     <Text style={[styles.largeFilesSub, { color: colors.green, fontWeight: '600' }]}>{wifiUrl}</Text>
+                    <Text style={[styles.largeFilesSub, { color: colors.green, opacity: 0.7 }]}>or tap to show QR code</Text>
+                    <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Stop & restart if browser can't connect</Text>
                   </>
                 : <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Browse & transfer files from your PC browser</Text>
               }
             </View>
           </View>
           {wifiActive
-            ? <View style={{ backgroundColor: colors.green, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
-              </View>
+          ? <TouchableOpacity
+              onPress={async () => { await stopWifiServer(); setWifiActive(false); setWifiUrl(''); setWifiQrVisible(false); }}
+              style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
+            </TouchableOpacity>
             : <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           }
         </TouchableOpacity>
