@@ -41,6 +41,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private val category = mutableStateOf("images")
     private val openingUri = mutableStateOf("")
 
+    // Tracks whether this view has ever been attached to a window.
+    // Guards against Fabric measuring ComposeView before it has a window
+    // recomposer — root cause of IllegalStateException on Android 16.
+    private var hasBeenAttached = false
+
     fun setUris(newUris: List<String>) {
         if (newUris == uris) return
         uris.clear()
@@ -57,28 +62,13 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
     private val composeView = object : AbstractComposeView(context) {
         init {
-            // Start with a safe default — will be upgraded to lifecycle-aware on attach
+            // Safe default — upgraded to lifecycle-aware in outer onAttachedToWindow
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool)
-        }
-
-        override fun onAttachedToWindow() {
-            super.onAttachedToWindow()
-            // Upgrade to lifecycle-aware strategy once we have a lifecycle owner.
-            // This prevents the crash where Fabric briefly detaches/reattaches the
-            // view during navigation on Android 16, causing Compose to recreate
-            // the composition mid-layout-pass (IllegalStateException in getWindowRecomposer).
-            val lifecycle = this.findViewTreeLifecycleOwner()?.lifecycle
-            if (lifecycle != null) {
-                setViewCompositionStrategy(
-                    ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycle)
-                )
-            }
         }
 
         @OptIn(ExperimentalGlideComposeApi::class)
         @Composable
         override fun Content() {
-            // Use state lists directly — no copy allocation on every recomposition
             val currentUris = uris
             val currentSelected = selectedUris
             val currentSelectMode = selectMode.value
@@ -103,7 +93,6 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                         val isSelected = currentSelected.contains(uri)
                         val isOpening = currentOpeningUri == uri
 
-                        // Parse URI once per item, not every recomposition
                         val parsedUri = remember(uri) {
                             android.net.Uri.parse(uri)
                         }
@@ -196,12 +185,35 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         addView(composeView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        hasBeenAttached = true
+        // Upgrade composeView to lifecycle-aware strategy now that we have a window
+        val lifecycle = composeView.findViewTreeLifecycleOwner()?.lifecycle
+        if (lifecycle != null) {
+            composeView.setViewCompositionStrategy(
+                ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycle)
+            )
+        }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        // Guard: if Fabric measures before first window attachment, composeView
+        // has no recomposer yet — skip to avoid IllegalStateException on Android 16
+        if (!isAttachedToWindow && !hasBeenAttached) {
+            setMeasuredDimension(
+                android.view.View.MeasureSpec.getSize(widthMeasureSpec),
+                android.view.View.MeasureSpec.getSize(heightMeasureSpec)
+            )
+            return
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         // trimMemory on detach — releases Glide bitmaps back to pool immediately.
-        // Do NOT call disposeComposition() here — the lifecycle strategy now owns
-        // composition disposal. Calling it manually here was the race condition
-        // that caused IllegalStateException on Android 16 Beta.
+        // Do NOT call disposeComposition() — lifecycle strategy owns disposal.
         try {
             com.bumptech.glide.Glide
                 .get(context)
