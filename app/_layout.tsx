@@ -24,7 +24,7 @@ const DEFAULT_Y = SH - 160;
 const MIC_POS_KEY = 'askfiles-mic-position';
 
 const COMMANDS = [
-  { keywords: ['storage breakdown', 'storage info', 'storage stats'], route: '/storage-breakdown' },
+  { keywords: ['storage breakdown', 'storage info', 'storage stats', 'storage'], route: '/storage-breakdown' },
   { keywords: ['large files'], route: '/large-files' },
   { keywords: ['sensitive files', 'personal files', 'secret files', 'confidential files'], route: '/sensitive-files' },
   { keywords: ['duplicates', 'dupes'], route: '/duplicates' },
