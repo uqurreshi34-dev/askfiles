@@ -17,8 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.AbstractComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.bumptech.glide.load.DecodeFormat
@@ -55,11 +57,24 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
     private val composeView = object : AbstractComposeView(context) {
         init {
-            setParentCompositionContext(null)
-            setViewCompositionStrategy(
-                androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool
-            )
+            // Start with a safe default — will be upgraded to lifecycle-aware on attach
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool)
         }
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow()
+            // Upgrade to lifecycle-aware strategy once we have a lifecycle owner.
+            // This prevents the crash where Fabric briefly detaches/reattaches the
+            // view during navigation on Android 16, causing Compose to recreate
+            // the composition mid-layout-pass (IllegalStateException in getWindowRecomposer).
+            val lifecycle = this.findViewTreeLifecycleOwner()?.lifecycle
+            if (lifecycle != null) {
+                setViewCompositionStrategy(
+                    ViewCompositionStrategy.DisposeOnLifecycleDestroyed(lifecycle)
+                )
+            }
+        }
+
         @OptIn(ExperimentalGlideComposeApi::class)
         @Composable
         override fun Content() {
@@ -183,7 +198,10 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        composeView.disposeComposition()
+        // trimMemory on detach — releases Glide bitmaps back to pool immediately.
+        // Do NOT call disposeComposition() here — the lifecycle strategy now owns
+        // composition disposal. Calling it manually here was the race condition
+        // that caused IllegalStateException on Android 16 Beta.
         try {
             com.bumptech.glide.Glide
                 .get(context)
