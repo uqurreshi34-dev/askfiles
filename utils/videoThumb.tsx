@@ -7,34 +7,20 @@ export function isVideoFile(name: string): boolean {
   return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
 }
 
-const videoThumbCache = new Map<string, string>();
-const MAX_THUMB_CACHE = 500;
-
-function getThumbCached(uri: string): string | undefined {
-  const cached = videoThumbCache.get(uri);
-  if (cached) { videoThumbCache.delete(uri); videoThumbCache.set(uri, cached); return cached; }
-  return undefined;
-}
-
-function setThumbCached(uri: string, thumb: string) {
-  if (videoThumbCache.size >= MAX_THUMB_CACHE) {
-    const firstKey = videoThumbCache.keys().next().value;
-    if (firstKey) videoThumbCache.delete(firstKey);
-  }
-  videoThumbCache.set(uri, thumb);
-}
-
 export function VideoThumb({ uri, style }: { uri: string; style: any }) {
-  const [thumb, setThumb] = useState<string | null>(getThumbCached(uri) ?? null);
+  const [thumb, setThumb] = useState<string | null>(null);
+
   useEffect(() => {
-    if (videoThumbCache.has(uri)) return;
+    let cancelled = false;
     (async () => {
       try {
         const result = await getVideoThumbnail(uri);
-        if (result) { setThumbCached(uri, result); setThumb(result); }
+        if (result && !cancelled) setThumb(result);
       } catch {}
     })();
+    return () => { cancelled = true; };
   }, [uri]);
+
   if (!thumb) return null;
   return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }

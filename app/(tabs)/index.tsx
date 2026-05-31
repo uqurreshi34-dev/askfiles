@@ -24,6 +24,7 @@ import { openFile as openFileNative } from '@/modules/share-module';
 import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
 import QRCode from 'react-native-qrcode-svg';
+import { useFavourites } from '@/hooks/useFavourites';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -46,6 +47,7 @@ export default function HomeScreen() {
   const [wifiActive, setWifiActive] = useState(false);
   const [wifiUrl, setWifiUrl] = useState('');
   const [wifiQrVisible, setWifiQrVisible] = useState(false);
+  const { count: favCount } = useFavourites();
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export default function HomeScreen() {
     { id: '2', label: 'Videos', color: colors.redBrownBg, iconColor: colors.redBrown, icon: 'videocam-outline', route: '/category?category=videos' },
     { id: '3', label: 'Documents', color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
     { id: '4', label: 'Downloads', color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
-    { id: '5', label: 'Favourites', color: colors.favRedBg, iconColor: colors.favRed, icon: 'heart-outline', route: '/favourites' },
+    { id: '5', label: 'Favourites', color: colors.favRedBg, iconColor: favCount > 0 ? colors.favRed : colors.textMuted, icon: favCount > 0 ? 'heart' : 'heart-outline', route: '/favourites' },
     { id: '6', label: 'Trash', color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
   ];
 
