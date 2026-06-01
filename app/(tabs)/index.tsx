@@ -25,6 +25,7 @@ import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
 import QRCode from 'react-native-qrcode-svg';
 import { useFavourites } from '@/hooks/useFavourites';
+import { scanDocument, saveScanPages } from '@/modules/scan-module';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -149,6 +150,30 @@ export default function HomeScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              onPress={async () => {
+                try {
+                  const uris = await scanDocument();
+                  if (uris.length === 0) return;
+                  const scansFolder = '/storage/emulated/0/Documents/Scans';
+                  const saved = await saveScanPages(uris, scansFolder);
+                  Alert.alert(
+                    'Scan saved',
+                    saved.length === 1
+                      ? '1 page saved to Documents/Scans'
+                      : `${saved.length} pages saved to Documents/Scans`
+                  );
+                } catch (e: any) {
+                  if (e?.message?.includes('SCAN_CANCELLED')) return;
+                  Alert.alert('Scan failed', e?.message ?? 'Could not complete scan');
+                }
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="camera-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.settingsBtn}

@@ -23,7 +23,8 @@
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.RECORD_AUDIO",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -70,7 +71,8 @@
       "./modules/storage-widget/app.plugin.js",
       "./modules/share-module/app.plugin.js",
       "./modules/smooth-rotation/app.plugin.js",
-      "./modules/upload-service/app.plugin.js"
+      "./modules/upload-service/app.plugin.js",
+      "./modules/scan-module/app.plugin.js"
     ],
     "extra": {
       "router": {},
