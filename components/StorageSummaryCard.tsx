@@ -73,11 +73,11 @@ export default function StorageSummaryCard({
 
 const styles = StyleSheet.create({
   wrap: { marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 12 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 4 },
   left: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   label: { fontSize: 13 },
-  value: { fontSize: 13, fontWeight: '500' },
+  value: { fontSize: 13, fontWeight: '500', flexShrink: 1 },
   barTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5' },
   note: { fontSize: 10, marginTop: 6 },

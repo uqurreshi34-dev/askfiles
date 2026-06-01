@@ -136,7 +136,7 @@ export default function HomeScreen() {
           <View style={{ width: 30, height: 30, marginRight: 8, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="folder" size={30} color="#F5B731" />
             <View style={{ position: 'absolute', top: 14, backgroundColor: '#3A7FD4', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 0.5 }}>
-              <Text style={{ fontSize: 7, fontWeight: '700', color: '#fff' }}>AI</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', color: '#fff' }} allowFontScaling={false}>AI</Text>
             </View>
           </View>
           <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
   barTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 2 },
   largeFilesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, borderRadius: 12, padding: 14 },
-  largeFilesLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  largeFilesLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 },
   largeFilesIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   largeFilesTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   largeFilesSub: { fontSize: 11 },
