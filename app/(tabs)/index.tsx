@@ -431,9 +431,9 @@ export default function HomeScreen() {
             <View style={[styles.breakdownIcon, { backgroundColor: colors.purpleTint }]}>
               <Ionicons name="pie-chart-outline" size={22} color={colors.purple} />
             </View>
-            <View>
-              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Storage Breakdown</Text>
-              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>See what's using your space</Text>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Storage Breakdown</Text>
+                <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>See what's using your space</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
