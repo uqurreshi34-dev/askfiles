@@ -17,6 +17,71 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
+      name="com.google.mlkit:text-recognition:16.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0b27f6e3ef5511c9b2e5d677423a89d4\transformed\text-recognition-16.0.0\jars\classes.jar"
+      resolved="com.google.mlkit:text-recognition:16.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0b27f6e3ef5511c9b2e5d677423a89d4\transformed\text-recognition-16.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.android.gms:play-services-mlkit-text-recognition:19.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\91b4038698ae8c0190ce936523189f4a\transformed\play-services-mlkit-text-recognition-19.0.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-mlkit-text-recognition:19.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\91b4038698ae8c0190ce936523189f4a\transformed\play-services-mlkit-text-recognition-19.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.mlkit:text-recognition-bundled-common:16.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\452869e8aef9b58d7c5fe04bb7db9af5\transformed\text-recognition-bundled-common-16.0.0\jars\classes.jar"
+      resolved="com.google.mlkit:text-recognition-bundled-common:16.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\452869e8aef9b58d7c5fe04bb7db9af5\transformed\text-recognition-bundled-common-16.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\1b47d09395c5ef9f8a37399078f5b2cb\transformed\play-services-mlkit-text-recognition-common-19.0.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\1b47d09395c5ef9f8a37399078f5b2cb\transformed\play-services-mlkit-text-recognition-common-19.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.mlkit:vision-common:17.3.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\662f199c9a6bd021ef0e3de2fdfcff43\transformed\vision-common-17.3.0\jars\classes.jar"
+      resolved="com.google.mlkit:vision-common:17.3.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\662f199c9a6bd021ef0e3de2fdfcff43\transformed\vision-common-17.3.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
       name="com.google.mlkit:common:18.10.0@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\d7f530980d98006460c223af9a17d44d\transformed\common-18.10.0\jars\classes.jar"
       resolved="com.google.mlkit:common:18.10.0"
@@ -34,6 +99,19 @@
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\29b5046031b69aac979e78fa1507e6db\transformed\play-services-base-18.1.0\jars\classes.jar"
       resolved="com.google.android.gms:play-services-base:18.1.0"
       folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\29b5046031b69aac979e78fa1507e6db\transformed\play-services-base-18.1.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.mlkit:vision-interfaces:16.2.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\b03a7a284b8d0895817baff6f7528a27\transformed\vision-interfaces-16.2.0\jars\classes.jar"
+      resolved="com.google.mlkit:vision-interfaces:16.2.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\b03a7a284b8d0895817baff6f7528a27\transformed\vision-interfaces-16.2.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -487,6 +565,19 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
+      name="androidx.exifinterface:exifinterface:1.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0dad61c1aa8c0595146d44bf6a4cc57a\transformed\exifinterface-1.0.0\jars\classes.jar"
+      resolved="androidx.exifinterface:exifinterface:1.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0dad61c1aa8c0595146d44bf6a4cc57a\transformed\exifinterface-1.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
       name="androidx.interpolator:interpolator:1.0.0@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\1e17cd582d435ac65cba9b37ee34f0b4\transformed\interpolator-1.0.0\jars\classes.jar"
       resolved="androidx.interpolator:interpolator:1.0.0"
@@ -536,6 +627,19 @@
       name="com.google.firebase:firebase-annotations:16.0.0@jar"
       jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\com.google.firebase\firebase-annotations\16.0.0\dbeae20d6c97b747b59ef47b6dcf770ba1a60fa6\firebase-annotations-16.0.0.jar"
       resolved="com.google.firebase:firebase-annotations:16.0.0"/>
+  <library
+      name="com.google.android.odml:image:1.0.0-beta1@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\39c2ceb05abb93313c8316496213869f\transformed\image-1.0.0-beta1\jars\classes.jar"
+      resolved="com.google.android.odml:image:1.0.0-beta1"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\39c2ceb05abb93313c8316496213869f\transformed\image-1.0.0-beta1"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
   <library
       name="androidx.emoji2:emoji2-views-helper:1.2.0@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\9ef8b8d82fd40ac7be71903edd592eb5\transformed\emoji2-views-helper-1.2.0\jars\classes.jar"
