@@ -114,5 +114,45 @@ class ScanModule : Module() {
 
             savedPaths
         }
+
+        AsyncFunction("saveScanAsPdf") { uris: List<String>, folderPath: String ->
+            val scansDir = File(folderPath)
+            scansDir.mkdirs()
+
+            val timestamp = System.currentTimeMillis()
+            val destFile = File(scansDir, "Scan_${timestamp}.pdf")
+
+            val pdf = android.graphics.pdf.PdfDocument()
+            try {
+                uris.forEachIndexed { index, uriString ->
+                    val uri = Uri.parse(uriString)
+                    val bitmap = android.graphics.BitmapFactory.decodeStream(
+                        appContext.reactContext?.contentResolver?.openInputStream(uri)
+                    ) ?: return@forEachIndexed
+
+                    val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
+                        bitmap.width, bitmap.height, index + 1
+                    ).create()
+                    val page = pdf.startPage(pageInfo)
+                    page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+                    pdf.finishPage(page)
+                    bitmap.recycle() // immediately free — never accumulate
+                }
+
+                FileOutputStream(destFile).use { out ->
+                    pdf.writeTo(out)
+                }
+
+                android.media.MediaScannerConnection.scanFile(
+                    appContext.reactContext,
+                    arrayOf(destFile.absolutePath),
+                    null, null
+                )
+            } finally {
+                pdf.close()
+            }
+
+            destFile.absolutePath
+        }
     }
 }

@@ -18,3 +18,7 @@ export function scanDocument(): Promise<string[]> {
 export function saveScanPages(uris: string[], folderPath: string): Promise<string[]> {
   return ScanModule.saveScanPages(uris, folderPath);
 }
+
+export function saveScanAsPdf(uris: string[], folderPath: string): Promise<string> {
+  return ScanModule.saveScanAsPdf(uris, folderPath);
+}

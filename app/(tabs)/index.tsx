@@ -25,7 +25,7 @@ import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
 import QRCode from 'react-native-qrcode-svg';
 import { useFavourites } from '@/hooks/useFavourites';
-import { scanDocument, saveScanPages } from '@/modules/scan-module';
+import { scanDocument, saveScanPages, saveScanAsPdf } from '@/modules/scan-module';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -158,12 +158,27 @@ export default function HomeScreen() {
                   const uris = await scanDocument();
                   if (uris.length === 0) return;
                   const scansFolder = '/storage/emulated/0/Documents/Scans';
-                  const saved = await saveScanPages(uris, scansFolder);
+              
                   Alert.alert(
-                    'Scan saved',
-                    saved.length === 1
-                      ? '1 page saved to Documents/Scans'
-                      : `${saved.length} pages saved to Documents/Scans`
+                    'Save scan as',
+                    `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`,
+                    [
+                      {
+                        text: 'Images (JPG)',
+                        onPress: async () => {
+                          const saved = await saveScanPages(uris, scansFolder);
+                          Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
+                        }
+                      },
+                      {
+                        text: 'PDF',
+                        onPress: async () => {
+                          const path = await saveScanAsPdf(uris, scansFolder);
+                          Alert.alert('Saved', 'PDF saved to Documents/Scans');
+                        }
+                      },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
                   );
                 } catch (e: any) {
                   if (e?.message?.includes('SCAN_CANCELLED')) return;
