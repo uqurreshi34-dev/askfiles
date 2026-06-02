@@ -104,6 +104,13 @@ class DocIndexerModule : Module() {
       count
     }
 
+    // Index a scan image with pre-extracted OCR text — bypasses extractText entirely
+      AsyncFunction("indexScanWithText") { uri: String, name: String, text: String ->
+          if (text.isBlank()) return@AsyncFunction false
+          saveToDb(uri, name, text.take(5000))
+          true
+      }
+
     // Search indexed content — term frequency ranked, LIKE fallback
    AsyncFunction("searchFiles") { query: String ->
       val results = mutableListOf<Pair<Int, Map<String, String>>>()

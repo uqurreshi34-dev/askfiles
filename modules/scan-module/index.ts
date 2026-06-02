@@ -22,3 +22,12 @@ export function saveScanPages(uris: string[], folderPath: string): Promise<strin
 export function saveScanAsPdf(uris: string[], folderPath: string): Promise<string> {
   return ScanModule.saveScanAsPdf(uris, folderPath);
 }
+
+/**
+ * Run OCR on saved scan JPG files.
+ * Returns map of { filePath: extractedText }
+ * Runs on background thread — call after showing "Saved" alert.
+ */
+export function ocrScanPages(paths: string[]): Promise<Record<string, string>> {
+  return ScanModule.ocrScanPages(paths);
+}

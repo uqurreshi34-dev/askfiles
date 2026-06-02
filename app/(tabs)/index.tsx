@@ -25,7 +25,8 @@ import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
 import QRCode from 'react-native-qrcode-svg';
 import { useFavourites } from '@/hooks/useFavourites';
-import { scanDocument, saveScanPages, saveScanAsPdf } from '@/modules/scan-module';
+import { scanDocument, saveScanPages, saveScanAsPdf, ocrScanPages } from '@/modules/scan-module';
+import { DocIndexer } from '@/modules/doc-indexer';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -50,6 +51,7 @@ export default function HomeScreen() {
   const [wifiQrVisible, setWifiQrVisible] = useState(false);
   const { count: favCount } = useFavourites();
   const [, setTick] = useState(0);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -125,6 +127,20 @@ export default function HomeScreen() {
     return colors.textSecondary;
   }
 
+  // Helper — fire OCR and index silently in background, never blocks UI
+async function indexScansInBackground(paths: string[]) {
+  try {
+    const ocrResults = await ocrScanPages(paths);
+    for (const [path, text] of Object.entries(ocrResults)) {
+      const name = path.split('/').pop() ?? 'scan';
+      const uri = 'file://' + path;
+      await DocIndexer.indexScanWithText(uri, name, text);
+    }
+  } catch (e) {
+    // silent — OCR failure never surfaces to user
+  }
+}
+
   if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   return (
@@ -154,11 +170,12 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.settingsBtn}
               onPress={async () => {
+                if (scanning) return;
                 try {
                   const uris = await scanDocument();
                   if (uris.length === 0) return;
                   const scansFolder = '/storage/emulated/0/Documents/Scans';
-              
+
                   Alert.alert(
                     'Save scan as',
                     `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`,
@@ -166,15 +183,27 @@ export default function HomeScreen() {
                       {
                         text: 'Images (JPG)',
                         onPress: async () => {
-                          const saved = await saveScanPages(uris, scansFolder);
-                          Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
+                          setScanning(true);
+                          try {
+                            const saved = await saveScanPages(uris, scansFolder);
+                            Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
+                            indexScansInBackground(saved);
+                          } finally {
+                            setScanning(false);
+                          }
                         }
                       },
                       {
                         text: 'PDF',
                         onPress: async () => {
-                          const path = await saveScanAsPdf(uris, scansFolder);
-                          Alert.alert('Saved', 'PDF saved to Documents/Scans');
+                          setScanning(true);
+                          try {
+                            const path = await saveScanAsPdf(uris, scansFolder);
+                            Alert.alert('Saved', 'PDF saved to Documents/Scans');
+                            indexScansInBackground([path]);
+                          } finally {
+                            setScanning(false);
+                          }
                         }
                       },
                       { text: 'Cancel', style: 'cancel' }
@@ -188,7 +217,10 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="camera-outline" size={22} color={colors.textSecondary} />
+              {scanning
+                ? <ActivityIndicator size="small" color={colors.textSecondary} />
+                : <Ionicons name="camera-outline" size={22} color={colors.textSecondary} />
+              }
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.settingsBtn}

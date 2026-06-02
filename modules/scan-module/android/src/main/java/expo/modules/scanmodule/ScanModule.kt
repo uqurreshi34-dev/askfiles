@@ -1,24 +1,33 @@
 package expo.modules.scanmodule
 
 import android.app.Activity
-import android.content.Intent
+import android.graphics.BitmapFactory
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
+import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ScanModule : Module() {
 
     companion object {
-        // Shared launcher registered by MainActivity via app.plugin.js
         var scanLauncher: ActivityResultLauncher<IntentSenderRequest>? = null
         var pendingPromise: Promise? = null
 
@@ -33,7 +42,6 @@ class ScanModule : Module() {
                     promise.reject("SCAN_EMPTY", "No pages returned from scanner", null)
                     return
                 }
-                // Resolve with list of content:// URIs — caller saves them
                 promise.resolve(pages.map { it.imageUri.toString() })
             } else if (result.resultCode == Activity.RESULT_CANCELED) {
                 promise.reject("SCAN_CANCELLED", "User cancelled scan", null)
@@ -55,20 +63,18 @@ class ScanModule : Module() {
 
             val launcher = scanLauncher
             if (launcher == null) {
-                promise.reject("NO_LAUNCHER", "Scanner not initialised — ensure app.plugin.js patch is applied", null)
+                promise.reject("NO_LAUNCHER", "Scanner not initialised", null)
                 return@AsyncFunction
             }
 
-            // Build scanner options
             val options = GmsDocumentScannerOptions.Builder()
                 .setGalleryImportAllowed(false)
-                .setPageLimit(10) // up to 10 pages per scan session
-                .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG) // we convert to PNG ourselves
-                .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL) // full mode = edge detection + perspective correction
+                .setPageLimit(10)
+                .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
                 .build()
 
             val scanner = GmsDocumentScanning.getClient(options)
-
             pendingPromise = promise
 
             scanner.getStartScanIntent(activity)
@@ -82,7 +88,6 @@ class ScanModule : Module() {
         }
 
         AsyncFunction("saveScanPages") { uris: List<String>, folderPath: String ->
-            // Ensure Scans folder exists
             val scansDir = File(folderPath)
             scansDir.mkdirs()
 
@@ -100,7 +105,6 @@ class ScanModule : Module() {
                             input.copyTo(output)
                         }
                     }
-                    // Trigger MediaStore scan so file appears in gallery/documents
                     android.media.MediaScannerConnection.scanFile(
                         appContext.reactContext,
                         arrayOf(destFile.absolutePath),
@@ -122,21 +126,21 @@ class ScanModule : Module() {
             val timestamp = System.currentTimeMillis()
             val destFile = File(scansDir, "Scan_${timestamp}.pdf")
 
-            val pdf = android.graphics.pdf.PdfDocument()
+            val pdf = PdfDocument()
             try {
                 uris.forEachIndexed { index, uriString ->
                     val uri = Uri.parse(uriString)
-                    val bitmap = android.graphics.BitmapFactory.decodeStream(
+                    val bitmap = BitmapFactory.decodeStream(
                         appContext.reactContext?.contentResolver?.openInputStream(uri)
                     ) ?: return@forEachIndexed
 
-                    val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
+                    val pageInfo = PdfDocument.PageInfo.Builder(
                         bitmap.width, bitmap.height, index + 1
                     ).create()
                     val page = pdf.startPage(pageInfo)
                     page.canvas.drawBitmap(bitmap, 0f, 0f, null)
                     pdf.finishPage(page)
-                    bitmap.recycle() // immediately free — never accumulate
+                    bitmap.recycle()
                 }
 
                 FileOutputStream(destFile).use { out ->
@@ -153,6 +157,46 @@ class ScanModule : Module() {
             }
 
             destFile.absolutePath
+        }
+
+        // OCR each saved JPG and return map of path -> extracted text
+        // Runs on background coroutine — caller indexes into DocIndexer silently
+        AsyncFunction("ocrScanPages") { paths: List<String>, promise: Promise ->
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            val results = mutableMapOf<String, String>()
+
+            CoroutineScope(Dispatchers.IO).launch {
+                for (path in paths) {
+                    try {
+                        val file = File(path)
+                        if (!file.exists()) continue
+
+                        val bitmap = BitmapFactory.decodeFile(path) ?: continue
+                        val image = InputImage.fromBitmap(bitmap, 0)
+
+                        val text = suspendCoroutine<String> { cont ->
+                            recognizer.process(image)
+                                .addOnSuccessListener { result ->
+                                    bitmap.recycle()
+                                    cont.resume(result.text.take(5000))
+                                }
+                                .addOnFailureListener { e ->
+                                    bitmap.recycle()
+                                    cont.resumeWithException(e)
+                                }
+                        }
+
+                        if (text.isNotBlank()) {
+                            results[path] = text
+                        }
+                    } catch (e: Exception) {
+                        Log.e("ScanModule", "OCR failed for $path: ${e.message}")
+                    }
+                }
+
+                recognizer.close()
+                promise.resolve(results)
+            }
         }
     }
 }
