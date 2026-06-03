@@ -949,6 +949,18 @@ export default function BrowseScreen() {
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
             <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected</Text>
+            <TouchableOpacity
+              onPress={() => {
+                const allFiles = items.filter(f => !f.isDirectory);
+                const newSet = new Set(allFiles.map(f => f.uri));
+                const newMap = new Map(allFiles.map(f => [f.uri, f]));
+                setSelectedUris(newSet);
+                setSelectedItemsMap(newMap);
+              }}
+              style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }}
+            >
+              <Text style={{ fontSize: 13, color: colors.blue }}>Select All</Text>
+            </TouchableOpacity>
           </View>
         )}
         <View style={styles.pathRow}>

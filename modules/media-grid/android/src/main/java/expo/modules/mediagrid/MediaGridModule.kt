@@ -87,6 +87,10 @@ class MediaGridModule : Module() {
         view.setOpeningUri(openingUri)
       }
 
+      Prop("selectedUris") { view: MediaGridView, uris: List<String> ->
+        view.setSelectedUrisFromJS(uris)
+      }
+
       Events("onItemPress", "onItemLongPress", "onSelectionChange")
     }
   }

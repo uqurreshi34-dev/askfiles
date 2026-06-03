@@ -31,6 +31,7 @@ import { openFile as openFileNative } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
 import { copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -172,6 +173,8 @@ export default function SearchScreen() {
       },
     })
   ).current;
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
   useSpeechRecognitionEvent('result', (e) => {
     if (!listening) return;
@@ -1115,6 +1118,16 @@ export default function SearchScreen() {
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
             {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
+          {volumes.length > 1 && (
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+              {volumes.map(vol => (
+                <TouchableOpacity key={vol.path} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: pickerPath.includes(vol.path) ? colors.blue : colors.surface }} onPress={() => { const newPath = `file://${vol.path}/`; setPickerPath(newPath); loadPickerDir(newPath); }}>
+                  <Ionicons name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'} size={14} color={pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary} />
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>{vol.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (

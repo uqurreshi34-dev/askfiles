@@ -57,6 +57,11 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         if (!newSelectMode) selectedUris.clear()
     }
 
+    fun setSelectedUrisFromJS(uris: List<String>) {
+        selectedUris.clear()
+        selectedUris.addAll(uris)
+    }
+
     fun setCategory(newCategory: String) { category.value = newCategory }
     fun setOpeningUri(newOpeningUri: String) { openingUri.value = newOpeningUri }
 
@@ -70,7 +75,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
         @Composable
         override fun Content() {
             val currentUris = uris
-            val currentSelected = selectedUris
+            val currentSelected = selectedUris.toList()
             val currentSelectMode = selectMode.value
             val currentCategory = category.value
             val currentOpeningUri = openingUri.value

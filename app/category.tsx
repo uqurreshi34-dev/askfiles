@@ -25,6 +25,7 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos } from 'media-store';
 import { scanFile } from '@/modules/share-module';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -149,6 +150,7 @@ export default function CategoryScreen() {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
   const ROOT_PATH = 'file:///storage/emulated/0/';
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -266,6 +268,10 @@ export default function CategoryScreen() {
     });
     return () => subscription.remove();
   }, [category]);
+
+  useEffect(() => {
+    getStorageVolumes().then(setVolumes);
+  }, []);
 
   async function openSheet(item: FileItem) {
     setSelectedItem(item);
@@ -627,7 +633,18 @@ export default function CategoryScreen() {
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{selectedUris.size} selected</Text>
-            <View style={{ width: 40 }} />
+            <TouchableOpacity
+              onPress={() => {
+                const allFiles = filteredItems;
+                const newSet = new Set(allFiles.map(f => f.uri));
+                const newMap = new Map(allFiles.map(f => [f.uri, f]));
+                setSelectedUris(newSet);
+                setSelectedItemsMap(newMap);
+              }}
+              style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 12, color: colors.blue, fontWeight: '500' }}>All</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
@@ -741,8 +758,9 @@ export default function CategoryScreen() {
             {filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}
           </Text>
           <MediaGridView
+            selectedUris={Array.from(selectedUris)}
             style={{ flex: 1 }}
-            key={`grid-${sortKey}-${searchQuery}`}
+            key={`grid-${sortKey}-${searchQuery}-${selectMode}`}
             uris={gridUris}
             selectMode={selectMode}
             category={category ?? 'images'}
@@ -999,6 +1017,20 @@ export default function CategoryScreen() {
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
             {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
+          {volumes.length > 1 && (
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+              {volumes.map(vol => (
+                <TouchableOpacity key={vol.path} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: pickerPath.includes(vol.path) ? colors.blue : colors.surface }} onPress={() => {
+                  const newPath = `file://${vol.path}/`;
+                  setPickerPath(newPath);
+                  loadPickerDir(newPath);
+                }}>
+                  <Ionicons name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'} size={14} color={pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary} />
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>{vol.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (

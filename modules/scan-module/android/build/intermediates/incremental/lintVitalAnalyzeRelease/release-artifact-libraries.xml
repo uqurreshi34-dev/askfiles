@@ -14,10 +14,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a2ac036ffb1821f64b1635d8c0fd961c\transformed\play-services-mlkit-document-scanner-16.0.0-beta1\jars\classes.jar"
-      resolved="com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a2ac036ffb1821f64b1635d8c0fd961c\transformed\play-services-mlkit-document-scanner-16.0.0-beta1"
+      name="com.google.android.gms:play-services-mlkit-document-scanner:16.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\3c81f9a86566b34e197b4a867f6e8973\transformed\play-services-mlkit-document-scanner-16.0.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-mlkit-document-scanner:16.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\3c81f9a86566b34e197b4a867f6e8973\transformed\play-services-mlkit-document-scanner-16.0.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -27,10 +27,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.mlkit:text-recognition:16.0.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0b27f6e3ef5511c9b2e5d677423a89d4\transformed\text-recognition-16.0.0\jars\classes.jar"
-      resolved="com.google.mlkit:text-recognition:16.0.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0b27f6e3ef5511c9b2e5d677423a89d4\transformed\text-recognition-16.0.0"
+      name="com.google.mlkit:text-recognition:16.0.1@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\163171610b2fb5933e3febd5ab1c61a6\transformed\text-recognition-16.0.1\jars\classes.jar"
+      resolved="com.google.mlkit:text-recognition:16.0.1"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\163171610b2fb5933e3febd5ab1c61a6\transformed\text-recognition-16.0.1"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -40,10 +40,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.android.gms:play-services-mlkit-text-recognition:19.0.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\91b4038698ae8c0190ce936523189f4a\transformed\play-services-mlkit-text-recognition-19.0.0\jars\classes.jar"
-      resolved="com.google.android.gms:play-services-mlkit-text-recognition:19.0.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\91b4038698ae8c0190ce936523189f4a\transformed\play-services-mlkit-text-recognition-19.0.0"
+      name="com.google.android.gms:play-services-mlkit-text-recognition:19.0.1@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e4a1ac4f24b520b20b2ff82e6f5df70f\transformed\play-services-mlkit-text-recognition-19.0.1\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-mlkit-text-recognition:19.0.1"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e4a1ac4f24b520b20b2ff82e6f5df70f\transformed\play-services-mlkit-text-recognition-19.0.1"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -53,10 +53,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.mlkit:text-recognition-bundled-common:16.0.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\452869e8aef9b58d7c5fe04bb7db9af5\transformed\text-recognition-bundled-common-16.0.0\jars\classes.jar"
-      resolved="com.google.mlkit:text-recognition-bundled-common:16.0.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\452869e8aef9b58d7c5fe04bb7db9af5\transformed\text-recognition-bundled-common-16.0.0"
+      name="com.google.mlkit:text-recognition-bundled-common:17.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\7fa47931cb72d4ce65816a40bd3dc8ff\transformed\text-recognition-bundled-common-17.0.0\jars\classes.jar"
+      resolved="com.google.mlkit:text-recognition-bundled-common:17.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\7fa47931cb72d4ce65816a40bd3dc8ff\transformed\text-recognition-bundled-common-17.0.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -66,10 +66,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\1b47d09395c5ef9f8a37399078f5b2cb\transformed\play-services-mlkit-text-recognition-common-19.0.0\jars\classes.jar"
-      resolved="com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\1b47d09395c5ef9f8a37399078f5b2cb\transformed\play-services-mlkit-text-recognition-common-19.0.0"
+      name="com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\43c023b69168e5de838a09a2d25e681f\transformed\play-services-mlkit-text-recognition-common-19.1.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\43c023b69168e5de838a09a2d25e681f\transformed\play-services-mlkit-text-recognition-common-19.1.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -92,10 +92,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.mlkit:common:18.10.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\d7f530980d98006460c223af9a17d44d\transformed\common-18.10.0\jars\classes.jar"
-      resolved="com.google.mlkit:common:18.10.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\d7f530980d98006460c223af9a17d44d\transformed\common-18.10.0"
+      name="com.google.mlkit:common:18.11.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\27f2d261548a0f12e726584bfb0f8d56\transformed\common-18.11.0\jars\classes.jar"
+      resolved="com.google.mlkit:common:18.11.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\27f2d261548a0f12e726584bfb0f8d56\transformed\common-18.11.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -105,10 +105,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.android.gms:play-services-base:18.1.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\29b5046031b69aac979e78fa1507e6db\transformed\play-services-base-18.1.0\jars\classes.jar"
-      resolved="com.google.android.gms:play-services-base:18.1.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\29b5046031b69aac979e78fa1507e6db\transformed\play-services-base-18.1.0"
+      name="com.google.android.gms:play-services-base:18.5.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a05f127308bf60a8f9d44cf243ba6ba6\transformed\play-services-base-18.5.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-base:18.5.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a05f127308bf60a8f9d44cf243ba6ba6\transformed\play-services-base-18.5.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -118,10 +118,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.mlkit:vision-interfaces:16.2.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\b03a7a284b8d0895817baff6f7528a27\transformed\vision-interfaces-16.2.0\jars\classes.jar"
-      resolved="com.google.mlkit:vision-interfaces:16.2.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\b03a7a284b8d0895817baff6f7528a27\transformed\vision-interfaces-16.2.0"
+      name="com.google.mlkit:vision-interfaces:16.3.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\b53383d3181e27e9e88d2b25fea1241d\transformed\vision-interfaces-16.3.0\jars\classes.jar"
+      resolved="com.google.mlkit:vision-interfaces:16.3.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\b53383d3181e27e9e88d2b25fea1241d\transformed\vision-interfaces-16.3.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -131,10 +131,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.android.gms:play-services-tasks:18.0.2@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\d3e1e2d72468cd39b02f9f8ca1aac26b\transformed\play-services-tasks-18.0.2\jars\classes.jar"
-      resolved="com.google.android.gms:play-services-tasks:18.0.2"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\d3e1e2d72468cd39b02f9f8ca1aac26b\transformed\play-services-tasks-18.0.2"
+      name="com.google.android.gms:play-services-tasks:18.2.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e7cce631b0295b81ed6618578c9ef3d5\transformed\play-services-tasks-18.2.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-tasks:18.2.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e7cce631b0295b81ed6618578c9ef3d5\transformed\play-services-tasks-18.2.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -144,10 +144,10 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
-      name="com.google.android.gms:play-services-basement:18.1.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\667af5601ce69c6574aacd5b830fb884\transformed\play-services-basement-18.1.0\jars\classes.jar"
-      resolved="com.google.android.gms:play-services-basement:18.1.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\667af5601ce69c6574aacd5b830fb884\transformed\play-services-basement-18.1.0"
+      name="com.google.android.gms:play-services-basement:18.4.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\7d5a29614e13125bc30e8e60f00fe51f\transformed\play-services-basement-18.4.0\jars\classes.jar"
+      resolved="com.google.android.gms:play-services-basement:18.4.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\7d5a29614e13125bc30e8e60f00fe51f\transformed\play-services-basement-18.4.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"

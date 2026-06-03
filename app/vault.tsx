@@ -20,6 +20,7 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
 import { copyFileStream } from 'file-reader';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
@@ -63,6 +64,8 @@ export default function VaultScreen() {
   ).current;
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
   useEffect(() => {
     async function init() {
@@ -488,9 +491,20 @@ export default function VaultScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={{ width: 40 }} />
-        )}
-      </View>
+          <TouchableOpacity
+            onPress={() => {
+              const allFiles = files;
+              const newSet = new Set(allFiles.map(f => f.uri));
+              const newMap = new Map(allFiles.map(f => [f.uri, f]));
+              setSelectedUris(newSet);
+              setSelectedFilesMap(newMap);
+            }}
+            style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+          >
+            <Text style={{ fontSize: 12, color: colors.blue, fontWeight: '500' }}>All</Text>
+          </TouchableOpacity>
+        )} 
+        </View>
 
       {openingFile && (
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
@@ -655,6 +669,20 @@ export default function VaultScreen() {
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
             {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
           </Text>
+          {volumes.length > 1 && (
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+              {volumes.map(vol => (
+                <TouchableOpacity
+                  key={vol.path}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: pickerPath.includes(vol.path) ? colors.blue : colors.surface }}
+                  onPress={() => { const newPath = `file://${vol.path}/`; setPickerPath(newPath); loadPickerDir(newPath); }}
+                >
+                  <Ionicons name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'} size={14} color={pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary} />
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>{vol.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
