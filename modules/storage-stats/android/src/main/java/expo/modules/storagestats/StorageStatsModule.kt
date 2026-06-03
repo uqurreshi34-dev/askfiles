@@ -60,6 +60,35 @@ class StorageStatsModule : Module() {
             Environment.isExternalStorageManager()
         }
 
+        AsyncFunction("getStorageVolumes") {
+            val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, String>>()
+            val volumes = mutableListOf<Map<String, String>>()
+
+            // Always add internal storage
+            volumes.add(mapOf(
+                "name" to "Internal Storage",
+                "path" to "/storage/emulated/0",
+                "type" to "internal"
+            ))
+
+            // Check for removable SD cards
+            val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+                ?: return@AsyncFunction volumes
+
+            storageManager.storageVolumes.forEach { vol ->
+                if (vol.isRemovable && vol.state == Environment.MEDIA_MOUNTED) {
+                    val path = vol.directory?.absolutePath ?: return@forEach
+                    volumes.add(mapOf(
+                        "name" to (vol.getDescription(context) ?: "SD Card"),
+                        "path" to path,
+                        "type" to "sdcard"
+                    ))
+                }
+            }
+
+            volumes
+        }
+
         Function("isAppLockEnabledSync") {
             val context = appContext.reactContext ?: return@Function false
             val prefs = context.getSharedPreferences("askfiles_lock", Context.MODE_PRIVATE)

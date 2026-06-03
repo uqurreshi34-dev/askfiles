@@ -21,3 +21,7 @@ export function setAppLockEnabledSync(enabled: boolean): void {
 export async function showBiometricPrompt(title: string, subtitle: string): Promise<'success' | 'cancelled' | 'unavailable' | 'error'> {
   return StorageStats.showBiometricPrompt(title, subtitle);
 }
+
+export function getStorageVolumes(): Promise<{ name: string; path: string; type: string }[]> {
+  return StorageStats.getStorageVolumes();
+}

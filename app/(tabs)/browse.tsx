@@ -27,6 +27,7 @@ import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProg
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { startWifiServer } from '@/modules/file-reader';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 interface FileItem {
   name: string;
@@ -126,6 +127,11 @@ export default function BrowseScreen() {
   const [folderCounts, setFolderCounts] = useState<Record<string, number>>(folderCountsStore);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+
+  useEffect(() => {
+    getStorageVolumes().then((volumes: any) => setVolumes(volumes));
+  }, []);
 
   useEffect(() => {
     loadDirectory(currentPath);
@@ -599,10 +605,22 @@ export default function BrowseScreen() {
         await moveFileStream(src, dst);
         await scanFile(dst).catch(() => {});
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
-        const isRoot = destFolder === ROOT_PATH;
-        const destName = isRoot ? 'Storage' : (() => { try { return decodeURIComponent(destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'); } catch { return destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'; } })();
+        const isInternalRoot = destFolder === ROOT_PATH;
+        const sdVolume = volumes.find(v => v.type === 'sdcard' && destFolder.includes(v.path));
+        const isSdRoot = sdVolume && destFolder === `file://${sdVolume.path}/`;
+        const destName = (() => { try { return decodeURIComponent(destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'); } catch { return destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'; } })();
+
         setCurrentPath(destFolder);
-        setBreadcrumbs(isRoot ? [{ name: 'Storage', path: ROOT_PATH }] : [{ name: 'Storage', path: ROOT_PATH }, { name: destName, path: destFolder }]);
+        if (isInternalRoot) {
+          setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }]);
+        } else if (isSdRoot) {
+          setBreadcrumbs([{ name: sdVolume.name, path: destFolder }]);
+        } else if (sdVolume) {
+          const sdRootPath = `file://${sdVolume.path}/`;
+          setBreadcrumbs([{ name: sdVolume.name, path: sdRootPath }, { name: destName, path: destFolder }]);
+        } else {
+          setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }, { name: destName, path: destFolder }]);
+        }
         await loadDirectory(destFolder);
         Alert.alert('Success', `"${item.name}" moved successfully.`);
       }
@@ -737,10 +755,22 @@ export default function BrowseScreen() {
 
       if (multiPasteMode === 'move') {
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
-        const isRoot = destFolder === ROOT_PATH;
-        const destName = isRoot ? 'Storage' : (() => { try { return decodeURIComponent(destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'); } catch { return destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'; } })();
+        const isInternalRoot = destFolder === ROOT_PATH;
+        const sdVolume = volumes.find(v => v.type === 'sdcard' && destFolder.includes(v.path));
+        const isSdRoot = sdVolume && destFolder === `file://${sdVolume.path}/`;
+        const destName = (() => { try { return decodeURIComponent(destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'); } catch { return destFolder.replace(/\/$/, '').split('/').pop() ?? 'Folder'; } })();
+      
         setCurrentPath(destFolder);
-        setBreadcrumbs(isRoot ? [{ name: 'Storage', path: ROOT_PATH }] : [{ name: 'Storage', path: ROOT_PATH }, { name: destName, path: destFolder }]);
+        if (isInternalRoot) {
+          setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }]);
+        } else if (isSdRoot) {
+          setBreadcrumbs([{ name: sdVolume.name, path: destFolder }]);
+        } else if (sdVolume) {
+          const sdRootPath = `file://${sdVolume.path}/`;
+          setBreadcrumbs([{ name: sdVolume.name, path: sdRootPath }, { name: destName, path: destFolder }]);
+        } else {
+          setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }, { name: destName, path: destFolder }]);
+        }
         await loadDirectory(destFolder);
       }
       setSelectMode(false);
@@ -851,8 +881,15 @@ export default function BrowseScreen() {
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerRow}>
-          {breadcrumbs.length > 1 ? (
+        {breadcrumbs.length > 1 ? (
             <TouchableOpacity onPress={() => navigateToBreadcrumb(breadcrumbs.length - 2)} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          ) : currentPath !== ROOT_PATH ? (
+            <TouchableOpacity onPress={() => {
+              setCurrentPath(ROOT_PATH);
+              setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }]);
+            }} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           ) : (
@@ -932,6 +969,34 @@ export default function BrowseScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {volumes.length > 1 && currentPath === ROOT_PATH && (
+          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+            {volumes.map(vol => (
+              <TouchableOpacity
+                key={vol.path}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+                  backgroundColor: currentPath.includes(vol.path) ? colors.blue : colors.surface
+                }}
+                onPress={() => {
+                  const newPath = `file://${vol.path}/`;
+                  setCurrentPath(newPath);
+                  setBreadcrumbs([{ name: vol.name, path: newPath }]);
+                }}
+              >
+                <Ionicons
+                  name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'}
+                  size={14}
+                  color={currentPath.includes(vol.path) ? '#fff' : colors.textSecondary}
+                />
+                <Text style={{ fontSize: 12, fontWeight: '500', color: currentPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>
+                  {vol.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {zipping && (
@@ -1161,6 +1226,34 @@ export default function BrowseScreen() {
             <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 52, paddingBottom: 4 }]}>
               {pickerPath.replace('file:///storage/emulated/0/', 'Storage/').split('/').map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } }).join('/')}
             </Text>
+            {volumes.length > 1 && (pickerPath === ROOT_PATH || !pickerPath.includes('/storage/emulated/0/')) && (
+              <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+                {volumes.map(vol => (
+                  <TouchableOpacity
+                    key={vol.path}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+                      backgroundColor: pickerPath.includes(vol.path) ? colors.blue : colors.surface
+                    }}
+                    onPress={() => {
+                      const newPath = `file://${vol.path}/`;
+                      setPickerPath(newPath);
+                      loadPickerDir(newPath);
+                    }}
+                  >
+                    <Ionicons
+                      name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'}
+                      size={14}
+                      color={pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary}
+                    />
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>
+                      {vol.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
