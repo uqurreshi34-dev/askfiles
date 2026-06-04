@@ -27,6 +27,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { useFavourites } from '@/hooks/useFavourites';
 import { scanDocument, saveScanPages, saveScanAsPdf, ocrScanPages } from '@/modules/scan-module';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { shouldShowRatePrompt, markRatePromptShown } from '@/hooks/useRatePrompt';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -52,7 +53,7 @@ export default function HomeScreen() {
   const { count: favCount } = useFavourites();
   const [, setTick] = useState(0);
   const [scanning, setScanning] = useState(false);
-
+  const [ratePromptVisible, setRatePromptVisible] = useState(false);
   useEffect(() => {
     async function checkOnboarding() {
       const done = await AsyncStorage.getItem('askfiles-onboarding-done');
@@ -188,6 +189,8 @@ async function indexScansInBackground(paths: string[]) {
                             const saved = await saveScanPages(uris, scansFolder);
                             Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
                             indexScansInBackground(saved);
+                            const show = await shouldShowRatePrompt();
+                            if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
                           } finally {
                             setScanning(false);
                           }
@@ -201,6 +204,8 @@ async function indexScansInBackground(paths: string[]) {
                             const path = await saveScanAsPdf(uris, scansFolder);
                             Alert.alert('Saved', 'PDF saved to Documents/Scans');
                             indexScansInBackground([path]);
+                            const show = await shouldShowRatePrompt();
+                            if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
                           } finally {
                             setScanning(false);
                           }
@@ -371,6 +376,39 @@ async function indexScansInBackground(paths: string[]) {
               </View>
               <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 4 }}>Or type in your PC browser:</Text>
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center', marginBottom: 12 }}>{wifiUrl}</Text>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+        {/* Rate Prompt Modal */}
+        <Modal
+          visible={ratePromptVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setRatePromptVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setRatePromptVisible(false)}
+          >
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Enjoying AskFiles?</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>A quick rating helps a lot ⭐</Text>
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
+              <TouchableOpacity
+                style={[styles.modalClose, { backgroundColor: colors.blue, marginBottom: 8 }]}
+                activeOpacity={0.7}
+                onPress={() => { setRatePromptVisible(false); Linking.openURL('market://details?id=com.askfiles.mobile'); }}
+              >
+                <Text style={[styles.modalCloseText, { color: '#fff' }]}>Rate AskFiles</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled }]}
+                activeOpacity={0.7}
+                onPress={() => setRatePromptVisible(false)}
+              >
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Maybe later</Text>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         </Modal>
