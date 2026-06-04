@@ -20,6 +20,8 @@ AI-powered Android file manager with cloud backup, AI search, Smart search, secu
 ## Features
 - Native file browser with copy, move, rename, zip, extract
 - Password-protected ZIP with AES-256 encryption
+- Document scanner powered by google ML kit
+- QR file transfer and file share
 - AI-powered file search (Pro)
 - Secure vault with PIN + biometric lock
 - Google Drive & OneDrive backup
