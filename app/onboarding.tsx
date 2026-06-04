@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Dimensions, ScrollView, NativeScrollEvent, NativeSyntheticEvent,
+  ScrollView, NativeScrollEvent, NativeSyntheticEvent,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
@@ -23,11 +24,11 @@ const SLIDES = [
     body: 'Your personal file manager. Browse, organise, and access everything on your device — simply and fast.',
   },
   {
-    icon: 'mic-outline' as const,
-    iconColor: '#534AB7',
-    iconBg: '#EEEDFE',
-    title: 'Voice Navigation',
-    body: 'Tap the mic button and speak to navigate. Try "Open Images", "Open Vault", "Go to Browse" or "Find Downloads".',
+    icon: 'apps-outline' as const,
+    iconColor: '#185FA5',
+    iconBg: '#E6F1FB',
+    title: 'Powerful. Free.',
+    body: 'Document scanner with automatic edge detection. Password-protected ZIP. WiFi file transfer — no cables, just a browser. QR file sharing. SD card support. All free, no account needed.',
   },
   {
     icon: 'lock-closed-outline' as const,
@@ -133,9 +134,12 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
 
           <View style={styles.lsSlide}>
-            <View style={[styles.lsIconWrap, { backgroundColor: slide.iconBg }]}>
-              <Ionicons name={slide.icon} size={36} color={slide.iconColor} />
-            </View>
+          <View style={[styles.lsIconWrap, { backgroundColor: currentIndex === 0 ? 'transparent' : slide.iconBg }]}>
+            {currentIndex === 0
+              ? <Image source={require('@/assets/icon.png')} style={{ width: 64, height: 64, borderRadius: 16 }} />
+              : <Ionicons name={slide.icon} size={36} color={slide.iconColor} />
+            }
+          </View>
             <Text style={[styles.lsTitle, { color: colors.textPrimary }]}>{slide.title}</Text>
             <Text style={[styles.lsBodyText, { color: colors.textSecondary }]}>{slide.body}</Text>
           </View>
@@ -198,8 +202,11 @@ export default function OnboardingScreen() {
       >
         {SLIDES.map((s, i) => (
           <View key={i} style={[styles.slide, { width: PORTRAIT_WIDTH }]}>
-            <View style={[styles.iconWrap, { backgroundColor: s.iconBg }]}>
-              <Ionicons name={s.icon} size={52} color={s.iconColor} />
+            <View style={[styles.iconWrap, { backgroundColor: i === 0 ? 'transparent' : s.iconBg }]}>
+              {i === 0
+                ? <Image source={require('@/assets/icon.png')} style={{ width: 110, height: 110, borderRadius: 22 }} />
+                : <Ionicons name={s.icon} size={52} color={s.iconColor} />
+              }
             </View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{s.title}</Text>
             <Text style={[styles.body, { color: colors.textSecondary }]}>{s.body}</Text>
@@ -275,7 +282,7 @@ const styles = StyleSheet.create({
   lsBody: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   lsArrow: { width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
   lsSlide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  lsIconWrap: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  lsIconWrap: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14, overflow: 'hidden' },
   lsTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center', letterSpacing: -0.3, marginBottom: 8 },
   lsBodyText: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
   lsFooter: { paddingHorizontal: 24, paddingBottom: 12, alignItems: 'center' },
