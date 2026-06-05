@@ -277,8 +277,13 @@ export default function BrowseScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      // Start server if not already running
-      let url = await startWifiServer('/storage/emulated/0/');
+      let url: string;
+      try {
+        url = await startWifiServer('/storage/emulated/0/');
+      } catch {
+        await new Promise(res => setTimeout(res, 500));
+        url = await startWifiServer('/storage/emulated/0/');
+      }
       const ip = url.replace('http://', '').replace(':8080', '');
       const encodedPath = encodeURIComponent(selectedItem.uri.replace('file://', ''));
       const fileUrl = `http://${ip}:8080/file?path=${encodedPath}`;
