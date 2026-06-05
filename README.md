@@ -14,15 +14,15 @@ AI-powered Android file manager with cloud backup, AI search, Smart search, secu
 - Django REST Framework backend
 - Groq LLM (AI search)
 - RevenueCat (in-app purchases)
-- Google Drive / OneDrive backup
-- AES-256 encrypted zip
 
 ## Features
 - Native file browser with copy, move, rename, zip, extract
 - Password-protected ZIP with AES-256 encryption
+- Document scanner powered by google ML kit
+- QR file transfer and file share
 - AI-powered file search (Pro)
 - Secure vault with PIN + biometric lock
-- Google Drive & OneDrive backup
+- Google Drive, OneDrive & Dropbox backup
 - Duplicate file finder (Pro)
 - Recycle bin with 30-day restore
 - Android home screen widget
