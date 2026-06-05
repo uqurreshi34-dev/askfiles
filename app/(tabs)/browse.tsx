@@ -28,6 +28,7 @@ import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { startWifiServer } from '@/modules/file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import * as Haptics from 'expo-haptics';
 
 interface FileItem {
   name: string;
@@ -264,6 +265,7 @@ export default function BrowseScreen() {
   }
 
   async function handleShare() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!selectedItem) return;
     closeSheet();
     try {
@@ -296,6 +298,7 @@ export default function BrowseScreen() {
     } else {
       await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
       setIsFav(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert('Added', `"${selectedItem.name}" added to Favourites.`);
     }
   }
@@ -313,6 +316,7 @@ export default function BrowseScreen() {
             const uri = selectedItem.uri;
             const name = selectedItem.name;
             closeSheet();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setMovingUri(uri);
             const ok = await addToVault(uri, name);
             setMovingUri(null);
@@ -354,6 +358,7 @@ export default function BrowseScreen() {
                 const dir = new FileSystem.Directory(selectedItem.uri);
                 dir.delete();
                 closeSheet();
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 await loadDirectory(currentPath);
               } catch {
                 Alert.alert('Permission needed', 'AskFiles needs full storage access to delete folders.', [
@@ -377,6 +382,7 @@ export default function BrowseScreen() {
             await removeFavourite(selectedItem.uri);
             DocIndexer.removeFromIndex(selectedItem.uri);
             await loadDirectory(currentPath);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           } else {
             Alert.alert('Error', 'Could not move file to Trash.');
           }
@@ -458,6 +464,7 @@ export default function BrowseScreen() {
       await scanFile(destPath).catch(() => {});
       await loadDirectory(currentPath);
       Alert.alert('Zipped', `"${zipName}" created with ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}.${password.length > 0 ? ' Password protected.' : ''}`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       Alert.alert('Error', 'Could not create zip file.');
     } finally {
@@ -497,6 +504,7 @@ export default function BrowseScreen() {
         for (const file of files) { await addToVault(file.uri, file.name); }
         files.forEach(f => DocIndexer.removeFromIndex(f.uri));
         setVaulting(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
       }},
@@ -525,6 +533,7 @@ export default function BrowseScreen() {
           DocIndexer.removeFromIndex(file.uri);
         }
         setDeleting(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setDeletingCount(0);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
@@ -601,6 +610,7 @@ export default function BrowseScreen() {
         await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
         await scanFile(dst).catch(() => {});
@@ -623,6 +633,7 @@ export default function BrowseScreen() {
         }
         await loadDirectory(destFolder);
         Alert.alert('Success', `"${item.name}" moved successfully.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
@@ -658,6 +669,7 @@ export default function BrowseScreen() {
         if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
       } catch (e) {}
       closeSheet();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await loadDirectory(currentPath);
     } catch (e: any) {
       Alert.alert(
@@ -825,7 +837,7 @@ export default function BrowseScreen() {
             navigateTo(item);
           }
         }}
-        onLongPress={() => openSheet(item)}
+        onLongPress={() => {Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openSheet(item)}}
         delayLongPress={400}
         activeOpacity={0.6}
       >
@@ -909,6 +921,7 @@ export default function BrowseScreen() {
                   setSelectedUris(new Set());
                   setSelectedItemsMap(new Map());
                 } else {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   setSelectMode(true);
                   setSelectedUris(new Set());
                   setSelectedItemsMap(new Map());
