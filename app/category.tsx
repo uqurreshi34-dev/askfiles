@@ -527,6 +527,7 @@ export default function CategoryScreen() {
       const fileUrl = `http://${ip}:8080/file?path=${encodedPath}`;
       setQrUrl(fileUrl);
       setQrModalVisible(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
       Alert.alert('Error', 'Could not start WiFi server');
     }
