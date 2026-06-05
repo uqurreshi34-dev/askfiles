@@ -790,6 +790,7 @@ export default function CategoryScreen() {
               const { uri } = e.nativeEvent;
               const item = filteredItems.find(i => i.uri === uri);
               if (!item || selectMode) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               openSheet(item);
             }}
             onSelectionChange={(e) => {
