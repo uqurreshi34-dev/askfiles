@@ -26,6 +26,7 @@ import { DocIndexer } from '@/modules/doc-indexer';
 import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos } from 'media-store';
 import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import * as Haptics from 'expo-haptics';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -202,6 +203,7 @@ export default function CategoryScreen() {
     const exists = await RNFS.exists(dst);
     if (exists) {
       Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
     setShowPicker(false);
@@ -213,14 +215,17 @@ export default function CategoryScreen() {
         await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
         await scanFile(dst).catch(() => {});
         setItems(prev => prev.filter(f => f.uri !== item.uri));
         Alert.alert('Success', `"${item.name}" moved successfully.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
       setCopyProgress(null);
@@ -254,6 +259,7 @@ export default function CategoryScreen() {
       } catch {}
       setItems(prev => prev.map(f => f.uri === selectedItem.uri ? { ...f, name: renameValue.trim(), uri: newUri } : f));
       closeSheet();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Rename failed', 'Could not rename this file.');
     }
@@ -304,6 +310,7 @@ export default function CategoryScreen() {
         closeSheet();
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           await removeFavourite(selectedItem.uri);
           DocIndexer.removeFromIndex(selectedItem.uri);
           setItems(prev => prev.filter(f => f.uri !== selectedItem.uri));
@@ -407,8 +414,10 @@ export default function CategoryScreen() {
         'Success',
         `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
       );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       Alert.alert('Error', `Could not ${multiPasteMode} files.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
       setMultiPasting(false);
@@ -476,6 +485,7 @@ export default function CategoryScreen() {
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) { 
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setItems(prev => prev.filter(f => f.uri !== uri)); 
             DocIndexer.removeFromIndex(uri); 
           }
@@ -493,11 +503,13 @@ export default function CategoryScreen() {
     } else {
       await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
       setIsFav(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert('Added to Favourites', `"${selectedItem.name}" added.`);
     }
   }
 
   async function handleShare() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!selectedItem) return;
     closeSheet();
     try {
@@ -553,6 +565,7 @@ export default function CategoryScreen() {
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
         files.forEach(f => DocIndexer.removeFromIndex(f.uri));
         setVaulting(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
       }},
     ]);
@@ -572,7 +585,9 @@ export default function CategoryScreen() {
           DocIndexer.removeFromIndex(file.uri);
         }
         setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
-        setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+        setSelectMode(false); 
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         setDeleting(false);
         setDeletingCount(0);
         suppressWatcherRef.current = false;
@@ -653,7 +668,7 @@ export default function CategoryScreen() {
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <TouchableOpacity onPress={() => { setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="checkmark-circle-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
               {isMediaCategory && (
@@ -816,7 +831,7 @@ export default function CategoryScreen() {
                         setSelectedUris(newSet); setSelectedItemsMap(newMap);
                       } else { openItem(item); }
                     }}
-                    onLongPress={() => !selectMode && openSheet(item)}
+                    onLongPress={() => { if (!selectMode) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openSheet(item); }}}
                     activeOpacity={0.7}
                   >
                     {selectMode && (

@@ -316,11 +316,11 @@ export default function BrowseScreen() {
             const uri = selectedItem.uri;
             const name = selectedItem.name;
             closeSheet();
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setMovingUri(uri);
             const ok = await addToVault(uri, name);
             setMovingUri(null);
             if (ok) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               DocIndexer.removeFromIndex(uri);
               await loadDirectory(currentPath);
             } else {
@@ -599,6 +599,7 @@ export default function BrowseScreen() {
     const exists = await RNFS.exists(dst);
     if (exists) {
       Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
     setShowPicker(false);
@@ -637,6 +638,7 @@ export default function BrowseScreen() {
       }
     } catch {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
       setCopyProgress(null);
@@ -792,8 +794,10 @@ export default function BrowseScreen() {
         'Success',
         `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
       );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       Alert.alert('Error', `Could not ${multiPasteMode} files.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
       setMultiPasting(false);
