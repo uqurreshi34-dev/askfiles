@@ -27,6 +27,7 @@ import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, quer
 import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
+import { createPdfFromImages, addPdfProgressListener } from '@/modules/pdf-creator';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -152,6 +153,9 @@ export default function CategoryScreen() {
   const [qrUrl, setQrUrl] = useState('');
   const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [creatingPdf, setCreatingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -423,6 +427,33 @@ export default function CategoryScreen() {
       setMultiPasting(false);
       setMultiPasteProgress(null);
       pendingMultiItems.current = [];
+    }
+  }
+
+  async function handleCreatePdf() {
+    const files = Array.from(selectedItemsMap.values());
+    const imagePaths = files.map(f => toPath(f.uri));
+    const timestamp = Date.now();
+    const outputPath = `/storage/emulated/0/Documents/Scans/AskFiles_${timestamp}.pdf`;
+    setCreatingPdf(true);
+    setPdfProgress({ current: 0, total: files.length });
+    const sub = addPdfProgressListener((event) => {
+      setPdfProgress({ current: event.current, total: event.total });
+    });
+    try {
+      await createPdfFromImages(imagePaths, outputPath);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('PDF Created', `${files.length} image${files.length !== 1 ? 's' : ''} saved to Documents/Scans`);
+      setSelectMode(false);
+      setSelectedUris(new Set());
+      setSelectedItemsMap(new Map());
+    } catch (e) {
+      Alert.alert('Error', 'Could not create PDF.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      sub.remove();
+      setCreatingPdf(false);
+      setPdfProgress(null);
     }
   }
 
@@ -761,6 +792,14 @@ export default function CategoryScreen() {
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
             {multiPasteMode === 'copy' ? 'Copying' : 'Moving'} {multiPasteProgress.current} of {multiPasteProgress.total}: {multiPasteProgress.name}
+          </Text>
+        </View>
+      )}
+      {creatingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            Creating PDF... {pdfProgress.current} of {pdfProgress.total}
           </Text>
         </View>
       )}
@@ -1160,53 +1199,54 @@ export default function CategoryScreen() {
             </View>
           )}
         <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
-          <TouchableOpacity
-              onPress={handleMultiCopy}
-              disabled={sharing || vaulting || deleting || multiPasting}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
-            >
-              <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-              <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Copy</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleMultiMove}
-              disabled={sharing || vaulting || deleting || multiPasting}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
-            >
-              <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
-              <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Move</Text>
-            </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleMultiShare}
-            disabled={sharing || vaulting || deleting}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
-          >
-            <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
-            <Text style={{ fontSize: 11, color: sharing ? colors.textMuted : '#fff', marginTop: 2 }}>Share</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleMultiVault}
-            disabled={sharing || vaulting || deleting}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
-          >
-            <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
-            <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>Vault</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleMultiInfo}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
-          >
-            <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-            <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Info</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleMultiDelete}
-            disabled={sharing || vaulting || deleting}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
-          >
-            <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
-            <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>Delete</Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleMultiCopy}
+          disabled={sharing || vaulting || deleting || multiPasting}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+        >
+          <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Copy</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleMultiMove}
+          disabled={sharing || vaulting || deleting || multiPasting}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+        >
+          <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
+          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Move</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleMultiShare}
+          disabled={sharing || vaulting || deleting || multiPasting}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
+        >
+          <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
+          <Text style={{ fontSize: 11, color: sharing ? colors.textMuted : '#fff', marginTop: 2 }}>Share</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleMultiVault}
+          disabled={sharing || vaulting || deleting || multiPasting}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+        >
+          <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
+          <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>Vault</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleMultiDelete}
+          disabled={sharing || vaulting || deleting || multiPasting}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
+          <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>Delete</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setShowMoreSheet(true)}
+          disabled={sharing || vaulting || deleting || multiPasting}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />
+          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>More</Text>
+        </TouchableOpacity>
           </View>
         </>
       )}
@@ -1237,6 +1277,38 @@ export default function CategoryScreen() {
             </View>
           </View>
         </TouchableOpacity>
+      </Modal>
+      <Modal visible={showMoreSheet} transparent animationType="none" onRequestClose={() => setShowMoreSheet(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowMoreSheet(false)}>
+          <Animated.View
+            style={SCREEN_WIDTH > SCREEN_HEIGHT
+              ? [styles.sheetLandscape, { backgroundColor: colors.card }]
+              : [styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16 }]
+            }
+          >
+            {SCREEN_WIDTH > SCREEN_HEIGHT
+              ? <TouchableOpacity onPress={() => setShowMoreSheet(false)} style={{ alignSelf: 'flex-end', padding: 4 }}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              : <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
+            }
+            <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleMultiInfo(); }}>
+              <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+            </TouchableOpacity>
+            {category === 'images' && (
+              <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
+                <Ionicons name="document-outline" size={20} color={colors.blue} />
+                <Text style={[styles.sheetActionText, { color: colors.blue }]}>Create PDF</Text>
+              </TouchableOpacity>
+            )}
+            <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+            <TouchableOpacity style={styles.sheetAction} onPress={() => setShowMoreSheet(false)}>
+              <Ionicons name="close-outline" size={20} color={colors.textMuted} />
+              <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

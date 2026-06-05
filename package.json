@@ -51,6 +51,7 @@
     "file-watcher": "file:modules/file-watcher",
     "media-grid": "file:modules/media-grid",
     "media-store": "file:modules/media-store",
+    "pdf-creator": "file:modules/pdf-creator",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-device-info": "^15.0.2",
