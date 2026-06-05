@@ -21,12 +21,13 @@ import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
 import { copyFileStream } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import * as Haptics from 'expo-haptics';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const router = useRouter();
-  const { files, loading, authenticated, unlockVault, deleteFromVault, removeFromVault, loadFiles, lock } = useVault();
+  const { files, loading, authenticated, unlockVault, deleteFromVault, loadFiles, lock } = useVault();
   const [busy, setBusy] = useState(false);
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [pinInput, setPinInput] = useState('');
@@ -138,6 +139,7 @@ export default function VaultScreen() {
       await scanFile(dst).catch(() => {});
       await deleteFromVault(file);
       Alert.alert('Moved', `"${file.name}" moved out of Vault successfully.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       Alert.alert('Error', 'Could not move file out of Vault.');
     } finally {
@@ -176,6 +178,7 @@ export default function VaultScreen() {
       Alert.alert('Partial success', `${succeeded} file${succeeded !== 1 ? 's' : ''} moved. ${failed} could not be moved — ${failed === 1 ? 'it' : 'they'} already exist${failed === 1 ? 's' : ''} at this location.`);
     } else {
       Alert.alert('Moved', `${filesToMove.length} file${filesToMove.length !== 1 ? 's' : ''} moved out of Vault.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   }
   
@@ -194,6 +197,7 @@ export default function VaultScreen() {
         }
         await loadFiles();
         setBusy(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setSelectMode(false);
         setSelectedUris(new Set());
         setSelectedFilesMap(new Map());
@@ -248,6 +252,7 @@ export default function VaultScreen() {
             await deleteFromVault(file);
             DocIndexer.removeFromIndex(file.uri);
             setBusy(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
         },
       ]
@@ -296,6 +301,7 @@ export default function VaultScreen() {
     const correct = await verifyPin(entered);
     if (correct) {
       await unlockVault();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       setPinError('Incorrect PIN. Try again.');
       setPinInput('');
@@ -340,7 +346,7 @@ export default function VaultScreen() {
             setSelectedUris(newSet); setSelectedFilesMap(newMap);
           } else { openFile(item); }
         }}
-        onLongPress={() => { if (!selectMode) { setSelectMode(true); const newSet = new Set([item.uri]); const newMap = new Map([[item.uri, item]]); setSelectedUris(newSet); setSelectedFilesMap(newMap); } }}
+        onLongPress={() => { if (!selectMode) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); const newSet = new Set([item.uri]); const newMap = new Map([[item.uri, item]]); setSelectedUris(newSet); setSelectedFilesMap(newMap); } }}
         activeOpacity={0.7}
         disabled={openingFile && !selectMode}
       >
@@ -486,7 +492,7 @@ export default function VaultScreen() {
             <TouchableOpacity onPress={() => { setSelectMode(true); setSelectedUris(new Set()); setSelectedFilesMap(new Map()); }} style={styles.backBtn}>
               <Ionicons name="checkmark-circle-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { lock(); setPinInput(''); setPinError(null); setShowPinEntry(false); }} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); lock(); setPinInput(''); setPinError(null); setShowPinEntry(false); }} style={styles.backBtn}>
               <Ionicons name="lock-closed-outline" size={22} color={colors.blue} />
             </TouchableOpacity>
           </View>
