@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, Image,
   ActivityIndicator, Alert, Modal, Animated, PanResponder,
@@ -11,6 +11,7 @@ import { useTrash, TrashFile } from '@/hooks/useTrash';
 import { useTheme } from '@/hooks/useTheme';
 import { isImageFile, getFileColor, formatSize } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import * as Haptics from 'expo-haptics';
 
 
 export default function TrashScreen() {
@@ -58,6 +59,7 @@ export default function TrashScreen() {
     const ok = await restoreFile(file);
     setRestoring(false);
     if (ok) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Restored', `"${file.name}" restored to its original location.`);
     } else {
       Alert.alert('Error', 'Could not restore file.');
@@ -74,6 +76,7 @@ export default function TrashScreen() {
         {
           text: 'Delete', style: 'destructive', onPress: async () => {
             closeSheet();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await deletePermanently(selectedFile);
           }
         },
@@ -89,7 +92,10 @@ export default function TrashScreen() {
         : `Permanently delete ${files.length} files? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Empty Trash', style: 'destructive', onPress: () => emptyTrash() },
+        { text: 'Empty Trash', style: 'destructive', onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          emptyTrash();
+        }},
       ]
     );
   }
@@ -144,7 +150,10 @@ export default function TrashScreen() {
             return (
               <TouchableOpacity
                 style={[styles.row, { borderBottomColor: colors.border }]}
-                onPress={() => openSheet(item)}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  openSheet(item);
+                }}
                 activeOpacity={0.7}
               >
                 <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>

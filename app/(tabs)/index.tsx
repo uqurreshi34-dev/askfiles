@@ -28,6 +28,7 @@ import { useFavourites } from '@/hooks/useFavourites';
 import { scanDocument, saveScanPages, saveScanAsPdf, ocrScanPages } from '@/modules/scan-module';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { shouldShowRatePrompt, markRatePromptShown } from '@/hooks/useRatePrompt';
+import * as Haptics from 'expo-haptics';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -188,6 +189,7 @@ async function indexScansInBackground(paths: string[]) {
                           try {
                             const saved = await saveScanPages(uris, scansFolder);
                             Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                             indexScansInBackground(saved);
                             const show = await shouldShowRatePrompt();
                             if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
@@ -203,6 +205,7 @@ async function indexScansInBackground(paths: string[]) {
                           try {
                             const path = await saveScanAsPdf(uris, scansFolder);
                             Alert.alert('Saved', 'PDF saved to Documents/Scans');
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                             indexScansInBackground([path]);
                             const show = await shouldShowRatePrompt();
                             if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
@@ -564,6 +567,7 @@ async function indexScansInBackground(paths: string[]) {
                 const url = await startWifiServer('/storage/emulated/0/');
                 setWifiUrl(url);
                 setWifiActive(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               } catch (e: any) {
                 Alert.alert('Error', e?.message ?? 'Failed to start server');
               }
