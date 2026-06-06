@@ -84,9 +84,9 @@ function buildContext(
 
   return `
 Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadable} total. ${freeSpace} free.
-File counts: ${fileCounts.images} images (${imageBreakdown}), ${fileCounts.videos} videos (${videoBreakdown}), ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
+File counts: ${fileCounts.images} images total, ${fileCounts.videos} videos total, ${fileCounts.documents} documents, ${fileCounts.downloads} downloads. Format sample from ${Math.min(500, fileCounts.images)} most recent images: ${imageBreakdown}; ${Math.min(500, fileCounts.videos)} most recent videos: ${videoBreakdown}.
 Screenshots: exactly ${mediaContext.screenshotCount} files (do not count manually, use this number).
-Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}, Music ${folderSizes.music}.
+Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}.
 Note: PNG files are image files. Files with 1970 date have corrupted/missing timestamps from WhatsApp. Always use the exact file counts stated in the File counts line.
 Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
