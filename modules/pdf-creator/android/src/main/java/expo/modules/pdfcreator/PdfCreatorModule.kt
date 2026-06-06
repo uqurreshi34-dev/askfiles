@@ -88,5 +88,113 @@ class PdfCreatorModule : Module() {
         document.close()
       }
     }
+
+    AsyncFunction("extractPdfPages") { pdfPath: String, outputDir: String ->
+        val context = appContext.reactContext!!
+        val pdfRenderer = android.graphics.pdf.PdfRenderer(
+            android.os.ParcelFileDescriptor.open(
+                java.io.File(pdfPath),
+                android.os.ParcelFileDescriptor.MODE_READ_ONLY
+            )
+        )
+        val outputPaths = mutableListOf<String>()
+        val outDir = java.io.File(outputDir)
+        outDir.mkdirs()
+
+        try {
+            val pageCount = pdfRenderer.pageCount
+            for (i in 0 until pageCount) {
+                val page = pdfRenderer.openPage(i)
+                val scale = 2.0f
+                val bitmap = Bitmap.createBitmap(
+                    (page.width * scale).toInt(),
+                    (page.height * scale).toInt(),
+                    Bitmap.Config.ARGB_8888
+                )
+                // White background
+                val canvas = android.graphics.Canvas(bitmap)
+                canvas.drawColor(android.graphics.Color.WHITE)
+                page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                page.close()
+
+                val outFile = java.io.File(outDir, "page_${i + 1}.png")
+                java.io.FileOutputStream(outFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                bitmap.recycle()
+                outputPaths.add(outFile.absolutePath)
+                sendEvent("onPageProcessed", mapOf("current" to i + 1, "total" to pageCount))
+
+                MediaScannerConnection.scanFile(context, arrayOf(outFile.absolutePath), arrayOf("image/png"), null)
+            }
+        } finally {
+            pdfRenderer.close()
+        }
+        outputPaths
+    }
+
+    AsyncFunction("mergePdfs") { pdfPaths: List<String>, outputPath: String ->
+        val context = appContext.reactContext!!
+        val merger = android.graphics.pdf.PdfDocument()
+        var pageIndex = 1
+        val total = pdfPaths.size
+
+        try {
+            for ((fileIndex, path) in pdfPaths.withIndex()) {
+                val pdfRenderer = android.graphics.pdf.PdfRenderer(
+                    android.os.ParcelFileDescriptor.open(
+                        java.io.File(path),
+                        android.os.ParcelFileDescriptor.MODE_READ_ONLY
+                    )
+                )
+                try {
+                    for (i in 0 until pdfRenderer.pageCount) {
+                        val page = pdfRenderer.openPage(i)
+                        val scale = 1.5f
+                        val bitmap = Bitmap.createBitmap(
+                            (page.width * scale).toInt(),
+                            (page.height * scale).toInt(),
+                            Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(bitmap)
+                        canvas.drawColor(android.graphics.Color.WHITE)
+                        page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        page.close()
+
+                        val pageWidth = 595
+                        val pageHeight = 842
+                        val bitmapWidth = bitmap.width.toFloat()
+                        val bitmapHeight = bitmap.height.toFloat()
+                        val mergeScale = minOf(pageWidth / bitmapWidth, pageHeight / bitmapHeight)
+                        val scaledWidth = (bitmapWidth * mergeScale).toInt()
+                        val scaledHeight = (bitmapHeight * mergeScale).toInt()
+                        val scaled = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+                        bitmap.recycle()
+
+                        val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageIndex++).create()
+                        val pdfPage = merger.startPage(pageInfo)
+                        val mergeCanvas = pdfPage.canvas
+                        mergeCanvas.drawColor(android.graphics.Color.WHITE)
+                        val left = (pageWidth - scaledWidth) / 2f
+                        val top = (pageHeight - scaledHeight) / 2f
+                        mergeCanvas.drawBitmap(scaled, left, top, null)
+                        scaled.recycle()
+                        merger.finishPage(pdfPage)
+                    }
+                } finally {
+                    pdfRenderer.close()
+                }
+                sendEvent("onPageProcessed", mapOf("current" to fileIndex + 1, "total" to total))
+            }
+
+            val outFile = java.io.File(outputPath)
+            outFile.parentFile?.mkdirs()
+            java.io.FileOutputStream(outFile).use { merger.writeTo(it) }
+            MediaScannerConnection.scanFile(context, arrayOf(outputPath), arrayOf("application/pdf"), null)
+            outputPath
+        } finally {
+            merger.close()
+        }
+    }
   }
 }

@@ -27,7 +27,7 @@ import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, quer
 import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
-import { createPdfFromImages, addPdfProgressListener } from '@/modules/pdf-creator';
+import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -156,6 +156,8 @@ export default function CategoryScreen() {
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [creatingPdf, setCreatingPdf] = useState(false);
   const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
+  const [extractingPdf, setExtractingPdf] = useState(false);
+  const [mergingPdf, setMergingPdf] = useState(false);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -454,6 +456,80 @@ export default function CategoryScreen() {
       sub.remove();
       setCreatingPdf(false);
       setPdfProgress(null);
+    }
+  }
+
+  async function handleExtractPdf() {
+    if (!selectedItem) return;
+    const fileName = selectedItem.name.replace(/\.pdf$/i, '');
+    const outputDir = `/storage/emulated/0/Documents/Scans/${fileName}_pages`;
+    closeSheet();
+    setExtractingPdf(true);
+    setPdfProgress({ current: 0, total: 0 });
+    const sub = addPdfProgressListener((event) => {
+      setPdfProgress({ current: event.current, total: event.total });
+    });
+    try {
+      const paths = await extractPdfPages(toPath(selectedItem.uri), outputDir);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Extracted', `${paths.length} page${paths.length !== 1 ? 's' : ''} saved to Documents/Scans/${fileName}_pages`);
+    } catch (e) {
+      Alert.alert('Error', 'Could not extract PDF pages.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      sub.remove();
+      setExtractingPdf(false);
+      setPdfProgress(null);
+    }
+  }
+
+  async function handleMergePdfs() {
+    const files = Array.from(selectedItemsMap.values());
+    const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    const nonPdfs = files.filter(f => !f.name.toLowerCase().endsWith('.pdf'));
+  
+    if (pdfs.length < 2) {
+      Alert.alert('Not enough PDFs', 'Select at least 2 PDF files to merge.');
+      return;
+    }
+  
+    const proceed = async () => {
+      setShowMoreSheet(false);
+      const timestamp = Date.now();
+      const outputPath = `/storage/emulated/0/Documents/Scans/AskFiles_merged_${timestamp}.pdf`;
+      setMergingPdf(true);
+      setPdfProgress({ current: 0, total: pdfs.length });
+      const sub = addPdfProgressListener((event) => {
+        setPdfProgress({ current: event.current, total: event.total });
+      });
+      try {
+        await mergePdfs(pdfs.map(f => toPath(f.uri)), outputPath);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Merged', `${pdfs.length} PDFs merged successfully. Saved to Documents/Scans.`);
+        setSelectMode(false);
+        setSelectedUris(new Set());
+        setSelectedItemsMap(new Map());
+      } catch (e) {
+        Alert.alert('Error', 'Could not merge PDFs.');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } finally {
+        sub.remove();
+        setMergingPdf(false);
+        setPdfProgress(null);
+      }
+    };
+  
+    if (nonPdfs.length > 0) {
+      Alert.alert(
+        'Mixed selection',
+        `Only PDF files will be merged. ${pdfs.length} PDF${pdfs.length !== 1 ? 's' : ''} selected, ${nonPdfs.length} file${nonPdfs.length !== 1 ? 's' : ''} will be skipped. Continue?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Merge PDFs', onPress: proceed },
+        ]
+      );
+    } else {
+      proceed();
     }
   }
 
@@ -803,6 +879,22 @@ export default function CategoryScreen() {
           </Text>
         </View>
       )}
+      {extractingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            Extracting page {pdfProgress.current} of {pdfProgress.total}...
+          </Text>
+        </View>
+      )}
+      {mergingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            Merging PDF {pdfProgress.current} of {pdfProgress.total}...
+          </Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={config.color} />
@@ -960,6 +1052,12 @@ export default function CategoryScreen() {
                   {fileSize && <Text style={[styles.sheetMeta, { color: colors.textMuted }]}>{fileSize}</Text>}
                 </View>
               </View>
+              {!isMediaCategory && selectedItem?.name.toLowerCase().endsWith('.pdf') && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handleExtractPdf}>
+                  <Ionicons name="document-outline" size={20} color={colors.green} />
+                  <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract pages as images</Text>
+                </TouchableOpacity>
+              )}
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
@@ -1300,6 +1398,12 @@ export default function CategoryScreen() {
               <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
                 <Ionicons name="document-outline" size={20} color={colors.blue} />
                 <Text style={[styles.sheetActionText, { color: colors.blue }]}>Create PDF</Text>
+              </TouchableOpacity>
+            )}
+            {!isMediaCategory && (
+              <TouchableOpacity style={styles.sheetAction} onPress={handleMergePdfs}>
+                <Ionicons name="documents-outline" size={20} color={colors.blue} />
+                <Text style={[styles.sheetActionText, { color: colors.blue }]}>Merge PDFs</Text>
               </TouchableOpacity>
             )}
             <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />

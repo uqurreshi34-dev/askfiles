@@ -11,3 +11,11 @@ export function addPdfProgressListener(
 export async function createPdfFromImages(imagePaths: string[], outputPath: string): Promise<string> {
   return await PdfCreator.createPdfFromImages(imagePaths, outputPath);
 }
+
+export async function extractPdfPages(pdfPath: string, outputDir: string): Promise<string[]> {
+  return await PdfCreator.extractPdfPages(pdfPath, outputDir);
+}
+
+export async function mergePdfs(pdfPaths: string[], outputPath: string): Promise<string> {
+  return await PdfCreator.mergePdfs(pdfPaths, outputPath);
+}
