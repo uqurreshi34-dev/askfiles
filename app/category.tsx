@@ -23,7 +23,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos } from 'media-store';
+import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos, getMediaInfo } from 'media-store';
 import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
@@ -1083,15 +1083,22 @@ export default function CategoryScreen() {
                   {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetAction} onPress={() => {
+              <TouchableOpacity style={styles.sheetAction} onPress={async () => {
                 closeSheet();
                 const locationRaw = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
                 const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
-                Alert.alert(selectedItem?.name ?? '', [
-                  fileSize ? `Size: ${fileSize}` : null,
-                  `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
-                  `Location: /${location}`,
-                ].filter(Boolean).join('\n'));
+                const lines: string[] = [];
+                if (fileSize) lines.push(`Size: ${fileSize}`);
+                lines.push(`Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`);
+                lines.push(`Location: /${location}`);
+                if (isMediaCategory && selectedItem) {
+                  try {
+                    const info = await getMediaInfo(toPath(selectedItem.uri));
+                    if (info.width && info.height) lines.push(`Resolution: ${info.width}×${info.height}`);
+                    if (info.duration) lines.push(`Duration: ${info.duration}`);
+                  } catch {}
+                }
+                Alert.alert(selectedItem?.name ?? '', lines.join('\n'));
               }}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>

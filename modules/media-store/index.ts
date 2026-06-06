@@ -27,6 +27,15 @@ export interface FileEntry {
   uri: string;
 }
 
+export interface MediaInfo {
+  width?: number;
+  height?: number;
+  duration?: string;
+  durationMs?: number;
+  mimeType?: string;
+  size: number;
+}
+
 export async function queryDocuments(): Promise<MediaFile[]> {
   return MediaStore.queryDocuments();
 }
@@ -78,5 +87,10 @@ export async function queryDocumentsByMime(mimeTypes: string[]): Promise<MediaFi
 
 export const queryImages = async (): Promise<{ name: string; uri: string; date: number; size: number }[]> =>
   MediaStore.queryImages();
+
 export const queryVideos = async (): Promise<{ name: string; uri: string; date: number; size: number }[]> =>
   MediaStore.queryVideos();
+
+export async function getMediaInfo(filePath: string): Promise<MediaInfo> {
+  return MediaStore.getMediaInfo(filePath);
+}

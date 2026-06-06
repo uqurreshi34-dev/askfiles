@@ -468,5 +468,55 @@ class MediaStoreModule : Module() {
       }
       results
     }
+
+    AsyncFunction("getMediaInfo") { filePath: String ->
+        val file = java.io.File(filePath)
+        val result = mutableMapOf<String, Any>()
+
+        // Try video metadata first
+        val retriever = android.media.MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(filePath)
+
+            val width = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+            val height = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+            val durationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            val mimeType = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_MIMETYPE) ?: ""
+
+            if (width != null && width > 0) result["width"] = width
+            if (height != null && height > 0) result["height"] = height
+            if (mimeType.isNotEmpty()) result["mimeType"] = mimeType
+
+            if (durationMs != null && durationMs > 0) {
+                result["durationMs"] = durationMs
+                val totalSeconds = durationMs / 1000
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+                result["duration"] = if (hours > 0)
+                    "%d:%02d:%02d".format(hours, minutes, seconds)
+                else
+                    "%d:%02d".format(minutes, seconds)
+            }
+        } catch (e: Exception) {
+            // Not a video or retriever failed — fall through to image
+        } finally {
+            retriever.release()
+        }
+
+        // If no dimensions from video retriever, try image decoder
+        if (!result.containsKey("width")) {
+            try {
+                val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(filePath, options)
+                if (options.outWidth > 0) result["width"] = options.outWidth
+                if (options.outHeight > 0) result["height"] = options.outHeight
+                if (options.outMimeType != null) result["mimeType"] = options.outMimeType
+            } catch (e: Exception) {}
+        }
+
+        result["size"] = file.length()
+        result
+    }
   }
 }
