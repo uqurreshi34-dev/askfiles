@@ -39,3 +39,14 @@ export function ocrScanPages(paths: string[]): Promise<Record<string, string>> {
 export function extractTextFromImage(path: string): Promise<string> {
   return ScanModule.extractTextFromImage(path);
 }
+
+export function extractVideoFrames(
+  videoPath: string,
+  frameCount: number
+): Promise<{ path: string; timestampMs: number }[]> {
+  return ScanModule.extractVideoFrames(videoPath, frameCount);
+}
+
+export function labelImage(imagePath: string): Promise<string[]> {
+  return ScanModule.labelImage(imagePath);
+}

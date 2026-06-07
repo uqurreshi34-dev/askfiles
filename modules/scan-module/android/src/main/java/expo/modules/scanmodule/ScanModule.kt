@@ -1,8 +1,10 @@
 package expo.modules.scanmodule
 
 import android.app.Activity
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.pdf.PdfDocument
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
@@ -11,6 +13,8 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import expo.modules.kotlin.Promise
@@ -240,6 +244,80 @@ class ScanModule : Module() {
                 } catch (e: Exception) {
                     recognizer.close()
                     promise.reject("OCR_FAILED", e.message ?: "OCR failed", e)
+                }
+            }
+        }
+
+        AsyncFunction("extractVideoFrames") { videoPath: String, frameCount: Int, promise: Promise ->
+            CoroutineScope(Dispatchers.IO).launch {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(videoPath)
+
+                    val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                    val cacheDir = appContext.reactContext?.cacheDir ?: throw Exception("No cache dir")
+                    val results = mutableListOf<Map<String, Any>>()
+
+                    for (i in 0 until frameCount) {
+                        val timeUs = ((durationMs * 1000L) / frameCount) * i + ((durationMs * 1000L) / frameCount / 2)
+                        val raw = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                            ?: continue
+
+                        val bitmap = if (raw.width > 640) {
+                            val scale = 640f / raw.width
+                            Bitmap.createScaledBitmap(raw, 640, (raw.height * scale).toInt(), true)
+                                .also { raw.recycle() }
+                        } else raw
+
+                        val outFile = File(cacheDir, "vframe_${System.currentTimeMillis()}_$i.jpg")
+                        java.io.FileOutputStream(outFile).use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+                        }
+                        bitmap.recycle()
+
+                        results.add(mapOf(
+                            "path" to outFile.absolutePath,
+                            "timestampMs" to (timeUs / 1000L)
+                        ))
+                    }
+
+                    retriever.release()
+                    promise.resolve(results)
+                } catch (e: Exception) {
+                    retriever.release()
+                    promise.reject("FRAME_EXTRACT_FAILED", e.message ?: "Failed to extract frames", e)
+                }
+            }
+        }
+
+        AsyncFunction("labelImage") { imagePath: String, promise: Promise ->
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val bitmap = BitmapFactory.decodeFile(imagePath)
+                        ?: throw Exception("Could not decode image")
+                    val image = InputImage.fromBitmap(bitmap, 0)
+                    val options = ImageLabelerOptions.Builder()
+                        .setConfidenceThreshold(0.65f)
+                        .build()
+                    val labeler = ImageLabeling.getClient(options)
+
+                    val labels = suspendCoroutine<List<String>> { cont ->
+                        labeler.process(image)
+                            .addOnSuccessListener { result ->
+                                bitmap.recycle()
+                                val texts = result.map { label -> label.text }
+                                cont.resume(texts)
+                            }
+                            .addOnFailureListener { e ->
+                                bitmap.recycle()
+                                cont.resumeWithException(e)
+                            }
+                    }
+
+                    labeler.close()
+                    promise.resolve(labels)
+                } catch (e: Exception) {
+                    promise.reject("LABEL_FAILED", e.message ?: "Labelling failed", e)
                 }
             }
         }

@@ -29,7 +29,7 @@ import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
-import { extractTextFromImage } from '@/modules/scan-module';
+import { extractTextFromImage, extractVideoFrames, labelImage } from '@/modules/scan-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -162,6 +162,10 @@ export default function CategoryScreen() {
   const [mergingPdf, setMergingPdf] = useState(false);
   const [extractingText, setExtractingText] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [videoSummaryVisible, setVideoSummaryVisible] = useState(false);
+  const [videoFrames, setVideoFrames] = useState<{ path: string; timestampMs: number }[]>([]);
+  const [videoLabels, setVideoLabels] = useState<string[]>([]);
+  const [loadingVideoSummary, setLoadingVideoSummary] = useState(false);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -664,6 +668,28 @@ export default function CategoryScreen() {
     }
   }
 
+  async function handleVideoSummary() {
+    if (!selectedItem) return;
+    closeSheet();
+    setLoadingVideoSummary(true);
+    setVideoSummaryVisible(true);
+    try {
+      const frames = await extractVideoFrames(toPath(selectedItem.uri), 4);
+      setVideoFrames(frames);
+      const allLabels: string[] = [];
+      for (const frame of frames) {
+        const labels = await labelImage(frame.path);
+        labels.forEach(l => { if (!allLabels.includes(l)) allLabels.push(l); });
+      }
+      setVideoLabels(allLabels.slice(0, 8));
+    } catch {
+      Alert.alert('Error', 'Could not generate video summary.');
+      setVideoSummaryVisible(false);
+    } finally {
+      setLoadingVideoSummary(false);
+    }
+  }
+
   async function handleMultiShare() {
     if (sharingRef.current) return;
     sharingRef.current = true;
@@ -1080,6 +1106,12 @@ export default function CategoryScreen() {
                 </TouchableOpacity>
               )}
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+              {isVideoFile(selectedItem?.name ?? '') && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handleVideoSummary}>
+                  <Ionicons name="film-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Video Summary</Text>
+                </TouchableOpacity>
+              )}
               {isImageFile(selectedItem?.name ?? '') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleExtractText}>
                   <Ionicons name="text-outline" size={20} color={colors.textPrimary} />
@@ -1486,6 +1518,56 @@ export default function CategoryScreen() {
               </>
             ) : (
               <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>No text found in this image.</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={videoSummaryVisible} transparent animationType="fade" onRequestClose={() => {
+        setVideoSummaryVisible(false);
+        videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
+      }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => {
+            setVideoSummaryVisible(false);
+            videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
+          }} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.5 : SCREEN_WIDTH - 48 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Video Summary</Text>
+              <TouchableOpacity onPress={() => {
+                  setVideoSummaryVisible(false);
+                  videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
+                }}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {loadingVideoSummary ? (
+              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                <ActivityIndicator color={colors.blue} />
+                <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 12 }}>Analysing video...</Text>
+              </View>
+            ) : (
+              <>
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16 }}>
+                  {videoFrames.map((frame, i) => (
+                    <View key={i} style={{ flex: 1, aspectRatio: 16/9, borderRadius: 8, overflow: 'hidden', backgroundColor: colors.surface }}>
+                      <Image source={{ uri: 'file://' + frame.path }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    </View>
+                  ))}
+                </View>
+                {videoLabels.length > 0 && (
+                  <>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Detected</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {videoLabels.map((label, i) => (
+                        <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>{label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </>
             )}
           </View>
         </View>
