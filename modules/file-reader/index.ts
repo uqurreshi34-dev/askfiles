@@ -50,3 +50,7 @@ export function stopWifiServer(): Promise<void> {
 export async function deleteDirectory(path: string): Promise<boolean> {
   return FileReader.deleteDirectory(path);
 }
+
+export async function statFiles(paths: string[]): Promise<number[]> {
+  return FileReader.statFiles(paths);
+}

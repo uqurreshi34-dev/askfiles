@@ -248,6 +248,13 @@ class FileReaderModule : Module() {
       dir.deleteRecursively()
     }
 
+    AsyncFunction("statFiles") { paths: List<String> ->
+      paths.map { path ->
+          val file = File(path)
+          if (file.exists() && file.isFile) file.length() else 0L
+      }
+    }
+
     AsyncFunction("startWifiServer") { rootPath: String ->
       // Stop any existing server
       wifiServerRunning = false

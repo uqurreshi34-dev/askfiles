@@ -23,7 +23,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword } from 'file-reader';
+import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { startWifiServer, deleteDirectory } from '@/modules/file-reader';
@@ -549,17 +549,12 @@ export default function BrowseScreen() {
     ]);
   }
   
-  function handleMultiInfo() {
+  async function handleMultiInfo() {
     const files = Array.from(selectedItemsMap.values());
-    let totalSize = 0;
-    for (const file of files) {
-      try {
-        if (!file.isDirectory) {
-          const f = new FileSystem.File(file.uri);
-          totalSize += f.size ?? 0;
-        }
-      } catch {}
-    }
+    const fileItems = files.filter(f => !f.isDirectory);
+    const paths = fileItems.map(f => toPath(f.uri));
+    const sizes = await statFiles(paths);
+    const totalSize = sizes.reduce((sum, s) => sum + s, 0);
     Alert.alert(`${files.length} item${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
   }
 
