@@ -40,6 +40,19 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
+      name="com.google.mlkit:image-labeling:17.0.9@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e1bcfdb16c8289b0d11dfae84f65f2bf\transformed\image-labeling-17.0.9\jars\classes.jar"
+      resolved="com.google.mlkit:image-labeling:17.0.9"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e1bcfdb16c8289b0d11dfae84f65f2bf\transformed\image-labeling-17.0.9"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
       name="com.google.android.gms:play-services-mlkit-text-recognition:19.0.1@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\e4a1ac4f24b520b20b2ff82e6f5df70f\transformed\play-services-mlkit-text-recognition-19.0.1\jars\classes.jar"
       resolved="com.google.android.gms:play-services-mlkit-text-recognition:19.0.1"
@@ -57,6 +70,45 @@
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\7fa47931cb72d4ce65816a40bd3dc8ff\transformed\text-recognition-bundled-common-17.0.0\jars\classes.jar"
       resolved="com.google.mlkit:text-recognition-bundled-common:17.0.0"
       folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\7fa47931cb72d4ce65816a40bd3dc8ff\transformed\text-recognition-bundled-common-17.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.mlkit:image-labeling-default-common:17.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\82926e9611f857027369363a8cc276bd\transformed\image-labeling-default-common-17.0.0\jars\classes.jar"
+      resolved="com.google.mlkit:image-labeling-default-common:17.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\82926e9611f857027369363a8cc276bd\transformed\image-labeling-default-common-17.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.mlkit:image-labeling-common:18.1.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\f7fae841d86040fa3d60a2cbff08b0c4\transformed\image-labeling-common-18.1.0\jars\classes.jar"
+      resolved="com.google.mlkit:image-labeling-common:18.1.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\f7fae841d86040fa3d60a2cbff08b0c4\transformed\image-labeling-common-18.1.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="com.google.mlkit:vision-internal-vkp:18.2.3@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\9c86026c3326c1e26eadf91340e9916f\transformed\vision-internal-vkp-18.2.3\jars\classes.jar"
+      resolved="com.google.mlkit:vision-internal-vkp:18.2.3"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\9c86026c3326c1e26eadf91340e9916f\transformed\vision-internal-vkp-18.2.3"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -545,6 +597,19 @@
       jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\androidx.collection\collection\1.1.0\1f27220b47669781457de0d600849a5de0e89909\collection-1.1.0.jar"
       resolved="androidx.collection:collection:1.1.0"/>
   <library
+      name="androidx.exifinterface:exifinterface:1.0.0@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0dad61c1aa8c0595146d44bf6a4cc57a\transformed\exifinterface-1.0.0\jars\classes.jar"
+      resolved="androidx.exifinterface:exifinterface:1.0.0"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0dad61c1aa8c0595146d44bf6a4cc57a\transformed\exifinterface-1.0.0"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
       name="androidx.arch.core:core-runtime:2.2.0@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\3480c557a61b7a066d5a608583d55c08\transformed\core-runtime-2.2.0\jars\classes.jar"
       resolved="androidx.arch.core:core-runtime:2.2.0"
@@ -566,19 +631,6 @@
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\f05f8fe6060f5a150dcb4e192d256ce6\transformed\cursoradapter-1.0.0\jars\classes.jar"
       resolved="androidx.cursoradapter:cursoradapter:1.0.0"
       folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\f05f8fe6060f5a150dcb4e192d256ce6\transformed\cursoradapter-1.0.0"
-      manifest="AndroidManifest.xml"
-      resFolder="res"
-      assetsFolder="assets"
-      lintJar="lint.jar"
-      publicResources="public.txt"
-      symbolFile="R.txt"
-      externalAnnotations="annotations.zip"
-      proguardRules="proguard.txt"/>
-  <library
-      name="androidx.exifinterface:exifinterface:1.0.0@aar"
-      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0dad61c1aa8c0595146d44bf6a4cc57a\transformed\exifinterface-1.0.0\jars\classes.jar"
-      resolved="androidx.exifinterface:exifinterface:1.0.0"
-      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\0dad61c1aa8c0595146d44bf6a4cc57a\transformed\exifinterface-1.0.0"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"
@@ -650,6 +702,14 @@
       symbolFile="R.txt"
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
+  <library
+      name="com.squareup.okhttp3:okhttp:3.0.0@jar"
+      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\com.squareup.okhttp3\okhttp\3.0.0\10924c16dba25791695468206d4bd9428d7fe8ae\okhttp-3.0.0.jar"
+      resolved="com.squareup.okhttp3:okhttp:3.0.0"/>
+  <library
+      name="com.squareup.okio:okio:1.6.0@jar"
+      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\com.squareup.okio\okio\1.6.0\98476622f10715998eacf9240d6b479f12c66143\okio-1.6.0.jar"
+      resolved="com.squareup.okio:okio:1.6.0"/>
   <library
       name="androidx.emoji2:emoji2-views-helper:1.2.0@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\9ef8b8d82fd40ac7be71903edd592eb5\transformed\emoji2-views-helper-1.2.0\jars\classes.jar"

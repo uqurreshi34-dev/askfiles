@@ -349,7 +349,7 @@ class FileReaderModule : Module() {
     when {
       method == "GET" && (uri == "/" || uri == "") -> {
         val path = params["path"] ?: rootPath
-        val dir = File(path)
+        val dir = safeFile(rootPath, path) ?: File(rootPath)
         val files = dir.listFiles()
           ?.filter { !it.name.startsWith('.') }
           ?.sortedWith(compareBy({ !it.isDirectory }, { it.name }))
@@ -386,7 +386,10 @@ $backLink
 
       method == "GET" && uri == "/file" -> {
         val path = params["path"] ?: return
-        val file = File(path)
+        val file = safeFile(rootPath, path) ?: run {
+            output.write("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+            return
+        }
         if (!file.exists() || file.isDirectory) {
           output.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
           return
@@ -424,80 +427,211 @@ $backLink
 
       method == "POST" && uri == "/upload" -> {
         val destPath = params["path"] ?: rootPath
+        val safeDestPath = safeFile(rootPath, destPath)?.absolutePath ?: rootPath
         val contentType = headers["content-type"] ?: ""
-        val boundary = contentType.substringAfter("boundary=")
+        val boundary = contentType.substringAfter("boundary=").trim()
         val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
 
-        // Stream body to temp file first — safe for large files, no OOM risk
-        // NOTE: multipart parsing still loads temp file into RAM — acceptable for docs/photos.
-        // True streaming multipart parser needed for reliable large video uploads (v2 backlog).
-        val tempFile = File(appContext.reactContext?.cacheDir, "wifi_upload_${System.currentTimeMillis()}.tmp")
-        try {
-          tempFile.outputStream().use { out ->
-            val buffer = ByteArray(65536)
-            var remaining = contentLength
-            while (remaining > 0) {
-              val read = rawInput.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
-              if (read == -1) break
-              out.write(buffer, 0, read)
-              remaining -= read
-            }
-          }
-
-          val bodyBytes = tempFile.readBytes()
-          val boundaryMarker = "--$boundary".toByteArray()
-          var searchPos = 0
-          var savedCount = 0
-
-          while (true) {
-            val boundaryPos = findSequenceFrom(bodyBytes, boundaryMarker, searchPos)
-            if (boundaryPos == -1) break
-            val afterBoundary = boundaryPos + boundaryMarker.size
-            // Final boundary marker ends with --
-            if (afterBoundary + 1 < bodyBytes.size &&
-              bodyBytes[afterBoundary] == '-'.code.toByte() &&
-              bodyBytes[afterBoundary + 1] == '-'.code.toByte()) break
-            val partStart = afterBoundary + 2 // skip \r\n after boundary
-            val headerEnd = findSequenceFrom(bodyBytes, "\r\n\r\n".toByteArray(), partStart)
-            if (headerEnd == -1) break
-            val partHeader = bodyBytes.copyOfRange(partStart, headerEnd).toString(Charsets.UTF_8)
-            val fileName = Regex("filename=\"([^\"]+)\"").find(partHeader)?.groupValues?.get(1)
-            if (fileName != null) {
-              val dataStart = headerEnd + 4
-              val nextBoundary = findSequenceFrom(bodyBytes, "\r\n--$boundary".toByteArray(), dataStart)
-              if (nextBoundary == -1) break
-              val destFile = File(destPath, fileName)
-              destFile.writeBytes(bodyBytes.copyOfRange(dataStart, nextBoundary))
-              // Trigger MediaStore scan so file appears immediately in category screens
-              android.media.MediaScannerConnection.scanFile(
-                appContext.reactContext,
-                arrayOf(destFile.absolutePath),
-                null, null
-              )
-              savedCount++
-            }
-            searchPos = afterBoundary
-          }
-
-          val msg = if (savedCount == 1) "✅ 1 file uploaded" else "✅ $savedCount files uploaded"
-          val encodedDest = java.net.URLEncoder.encode(destPath, "UTF-8")
-          val response = "<html><head><meta charset='utf-8'>" +
-            "<meta http-equiv='refresh' content='2;url=/?path=$encodedDest'></head>" +
-            "<body><h2>$msg</h2><p>Returning to folder...</p>" +
-            "<a href='/?path=$encodedDest'>Back now</a></body></html>"
-          val body = response.toByteArray(Charsets.UTF_8)
-          output.write("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray())
-          output.write(body)
-          output.flush()
-        } finally {
-          tempFile.delete() // always clean up temp file even if parsing fails
+        if (boundary.isEmpty()) {
+            output.write("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+            return
         }
-      }
+
+        if (contentLength > 512 * 1024 * 1024) {
+            output.write("HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+            return
+        }
+
+        var savedCount = 0
+
+        try {
+            val boundaryBytes = "--$boundary".toByteArray(Charsets.UTF_8)
+
+            // Sliding window buffer — holds 2x boundary size to detect boundary split across chunks
+            val windowSize = 65536 + boundaryBytes.size * 2
+            val window = ByteArray(windowSize)
+            var windowLen = 0
+            var totalRead = 0L
+
+            // Fill window helper
+            fun fillWindow() {
+                while (windowLen < windowSize && totalRead < contentLength) {
+                    val toRead = minOf(windowSize - windowLen, (contentLength - totalRead).toInt())
+                    val read = rawInput.read(window, windowLen, toRead)
+                    if (read == -1) return
+                    windowLen += read
+                    totalRead += read
+                }
+            }
+
+            // Consume N bytes from front of window
+            fun consume(n: Int) {
+                if (n <= 0) return
+                val remaining = windowLen - n
+                if (remaining > 0) System.arraycopy(window, n, window, 0, remaining)
+                windowLen = maxOf(0, remaining)
+            }
+
+            // Find sequence in window up to safeLen (leave boundary-size tail for split detection)
+            fun findInWindow(seq: ByteArray, safeLen: Int): Int {
+                val limit = minOf(safeLen, windowLen - seq.size + 1)
+                outer@ for (i in 0 until limit) {
+                    for (j in seq.indices) {
+                        if (window[i + j] != seq[j]) continue@outer
+                    }
+                    return i
+                }
+                return -1
+            }
+
+            fillWindow()
+
+            // Skip preamble up to first boundary
+            val firstBoundary = findInWindow(boundaryBytes, windowLen)
+            if (firstBoundary == -1) {
+                output.write("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+                return
+            }
+            consume(firstBoundary + boundaryBytes.size)
+
+            while (true) {
+                fillWindow()
+
+                // Check for final boundary or end
+                if (windowLen < 2) break
+                if (window[0] == '-'.code.toByte() && window[1] == '-'.code.toByte()) break
+
+                // Skip \r\n after boundary
+                if (windowLen >= 2 && window[0] == '\r'.code.toByte() && window[1] == '\n'.code.toByte()) {
+                    consume(2)
+                }
+                fillWindow()
+
+                // Read part headers until \r\n\r\n
+                val partHeaderSb = StringBuilder()
+                var fileName: String? = null
+                var headerDone = false
+
+                while (!headerDone) {
+                    fillWindow()
+                    val crlfcrlf = "\r\n\r\n".toByteArray()
+                    val hdrEnd = findInWindow(crlfcrlf, windowLen - crlfcrlf.size + 1)
+                    if (hdrEnd != -1) {
+                        partHeaderSb.append(String(window, 0, hdrEnd, Charsets.UTF_8))
+                        consume(hdrEnd + 4)
+                        headerDone = true
+                    } else {
+                        // Header spans chunks — save all but tail
+                        val safe = maxOf(0, windowLen - crlfcrlf.size)
+                        if (safe > 0) {
+                            partHeaderSb.append(String(window, 0, safe, Charsets.UTF_8))
+                            consume(safe)
+                        }
+                        fillWindow()
+                        if (windowLen == 0) break
+                    }
+                }
+
+                val partHeader = partHeaderSb.toString()
+                val rawName = Regex("filename=\"([^\"]+)\"", RegexOption.IGNORE_CASE)
+                    .find(partHeader)?.groupValues?.get(1)
+                fileName = rawName
+                    ?.let { File(it).name }
+                    ?.takeIf { it.isNotBlank() && !it.contains('/') && !it.contains('\\') }
+
+                // The part data ends at \r\n--boundary
+                val dataTerminator = "\r\n--$boundary".toByteArray(Charsets.UTF_8)
+
+                if (fileName != null) {
+                    val destFile = File(safeDestPath, fileName)
+                    destFile.parentFile?.mkdirs()
+
+                    FileOutputStream(destFile).use { fos ->
+                        while (true) {
+                            fillWindow()
+                            if (windowLen == 0) break
+
+                            val safeLen = windowLen - dataTerminator.size
+                            val termPos = findInWindow(dataTerminator, windowLen)
+
+                            when {
+                                termPos != -1 -> {
+                                    // Found terminator — write up to it, consume through it
+                                    if (termPos > 0) fos.write(window, 0, termPos)
+                                    consume(termPos + dataTerminator.size)
+                                    break
+                                }
+                                safeLen > 0 -> {
+                                    // No terminator yet — safe to flush safeLen bytes
+                                    fos.write(window, 0, safeLen)
+                                    consume(safeLen)
+                                }
+                                else -> {
+                                    // Need more data
+                                    fillWindow()
+                                    if (windowLen == 0) break
+                                }
+                            }
+                        }
+                    }
+
+                    android.media.MediaScannerConnection.scanFile(
+                        appContext.reactContext,
+                        arrayOf(destFile.absolutePath),
+                        null, null
+                    )
+                    savedCount++
+                } else {
+                    // No filename — skip this part by consuming until terminator
+                    while (true) {
+                        fillWindow()
+                        if (windowLen == 0) break
+                        val termPos = findInWindow(dataTerminator, windowLen)
+                        if (termPos != -1) {
+                            consume(termPos + dataTerminator.size)
+                            break
+                        }
+                        val safeLen = windowLen - dataTerminator.size
+                        if (safeLen > 0) consume(safeLen)
+                        else fillWindow()
+                    }
+                }
+
+                fillWindow()
+                // Check what follows — either \r\n (more parts) or -- (final boundary)
+                if (windowLen >= 2) {
+                    if (window[0] == '-'.code.toByte() && window[1] == '-'.code.toByte()) break
+                }
+            }
+
+            val msg = if (savedCount == 1) "✅ 1 file uploaded" else "✅ $savedCount files uploaded"
+            val encodedDest = java.net.URLEncoder.encode(safeDestPath, "UTF-8")
+            val response = "<html><head><meta charset='utf-8'>" +
+                "<meta http-equiv='refresh' content='2;url=/?path=$encodedDest'></head>" +
+                "<body><h2>$msg</h2><p>Returning to folder...</p>" +
+                "<a href='/?path=$encodedDest'>Back now</a></body></html>"
+            val body = response.toByteArray(Charsets.UTF_8)
+            output.write("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray())
+            output.write(body)
+            output.flush()
+
+        } catch (e: Exception) {
+            try {
+                output.write("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+            } catch (_: Exception) {}
+        }
+    }
 
       else -> {
         output.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
       }
     }
+  }
+
+  private fun safeFile(rootPath: String, requestedPath: String): File? {
+    val root = File(rootPath).canonicalFile
+    val requested = File(requestedPath).canonicalFile
+    return if (requested.path.startsWith(root.path)) requested else null
   }
 
   private fun findSequence(data: ByteArray, seq: ByteArray) = findSequenceFrom(data, seq, 0)
