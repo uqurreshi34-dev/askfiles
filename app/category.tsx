@@ -693,18 +693,21 @@ export default function CategoryScreen() {
         suppressWatcherRef.current = true;
         setDeleting(true);
         setDeletingCount(files.length);
-        for (const file of files) {
-          await moveToTrash(file.uri, file.name, false);
-          removeFavourite(file.uri);
-          DocIndexer.removeFromIndex(file.uri);
+        try {
+          for (const file of files) {
+            await moveToTrash(file.uri, file.name, false);
+            removeFavourite(file.uri);
+            DocIndexer.removeFromIndex(file.uri);
+          }
+          setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
+          setSelectMode(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+        } finally {
+          setDeleting(false);
+          setDeletingCount(0);
+          suppressWatcherRef.current = false;
         }
-        setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
-        setSelectMode(false); 
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setSelectedUris(new Set()); setSelectedItemsMap(new Map());
-        setDeleting(false);
-        setDeletingCount(0);
-        suppressWatcherRef.current = false;
       }},
     ]);
   }
