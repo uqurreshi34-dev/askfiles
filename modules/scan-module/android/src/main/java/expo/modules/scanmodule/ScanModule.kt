@@ -198,5 +198,50 @@ class ScanModule : Module() {
                 promise.resolve(results)
             }
         }
+
+        AsyncFunction("extractTextFromImage") { path: String, promise: Promise ->
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val file = File(path)
+                    if (!file.exists()) {
+                        promise.reject("FILE_NOT_FOUND", "File not found: $path", null)
+                        return@launch
+                    }
+
+                    val bitmap = BitmapFactory.decodeFile(path)
+                    if (bitmap == null) {
+                        promise.reject("DECODE_FAILED", "Could not decode image", null)
+                        return@launch
+                    }
+
+                    val image = InputImage.fromBitmap(bitmap, 0)
+
+                    val text = suspendCoroutine<String> { cont ->
+                        recognizer.process(image)
+                            .addOnSuccessListener { result ->
+                                bitmap.recycle()
+                                cont.resume(result.text)
+                            }
+                            .addOnFailureListener { e ->
+                                bitmap.recycle()
+                                cont.resumeWithException(e)
+                            }
+                    }
+
+                    recognizer.close()
+
+                    if (text.isBlank()) {
+                        promise.resolve("")
+                    } else {
+                        promise.resolve(text)
+                    }
+                } catch (e: Exception) {
+                    recognizer.close()
+                    promise.reject("OCR_FAILED", e.message ?: "OCR failed", e)
+                }
+            }
+        }
     }
 }

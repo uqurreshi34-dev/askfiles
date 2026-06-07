@@ -31,3 +31,11 @@ export function saveScanAsPdf(uris: string[], folderPath: string): Promise<strin
 export function ocrScanPages(paths: string[]): Promise<Record<string, string>> {
   return ScanModule.ocrScanPages(paths);
 }
+
+/**
+ * Extract text from a single image using ML Kit OCR.
+ * Returns extracted text string, or empty string if no text found.
+ */
+export function extractTextFromImage(path: string): Promise<string> {
+  return ScanModule.extractTextFromImage(path);
+}

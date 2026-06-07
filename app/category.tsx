@@ -1,6 +1,7 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
+import { extractTextFromImage } from '@/modules/scan-module';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -158,6 +160,8 @@ export default function CategoryScreen() {
   const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
   const [extractingPdf, setExtractingPdf] = useState(false);
   const [mergingPdf, setMergingPdf] = useState(false);
+  const [extractingText, setExtractingText] = useState(false);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -646,6 +650,20 @@ export default function CategoryScreen() {
     }
   }
 
+  async function handleExtractText() {
+    if (!selectedItem) return;
+    closeSheet();
+    setExtractingText(true);
+    try {
+      const text = await extractTextFromImage(toPath(selectedItem.uri));
+      setExtractedText(text.trim() || '');
+    } catch {
+      Alert.alert('Error', 'Could not extract text from this image.');
+    } finally {
+      setExtractingText(false);
+    }
+  }
+
   async function handleMultiShare() {
     if (sharingRef.current) return;
     sharingRef.current = true;
@@ -1062,6 +1080,12 @@ export default function CategoryScreen() {
                 </TouchableOpacity>
               )}
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+              {isImageFile(selectedItem?.name ?? '') && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handleExtractText}>
+                  <Ionicons name="text-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Extract Text</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
@@ -1298,6 +1322,12 @@ export default function CategoryScreen() {
           </Text>
         </View>
       )}
+      {extractingText && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
+        </View>
+      )}
       {selectMode && selectedUris.size > 0 && (
         <>
           {sharing && (
@@ -1423,6 +1453,42 @@ export default function CategoryScreen() {
             </TouchableOpacity>
           </Animated.View>
         </Pressable>
+      </Modal>
+      <Modal visible={extractedText !== null} transparent animationType="fade" onRequestClose={() => setExtractedText(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setExtractedText(null)} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.5 : SCREEN_WIDTH - 48, maxHeight: SCREEN_HEIGHT * 0.8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Extracted Text</Text>
+              <TouchableOpacity onPress={() => setExtractedText(null)}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {extractedText ? (
+              <>
+                <ScrollView
+                  style={{ maxHeight: SCREEN_HEIGHT * (SCREEN_WIDTH > SCREEN_HEIGHT ? 0.5 : 0.45) }}
+                  showsVerticalScrollIndicator={true}
+                  bounces={true}
+                >
+                  <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 22 }} selectable>{extractedText}</Text>
+                </ScrollView>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await Clipboard.setStringAsync(extractedText ?? '');
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert('Copied', 'Text copied to clipboard.');
+                  }}
+                  style={{ marginTop: 16, backgroundColor: colors.blue, borderRadius: 10, padding: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '500' }}>Copy Text</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>No text found in this image.</Text>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
