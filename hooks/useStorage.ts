@@ -128,15 +128,16 @@ async function requestManageStoragePermission(): Promise<void> {
 }
 
 async function loadFolderSizes(): Promise<void> {
-  const [downloadsSize, documentsSize, dcimSize, documentsInDownloadSize, totalImagesSize, totalVideosSize] =
-    await Promise.all([
-      queryFolderSize('/storage/emulated/0/Download/'),
-      queryFolderSize('/storage/emulated/0/Documents/'),
-      queryFolderSize('/storage/emulated/0/DCIM/'),
-      queryFolderSize('/storage/emulated/0/Download/'),
-      queryImageSize(),
-      queryVideoSize(),
-    ]);
+  const [downloadsSize, docItems, dcimSize, totalImagesSize, totalVideosSize] =
+  await Promise.all([
+    queryFolderSize('/storage/emulated/0/Download/'),
+    queryDocuments(),
+    queryFolderSize('/storage/emulated/0/DCIM/'),
+    queryImageSize(),
+    queryVideoSize(),
+  ]);
+
+  const documentsSize = docItems.reduce((sum, f) => sum + (f.size ?? 0), 0);
 
   const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize;
   const usedBytes = cache.storageInfo?.usedBytes ?? 0;
@@ -145,7 +146,7 @@ async function loadFolderSizes(): Promise<void> {
     pictures: formatSize(totalImagesSize),
     videos: formatSize(totalVideosSize),
     downloads: formatSize(downloadsSize),
-    documents: formatSize(documentsSize + documentsInDownloadSize),
+    documents: formatSize(documentsSize),
     dcim: formatSize(dcimSize),
     other: formatSize(Math.max(0, usedBytes - knownBytes)),
   };
