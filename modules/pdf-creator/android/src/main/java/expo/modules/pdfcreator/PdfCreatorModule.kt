@@ -117,7 +117,7 @@ class PdfCreatorModule : Module() {
                 page.render(bitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
 
-                val outFile = java.io.File(outDir, "page_${i + 1}.png")
+                val outFile = java.io.File(outDir, "page_${String.format("%03d", i + 1)}.png")
                 java.io.FileOutputStream(outFile).use { out ->
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                 }
