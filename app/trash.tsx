@@ -19,11 +19,14 @@ export default function TrashScreen() {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { files, loading, restoreFile, deletePermanently, emptyTrash, formatDaysLeft } = useTrash();
+  const { files, loading, restoreFile, deletePermanently, emptyTrash, formatDaysLeft, loadFiles } = useTrash();
   const [selectedFile, setSelectedFile] = useState<TrashFile | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [restoring, setRestoring] = useState(false);
-
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
+  const [selectedFilesMap, setSelectedFilesMap] = useState<Map<string, TrashFile>>(new Map());
+  const [multiRestoring, setMultiRestoring] = useState(false);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -100,16 +103,53 @@ export default function TrashScreen() {
     );
   }
 
+  async function handleMultiRestore() {
+    const filesToRestore = Array.from(selectedFilesMap.values());
+    setSelectMode(false);
+    setSelectedUris(new Set());
+    setSelectedFilesMap(new Map());
+    setMultiRestoring(true);
+    try {
+      for (const file of filesToRestore) {
+        await restoreFile(file, false);
+      }
+      await loadFiles();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Restored', `${filesToRestore.length} file${filesToRestore.length !== 1 ? 's' : ''} restored.`);
+    } finally {
+      setMultiRestoring(false);
+    }
+  }
+
   const ext = (name: string) => name.split('.').pop()?.toUpperCase() ?? '?';
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => {
+          if (selectMode) {
+            setSelectMode(false);
+            setSelectedUris(new Set());
+            setSelectedFilesMap(new Map());
+          } else {
+            router.back();
+          }
+        }} style={styles.backBtn}>
+          <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Recently Deleted</Text>
-        {files.length > 0 ? (
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {selectMode ? `${selectedUris.size} selected` : 'Recently Deleted'}
+        </Text>
+        {selectMode ? (
+          <TouchableOpacity onPress={() => {
+            const newSet = new Set(files.map(f => f.uri));
+            const newMap = new Map(files.map(f => [f.uri, f]));
+            setSelectedUris(newSet);
+            setSelectedFilesMap(newMap);
+          }} style={styles.backBtn}>
+            <Text style={{ fontSize: 12, color: colors.blue, fontWeight: '500' }}>All</Text>
+          </TouchableOpacity>
+        ) : files.length > 0 ? (
           <TouchableOpacity onPress={handleEmptyTrash} style={styles.backBtn}>
             <Ionicons name="trash-outline" size={22} color={colors.deleteRed} />
           </TouchableOpacity>
@@ -118,10 +158,10 @@ export default function TrashScreen() {
         )}
       </View>
 
-      {restoring && (
+      {(restoring || multiRestoring) && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Restoring file...</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Restoring...</Text>
         </View>
       )}
       {loading ? (
@@ -149,13 +189,39 @@ export default function TrashScreen() {
             const color = getFileColor(item.name);
             return (
               <TouchableOpacity
-                style={[styles.row, { borderBottomColor: colors.border }]}
+                style={[styles.row, { borderBottomColor: colors.border, backgroundColor: selectedUris.has(item.uri) ? colors.blueTint : 'transparent' }]}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  openSheet(item);
+                  if (selectMode) {
+                    const newSet = new Set(selectedUris);
+                    const newMap = new Map(selectedFilesMap);
+                    if (selectedUris.has(item.uri)) { newSet.delete(item.uri); newMap.delete(item.uri); }
+                    else { newSet.add(item.uri); newMap.set(item.uri, item); }
+                    setSelectedUris(newSet);
+                    setSelectedFilesMap(newMap);
+                  } else {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    openSheet(item);
+                  }
+                }}
+                onLongPress={() => {
+                  if (!selectMode) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setSelectMode(true);
+                    setSelectedUris(new Set([item.uri]));
+                    setSelectedFilesMap(new Map([[item.uri, item]]));
+                  }
                 }}
                 activeOpacity={0.7}
               >
+                {selectMode && (
+                  <View style={{ marginRight: 12 }}>
+                    <Ionicons
+                      name={selectedUris.has(item.uri) ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={22}
+                      color={selectedUris.has(item.uri) ? colors.blue : colors.textMuted}
+                    />
+                  </View>
+                )}
                 <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
                 {isImageFile(item.name) ? (
                     <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
@@ -171,9 +237,11 @@ export default function TrashScreen() {
                     {formatSize(item.size)} · {formatDaysLeft(item.deletedAt)}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-                </TouchableOpacity>
+                {!selectMode && (
+                  <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             );
           }}
@@ -243,6 +311,18 @@ export default function TrashScreen() {
           </Animated.View>
         </Pressable>
       </Modal>
+      {selectMode && selectedUris.size > 0 && (
+        <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
+          <TouchableOpacity
+            onPress={handleMultiRestore}
+            disabled={multiRestoring}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue, borderRadius: 12, paddingVertical: 14 }}
+          >
+            <Ionicons name="arrow-undo-outline" size={20} color="#fff" />
+            <Text style={{ fontSize: 11, color: '#fff', marginTop: 2 }}>Restore</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

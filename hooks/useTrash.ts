@@ -125,7 +125,7 @@ export function useTrash() {
     }
   }
 
-  async function restoreFile(file: TrashFile): Promise<boolean> {
+  async function restoreFile(file: TrashFile, reload = true): Promise<boolean> {
     try {
       const destUri = file.originalUri;
       const destPath = (() => { try { return decodeURIComponent(destUri.replace('file://', '')); } catch { return destUri.replace('file://', ''); } })();
@@ -147,7 +147,7 @@ export function useTrash() {
       const meta = await readMeta();
       delete meta[file.name];
       await writeMeta(meta);
-      await loadFiles();
+      if (reload) await loadFiles();
       return true;
     } catch {
       return false;
