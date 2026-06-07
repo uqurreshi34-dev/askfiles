@@ -46,3 +46,7 @@ export function startWifiServer(rootPath: string): Promise<string> {
 export function stopWifiServer(): Promise<void> {
   return FileReader.stopWifiServer();
 }
+
+export async function deleteDirectory(path: string): Promise<boolean> {
+  return FileReader.deleteDirectory(path);
+}

@@ -26,7 +26,7 @@ import { DocIndexer } from '@/modules/doc-indexer';
 import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
-import { startWifiServer } from '@/modules/file-reader';
+import { startWifiServer, deleteDirectory } from '@/modules/file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 
@@ -95,6 +95,7 @@ export default function BrowseScreen() {
   const [vaulting, setVaulting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deletingFolder, setDeletingFolder] = useState(false);
   const [deletingCount, setDeletingCount] = useState(0);
   const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
@@ -361,9 +362,13 @@ export default function BrowseScreen() {
             text: 'Delete', style: 'destructive',
             onPress: async () => {
               try {
-                const dir = new FileSystem.Directory(selectedItem.uri);
-                dir.delete();
                 closeSheet();
+                setDeleting(true);
+                setDeletingFolder(true);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await deleteDirectory(toPath(selectedItem.uri));
+                setDeleting(false);
+                setDeletingFolder(false);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 await loadDirectory(currentPath);
               } catch {
@@ -371,6 +376,8 @@ export default function BrowseScreen() {
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: requestManagePermission },
                 ]);
+                setDeleting(false);
+                setDeletingFolder(false);
               }
             },
           },
@@ -526,12 +533,7 @@ export default function BrowseScreen() {
       { text: 'Move to Trash', style: 'destructive', onPress: async () => {
         setDeleting(true);
         setDeletingCount(files.filter(f => !f.isDirectory).length);
-        const folders = files.filter(f => f.isDirectory);
         const fileItems = files.filter(f => !f.isDirectory);
-        
-        folders.forEach(f => {
-          try { new FileSystem.Directory(f.uri).delete(); } catch {}
-        });
         
         for (const file of fileItems) {
           await moveToTrash(file.uri, file.name, false);
@@ -1057,13 +1059,15 @@ export default function BrowseScreen() {
         </View>
       )}
       {deleting && (
-        <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
-          <ActivityIndicator size="small" color={colors.deleteRed} />
-          <Text style={[styles.busyText, { color: colors.textSecondary }]}>
-            Moving {deletingCount} file{deletingCount !== 1 ? 's' : ''} to Trash...
-          </Text>
-        </View>
-      )}
+          <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="small" color={colors.deleteRed} />
+            <Text style={[styles.busyText, { color: colors.textSecondary }]}>
+              {deletingFolder
+                ? 'Deleting folder...'
+                : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}
+            </Text>
+          </View>
+        )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />

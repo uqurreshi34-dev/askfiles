@@ -242,6 +242,12 @@ class FileReaderModule : Module() {
       destDir
     }
 
+    AsyncFunction("deleteDirectory") { path: String ->
+      val dir = File(path)
+      if (!dir.exists()) return@AsyncFunction true
+      dir.deleteRecursively()
+    }
+
     AsyncFunction("startWifiServer") { rootPath: String ->
       // Stop any existing server
       wifiServerRunning = false
