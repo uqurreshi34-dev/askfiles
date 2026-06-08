@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -38,14 +38,6 @@ interface FileItem {
   uri: string;
   size?: number;
   date?: number;
-}
-
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  return `${days} days ago`;
 }
 
 const CATEGORY_CONFIG: Record<Category, { title: string; icon: string; color: string }> = {
@@ -1039,7 +1031,7 @@ export default function CategoryScreen() {
                       <Text style={[styles.meta, { color: colors.textMuted }]}>
                         {item.size ? formatSize(item.size) : ''}
                         {item.size && item.date ? ' · ' : ''}
-                        {item.date ? timeAgo(item.date) : ''}
+                        {item.date ? formatDate(item.date) : ''}
                       </Text>
                     </View>
                     {!selectMode && (

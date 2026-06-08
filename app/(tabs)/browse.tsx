@@ -10,7 +10,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -33,6 +33,8 @@ interface FileItem {
   name: string;
   uri: string;
   isDirectory: boolean;
+  size: number;
+  date: number;
 }
 
 const dirCacheStore: Record<string, FileItem[]> = {};
@@ -135,6 +137,9 @@ export default function BrowseScreen() {
   const [newItemName, setNewItemName] = useState('');
   const [textFileContent, setTextFileContent] = useState('');
   const [creatingItem, setCreatingItem] = useState(false);
+  type SortKey = 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc';
+  const [sortKey, setSortKey] = useState<SortKey>('name_asc');
+  const [showSortSheet, setShowSortSheet] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -632,13 +637,13 @@ export default function BrowseScreen() {
         .filter(item => item instanceof FileSystem.Directory)
         .map(item => {
           const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
-          return { name: decodeName(raw), uri: item.uri, isDirectory: true };
+          return { name: decodeName(raw), uri: item.uri, isDirectory: true, size: 0, date: 0 };
         })
         .filter(f => !f.name.startsWith('.'))
         .sort((a, b) => a.name.localeCompare(b.name));
       const files: FileItem[] = contents
         .filter(item => item instanceof FileSystem.File)
-        .map(item => ({ name: decodeName(item.name), uri: item.uri, isDirectory: false }))
+        .map(item => ({ name: decodeName(item.name), uri: item.uri, isDirectory: false, size: 0, date: 0 }))
         .filter(f => !f.name.startsWith('.'))
         .sort((a, b) => a.name.localeCompare(b.name));
       setPickerItems(folders);
@@ -937,7 +942,7 @@ export default function BrowseScreen() {
                 : folderCounts[item.uri] === -1 ? 'Folder'
                 : folderCounts[item.uri] === 0 ? 'Empty'
                 : `${folderCounts[item.uri]} item${folderCounts[item.uri] !== 1 ? 's' : ''}`
-              : ext + ' file'}
+              : `${formatSize(item.size)}  ·  ${formatDate(item.date)}`}
           </Text>
         </View>
         {!selectMode && (
@@ -957,9 +962,21 @@ export default function BrowseScreen() {
     );
   }
 
+  const sortedItems = items.slice().sort((a, b) => {
+    switch (sortKey) {
+      case 'name_asc': return a.name.localeCompare(b.name);
+      case 'name_desc': return b.name.localeCompare(a.name);
+      case 'size_desc': return (b.size ?? 0) - (a.size ?? 0);
+      case 'size_asc': return (a.size ?? 0) - (b.size ?? 0);
+      case 'date_desc': return (b.date ?? 0) - (a.date ?? 0);
+      case 'date_asc': return (a.date ?? 0) - (b.date ?? 0);
+      default: return a.name.localeCompare(b.name);
+    }
+  });
+
   const displayItems = searchActive && searchQuery.length > 0
-    ? items.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : items;
+    ? sortedItems.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : sortedItems;
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -1007,6 +1024,12 @@ export default function BrowseScreen() {
               onPress={() => { setSearchActive(true); setTimeout(() => searchRef.current?.focus(), 100); }}
             >
               <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => setShowSortSheet(true)}
+            >
+              <Ionicons name="swap-vertical-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1578,6 +1601,45 @@ export default function BrowseScreen() {
           </View>
         </>
       )}
+      {/* Sort sheet */}
+      <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
+          <View style={{ backgroundColor: colors.card, borderRadius: SCREEN_WIDTH > SCREEN_HEIGHT ? 20 : 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24, width: SCREEN_WIDTH > SCREEN_HEIGHT ? '50%' : undefined, maxHeight: SCREEN_HEIGHT * 0.85 }}>
+            {SCREEN_WIDTH > SCREEN_HEIGHT ? (
+              <TouchableOpacity onPress={() => setShowSortSheet(false)} style={{ alignSelf: 'flex-end', padding: 4, marginBottom: 4 }}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.textDisabled, alignSelf: 'center', marginBottom: 16 }} />
+            )}
+            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
+              {([
+                { key: 'name_asc', label: 'Name A → Z' },
+                { key: 'name_desc', label: 'Name Z → A' },
+                { key: 'size_desc', label: 'Size (largest first)' },
+                { key: 'size_asc', label: 'Size (smallest first)' },
+                { key: 'date_desc', label: 'Date (newest first)' },
+                { key: 'date_asc', label: 'Date (oldest first)' },
+              ] as { key: SortKey; label: string }[]).map(({ key, label }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
+                  onPress={() => { setSortKey(key); setShowSortSheet(false); }}
+                >
+                  <Text style={{ fontSize: 15, color: sortKey === key ? colors.blue : colors.textPrimary, fontWeight: sortKey === key ? '600' : '400' }}>
+                    {label}
+                  </Text>
+                  {sortKey === key && <Ionicons name="checkmark" size={18} color={colors.blue} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: colors.surface, borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
       {/* FAB — only when not in select mode */}
       {!selectMode && (
         <TouchableOpacity

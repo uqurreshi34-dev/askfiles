@@ -27,7 +27,9 @@ class FileReaderModule : Module() {
           mapOf(
             "name" to file.name,
             "uri" to "file://" + file.absolutePath + (if (file.isDirectory) "/" else ""),
-            "isDirectory" to file.isDirectory
+            "isDirectory" to file.isDirectory,
+            "size" to if (file.isDirectory) 0L else file.length(),
+            "date" to file.lastModified()
           )
         }
         ?.sortedWith(compareBy({ if (it["isDirectory"] as Boolean) 0 else 1 }, { it["name"] as String }))

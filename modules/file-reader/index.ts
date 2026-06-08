@@ -2,7 +2,7 @@ import { requireNativeModule } from 'expo-modules-core';
 
 const FileReader = requireNativeModule('FileReader');
 
-export async function readDirectory(path: string): Promise<{ name: string; uri: string; isDirectory: boolean }[]> {
+export async function readDirectory(path: string): Promise<{ name: string; uri: string; isDirectory: boolean; size: number; date: number }[]> {
   return FileReader.readDirectory(path);
 }
 
