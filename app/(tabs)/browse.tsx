@@ -140,6 +140,7 @@ export default function BrowseScreen() {
   type SortKey = 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc';
   const [sortKey, setSortKey] = useState<SortKey>('name_asc');
   const [showSortSheet, setShowSortSheet] = useState(false);
+  const [editingFile, setEditingFile] = useState<FileItem | null>(null);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -605,26 +606,56 @@ export default function BrowseScreen() {
       return;
     }
     if (!name.toLowerCase().endsWith('.txt')) name = name + '.txt';
-    const path = toPath(currentPath) + name;
     setCreatingItem(true);
     try {
-      const exists = await RNFS.exists(path);
-      if (exists) {
-        Alert.alert('Already exists', `A file named "${name}" already exists here.`);
-        setCreatingItem(false);
-        return;
+      if (editingFile) {
+        // Save in place — overwrite existing file
+        const path = toPath(editingFile.uri);
+        await writeTextFile(path, textFileContent);
+        await scanFile(path).catch(() => {});
+        setShowNewTextFile(false);
+        setNewItemName('');
+        setTextFileContent('');
+        setEditingFile(null);
+        delete dirCacheStore[currentPath];
+        await loadDirectory(currentPath);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        // Create new file
+        const path = toPath(currentPath) + name;
+        const exists = await RNFS.exists(path);
+        if (exists) {
+          Alert.alert('Already exists', `A file named "${name}" already exists here.`);
+          setCreatingItem(false);
+          return;
+        }
+        await writeTextFile(path, textFileContent);
+        setShowNewTextFile(false);
+        setNewItemName('');
+        setTextFileContent('');
+        delete dirCacheStore[currentPath];
+        await loadDirectory(currentPath);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      await writeTextFile(path, textFileContent);
-      setShowNewTextFile(false);
-      setNewItemName('');
-      setTextFileContent('');
-      delete dirCacheStore[currentPath];
-      await loadDirectory(currentPath);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Error', 'Could not create file.');
+      Alert.alert('Error', editingFile ? 'Could not save file.' : 'Could not create file.');
     } finally {
       setCreatingItem(false);
+    }
+  }
+
+  async function handleOpenTextEdit(item: FileItem) {
+    closeSheet();
+    try {
+      const path = toPath(item.uri);
+      const content = await RNFS.readFile(path, 'utf8');
+      setTextFileContent(content);
+      setNewItemName(item.name.replace(/\.txt$/i, ''));
+      setEditingFile(item);
+      setShowNewTextFile(true);
+    } catch {
+      Alert.alert('Error', 'Could not open file for editing.');
+    } finally {
     }
   }
 
@@ -1307,6 +1338,12 @@ export default function BrowseScreen() {
                       <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
                       <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
                     </TouchableOpacity>
+                    {!selectedItem?.isDirectory && selectedItem?.name.toLowerCase().endsWith('.txt') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={() => handleOpenTextEdit(selectedItem)}>
+                        <Ionicons name="create-outline" size={20} color={colors.blue} />
+                        <Text style={[styles.sheetActionText, { color: colors.blue }]}>Edit</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                       <Ionicons name="close-outline" size={20} color={colors.textMuted} />
                       <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
@@ -1729,10 +1766,10 @@ export default function BrowseScreen() {
       </Modal>
 
       {/* New Text File modal */}
-      <Modal visible={showNewTextFile} animationType="slide" onRequestClose={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); }}>
+      <Modal visible={showNewTextFile} animationType="slide" onRequestClose={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); setEditingFile(null); }}>
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
-            <TouchableOpacity onPress={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); }} style={{ marginRight: 12 }}>
+            <TouchableOpacity onPress={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); setEditingFile(null); }}style={{ marginRight: 12 }}>
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <TextInput
@@ -1741,7 +1778,8 @@ export default function BrowseScreen() {
               onChangeText={setNewItemName}
               placeholder="File name..."
               placeholderTextColor={colors.textMuted}
-              autoFocus
+              autoFocus={!editingFile}
+              editable={!editingFile}
               returnKeyType="next"
               autoCapitalize="none"
             />
@@ -1752,7 +1790,7 @@ export default function BrowseScreen() {
             >
               {creatingItem
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Save</Text>
+                : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{editingFile ? 'Save' : 'Create'}</Text>
               }
             </TouchableOpacity>
           </View>
@@ -1763,6 +1801,7 @@ export default function BrowseScreen() {
             placeholder="Start typing..."
             placeholderTextColor={colors.textMuted}
             multiline
+            autoFocus
             returnKeyType="default"
             autoCorrect={true}
           />
