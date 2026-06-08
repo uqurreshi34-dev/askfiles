@@ -243,16 +243,36 @@ class FileReaderModule : Module() {
     }
 
     AsyncFunction("deleteDirectory") { path: String ->
-      val dir = File(path)
-      if (!dir.exists()) return@AsyncFunction true
-      dir.deleteRecursively()
+          val dir = File(path)
+          if (!dir.exists()) return@AsyncFunction true
+          dir.deleteRecursively()
+        }
+
+        AsyncFunction("statFiles") { paths: List<String> ->
+          paths.map { path ->
+              val file = File(path)
+              if (file.exists() && file.isFile) file.length() else 0L
+          }
+        }
+
+        AsyncFunction("createDirectory") { path: String ->
+        val dir = File(path)
+        if (dir.exists()) throw Exception("EXISTS")
+        val ok = dir.mkdirs()
+        if (!ok) throw Exception("FAILED")
+        path
     }
 
-    AsyncFunction("statFiles") { paths: List<String> ->
-      paths.map { path ->
-          val file = File(path)
-          if (file.exists() && file.isFile) file.length() else 0L
-      }
+    AsyncFunction("writeTextFile") { path: String, content: String ->
+        val file = File(path)
+        file.parentFile?.mkdirs()
+        file.writeText(content, Charsets.UTF_8)
+        android.media.MediaScannerConnection.scanFile(
+            appContext.reactContext,
+            arrayOf(file.absolutePath),
+            null, null
+        )
+        path
     }
 
     AsyncFunction("startWifiServer") { rootPath: String ->

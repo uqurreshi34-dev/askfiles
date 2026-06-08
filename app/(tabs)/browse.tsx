@@ -23,10 +23,9 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles } from 'file-reader';
+import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
-import { startWifiServer, deleteDirectory } from '@/modules/file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 
@@ -130,6 +129,12 @@ export default function BrowseScreen() {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const [showCreateSheet, setShowCreateSheet] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [showNewTextFile, setShowNewTextFile] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [textFileContent, setTextFileContent] = useState('');
+  const [creatingItem, setCreatingItem] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -556,6 +561,66 @@ export default function BrowseScreen() {
     const sizes = await statFiles(paths);
     const totalSize = sizes.reduce((sum, s) => sum + s, 0);
     Alert.alert(`${files.length} item${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
+  }
+
+  async function handleCreateFolder() {
+    const name = newItemName.trim();
+    if (!name) return;
+    const invalidChars = /[*\\:?"<>|]/;
+    if (invalidChars.test(name)) {
+      Alert.alert('Invalid name', 'Folder names cannot contain: * \\ : ? " < > |');
+      return;
+    }
+    const path = toPath(currentPath) + name;
+    setCreatingItem(true);
+    try {
+      await createDirectory(path);
+      setShowNewFolder(false);
+      setNewItemName('');
+      delete dirCacheStore[currentPath];
+      await loadDirectory(currentPath);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      if (e?.message?.includes('EXISTS')) {
+        Alert.alert('Already exists', `A folder named "${name}" already exists here.`);
+      } else {
+        Alert.alert('Error', 'Could not create folder. Check storage permissions.');
+      }
+    } finally {
+      setCreatingItem(false);
+    }
+  }
+  
+  async function handleCreateTextFile() {
+    let name = newItemName.trim();
+    if (!name) return;
+    const invalidChars = /[*\/\\:?"<>|]/;
+    if (invalidChars.test(name)) {
+      Alert.alert('Invalid name', 'File names cannot contain: * / \\ : ? " < > |');
+      return;
+    }
+    if (!name.toLowerCase().endsWith('.txt')) name = name + '.txt';
+    const path = toPath(currentPath) + name;
+    setCreatingItem(true);
+    try {
+      const exists = await RNFS.exists(path);
+      if (exists) {
+        Alert.alert('Already exists', `A file named "${name}" already exists here.`);
+        setCreatingItem(false);
+        return;
+      }
+      await writeTextFile(path, textFileContent);
+      setShowNewTextFile(false);
+      setNewItemName('');
+      setTextFileContent('');
+      delete dirCacheStore[currentPath];
+      await loadDirectory(currentPath);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert('Error', 'Could not create file.');
+    } finally {
+      setCreatingItem(false);
+    }
   }
 
   async function loadPickerDir(path: string) {
@@ -1513,6 +1578,134 @@ export default function BrowseScreen() {
           </View>
         </>
       )}
+      {/* FAB — only when not in select mode */}
+      {!selectMode && (
+        <TouchableOpacity
+          onPress={() => { setNewItemName(''); setShowCreateSheet(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+          style={{
+            position: 'absolute',
+            bottom: insets.bottom + 24,
+            right: 24,
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            backgroundColor: colors.blue,
+            alignItems: 'center',
+            justifyContent: 'center',
+            elevation: 4,
+          }}
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
+      {/* Create sheet — New Folder / New Text File picker */}
+      <Modal visible={showCreateSheet} transparent animationType="fade" onRequestClose={() => setShowCreateSheet(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowCreateSheet(false)} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.4 : SCREEN_WIDTH - 64 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 16 }}>Create New</Text>
+            <TouchableOpacity
+              style={[styles.sheetAction]}
+              onPress={() => { setShowCreateSheet(false); setTimeout(() => setShowNewFolder(true), 150); }}
+            >
+              <Ionicons name="folder-outline" size={22} color={colors.yellow} />
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>New Folder</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sheetAction]}
+              onPress={() => { setShowCreateSheet(false); setTimeout(() => setShowNewTextFile(true), 150); }}
+            >
+              <Ionicons name="document-text-outline" size={22} color={colors.blue} />
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>New Text File</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sheetAction]}
+              onPress={() => setShowCreateSheet(false)}
+            >
+              <Ionicons name="close-outline" size={22} color={colors.textMuted} />
+              <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* New Folder modal */}
+      <Modal visible={showNewFolder} transparent animationType="fade" onRequestClose={() => { setShowNewFolder(false); setNewItemName(''); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? 0 : 24, paddingBottom: SCREEN_WIDTH > SCREEN_HEIGHT ? 0 : SCREEN_HEIGHT * 0.35 }}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setShowNewFolder(false); setNewItemName(''); }} />
+            <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.4 : '100%' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>New Folder</Text>
+                <TouchableOpacity onPress={() => { setShowNewFolder(false); setNewItemName(''); }}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={[styles.renameInput, { backgroundColor: colors.surface, color: colors.textPrimary }]}
+                value={newItemName}
+                onChangeText={setNewItemName}
+                placeholder="Folder name..."
+                placeholderTextColor={colors.textMuted}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleCreateFolder}
+              />
+              <View style={[styles.renameActions, { marginTop: 12 }]}>
+                <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowNewFolder(false); setNewItemName(''); }}>
+                  <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.renameConfirmBtn, creatingItem && { opacity: 0.6 }]}
+                  onPress={handleCreateFolder}
+                  disabled={creatingItem}
+                >
+                  {creatingItem ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.renameConfirmText}>Create</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+      </Modal>
+
+      {/* New Text File modal */}
+      <Modal visible={showNewTextFile} animationType="slide" onRequestClose={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
+            <TouchableOpacity onPress={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); }} style={{ marginRight: 12 }}>
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TextInput
+              style={{ flex: 1, fontSize: 16, fontWeight: '500', color: colors.textPrimary, padding: 0 }}
+              value={newItemName}
+              onChangeText={setNewItemName}
+              placeholder="File name..."
+              placeholderTextColor={colors.textMuted}
+              autoFocus
+              returnKeyType="next"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              onPress={handleCreateTextFile}
+              disabled={creatingItem}
+              style={{ marginLeft: 12, backgroundColor: colors.blue, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, opacity: creatingItem ? 0.6 : 1 }}
+            >
+              {creatingItem
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Save</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        <TextInput
+            style={{ flex: 1, padding: 16, fontSize: 15, color: colors.textPrimary, textAlignVertical: 'top', lineHeight: 22 }}
+            value={textFileContent}
+            onChangeText={setTextFileContent}
+            placeholder="Start typing..."
+            placeholderTextColor={colors.textMuted}
+            multiline
+            returnKeyType="default"
+            autoCorrect={true}
+          />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -54,3 +54,11 @@ export async function deleteDirectory(path: string): Promise<boolean> {
 export async function statFiles(paths: string[]): Promise<number[]> {
   return FileReader.statFiles(paths);
 }
+
+export async function createDirectory(path: string): Promise<string> {
+  return FileReader.createDirectory(path);
+}
+
+export async function writeTextFile(path: string, content: string): Promise<string> {
+  return FileReader.writeTextFile(path, content);
+}
