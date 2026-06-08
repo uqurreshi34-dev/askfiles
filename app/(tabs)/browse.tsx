@@ -28,6 +28,8 @@ import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { setAiSearchListening } from '@/app/_layout';
 
 interface FileItem {
   name: string;
@@ -141,6 +143,8 @@ export default function BrowseScreen() {
   const [sortKey, setSortKey] = useState<SortKey>('name_asc');
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [editingFile, setEditingFile] = useState<FileItem | null>(null);
+  const [editorListening, setEditorListening] = useState(false);
+  const [editorMicTooltip, setEditorMicTooltip] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -657,6 +661,38 @@ export default function BrowseScreen() {
       Alert.alert('Error', 'Could not open file for editing.');
     } finally {
     }
+  }
+
+  useSpeechRecognitionEvent('result', (e) => {
+    if (!editorListening) return;
+    const text = e.results?.[0]?.transcript ?? '';
+    if (text) setTextFileContent(prev => prev ? prev + ' ' + text : text);
+  });
+  
+  useSpeechRecognitionEvent('end', () => {
+    if (editorListening) { setEditorListening(false); setAiSearchListening(false); }
+  });
+  
+  useSpeechRecognitionEvent('error', () => {
+    if (editorListening) { setEditorListening(false); setAiSearchListening(false); }
+  });
+  
+  async function toggleEditorListening() {
+    if (editorListening) {
+      ExpoSpeechRecognitionModule.stop();
+      setEditorListening(false);
+      setAiSearchListening(false);
+      return;
+    }
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) {
+      setEditorMicTooltip(true);
+      setTimeout(() => setEditorMicTooltip(false), 2500);
+      return;
+    }
+    setEditorListening(true);
+    setAiSearchListening(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: false });
   }
 
   async function loadPickerDir(path: string) {
@@ -1744,8 +1780,8 @@ export default function BrowseScreen() {
                 value={newItemName}
                 onChangeText={setNewItemName}
                 placeholder="Folder name..."
-                placeholderTextColor={colors.textMuted}
                 autoFocus
+                placeholderTextColor={colors.textMuted}
                 returnKeyType="done"
                 onSubmitEditing={handleCreateFolder}
               />
@@ -1766,12 +1802,12 @@ export default function BrowseScreen() {
       </Modal>
 
       {/* New Text File modal */}
-      <Modal visible={showNewTextFile} animationType="slide" onRequestClose={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); setEditingFile(null); }}>
+      <Modal visible={showNewTextFile} animationType="slide" onRequestClose={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); setEditingFile(null); if (editorListening) ExpoSpeechRecognitionModule.stop(); setEditorListening(false); }}>
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
-            <TouchableOpacity onPress={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); setEditingFile(null); }}style={{ marginRight: 12 }}>
-              <Ionicons name="close" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => { setShowNewTextFile(false); setNewItemName(''); setTextFileContent(''); setEditingFile(null); if (editorListening) ExpoSpeechRecognitionModule.stop(); }} style={{ marginRight: 12 }}>
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
             <TextInput
               style={{ flex: 1, fontSize: 16, fontWeight: '500', color: colors.textPrimary, padding: 0 }}
               value={newItemName}
@@ -1783,6 +1819,26 @@ export default function BrowseScreen() {
               returnKeyType="next"
               autoCapitalize="none"
             />
+            <View style={{ position: 'relative', marginLeft: 8 }}>
+              {editorMicTooltip && (
+                <View style={{
+                  position: 'absolute', bottom: 40, right: 0,
+                  backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 8,
+                  borderRadius: 10, width: 200, zIndex: 10,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 11, lineHeight: 16 }}>
+                    Enable microphone access in Settings to use voice dictation
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity onPress={toggleEditorListening} style={{ padding: 8 }}>
+                <Ionicons
+                  name={editorListening ? 'stop-circle' : 'mic-outline'}
+                  size={22}
+                  color={editorListening ? colors.deleteRed : colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               onPress={handleCreateTextFile}
               disabled={creatingItem}
@@ -1801,7 +1857,7 @@ export default function BrowseScreen() {
             placeholder="Start typing..."
             placeholderTextColor={colors.textMuted}
             multiline
-            autoFocus
+            autoFocus={!!editingFile}
             returnKeyType="default"
             autoCorrect={true}
           />
