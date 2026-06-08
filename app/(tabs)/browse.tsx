@@ -942,7 +942,7 @@ export default function BrowseScreen() {
                 : folderCounts[item.uri] === -1 ? 'Folder'
                 : folderCounts[item.uri] === 0 ? 'Empty'
                 : `${folderCounts[item.uri]} item${folderCounts[item.uri] !== 1 ? 's' : ''}`
-              : `${formatSize(item.size)}  ·  ${formatDate(item.date)}`}
+              : `${formatSize(item.size)} · ${formatDate(item.date)}`}
           </Text>
         </View>
         {!selectMode && (
