@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system';
 import RNFS from 'react-native-fs';
+import { scanFile } from '@/modules/share-module';
 
 const TRASH_DIR = FileSystem.Paths.document.uri.endsWith('/')
   ? FileSystem.Paths.document.uri + 'trash/'
@@ -125,7 +126,7 @@ export function useTrash() {
     }
   }
 
-  async function restoreFile(file: TrashFile, reload = true): Promise<boolean> {
+  async function restoreFile(file: TrashFile, reload = true): Promise<'original' | 'downloads' | null> {
     try {
       const destUri = file.originalUri;
       const destPath = (() => { try { return decodeURIComponent(destUri.replace('file://', '')); } catch { return destUri.replace('file://', ''); } })();
@@ -133,24 +134,24 @@ export function useTrash() {
       const destDir = destPath.substring(0, destPath.lastIndexOf('/'));
       const dirExists = await RNFS.exists(destDir);
       let finalPath = destPath;
+      let restoredTo: 'original' | 'downloads' = 'original';
       if (!dirExists) {
         finalPath = `/storage/emulated/0/Download/${file.name}`;
+        restoredTo = 'downloads';
         await RNFS.moveFile(srcPath, finalPath);
       } else {
         await RNFS.moveFile(srcPath, destPath);
       }
-      // Force MediaStore re-index so gallery opens file correctly
       try {
-        const { scanFile } = require('@/modules/share-module');
         await scanFile(finalPath);
       } catch {}
       const meta = await readMeta();
       delete meta[file.name];
       await writeMeta(meta);
       if (reload) await loadFiles();
-      return true;
+      return restoredTo;
     } catch {
-      return false;
+      return null;
     }
   }
 

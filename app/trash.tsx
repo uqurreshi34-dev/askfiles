@@ -81,11 +81,14 @@ export default function TrashScreen() {
     const file = selectedFile;
     closeSheet();
     setRestoring(true);
-    const ok = await restoreFile(file);
+    const result = await restoreFile(file);
     setRestoring(false);
-    if (ok) {
+    if (result === 'original') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Restored', `"${file.name}" restored to its original location.`);
+    } else if (result === 'downloads') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Restored to Downloads', `"${file.name}" could not be restored to its original location as the folder no longer exists. It has been moved to Downloads instead.`);
     } else {
       Alert.alert('Error', 'Could not restore file.');
     }
@@ -132,12 +135,20 @@ export default function TrashScreen() {
     setSelectedFilesMap(new Map());
     setMultiRestoring(true);
     try {
+      let downloadsCount = 0;
       for (const file of filesToRestore) {
-        await restoreFile(file, false);
+        const result = await restoreFile(file, false);
+        if (result === 'downloads') downloadsCount++;
       }
       await loadFiles();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Restored', `${filesToRestore.length} file${filesToRestore.length !== 1 ? 's' : ''} restored.`);
+      if (downloadsCount === 0) {
+        Alert.alert('Restored', `${filesToRestore.length} file${filesToRestore.length !== 1 ? 's' : ''} restored to original location.`);
+      } else if (downloadsCount === filesToRestore.length) {
+        Alert.alert('Restored to Downloads', `${filesToRestore.length} file${filesToRestore.length !== 1 ? 's' : ''} restored to Downloads as original folder no longer exists.`);
+      } else {
+        Alert.alert('Restored', `${filesToRestore.length - downloadsCount} file${filesToRestore.length - downloadsCount !== 1 ? 's' : ''} restored to original location. ${downloadsCount} moved to Downloads as original folder no longer exists.`);
+      }
     } finally {
       setMultiRestoring(false);
     }
