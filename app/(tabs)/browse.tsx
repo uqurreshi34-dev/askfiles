@@ -368,9 +368,17 @@ export default function BrowseScreen() {
   async function handleDelete() {
     if (!selectedItem) return;
     if (selectedItem.isDirectory) {
+      const count = await countFolder(toPath(selectedItem.uri));
+      if (count > 0) {
+        Alert.alert(
+          'Folder not empty',
+          `"${selectedItem.name}" contains ${count} item${count !== 1 ? 's' : ''}. Delete or move all files first, then delete the empty folder.`
+        );
+        return;
+      }
       Alert.alert(
         'Delete Folder',
-        `Delete "${selectedItem.name}" and all its contents? This cannot be undone.`,
+        `Delete "${selectedItem.name}"? This cannot be undone.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
