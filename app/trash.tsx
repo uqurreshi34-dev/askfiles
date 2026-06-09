@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, Image,
   ActivityIndicator, Alert, Modal, Animated, PanResponder,
@@ -12,6 +12,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { isImageFile, getFileColor, formatSize } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
+import { Accelerometer } from 'expo-sensors';
 
 
 export default function TrashScreen() {
@@ -42,6 +44,26 @@ export default function TrashScreen() {
       },
     })
   ).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (files.length === 0) return;
+      let lastShake = 0;
+      const sub = Accelerometer.addListener(({ x, y, z }) => {
+        const acceleration = Math.sqrt(x * x + y * y + z * z);
+        if (acceleration > 2.5) {
+          const now = Date.now();
+          if (now - lastShake > 1000) {
+            lastShake = now;
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            handleEmptyTrash();
+          }
+        }
+      });
+      Accelerometer.setUpdateInterval(200);
+      return () => sub.remove();
+    }, [files.length])
+  );
 
   function openSheet(file: TrashFile) {
     setSelectedFile(file);
