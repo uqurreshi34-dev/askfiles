@@ -150,7 +150,10 @@ class PdfCreatorModule : Module() {
                 try {
                     for (i in 0 until pdfRenderer.pageCount) {
                         val page = pdfRenderer.openPage(i)
-                        val scale = 1.5f
+                        val maxDim = 2048
+                        val scaleX = maxDim / page.width.toFloat()
+                        val scaleY = maxDim / page.height.toFloat()
+                        val scale = minOf(scaleX, scaleY, 3.0f)
                         val bitmap = Bitmap.createBitmap(
                             (page.width * scale).toInt(),
                             (page.height * scale).toInt(),
