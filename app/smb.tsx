@@ -379,7 +379,7 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
             )}
           </View>
         ) : (
-          <Ionicons name="download-outline" size={18} color={colors.textMuted} />
+          <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
         )}
       </TouchableOpacity>
     );
@@ -552,6 +552,11 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
               data={items}
               keyExtractor={item => item.name}
               renderItem={renderItem}
+              ListHeaderComponent={
+                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                  Tap to open · long-press to save to Downloads
+                </Text>
+              }
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -692,5 +697,6 @@ const styles = StyleSheet.create({
   fileMeta: { fontSize: 11 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14 },
+  hintText: { fontSize: 11, textAlign: 'center', paddingVertical: 8, fontStyle: 'italic' },
   thumb: { width: 40, height: 40, borderRadius: 10 },
 });
