@@ -608,7 +608,23 @@ async function indexScansInBackground(paths: string[]) {
             : <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           }
         </TouchableOpacity>
-
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.largeFilesCard, { backgroundColor: colors.blueBg }]}
+          onPress={() => router.push('/smb' as any)}
+        >
+          <View style={styles.largeFilesLeft}>
+            <View style={[styles.largeFilesIcon, { backgroundColor: colors.blueTint }]}>
+              <Ionicons name="wifi-outline" size={22} color={colors.blue} />
+            </View>
+            <View>
+              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Network (SMB)</Text>
+              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Browse your PC or network drive over WiFi</Text>
+              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Enable file sharing on your PC first</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
           {recents.length > 0 && (

@@ -72,7 +72,8 @@
       "./modules/share-module/app.plugin.js",
       "./modules/smooth-rotation/app.plugin.js",
       "./modules/upload-service/app.plugin.js",
-      "./modules/scan-module/app.plugin.js"
+      "./modules/scan-module/app.plugin.js",
+      "./modules/smb-client/app.plugin.js"
     ],
     "extra": {
       "router": {},
