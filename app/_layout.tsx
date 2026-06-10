@@ -11,6 +11,10 @@ import { useFileWatcher } from '@/hooks/useFileWatcher';
 import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
+import * as QuickActions from 'expo-quick-actions';
+import { useQuickActionRouting } from 'expo-quick-actions/router';
+// import { useQuickActionCallback } from 'expo-quick-actions/hooks';
+
 
 export let isAiSearchListening = false;
 export function setAiSearchListening(val: boolean) { isAiSearchListening = val; }
@@ -74,11 +78,6 @@ export default function RootLayout() {
   const { dark } = useTheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    const { setBackgroundColorAsync } = require('expo-system-ui');
-    setBackgroundColorAsync(dark ? '#111111' : '#ffffff');
-  }, [dark]);
   const [listening, setListening] = useState(false);
   const [banner, setBanner] = useState<{ text: string; success: boolean } | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -97,6 +96,19 @@ export default function RootLayout() {
   //cloud backup in progress
   const syncPulse = useRef(new Animated.Value(1)).current;
   const [cloudSyncing, setCloudSyncing] = useState(isCloudSyncing());
+
+  useQuickActionRouting();
+
+  useEffect(() => {
+    const { setBackgroundColorAsync } = require('expo-system-ui');
+    setBackgroundColorAsync(dark ? '#111111' : '#ffffff');
+  }, [dark]);
+
+  useEffect(() => {
+    QuickActions.setItems([
+      { id: 'smb', title: 'Network (SMB)', icon: 'shortcut_network', params: { href: '/smb' } },
+    ]);
+  }, []);
 
   useEffect(() => {
     const unsub = addCloudSyncListener(() => {

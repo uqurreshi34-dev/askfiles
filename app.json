@@ -3,7 +3,7 @@
     "name": "AskFiles",
     "slug": "askFiles",
     "version": "1.0.1",
-    "versionCode": "78",
+    "versionCode": "79",
     "orientation": "default",
     "scheme": "askfiles",
     "userInterfaceStyle": "automatic",
@@ -70,6 +70,7 @@
         }
       ],
       "expo-secure-store",
+      "expo-quick-actions",
       "./modules/storage-widget/app.plugin.js",
       "./modules/share-module/app.plugin.js",
       "./modules/smooth-rotation/app.plugin.js",
