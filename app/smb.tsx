@@ -128,13 +128,13 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
       setStage('shares');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      const msg = e?.message ?? 'Unknown error';
-      if (msg.includes('Access is denied') || msg.includes('NT_STATUS_ACCESS_DENIED')) {
-        Alert.alert('Access denied', 'Check your username, password and domain. Make sure file sharing is enabled on the target device.');
-      } else if (msg.includes('Failed to connect') || msg.includes('connect')) {
-        Alert.alert('Cannot connect', `Could not reach ${ip.trim()}. Make sure both devices are on the same WiFi and the IP address is correct.`);
+      const msg = (e?.message ?? '').toLowerCase();
+      if (msg.includes('auth') || msg.includes('logon') || msg.includes('password') || msg.includes('access') || msg.includes('denied')) {
+        Alert.alert('Sign in failed', 'Wrong username or password.');
+      } else if (msg.includes('connect') || msg.includes('timeout') || msg.includes('unreachable') || msg.includes('refused')) {
+        Alert.alert('Cannot connect', 'Could not reach the device. Make sure both devices are on the same WiFi and the IP address is correct.');
       } else {
-        Alert.alert('Connection failed', msg);
+        Alert.alert('Connection failed', 'Something went wrong. Check your details and try again.');
       }
     } finally {
       setConnecting(false);
@@ -169,7 +169,7 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
       setItems(sorted);
       setCurrentPath(path);
     } catch (e: any) {
-      Alert.alert('Error', `Could not read directory: ${e?.message ?? 'Unknown error'}`);
+      Alert.alert('Error', 'Could not open this folder. It may have been moved or you may not have permission.');
     } finally {
       setLoading(false);
     }
@@ -224,7 +224,7 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Downloaded', `"${fileName}" saved to Downloads.`);
     } catch (e: any) {
-      Alert.alert('Download failed', e?.message ?? 'Unknown error');
+      Alert.alert('Download failed', 'Could not download the file. Check your connection and try again.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -276,7 +276,7 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
       Alert.alert('Uploaded', `"${fileName}" uploaded successfully.`);
       await loadDirectory(currentPath);
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Unknown error');
+      Alert.alert('Upload failed', 'Could not upload the file. Check your connection and try again.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
         sub.remove();
