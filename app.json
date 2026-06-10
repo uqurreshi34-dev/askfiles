@@ -29,7 +29,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#185FA5"
-      }
+      },
+      "blockedPermissions": ["android.permission.ACTIVITY_RECOGNITION"]
     },
     "plugins": [
       "expo-router",
