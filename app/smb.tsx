@@ -431,7 +431,7 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={username}
               onChangeText={setUsername}
-              placeholder="Windows username"
+              placeholder="Account username"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -441,12 +441,13 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Windows password"
+              placeholder="Account password"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
             />
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>On Windows with a Microsoft account, use your Microsoft password — not your PIN</Text>
             <View style={styles.rememberRow}>
               <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>Remember credentials</Text>
               <Switch
