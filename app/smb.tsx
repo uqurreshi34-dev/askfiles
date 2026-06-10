@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
   ActivityIndicator, Alert, TextInput, Switch,
@@ -83,7 +83,7 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
 
   // ─── Load saved credentials on mount ───────────────────────────────────────
 
-  React.useEffect(() => {
+  useEffect(() => {
     SecureStore.getItemAsync(CREDS_KEY).then(raw => {
       if (!raw) return;
       try {
