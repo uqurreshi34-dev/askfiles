@@ -17,7 +17,8 @@ import * as SecureStore from 'expo-secure-store';
 import RNFS from 'react-native-fs';
 import { listShares, listDirectory, downloadFile, uploadFile, addDownloadProgressListener } from 'smb-client';
 import * as FileSystem from 'expo-file-system';
-import { scanFile } from '@/modules/share-module';
+import { scanFile, openFile as openFileNative } from '@/modules/share-module';
+import { getMimeType } from '@/utils/files';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ export default function SmbScreen() {
   const [loading, setLoading] = useState(false);
 
 // Download
+const [openingFile, setOpeningFile] = useState<string | null>(null);
 const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
 
@@ -233,6 +235,26 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
     }
   }
 
+  async function handleOpen(item: SmbItem) {
+    if (!credsRef.current) return;
+    const { ip, domain, username, password } = credsRef.current;
+    const remotePath = currentPath ? `${currentPath}/${item.name}` : item.name;
+    const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
+    setOpeningFile(item.name);
+    setDownloadProgress(0);
+    const sub = addDownloadProgressListener(({ percent }) => setDownloadProgress(percent));
+    try {
+      await downloadFile(ip, activeShare, remotePath, cachePath, domain, username, password);
+      await openFileNative(cachePath, getMimeType(item.name));
+    } catch (e: any) {
+      Alert.alert('Could not open', 'No app available to open this file type, or the download failed.');
+    } finally {
+      sub.remove();
+      setOpeningFile(null);
+      setDownloadProgress(null);
+    }
+  }
+
   // ─── Upload ────────────────────────────────────────────────────────────────
 
   async function loadPickerDir(path: string) {
@@ -319,10 +341,13 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
         style={[styles.row, { borderBottomColor: colors.border }]}
         onPress={() => {
           if (item.isDirectory) navigateTo(item);
-          else handleDownload(item);
+          else handleOpen(item);
+        }}
+        onLongPress={() => {
+          if (!item.isDirectory) handleDownload(item);
         }}
         activeOpacity={0.6}
-        disabled={!!downloadingFile}
+        disabled={!!downloadingFile || !!openingFile}
       >
         <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
           {item.isDirectory ? (
@@ -339,6 +364,13 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
         </View>
         {item.isDirectory ? (
           <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+        ) : openingFile === item.name ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <ActivityIndicator size="small" color={colors.blue} />
+            {downloadProgress !== null && downloadProgress > 0 && (
+              <Text style={{ fontSize: 11, color: colors.blue }}>{downloadProgress}%</Text>
+            )}
+          </View>
         ) : isDownloading ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <ActivityIndicator size="small" color={colors.blue} />
