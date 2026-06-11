@@ -17,7 +17,7 @@ import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { shareFiles, openFile } from '@/modules/share-module';
+import { shareFiles, openFile, printImage, printPdf } from '@/modules/share-module';
 import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import QRCode from 'react-native-qrcode-svg';
 import { useTrash } from '@/hooks/useTrash';
@@ -660,6 +660,23 @@ export default function CategoryScreen() {
     }
   }
 
+  async function handlePrint() {
+    if (!selectedItem) return;
+    const item = selectedItem;
+    closeSheet();
+    try {
+      const filePath = toPath(item.uri);
+      const ext = item.name.split('.').pop()?.toLowerCase() ?? '';
+      if (ext === 'pdf') {
+        await printPdf(filePath);
+      } else {
+        await printImage(filePath);
+      }
+    } catch {
+      Alert.alert('Print failed', 'Could not print this file. Make sure a printer is set up on your device.');
+    }
+  }
+
   async function handleVideoSummary() {
     if (!selectedItem) return;
     closeSheet();
@@ -1118,6 +1135,12 @@ export default function CategoryScreen() {
                 <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
               </TouchableOpacity>
+              {(isImageFile(selectedItem?.name ?? '') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
+                  <Ionicons name="print-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Print</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                 () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
                   { text: 'Not now', style: 'cancel' },

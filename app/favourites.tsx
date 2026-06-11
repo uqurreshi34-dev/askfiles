@@ -18,7 +18,7 @@ import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites 
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
-import { openFile as openFileNative } from '@/modules/share-module';
+import { openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
 import RNFS from 'react-native-fs';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
@@ -109,6 +109,23 @@ export default function FavouritesScreen() {
     try {
       await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
     } catch (e) {}
+  }
+
+  async function handlePrint() {
+    if (!selectedItem) return;
+    const item = selectedItem;
+    closeSheet();
+    try {
+      const filePath = toPath(item.uri);
+      const ext = item.name.split('.').pop()?.toLowerCase() ?? '';
+      if (ext === 'pdf') {
+        await printPdf(filePath);
+      } else {
+        await printImage(filePath);
+      }
+    } catch {
+      Alert.alert('Print failed', 'Could not print this file. Make sure a printer is set up on your device.');
+    }
   }
 
   async function handleMoveToVault() {
@@ -245,6 +262,12 @@ export default function FavouritesScreen() {
                 <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
               </TouchableOpacity>
+              {(isImageFile(selectedItem?.name ?? '') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
+                  <Ionicons name="print-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Print</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                 () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
                   { text: 'Not now', style: 'cancel' },
