@@ -30,6 +30,7 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { setAiSearchListening } from '@/app/_layout';
+import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
 
 interface FileItem {
   name: string;
@@ -145,6 +146,8 @@ export default function BrowseScreen() {
   const [editingFile, setEditingFile] = useState<FileItem | null>(null);
   const [editorListening, setEditorListening] = useState(false);
   const [editorMicTooltip, setEditorMicTooltip] = useState(false);
+  const [isBkmk, setIsBkmk] = useState(false);
+  const { bookmarks } = useBookmarks();
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -165,6 +168,7 @@ export default function BrowseScreen() {
     setRenameValue('');
     setShowSheet(true);
     setIsFav(await isFavourite(item.uri));
+    setIsBkmk(item.isDirectory ? isBookmarkedSync(item.uri) : false);
     Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     if (!item.isDirectory) {
       try {
@@ -322,6 +326,17 @@ export default function BrowseScreen() {
       setIsFav(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert('Added', `"${selectedItem.name}" added to Favourites.`);
+    }
+  }
+
+  async function handleToggleBookmark() {
+    if (!selectedItem || !selectedItem.isDirectory) return;
+    if (isBkmk) {
+      await removeBookmark(selectedItem.uri);
+      setIsBkmk(false);
+    } else {
+      await addBookmark({ name: selectedItem.name, path: selectedItem.uri });
+      setIsBkmk(true);
     }
   }
 
@@ -1022,7 +1037,23 @@ export default function BrowseScreen() {
         </View>
         {!selectMode && (
           item.isDirectory ? (
-            <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (isBookmarkedSync(item.uri)) removeBookmark(item.uri);
+                  else addBookmark({ name: item.name, path: item.uri });
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ padding: 2 }}
+              >
+                <Ionicons
+                  name={isBookmarkedSync(item.uri) ? 'bookmark' : 'bookmark-outline'}
+                  size={15}
+                  color={isBookmarkedSync(item.uri) ? colors.blue : colors.textDisabled}
+                />
+              </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+            </View>
           ) : movingUri === item.uri ? (
             <ActivityIndicator size="small" color={colors.blue} style={styles.dotsBtn} />
           ) : openingUri === item.uri ? (
@@ -1188,8 +1219,47 @@ export default function BrowseScreen() {
                 <Text style={{ fontSize: 12, fontWeight: '500', color: currentPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>
                   {vol.name}
                 </Text>
-              </TouchableOpacity>
+                </TouchableOpacity>
             ))}
+          </View>
+        )}
+        {bookmarks.length > 0 && (currentPath === ROOT_PATH || volumes.some(v => currentPath === `file://${v.path}/`)) && (
+          <View style={{ paddingBottom: 8 }}>
+            <Text style={{ fontSize: 11, fontWeight: '500', letterSpacing: 0.5, paddingHorizontal: 16, paddingBottom: 6, textTransform: 'uppercase', color: colors.textMuted }}>Bookmarks</Text>
+            <FlatList
+              horizontal
+              data={bookmarks}
+              keyExtractor={b => b.path}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+              renderItem={({ item: bm }) => (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface }}
+                  onPress={async () => {
+                    const folderPath = toPath(bm.path);
+                    const exists = await RNFS.exists(folderPath);
+                    if (exists) {
+                      setCurrentPath(bm.path);
+                      setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }, { name: bm.name, path: bm.path }]);
+                      setSearchQuery('');
+                      setSearchActive(false);
+                    } else {
+                      Alert.alert(
+                        'Folder not found',
+                        `"${bm.name}" couldn't be found. It may have been moved or deleted.`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove bookmark', style: 'destructive', onPress: () => removeBookmark(bm.path) },
+                        ]
+                      );
+                    }
+                  }}
+                >
+                  <Ionicons name="bookmark" size={13} color={colors.blue} />
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary }} numberOfLines={1}>{bm.name}</Text>
+                </TouchableOpacity>
+              )}
+            />
           </View>
         )}
       </View>
@@ -1336,6 +1406,12 @@ export default function BrowseScreen() {
                       <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                         <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
                         <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>{isFav ? 'Remove from Favourites' : 'Add to Favourites'}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleToggleBookmark}>
+                        <Ionicons name={isBkmk ? 'bookmark' : 'bookmark-outline'} size={20} color={isBkmk ? colors.blue : colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: isBkmk ? colors.blue : colors.textPrimary }]}>{isBkmk ? 'Remove bookmark' : 'Bookmark folder'}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
