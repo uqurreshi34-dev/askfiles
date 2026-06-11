@@ -1099,7 +1099,7 @@ export default function SearchScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, backgroundColor: colors.background }}>
             <TouchableOpacity
               onPress={() => {
-                if (pickerPath === ROOT_PATH) { setShowPicker(false); }
+                if (pickerPath === ROOT_PATH || volumes.some(v => pickerPath === `file://${v.path}/`)) { setShowPicker(false); }
                 else {
                   const parent = pickerPath.endsWith('/') ? pickerPath.slice(0, -1) : pickerPath;
                   const up = parent.substring(0, parent.lastIndexOf('/') + 1);
@@ -1116,7 +1116,12 @@ export default function SearchScreen() {
             <View style={{ width: 40 }} />
           </View>
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
-            {(() => { try { return decodeURIComponent(pickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return pickerPath.replace('file:///storage/emulated/0/', 'Storage/'); } })()}
+          {(() => {
+              let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+              const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
+              if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
+              try { return decodeURIComponent(display); } catch { return display; }
+            })()}
           </Text>
           {volumes.length > 1 && (
             <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>

@@ -1164,7 +1164,7 @@ export default function BrowseScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        {volumes.length > 1 && currentPath === ROOT_PATH && (
+        {volumes.length > 1 && (currentPath === ROOT_PATH || volumes.some(v => currentPath === `file://${v.path}/`)) && (
           <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
             {volumes.map(vol => (
               <TouchableOpacity
@@ -1407,7 +1407,7 @@ export default function BrowseScreen() {
             <View style={styles.headerRow}>
               <TouchableOpacity
                 onPress={() => {
-                  if (pickerPath === ROOT_PATH) { setShowPicker(false); }
+                  if (pickerPath === ROOT_PATH || volumes.some(v => pickerPath === `file://${v.path}/`)) { setShowPicker(false); }
                   else {
                     const parent = pickerPath.endsWith('/') ? pickerPath.slice(0, -1) : pickerPath;
                     const up = parent.substring(0, parent.lastIndexOf('/') + 1);
@@ -1427,7 +1427,12 @@ export default function BrowseScreen() {
               <View style={styles.backBtn} />
             </View>
             <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 52, paddingBottom: 4 }]}>
-              {pickerPath.replace('file:///storage/emulated/0/', 'Storage/').split('/').map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } }).join('/')}
+            {(() => {
+                let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+                const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
+                if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
+                return display.split('/').filter(Boolean).map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } }).join('/');
+              })()}
             </Text>
             {volumes.length > 1 && (pickerPath === ROOT_PATH || !pickerPath.includes('/storage/emulated/0/')) && (
               <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>

@@ -19,6 +19,7 @@ import { listShares, listDirectory, downloadFile, uploadFile, addDownloadProgres
 import * as FileSystem from 'expo-file-system';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType } from '@/utils/files';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,8 +81,13 @@ const [pickerPath, setPickerPath] = useState('file:///storage/emulated/0/');
 const [pickerItems, setPickerItems] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
 const [pickerLoading, setPickerLoading] = useState(false);
 const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
 
   // ─── Load saved credentials on mount ───────────────────────────────────────
+
+  useEffect(() => {
+    getStorageVolumes().then((vols: any) => setVolumes(vols));
+  }, []);
 
   useEffect(() => {
     SecureStore.getItemAsync(CREDS_KEY).then(raw => {
@@ -591,7 +597,8 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
             <View style={styles.headerRow}>
               <TouchableOpacity
                 onPress={() => {
-                  if (pickerPath === 'file:///storage/emulated/0/') {
+                  const isVolumeRoot = volumes.some(v => pickerPath === `file://${v.path}/`) || pickerPath === 'file:///storage/emulated/0/';
+                  if (isVolumeRoot) {
                     setShowPicker(false);
                   } else {
                     const parent = pickerPath.endsWith('/') ? pickerPath.slice(0, -1) : pickerPath;
@@ -607,9 +614,39 @@ const [uploadingFile, setUploadingFile] = useState<string | null>(null);
               <Text style={[styles.title, { color: colors.textPrimary }]}>Upload from...</Text>
               <View style={{ width: 36 }} />
             </View>
-            <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 4, paddingBottom: 4 }]}>
-              {pickerPath.replace('file:///storage/emulated/0/', 'Storage/').split('/').map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } }).join('/')}
+            <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 4, paddingBottom: 4 }]} numberOfLines={1}>
+            {(() => {
+                let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+                const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
+                if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
+                const segs = display.split('/').filter(Boolean).map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } });
+                const current = segs.pop();
+                return (
+                  <>
+                    {segs.length > 0 && <Text style={{ color: colors.textMuted }}>{segs.join('/')}/</Text>}
+                    <Text style={styles.pathSegmentActive}>{current}</Text>
+                  </>
+                );
+              })()}
             </Text>
+            {volumes.length > 1 && (
+              <View style={{ flexDirection: 'row', paddingLeft: 4, paddingBottom: 8, gap: 8 }}>
+                {volumes.map(vol => (
+                  <TouchableOpacity
+                    key={vol.path}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: pickerPath.includes(vol.path) ? colors.blue : colors.surface }}
+                    onPress={() => {
+                      const newPath = `file://${vol.path}/`;
+                      setPickerPath(newPath);
+                      loadPickerDir(newPath);
+                    }}
+                  >
+                    <Ionicons name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'} size={14} color={pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary} />
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: pickerPath.includes(vol.path) ? '#fff' : colors.textSecondary }}>{vol.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
