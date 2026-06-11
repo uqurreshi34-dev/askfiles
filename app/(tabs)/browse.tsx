@@ -20,7 +20,7 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 import RNFS from 'react-native-fs';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
-import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
+import { shareFiles, openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile } from 'file-reader';
@@ -337,6 +337,23 @@ export default function BrowseScreen() {
     } else {
       await addBookmark({ name: selectedItem.name, path: selectedItem.uri });
       setIsBkmk(true);
+    }
+  }
+
+  async function handlePrint() {
+    if (!selectedItem || selectedItem.isDirectory) return;
+    const item = selectedItem;
+    closeSheet();
+    try {
+      const filePath = toPath(item.uri);
+      const ext = item.name.split('.').pop()?.toLowerCase() ?? '';
+      if (ext === 'pdf') {
+        await printPdf(filePath);
+      } else {
+        await printImage(filePath);
+      }
+    } catch {
+      Alert.alert('Print failed', 'Could not print this file. Make sure a printer is set up on your device.');
     }
   }
 
@@ -1388,6 +1405,12 @@ export default function BrowseScreen() {
                       <TouchableOpacity style={styles.sheetAction} onPress={handleShareViaQr}>
                         <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
+                      </TouchableOpacity>
+                    )}
+                    {!selectedItem?.isDirectory && (isImageFile(selectedItem?.name ?? '') || (selectedItem?.name.toLowerCase().endsWith('.pdf'))) && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
+                        <Ionicons name="print-outline" size={20} color={colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Print</Text>
                       </TouchableOpacity>
                     )}
                     {!selectedItem?.isDirectory && (

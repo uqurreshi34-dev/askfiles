@@ -6,9 +6,20 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
+import android.graphics.BitmapFactory
+import android.os.Bundle
+import android.os.CancellationSignal
+import android.os.ParcelFileDescriptor
+import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
+import android.print.PrintDocumentInfo
+import android.print.PrintManager
+import androidx.print.PrintHelper
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 class ShareModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -93,7 +104,113 @@ class ShareModule : Module() {
         null
       )
     }
+
+    AsyncFunction("printImage") { filePath: String ->
+      val activity = appContext.activityProvider?.currentActivity
+        ?: throw Exception("No activity available")
+      val raw = decodeSampledBitmap(filePath)
+        ?: throw Exception("Could not read image")
+      val bitmap = applyExifOrientation(filePath, raw)
+      val jobName = File(filePath).name
+      activity.runOnUiThread {
+        val printHelper = PrintHelper(activity)
+        printHelper.scaleMode = PrintHelper.SCALE_MODE_FIT
+        printHelper.printBitmap(jobName, bitmap)
+      }
+    }
+
+    AsyncFunction("printPdf") { filePath: String ->
+      val activity = appContext.activityProvider?.currentActivity
+        ?: throw Exception("No activity available")
+      val file = File(filePath)
+      if (!file.exists()) throw Exception("File not found")
+      val jobName = file.name
+      activity.runOnUiThread {
+        val printManager = activity.getSystemService(Context.PRINT_SERVICE) as PrintManager
+        val adapter = object : PrintDocumentAdapter() {
+          override fun onLayout(
+            oldAttributes: PrintAttributes?,
+            newAttributes: PrintAttributes?,
+            cancellationSignal: CancellationSignal?,
+            callback: LayoutResultCallback?,
+            extras: Bundle?
+          ) {
+            if (cancellationSignal?.isCanceled == true) {
+              callback?.onLayoutCancelled()
+              return
+            }
+            val info = PrintDocumentInfo.Builder(jobName)
+              .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+              .build()
+            callback?.onLayoutFinished(info, true)
+          }
+
+          override fun onWrite(
+            pages: Array<out android.print.PageRange>?,
+            destination: ParcelFileDescriptor?,
+            cancellationSignal: CancellationSignal?,
+            callback: WriteResultCallback?
+          ) {
+            try {
+              FileInputStream(file).use { input ->
+                FileOutputStream(destination!!.fileDescriptor).use { output ->
+                  val buffer = ByteArray(65536)
+                  var n: Int
+                  while (input.read(buffer).also { n = it } != -1) {
+                    if (cancellationSignal?.isCanceled == true) {
+                      callback?.onWriteCancelled()
+                      return
+                    }
+                    output.write(buffer, 0, n)
+                  }
+                }
+              }
+              callback?.onWriteFinished(arrayOf(android.print.PageRange.ALL_PAGES))
+            } catch (e: Exception) {
+              callback?.onWriteFailed(e.message)
+            }
+          }
+        }
+        printManager.print(jobName, adapter, PrintAttributes.Builder().build())
+      }
+    }
   }
+
+    private fun decodeSampledBitmap(filePath: String): android.graphics.Bitmap? {
+      val maxDimension = 4096
+      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      BitmapFactory.decodeFile(filePath, bounds)
+      val (w, h) = bounds.outWidth to bounds.outHeight
+      if (w <= 0 || h <= 0) return BitmapFactory.decodeFile(filePath)
+      var sample = 1
+      while (w / sample > maxDimension || h / sample > maxDimension) {
+        sample *= 2
+      }
+      val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+      return BitmapFactory.decodeFile(filePath, opts)
+    }
+
+    private fun applyExifOrientation(filePath: String, bitmap: android.graphics.Bitmap): android.graphics.Bitmap {
+      return try {
+        val exif = android.media.ExifInterface(filePath)
+        val orientation = exif.getAttributeInt(
+          android.media.ExifInterface.TAG_ORIENTATION,
+          android.media.ExifInterface.ORIENTATION_NORMAL
+        )
+        val matrix = android.graphics.Matrix()
+        when (orientation) {
+          android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+          android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+          android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+          android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+          android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+          else -> return bitmap
+        }
+        android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+      } catch (e: Exception) {
+        bitmap
+      }
+    }
 
     private fun getMediaStoreUri(context: Context, filePath: String): Uri? {
       val ext = filePath.substringAfterLast('.', "").lowercase()
