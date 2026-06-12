@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PanResponder } from 'react-native';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import { extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Image, Modal, TextInput, Alert,
   Animated, Pressable, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions,
@@ -148,6 +149,10 @@ export default function BrowseScreen() {
   const [editorMicTooltip, setEditorMicTooltip] = useState(false);
   const [isBkmk, setIsBkmk] = useState(false);
   const { bookmarks } = useBookmarks();
+  const [videoSummaryVisible, setVideoSummaryVisible] = useState(false);
+  const [videoFrames, setVideoFrames] = useState<{ path: string; timestampMs: number }[]>([]);
+  const [videoLabels, setVideoLabels] = useState<string[]>([]);
+  const [loadingVideoSummary, setLoadingVideoSummary] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -354,6 +359,28 @@ export default function BrowseScreen() {
       }
     } catch {
       Alert.alert('Print failed', 'Could not print this file. Make sure a printer is set up on your device.');
+    }
+  }
+
+  async function handleVideoSummary() {
+    if (!selectedItem) return;
+    closeSheet();
+    setLoadingVideoSummary(true);
+    setVideoSummaryVisible(true);
+    try {
+      const frames = await extractVideoFrames(toPath(selectedItem.uri), 4);
+      setVideoFrames(frames);
+      const allLabels: string[] = [];
+      for (const frame of frames) {
+        const labels = await labelImage(frame.path);
+        labels.forEach(l => { if (!allLabels.includes(l)) allLabels.push(l); });
+      }
+      setVideoLabels(allLabels.slice(0, 8));
+    } catch {
+      Alert.alert('Error', 'Could not generate video summary.');
+      setVideoSummaryVisible(false);
+    } finally {
+      setLoadingVideoSummary(false);
     }
   }
 
@@ -1413,6 +1440,12 @@ export default function BrowseScreen() {
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Print</Text>
                       </TouchableOpacity>
                     )}
+                    {isVideoFile(selectedItem?.name ?? '') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleVideoSummary}>
+                        <Ionicons name="film-outline" size={20} color={colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Video Summary</Text>
+                      </TouchableOpacity>
+                    )}
                     {!selectedItem?.isDirectory && (
                       <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                         () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
@@ -1974,6 +2007,56 @@ export default function BrowseScreen() {
             autoCorrect={true}
           />
         </SafeAreaView>
+      </Modal>
+      <Modal visible={videoSummaryVisible} transparent animationType="fade" onRequestClose={() => {
+        setVideoSummaryVisible(false);
+        videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
+      }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => {
+            setVideoSummaryVisible(false);
+            videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
+          }} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.5 : SCREEN_WIDTH - 48 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Video Summary</Text>
+              <TouchableOpacity onPress={() => {
+                  setVideoSummaryVisible(false);
+                  videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
+                }}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {loadingVideoSummary ? (
+              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                <ActivityIndicator color={colors.blue} />
+                <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 12 }}>Analysing video...</Text>
+              </View>
+            ) : (
+              <>
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16 }}>
+                  {videoFrames.map((frame, i) => (
+                    <View key={i} style={{ flex: 1, aspectRatio: 16/9, borderRadius: 8, overflow: 'hidden', backgroundColor: colors.surface }}>
+                      <Image source={{ uri: 'file://' + frame.path }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    </View>
+                  ))}
+                </View>
+                {videoLabels.length > 0 && (
+                  <>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Detected</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {videoLabels.map((label, i) => (
+                        <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>{label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
