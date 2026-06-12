@@ -1,6 +1,6 @@
 <dependencies>
   <compile
-      roots=":@@:expo-modules-core::release,androidx.core:core-ktx:1.13.1@aar,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3@jar,androidx.core:core:1.13.1@aar,androidx.lifecycle:lifecycle-runtime:2.6.2@aar,androidx.lifecycle:lifecycle-common:2.6.2@jar,org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20@jar,androidx.annotation:annotation-experimental:1.4.0@aar,androidx.versionedparcelable:versionedparcelable:1.1.1@aar,androidx.arch.core:core-common:2.2.0@jar,androidx.collection:collection:1.0.0@jar,androidx.annotation:annotation-jvm:1.6.0@jar,org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,org.jetbrains:annotations:13.0@jar">
+      roots=":@@:expo-modules-core::release,androidx.core:core-ktx:1.13.1@aar,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3@jar,androidx.core:core:1.13.1@aar,androidx.lifecycle:lifecycle-runtime:2.6.2@aar,androidx.lifecycle:lifecycle-common:2.6.2@jar,org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20@jar,androidx.annotation:annotation-experimental:1.4.0@aar,org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,androidx.print:print:1.0.0@aar,org.jetbrains:annotations:13.0@jar,androidx.versionedparcelable:versionedparcelable:1.1.1@aar,androidx.arch.core:core-common:2.2.0@jar,androidx.collection:collection:1.0.0@jar,androidx.annotation:annotation:1.0.0@jar">
     <dependency
         name=":@@:expo-modules-core::release"
         simpleName="host.exp.exponent:expo-modules-core"/>
@@ -29,6 +29,18 @@
         name="androidx.annotation:annotation-experimental:1.4.0@aar"
         simpleName="androidx.annotation:annotation-experimental"/>
     <dependency
+        name="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar"
+        simpleName="org.jetbrains.kotlin:kotlin-stdlib"/>
+    <dependency
+        name="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar"
+        simpleName="org.jetbrains.kotlin:kotlin-stdlib-jdk7"/>
+    <dependency
+        name="androidx.print:print:1.0.0@aar"
+        simpleName="androidx.print:print"/>
+    <dependency
+        name="org.jetbrains:annotations:13.0@jar"
+        simpleName="org.jetbrains:annotations"/>
+    <dependency
         name="androidx.versionedparcelable:versionedparcelable:1.1.1@aar"
         simpleName="androidx.versionedparcelable:versionedparcelable"/>
     <dependency
@@ -38,26 +50,23 @@
         name="androidx.collection:collection:1.0.0@jar"
         simpleName="androidx.collection:collection"/>
     <dependency
-        name="androidx.annotation:annotation-jvm:1.6.0@jar"
-        simpleName="androidx.annotation:annotation-jvm"/>
-    <dependency
-        name="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar"
-        simpleName="org.jetbrains.kotlin:kotlin-stdlib"/>
-    <dependency
-        name="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar"
-        simpleName="org.jetbrains.kotlin:kotlin-stdlib-jdk7"/>
-    <dependency
-        name="org.jetbrains:annotations:13.0@jar"
-        simpleName="org.jetbrains:annotations"/>
+        name="androidx.annotation:annotation:1.0.0@jar"
+        simpleName="androidx.annotation:annotation"/>
   </compile>
   <package
-      roots="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,org.jetbrains:annotations:13.0@jar">
+      roots="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar,org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar,androidx.print:print:1.0.0@aar,androidx.annotation:annotation:1.0.0@jar,org.jetbrains:annotations:13.0@jar">
     <dependency
         name="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar"
         simpleName="org.jetbrains.kotlin:kotlin-stdlib"/>
     <dependency
         name="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar"
         simpleName="org.jetbrains.kotlin:kotlin-stdlib-jdk7"/>
+    <dependency
+        name="androidx.print:print:1.0.0@aar"
+        simpleName="androidx.print:print"/>
+    <dependency
+        name="androidx.annotation:annotation:1.0.0@jar"
+        simpleName="androidx.annotation:annotation"/>
     <dependency
         name="org.jetbrains:annotations:13.0@jar"
         simpleName="org.jetbrains:annotations"/>

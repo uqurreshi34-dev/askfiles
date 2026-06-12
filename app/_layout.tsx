@@ -27,11 +27,10 @@ const DEFAULT_Y = SH - 160;
 const MIC_POS_KEY = 'askfiles-mic-position';
 
 const COMMANDS = [
-  { keywords: ['storage breakdown', 'storage info', 'storage stats', 'storage'], route: '/storage-breakdown' },
+  { keywords: ['storage breakdown', 'storage info', 'storage stats', 'storage', 'internal', 'free space', 'how much space'], route: '/storage-breakdown' },
   { keywords: ['large files'], route: '/large-files' },
   { keywords: ['sensitive files', 'personal files', 'secret files', 'confidential files'], route: '/sensitive-files' },
   { keywords: ['duplicates', 'dupes'], route: '/duplicates' },
-  { keywords: ['internal', 'free space', 'how much space'], route: '/(tabs)/' },
   { keywords: ['vault', 'locked', 'private'], route: '/vault' },
   { keywords: ['favourite', 'favorite'], route: '/favourites' },
   { keywords: ['cloud', 'pro', 'upgrade', 'premium'], route: '/(tabs)/cloud' },
@@ -39,10 +38,11 @@ const COMMANDS = [
   { keywords: ['video', 'film', 'movie', 'clip'], route: '/category?category=videos' },
   { keywords: ['pdf', 'document', 'spreadsheet', 'excel'], route: '/category?category=documents' },
   { keywords: ['download', 'apk'], route: '/category?category=downloads' },
-  { keywords: ['search', 'find'], route: '/(tabs)/search' },
-  { keywords: ['browse', 'folders', 'explore'], route: '/(tabs)/browse' },
+  { keywords: ['search', 'find', 'smart search', 'a i search'], route: '/(tabs)/search' },
+  { keywords: ['browse', 'folders', 'explore', 'memory card'], route: '/(tabs)/browse' },
   { keywords: ['home', 'start', 'main page', 'main screen'], route: '/(tabs)/' },
   { keywords: ['trash', 'bin', 'recycle bin', 'rubbish', 'delete', 'deleted', 'deletion'], route: '/trash' },
+  { keywords: ['network', 'computer', 'laptop', 'access computer files'], route: '/smb'},
 ];
 
 function parseCommand(transcript: string): string | null {
