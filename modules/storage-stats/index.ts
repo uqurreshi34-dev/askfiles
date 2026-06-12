@@ -25,3 +25,7 @@ export async function showBiometricPrompt(title: string, subtitle: string): Prom
 export function getStorageVolumes(): Promise<{ name: string; path: string; type: string }[]> {
   return StorageStats.getStorageVolumes();
 }
+
+export function getVolumeStats(path: string): Promise<{ total: number; free: number; used: number; error?: string }> {
+  return StorageStats.getVolumeStats(path);
+}

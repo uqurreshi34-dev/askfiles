@@ -56,6 +56,21 @@ class StorageStatsModule : Module() {
             )
         }
 
+        AsyncFunction("getVolumeStats") { path: String ->
+            try {
+                val stat = StatFs(path)
+                val total = stat.blockCountLong * stat.blockSizeLong
+                val free = stat.availableBlocksLong * stat.blockSizeLong
+                mapOf(
+                    "total" to total.toDouble(),
+                    "free" to free.toDouble(),
+                    "used" to (total - free).toDouble()
+                )
+            } catch (e: Exception) {
+                mapOf("error" to "Could not read volume")
+            }
+        }
+
         AsyncFunction("isStorageManager") {
             Environment.isExternalStorageManager()
         }
