@@ -7,8 +7,7 @@ import { queryLargestFiles } from 'media-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import { isImageFile, getFileColor, formatSize } from '@/utils/files';
+import { isImageFile, getFileColor, formatSize, getFileIcon } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { removeFavourite } from '@/hooks/useFavourites';
@@ -113,7 +112,7 @@ export default function LargeFilesScreen() {
           ) : isVideoFile(file.name) ? (
             <VideoThumb uri={file.uri} style={styles.thumbnail} />
           ) : (
-            <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+            <Ionicons name={getFileIcon(file.name) as any} size={20} color={color} />
           )}
         </View>
         <View style={styles.fileInfo}>

@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
-import { isImageFile } from '@/utils/files';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { scheduleDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
@@ -19,7 +18,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { isStorageManager } from '@/modules/storage-stats';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
-import { getMimeType } from '@/utils/files';
+import { isImageFile, getFileIcon, getMimeType, getFileColor } from '@/utils/files';
 import { openFile as openFileNative } from '@/modules/share-module';
 import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
@@ -117,16 +116,6 @@ export default function HomeScreen() {
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
     catch { return uri.replace('file://', ''); }
-  }
-
-  function getFileColor(name: string): string {
-    const ext = name.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return colors.blue;
-    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return colors.redBrown;
-    if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext ?? '')) return colors.purple;
-    if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return colors.amber;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return colors.green;
-    return colors.textSecondary;
   }
 
   // Helper — fire OCR and index silently in background, never blocks UI
@@ -685,7 +674,7 @@ async function indexScansInBackground(paths: string[]) {
                           ) : isVideoFile(file.name) ? (
                             <VideoThumb uri={file.uri} style={styles.recentThumb} />
                           ) : (
-                            <Text style={[styles.recentExt, { color }]}>{ext.slice(0, 4)}</Text>
+                            <Ionicons name={getFileIcon(file.name) as any} size={20} color={color} />
                           )}
                         </View>
                         <View style={styles.recentInfo}>

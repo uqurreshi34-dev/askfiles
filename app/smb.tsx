@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { formatSize, getFileColor, isImageFile } from '@/utils/files';
+import { formatSize, getFileColor, isImageFile, getFileIcon } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -359,7 +359,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
           {item.isDirectory ? (
             <Ionicons name="folder" size={22} color={color} />
           ) : (
-            <Text style={[styles.extLabel, { color }]}>{ext?.slice(0, 4)}</Text>
+            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
           )}
         </View>
         <View style={styles.fileInfo}>
@@ -686,7 +686,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
                       ) : isVideoFile(item.name) ? (
                         <VideoThumb uri={item.uri} style={styles.thumb} />
                     ) : (
-                      <Text style={[styles.extLabel, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
                     )}
                   </View>
                   <View style={styles.fileInfo}>
