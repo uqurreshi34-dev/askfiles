@@ -11,7 +11,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
-import { isImageFile, getMimeType, getFileColor, formatSize } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
@@ -361,7 +361,7 @@ export default function VaultScreen() {
           ) : isVideoFile(item.name) ? (
             <VideoThumb uri={item.uri} style={styles.thumb} />
           ) : (
-            <Text style={[styles.ext, { color }]}>{ext.slice(0, 4)}</Text>
+            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
           )}
         </View>
         <View style={styles.info}>
@@ -598,9 +598,7 @@ export default function VaultScreen() {
                 ) : selectedFile && isVideoFile(selectedFile.name) ? (
                   <VideoThumb uri={selectedFile.uri} style={styles.sheetThumb} />
                 ) : (
-                  <Text style={[styles.sheetExt, { color: selectedFile ? getFileColor(selectedFile.name) : colors.textMuted }]}>
-                    {selectedFile?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                  </Text>
+                  <Ionicons name={getFileIcon(selectedFile?.name ?? '') as any} size={22} color={selectedFile ? getFileColor(selectedFile.name) : colors.textMuted} />
                 )}
               </View>
                 <View style={{ flex: 1 }}>
@@ -713,7 +711,7 @@ export default function VaultScreen() {
                     ) : isVideoFile(item.name) ? (
                       <VideoThumb uri={item.uri} style={styles.thumb} />
                     ) : (
-                      <Text style={[styles.ext, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
                     )}
                   </View>
                   <View style={styles.info}>
