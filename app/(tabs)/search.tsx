@@ -10,7 +10,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearch } from '@/hooks/useSearch';
 import { useAskAI } from '@/hooks/useAskAI';
-import { isImageFile, getMimeType, getFileColor, formatSize } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
@@ -678,7 +678,7 @@ export default function SearchScreen() {
                       ) : isVideoFile(item.name) ? (
                         <VideoThumb uri={item.uri} style={styles.thumbnail} />
                       ) : (
-                        <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+                        <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
                       )}
                     </View>
                     <View style={styles.fileInfo}>
@@ -886,7 +886,7 @@ export default function SearchScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-                      <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
                     </View>
                     <View style={styles.fileInfo}>
                       <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
@@ -950,7 +950,7 @@ export default function SearchScreen() {
                             ) : isVideoFile(item.name) ? (
                               <VideoThumb uri={item.uri} style={styles.thumbnail} />
                             ) : (
-                              <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+                              <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
                             )}
                           </View>
                           <View style={styles.fileInfo}>
@@ -996,9 +996,7 @@ export default function SearchScreen() {
                   ) : isVideoFile(selectedItem?.name ?? '') ? (
                     <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
                   ) : (
-                    <Text style={[styles.extLabel, { color: getFileColor(selectedItem?.name ?? '') }]}>
-                      {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                    </Text>
+                    <Ionicons name={getFileIcon(selectedItem?.name ?? '') as any} size={22} color={getFileColor(selectedItem?.name ?? '')} />
                   )}
                 </View>
                   <View style={styles.sheetFileInfo}>
@@ -1157,7 +1155,7 @@ export default function SearchScreen() {
                     ) : isVideoFile(item.name) ? (
                       <VideoThumb uri={item.uri} style={styles.thumbnail} />
                     ) : (
-                      <Text style={[styles.extLabel, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
                     )}
                   </View>
                   <View style={styles.fileInfo}>
