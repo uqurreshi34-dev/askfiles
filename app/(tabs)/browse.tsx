@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor, formatDate } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -1065,7 +1065,7 @@ export default function BrowseScreen() {
           ) : isVideoFile(item.name) ? (
             <VideoThumb uri={item.uri} style={styles.thumbnail} />
           ) : (
-            <Text style={[styles.extLabel, { color }]}>{ext?.slice(0, 4)}</Text>
+            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
           )}
         </View>
         <View style={styles.fileInfo}>
@@ -1384,9 +1384,7 @@ export default function BrowseScreen() {
                     ) : isVideoFile(selectedItem?.name ?? '') ? (
                       <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
                     ) : (
-                      <Text style={[styles.extLabel, { color: getFileColor(selectedItem?.name ?? '') }]}>
-                        {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                      </Text>
+                      <Ionicons name={getFileIcon(selectedItem?.name ?? '') as any} size={22} color={getFileColor(selectedItem?.name ?? '')} />
                     )}
                   </View>
                   <View style={styles.sheetFileInfo}>
@@ -1619,7 +1617,7 @@ export default function BrowseScreen() {
                     ) : isVideoFile(item.name) ? (
                       <VideoThumb uri={item.uri} style={styles.thumbnail} />
                     ) : (
-                      <Text style={[styles.extLabel, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
                     )}
                   </View>
                   <View style={styles.fileInfo}>

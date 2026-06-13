@@ -27,13 +27,32 @@ export function getMimeType(name: string): string {
   }
 
   export function getFileColor(name: string): string {
-    const ext = name.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext ?? '')) return '#185FA5';
-    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext ?? '')) return '#993C1D';
-    if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext ?? '')) return '#534AB7';
-    if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext ?? '')) return '#854F0B';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext ?? '')) return '#3B6D11';
+    const ext = name.split('.').pop()?.toLowerCase() ?? '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'].includes(ext)) return '#185FA5';
+    if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext)) return '#993C1D';
+    if (ext === 'pdf') return '#D2342B';                          // red
+    if (['doc', 'docx'].includes(ext)) return '#2B579A';          // word blue
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return '#217346';   // excel green
+    if (['ppt', 'pptx'].includes(ext)) return '#C43E1C';          // powerpoint orange
+    if (ext === 'txt') return '#5F5E5A';                          // neutral grey
+    if (['mp3', 'wav', 'aac', 'flac', 'm4a', 'ogg'].includes(ext)) return '#854F0B';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '#3B6D11';
     return '#5F5E5A';
+  }
+
+  export function getFileIcon(name: string): string {
+    const ext = name.split('.').pop()?.toLowerCase() ?? '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'].includes(ext)) return 'image';
+    if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext)) return 'videocam';
+    if (ext === 'pdf') return 'document-text';
+    if (['doc', 'docx'].includes(ext)) return 'document-text';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'document-text';
+    if (['ppt', 'pptx'].includes(ext)) return 'document-text';
+    if (ext === 'txt') return 'document-text';
+    if (['mp3', 'wav', 'aac', 'flac', 'm4a', 'ogg'].includes(ext)) return 'musical-notes';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'archive';
+    if (ext === 'apk') return 'logo-android';
+    return 'document-outline';
   }
 
   export function formatSize(bytes: number): string {
