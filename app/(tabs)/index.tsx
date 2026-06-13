@@ -483,21 +483,24 @@ async function indexScansInBackground(paths: string[]) {
           {QUICK_ACCESS.map(item => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.quickCard, { backgroundColor: item.color }]}
+              style={styles.quickCell}
               activeOpacity={0.7}
               onPress={() => router.push(item.route as any)}
             >
-              <Ionicons name={item.icon as any} size={24} color={item.iconColor} style={{ marginBottom: 8 }} />
-              <Text style={[styles.cardName, { color: colors.textPrimary }]}>{item.label}</Text>
+              <View style={[styles.quickCircle, { backgroundColor: item.color }]}>
+                <Ionicons name={item.icon as any} size={26} color={item.iconColor} />
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>{item.label}</Text>
             </TouchableOpacity>
           ))}
-        </View>
-        <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
-          <TouchableOpacity 
-            disabled={!hasMediaAccess}
-            activeOpacity={0.8} 
-            style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} 
-            onPress={() => router.push('/large-files')}
+          </View>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Tools</Text>
+          <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
+            <TouchableOpacity 
+              disabled={!hasMediaAccess}
+              activeOpacity={0.8} 
+              style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} 
+              onPress={() => router.push('/large-files')}
           >
 
           <View style={styles.largeFilesLeft}>
@@ -588,7 +591,7 @@ async function indexScansInBackground(paths: string[]) {
               <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
               {wifiActive
                 ? <>
-                    <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Type this in your PC browser:</Text>
+                    <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Type this in your browser to connect:</Text>
                     <Text style={[styles.largeFilesSub, { color: colors.green, fontWeight: '600' }]}>{wifiUrl}</Text>
                     <Text style={[styles.largeFilesSub, { color: colors.green, opacity: 0.7 }]}>or tap to show QR code</Text>
                     <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Stop & restart if browser can't connect</Text>
@@ -625,7 +628,7 @@ async function indexScansInBackground(paths: string[]) {
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
           {recents.length > 0 && (
             <TouchableOpacity onPress={async () => { await clearRecents(); reload(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -718,8 +721,10 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 12 },
   searchText: { fontSize: 14 },
   sectionLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 0.5, paddingHorizontal: 16, marginBottom: 8, textTransform: 'uppercase' },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8, marginBottom: 16 },
-  quickCard: { width: '48%', borderRadius: 12, padding: 12 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, rowGap: 16, marginBottom: 16 },
+  quickCell: { width: '33.33%', alignItems: 'center' },
+  quickCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  quickCellLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
   cardName: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
   cardCount: { fontSize: 11 },
   storageWrap: { marginHorizontal: 16, marginBottom: 20, borderRadius: 10, padding: 12 },
@@ -729,12 +734,12 @@ const styles = StyleSheet.create({
   storageNote: { fontSize: 10, marginTop: 6 },
   barTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#185FA5', borderRadius: 2 },
-  largeFilesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, borderRadius: 12, padding: 14 },
+  largeFilesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 12, borderRadius: 12, padding: 14 },
   largeFilesLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 },
   largeFilesIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   largeFilesTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   largeFilesSub: { fontSize: 11 },
-  breakdownCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 20, borderRadius: 12, padding: 14 },
+  breakdownCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 12, borderRadius: 12, padding: 14 },
   breakdownIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   recentsList: { paddingHorizontal: 16, paddingBottom: 24 },
   emptyText: { fontSize: 13, textAlign: 'center', paddingVertical: 20 },
