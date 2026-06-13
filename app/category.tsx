@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor, formatDate } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -1034,13 +1034,13 @@ export default function CategoryScreen() {
                         <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
                       </View>
                     )}
-                    <View style={[styles.icon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
+                    <View style={[styles.icon, { backgroundColor: getFileColor(item.name) + '22', overflow: 'hidden' }]}>
                       {isImg ? (
                         <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
                       ) : isVideoFile(item.name) ? (
                         <VideoThumb uri={item.uri} style={styles.thumb} />
                       ) : (
-                        <Text style={[styles.ext, { color: config.color }]}>{ext.slice(0, 4)}</Text>
+                        <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
                       )}
                     </View>
                     <View style={styles.info}>
@@ -1092,15 +1092,13 @@ export default function CategoryScreen() {
                 <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
               )}
               <View style={styles.sheetHeader}>
-              <View style={[styles.sheetIcon, { backgroundColor: config.color + '22', overflow: 'hidden' }]}>
+              <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22', overflow: 'hidden' }]}>
                 {isImageFile(selectedItem?.name ?? '') ? (
                   <Image source={{ uri: selectedItem?.uri }} style={styles.sheetThumb} resizeMode="cover" />
                 ) : isVideoFile(selectedItem?.name ?? '') ? (
                   <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
                 ) : (
-                  <Text style={[styles.ext, { color: config.color }]}>
-                    {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                  </Text>
+                  <Ionicons name={getFileIcon(selectedItem?.name ?? '') as any} size={22} color={getFileColor(selectedItem?.name ?? '')} />
                 )}
               </View>
                 <View style={styles.sheetInfo}>
@@ -1301,7 +1299,7 @@ export default function CategoryScreen() {
                     ) : isVideoFile(item.name) ? (
                       <VideoThumb uri={item.uri} style={styles.thumb} />
                     ) : (
-                      <Text style={[styles.ext, { color: getFileColor(item.name) }]}>{item.name.split('.').pop()?.toUpperCase().slice(0, 4)}</Text>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
                     )}
                   </View>
                   <View style={styles.info}>
