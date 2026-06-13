@@ -3,7 +3,7 @@
     "name": "AskFiles",
     "slug": "askFiles",
     "version": "1.0.1",
-    "versionCode": "80",
+    "versionCode": "81",
     "orientation": "default",
     "scheme": "askfiles",
     "userInterfaceStyle": "automatic",
