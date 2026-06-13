@@ -399,6 +399,53 @@ export default function BrowseScreen() {
     }
   }
 
+  async function handleToggleHidden() {
+    if (!selectedItem) return;
+    const item = selectedItem;
+    const isHidden = item.name.startsWith('.');
+    const newName = isHidden ? item.name.slice(1) : '.' + item.name;
+    const uri = item.uri.endsWith('/') ? item.uri.slice(0, -1) : item.uri;
+    const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
+    const newUri = parentPath + newName;
+
+    const doRename = async () => {
+      closeSheet();
+      try {
+        const destExists = await RNFS.exists(toPath(newUri));
+        if (destExists) {
+          Alert.alert('Name already taken', `A file named "${newName}" already exists in this folder.`);
+          return;
+        }
+        await RNFS.moveFile(toPath(item.uri), toPath(newUri));
+        await scanFile(toPath(newUri)).catch(() => {});
+        try {
+          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
+          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
+          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(item.uri));
+          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+        } catch {}
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        delete dirCacheStore[currentPath];
+        await loadDirectory(currentPath);
+      } catch {
+        Alert.alert('Error', `Could not ${isHidden ? 'unhide' : 'hide'} this file.`);
+      }
+    };
+
+    if (isHidden) {
+      doRename();
+    } else {
+      Alert.alert(
+        item.isDirectory ? 'Hide folder' : 'Hide file',
+        `"${item.name}" will be hidden from your gallery and ${item.isDirectory ? 'folder lists, along with everything inside it' : 'file lists'}. To find it again, turn on "Show hidden files and folders" in the sort menu, then choose Unhide.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Hide', onPress: doRename },
+        ]
+      );
+    }
+  }
+
   async function handleMoveToVault() {
     if (!selectedItem || selectedItem.isDirectory) return;
     Alert.alert(
@@ -1527,6 +1574,12 @@ export default function BrowseScreen() {
                       <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
                       <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={styles.sheetAction} onPress={handleToggleHidden}>
+                      <Ionicons name={selectedItem?.name.startsWith('.') ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.textPrimary} />
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>
+                        {selectedItem?.name.startsWith('.') ? 'Unhide' : 'Hide'}
+                      </Text>
+                    </TouchableOpacity>
                     {!selectedItem?.isDirectory && selectedItem?.name.toLowerCase().endsWith('.txt') && (
                       <TouchableOpacity style={styles.sheetAction} onPress={() => handleOpenTextEdit(selectedItem)}>
                         <Ionicons name="create-outline" size={20} color={colors.blue} />
@@ -1871,7 +1924,7 @@ export default function BrowseScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Ionicons name={showHidden ? 'eye-outline' : 'eye-off-outline'} size={20} color={showHidden ? colors.blue : colors.textSecondary} />
-                <Text style={{ fontSize: 15, color: colors.textPrimary }}>Show hidden files</Text>
+                <Text style={{ fontSize: 15, color: colors.textPrimary }}>Show hidden folders and files</Text>
               </View>
               <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: showHidden ? colors.blue : colors.border, justifyContent: 'center', paddingHorizontal: 3 }}>
                 <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: showHidden ? 'flex-end' : 'flex-start' }} />

@@ -86,6 +86,8 @@ class MediaStoreModule : Module() {
             val size = it.getLong(sizeCol)
             val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
+            if (name.startsWith('.')) continue
+            if (path.contains("/.")) continue
             results.add(mapOf(
               "name" to name,
               "uri" to "file://$path",
@@ -131,6 +133,7 @@ class MediaStoreModule : Module() {
             val size = it.getLong(sizeCol)
             val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
+            if (path.contains("/.")) continue
             results.add(mapOf(
               "name" to name,
               "uri" to "file://$path",
@@ -233,6 +236,7 @@ class MediaStoreModule : Module() {
             val size = it.getLong(sizeCol)
             if (size <= 0) continue
             val path = it.getString(dataCol) ?: continue
+            if (path.contains("/.")) continue
             val folder = path.split("/").dropLast(1).lastOrNull() ?: "Storage"
             results.add(mapOf(
               "name" to name,
@@ -279,6 +283,7 @@ class MediaStoreModule : Module() {
             if (name.startsWith('.')) continue
             val size = it.getLong(sizeCol)
             val path = it.getString(dataCol) ?: continue
+            if (path.contains("/.")) continue
             results.add(mapOf(
               "name" to name,
               "size" to size.toDouble(),
@@ -318,6 +323,7 @@ class MediaStoreModule : Module() {
             if (name.startsWith('.')) continue
             val size = it.getLong(sizeCol)
             val path = it.getString(dataCol) ?: continue
+            if (path.contains("/.")) continue
             results.add(mapOf(
               "name" to name,
               "size" to size.toDouble(),
@@ -356,6 +362,7 @@ class MediaStoreModule : Module() {
             val name = it.getString(nameCol) ?: continue
             if (name.startsWith('.')) continue
             val path = it.getString(dataCol) ?: continue
+            if (path.contains("/.")) continue
             val mime = it.getString(mimeCol) ?: ""
             results.add(mapOf(
               "name" to name,
@@ -396,6 +403,8 @@ class MediaStoreModule : Module() {
             val size = it.getLong(sizeCol)
             val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
+            if (name.startsWith('.')) continue
+            if (path.contains("/.")) continue
             results.add(mapOf("name" to name, "uri" to "file://$path", "size" to size.toDouble(), "date" to date * 1000L))
           }
         }
