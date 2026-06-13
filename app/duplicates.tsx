@@ -10,7 +10,7 @@ import { useDuplicates, DuplicateGroup, DuplicateFile } from '@/hooks/useDuplica
 import { useTheme } from '@/hooks/useTheme';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-import { isImageFile, getFileColor } from '@/utils/files';
+import { isImageFile, getFileColor, getFileIcon } from '@/utils/files';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
 
@@ -76,7 +76,7 @@ export default function DuplicatesScreen() {
             <VideoThumb uri={group.files[0].uri} style={styles.thumbnail} />
           ) : (
             <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-              <Text style={[styles.extLabel, { color }]}>{ext.slice(0, 4)}</Text>
+              <Ionicons name={getFileIcon(group.name) as any} size={20} color={color} />
             </View>
           )}
           <View style={styles.groupInfo}>
