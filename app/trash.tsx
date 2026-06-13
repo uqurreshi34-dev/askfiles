@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTrash, TrashFile } from '@/hooks/useTrash';
 import { useTheme } from '@/hooks/useTheme';
-import { isImageFile, getFileColor, formatSize } from '@/utils/files';
+import { isImageFile, getFileColor, formatSize, getFileIcon } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
@@ -259,7 +259,7 @@ export default function TrashScreen() {
           ) : isVideoFile(item.name) ? (
             <VideoThumb uri={item.uri} style={styles.thumb} />
           ) : (
-            <Text style={[styles.extLabel, { color }]}>{ext(item.name).slice(0, 4)}</Text>
+            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
           )}
         </View>
         <View style={styles.info}>
@@ -303,9 +303,7 @@ export default function TrashScreen() {
                     ) : selectedFile && isVideoFile(selectedFile.name) ? (
                       <VideoThumb uri={selectedFile.uri} style={styles.sheetThumb} />
                     ) : (
-                      <Text style={[styles.extLabel, { color: getFileColor(selectedFile?.name ?? '') }]}>
-                        {ext(selectedFile?.name ?? '').slice(0, 4)}
-                      </Text>
+                      <Ionicons name={getFileIcon(selectedFile?.name ?? '') as any} size={22} color={getFileColor(selectedFile?.name ?? '')} />
                     )}
                   </View>
                   <View style={styles.sheetInfo}>

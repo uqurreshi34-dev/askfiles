@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { isImageFile, getMimeType, getFileColor, formatSize } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
 import { useVault } from '@/hooks/useVault';
@@ -178,7 +178,7 @@ export default function FavouritesScreen() {
           ) : isVideoFile(item.name) ? (
             <VideoThumb uri={item.uri} style={styles.thumb} />
           ) : (
-            <Text style={[styles.ext, { color }]}>{ext.slice(0, 4)}</Text>
+            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
           )}
         </View>
         <View style={styles.info}>
@@ -247,9 +247,7 @@ export default function FavouritesScreen() {
                   ) : isVideoFile(selectedItem?.name ?? '') ? (
                     <VideoThumb uri={selectedItem?.uri ?? ''} style={styles.sheetThumb} />
                   ) : (
-                    <Text style={[styles.ext, { color: getFileColor(selectedItem?.name ?? '') }]}>
-                      {selectedItem?.name.split('.').pop()?.toUpperCase().slice(0, 4)}
-                    </Text>
+                    <Ionicons name={getFileIcon(selectedItem?.name ?? '') as any} size={22} color={getFileColor(selectedItem?.name ?? '')} />
                   )}
                 </View>
                 <View style={styles.sheetInfo}>
