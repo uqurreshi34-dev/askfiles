@@ -32,6 +32,7 @@ import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { setAiSearchListening } from '@/app/_layout';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FileItem {
   name: string;
@@ -153,6 +154,7 @@ export default function BrowseScreen() {
   const [videoFrames, setVideoFrames] = useState<{ path: string; timestampMs: number }[]>([]);
   const [videoLabels, setVideoLabels] = useState<string[]>([]);
   const [loadingVideoSummary, setLoadingVideoSummary] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -165,6 +167,18 @@ export default function BrowseScreen() {
   useFocusEffect(useCallback(() => {
     loadDirectory(currentPath);
   }, [currentPath]));
+
+  useEffect(() => {
+    AsyncStorage.getItem('askfiles_show_hidden').then(v => { if (v === 'true') setShowHidden(true); });
+  }, []);
+
+  function toggleHidden() {
+    const next = !showHidden;
+    setShowHidden(next);
+    AsyncStorage.setItem('askfiles_show_hidden', String(next));
+    Object.keys(dirCacheStore).forEach(k => delete dirCacheStore[k]);
+    loadDirectory(currentPath, next);
+  }
 
   async function openSheet(item: FileItem) {
     setSelectedItem(item);
@@ -194,17 +208,18 @@ export default function BrowseScreen() {
     });
   }
 
-  async function loadDirectory(path: string) {
+  async function loadDirectory(path: string, hiddenOverride?: boolean) {
+    const hidden = hiddenOverride ?? showHidden;
     if (dirCacheStore[path]) {
       setItems(dirCacheStore[path]);
       setLoading(false);
-      readDirectory(toPath(path)).then(fileItems => {
+      readDirectory(toPath(path), hidden).then(fileItems => {
         dirCacheStore[path] = fileItems;
         setItems(fileItems);
         fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
           const folderPath = toPath(folder.uri);
           if (folderPath.includes('/Android/data')) return;
-          countFolder(folderPath)
+          countFolder(folderPath, hidden)
             .then(count => {
               setFolderCounts(prev => {
                 const updated = { ...prev, [folder.uri]: count };
@@ -220,14 +235,14 @@ export default function BrowseScreen() {
   
     setLoading(true);
     try {
-      const fileItems = await readDirectory(toPath(path));
+      const fileItems = await readDirectory(toPath(path), hidden);
       dirCacheStore[path] = fileItems;
       setItems(fileItems);
   
       fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
         const folderPath = toPath(folder.uri);
         if (folderPath.includes('/Android/data')) return;
-        countFolder(folderPath)
+        countFolder(folderPath, hidden)
           .then(count => {
             setFolderCounts(prev => {
               const updated = { ...prev, [folder.uri]: count };
@@ -1850,6 +1865,18 @@ export default function BrowseScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 0.5, borderTopColor: colors.border, marginTop: 4 }}
+              onPress={toggleHidden}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name={showHidden ? 'eye-outline' : 'eye-off-outline'} size={20} color={showHidden ? colors.blue : colors.textSecondary} />
+                <Text style={{ fontSize: 15, color: colors.textPrimary }}>Show hidden files</Text>
+              </View>
+              <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: showHidden ? colors.blue : colors.border, justifyContent: 'center', paddingHorizontal: 3 }}>
+                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: showHidden ? 'flex-end' : 'flex-start' }} />
+              </View>
+            </TouchableOpacity>
             <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: colors.surface, borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
               <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>

@@ -18,11 +18,11 @@ class FileReaderModule : Module() {
 
     Events("onCopyProgress")
 
-    AsyncFunction("readDirectory") { path: String ->
+    AsyncFunction("readDirectory") { path: String, includeHidden: Boolean ->
       val dir = File(path)
       if (!dir.exists() || !dir.isDirectory) return@AsyncFunction emptyList<Map<String, Any>>()
       dir.listFiles()
-        ?.filter { !it.name.startsWith('.') }
+        ?.filter { includeHidden || !it.name.startsWith('.') }
         ?.map { file ->
           mapOf(
             "name" to file.name,
@@ -36,10 +36,10 @@ class FileReaderModule : Module() {
         ?: emptyList()
     }
 
-    AsyncFunction("countFolder") { path: String ->
+    AsyncFunction("countFolder") { path: String, includeHidden: Boolean ->
       val dir = File(path)
       if (!dir.exists() || !dir.isDirectory) return@AsyncFunction 0
-      dir.listFiles()?.count { !it.name.startsWith('.') } ?: 0
+      dir.listFiles()?.count { includeHidden || !it.name.startsWith('.') } ?: 0
     }
 
     AsyncFunction("copyFileStream") { srcUri: String, destPath: String ->
