@@ -1,0 +1,7 @@
+expo.modules.smbclient.smb-client-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\build\generated\res\pngs\release
+expo.modules.smbclient.smb-client-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\build\generated\res\resValues\release
+expo.modules.smbclient.smb-client-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
+expo.modules.smbclient.smb-client-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+expo.modules.smbclient.smb-client-release-4 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\build\intermediates\merged_res\release\mergeReleaseResources
+expo.modules.smbclient.smb-client-main-5 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\src\main\res
+expo.modules.smbclient.smb-client-release-6 C:\Users\uqurr\Projects\askfiles\modules\smb-client\android\src\release\res

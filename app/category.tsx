@@ -1,6 +1,6 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer } from 'file-reader';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,7 +22,6 @@ import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import QRCode from 'react-native-qrcode-svg';
 import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
-import { setSlideshowImages } from '@/app/slideshow';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos, getMediaInfo } from 'media-store';
@@ -31,6 +30,7 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
 import { extractTextFromImage, extractVideoFrames, labelImage } from '@/modules/scan-module';
+import { MediaSlideshowView } from 'media-slideshow';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -159,6 +159,87 @@ export default function CategoryScreen() {
   const [videoFrames, setVideoFrames] = useState<{ path: string; timestampMs: number }[]>([]);
   const [videoLabels, setVideoLabels] = useState<string[]>([]);
   const [loadingVideoSummary, setLoadingVideoSummary] = useState(false);
+  const [slideshowVisible, setSlideshowVisible] = useState(false);
+  const [slideshowItems, setSlideshowItems] = useState<{ name: string; uri: string }[]>([]);
+  const [ssPos, setSsPos] = useState(0);
+  const [ssShuffle, setSsShuffle] = useState(true);
+  const [ssOrder, setSsOrder] = useState<number[]>([]);
+  const [ssPlaying, setSsPlaying] = useState(true);
+  const [ssSpeed, setSsSpeed] = useState(4000);
+  const [ssControlsVisible, setSsControlsVisible] = useState(false);
+  const [ssIsFav, setSsIsFav] = useState(false);
+  const ssTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const SS_SPEEDS = [2000, 4000, 7000, 10000];
+  const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
+
+  function ssShuffledIndices(n: number): number[] {
+    const arr = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  const ssCurrent = slideshowItems.length > 0 ? slideshowItems[ssOrder[ssPos]] : null;
+
+  const ssAdvance = useCallback(() => {
+    setSsPos(prev => {
+      const next = prev + 1;
+      if (next >= ssOrder.length) {
+        if (ssShuffle) setSsOrder(ssShuffledIndices(slideshowItems.length));
+        return 0;
+      }
+      return next;
+    });
+  }, [ssOrder.length, ssShuffle, slideshowItems.length]);
+
+  useEffect(() => {
+    if (!slideshowVisible || slideshowItems.length === 0) return;
+    setSsOrder(ssShuffle ? ssShuffledIndices(slideshowItems.length) : Array.from({ length: slideshowItems.length }, (_, i) => i));
+    setSsPos(0);
+  }, [ssShuffle, slideshowItems.length, slideshowVisible]);
+
+  useEffect(() => {
+    if (ssTimer.current) clearTimeout(ssTimer.current);
+    if (slideshowVisible && ssPlaying && !ssControlsVisible && slideshowItems.length > 1) {
+      ssTimer.current = setTimeout(ssAdvance, ssSpeed);
+    }
+    return () => { if (ssTimer.current) clearTimeout(ssTimer.current); };
+  }, [slideshowVisible, ssPlaying, ssControlsVisible, ssPos, ssSpeed, ssAdvance, slideshowItems.length]);
+
+  useEffect(() => {
+    if (ssCurrent) isFavourite(ssCurrent.uri).then(setSsIsFav);
+  }, [ssCurrent?.uri]);
+
+function openSlideshow() {
+  const seen = new Set<string>();
+  const deduped = filteredItems.filter(it => {
+    if (seen.has(it.name)) return false;
+    seen.add(it.name);
+    return true;
+  }).map(i => ({ name: i.name, uri: i.uri }));
+  setSlideshowItems(deduped);
+  setSsPos(0);
+  setSsShuffle(true);
+  setSsPlaying(true);
+  setSsSpeed(4000);
+  setSsControlsVisible(false);
+  setSlideshowVisible(true);
+}
+
+async function handleSsInfo() {
+  if (!ssCurrent) return;
+  const loc = decodeURIComponent(ssCurrent.uri.replace('file:///storage/emulated/0/', '/').split('/').slice(0, -1).join('/')) || '/';
+  const lines: string[] = [`Location: ${loc}`];
+  try {
+    const info = await getMediaInfo(toPath(ssCurrent.uri));
+    if (info.width && info.height) lines.push(`Resolution: ${info.width}×${info.height}`);
+    if (info.size) lines.push(`Size: ${formatSize(info.size)}`);
+  } catch {}
+  Alert.alert(ssCurrent.name, lines.join('\n'));
+}
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -844,8 +925,7 @@ export default function CategoryScreen() {
                   onPress={() => {
                     if (filteredItems.length === 0) return;
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setSlideshowImages(filteredItems.map(i => ({ name: i.name, uri: i.uri })));
-                    router.push('/slideshow');
+                    openSlideshow();
                   }}
                   style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
                 >
@@ -1604,6 +1684,70 @@ export default function CategoryScreen() {
           </View>
         </View>
       </Modal>
+      <Modal visible={slideshowVisible} transparent={false} animationType="fade" onRequestClose={() => setSlideshowVisible(false)} statusBarTranslucent>
+  <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <StatusBar barStyle="light-content" backgroundColor="#000" />
+    {slideshowItems.length > 0 && ssOrder.length > 0 && (
+      <MediaSlideshowView
+        uris={slideshowItems.map(i => i.uri)}
+        currentIndex={ssOrder[ssPos] ?? 0}
+        onImagePress={() => setSsControlsVisible(v => { const next = !v; if (next) setSsPlaying(false); return next; })}
+        style={StyleSheet.absoluteFill}
+      />
+    )}
+    <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
+        <TouchableOpacity onPress={() => { setSlideshowVisible(false); setSsPlaying(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="close" size={26} color="#fff" />
+        </TouchableOpacity>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>{ssPos + 1} / {ssOrder.length}</Text>
+        <TouchableOpacity onPress={() => setSsShuffle(s => !s)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="shuffle" size={24} color={ssShuffle ? '#fff' : 'rgba(255,255,255,0.35)'} />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+    {ssControlsVisible && (
+      <SafeAreaView style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' }} pointerEvents="box-none">
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 }} pointerEvents="box-none">
+          <TouchableOpacity onPress={() => setSsPos(prev => { let next = prev - 1; if (next < 0) next = ssOrder.length - 1; return next; })} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-back" size={32} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSsPos(prev => { let next = prev + 1; if (next >= ssOrder.length) { if (ssShuffle) setSsOrder(ssShuffledIndices(slideshowItems.length)); return 0; } return next; })} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-forward" size={32} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', paddingTop: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+            {SS_SPEEDS.map(s => (
+              <TouchableOpacity key={s} onPress={() => setSsSpeed(s)} style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: ssSpeed === s ? '#185FA5' : 'rgba(255,255,255,0.15)' }}>
+                <Text style={{ color: ssSpeed === s ? '#fff' : '#ccc', fontSize: 13, fontWeight: '500' }}>{SS_SPEED_LABELS[s]}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
+            <TouchableOpacity onPress={() => { setSsControlsVisible(false); setSsPlaying(true); }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+              <Ionicons name="play" size={26} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Play</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={async () => { if (!ssCurrent) return; try { await shareFiles([toPath(ssCurrent.uri)], 'image/*'); } catch {} }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+              <Ionicons name="share-outline" size={26} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={async () => { if (!ssCurrent) return; if (ssIsFav) { await removeFavourite(ssCurrent.uri); setSsIsFav(false); } else { await addFavourite({ name: ssCurrent.name, uri: ssCurrent.uri }); setSsIsFav(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+              <Ionicons name={ssIsFav ? 'heart' : 'heart-outline'} size={26} color={ssIsFav ? '#E24B4A' : '#fff'} />
+              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{ssIsFav ? 'Faved' : 'Favourite'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSsInfo} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+              <Ionicons name="information-circle-outline" size={26} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Info</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ color: '#888', fontSize: 12, textAlign: 'center', paddingVertical: 4 }} numberOfLines={1}>{ssCurrent?.name}</Text>
+        </View>
+      </SafeAreaView>
+    )}
+  </View>
+</Modal>
     </SafeAreaView>
   );
 }
