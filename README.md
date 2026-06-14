@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/uqurreshi34-dev/askfiles/actions/workflows/ci.yml/badge.svg)
 
-AI-powered Android file manager with cloud backup, AI search, Smart search, secure vault, and voice navigation.
+AI-powered Android file manager - file management made easy
 
 ## Live
 [Google Play Store](https://play.google.com/store/apps/details?id=com.askfiles.mobile)
@@ -19,6 +19,9 @@ AI-powered Android file manager with cloud backup, AI search, Smart search, secu
 - Native file browser with copy, move, rename, zip, extract
 - Password-protected ZIP with AES-256 encryption
 - Document scanner powered by google ML kit
+- Wi-Fi file transfer
+- SMB File Share
+- Smart search - search inside your documents (Pro)
 - QR file transfer and file share
 - AI-powered file search (Pro)
 - Secure vault with PIN + biometric lock
