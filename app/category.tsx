@@ -22,6 +22,7 @@ import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import QRCode from 'react-native-qrcode-svg';
 import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
+import { setSlideshowImages } from '@/app/slideshow';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos, getMediaInfo } from 'media-store';
@@ -838,6 +839,19 @@ export default function CategoryScreen() {
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {category === 'images' && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (filteredItems.length === 0) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setSlideshowImages(filteredItems.map(i => ({ name: i.name, uri: i.uri })));
+                    router.push('/slideshow');
+                  }}
+                  style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                >
+                  <Ionicons name="shuffle" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="checkmark-circle-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
