@@ -437,7 +437,7 @@ export default function BrowseScreen() {
     } else {
       Alert.alert(
         item.isDirectory ? 'Hide folder' : 'Hide file',
-        `"${item.name}" will be hidden from your gallery and ${item.isDirectory ? 'folder lists, along with everything inside it' : 'file lists'}. To find it again, turn on "Show hidden files and folders" in the sort menu, then choose Unhide.`,
+        `"${item.name}" will be hidden from your gallery and ${item.isDirectory ? 'folder lists, along with everything inside it' : 'file lists'}. To find it again, turn on "Show hidden folders and files" in the sort menu, then choose Unhide.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Hide', onPress: doRename },
