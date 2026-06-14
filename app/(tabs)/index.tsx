@@ -607,7 +607,7 @@ async function indexScansInBackground(paths: string[]) {
         >
           <View style={styles.largeFilesLeft}>
             <View style={[styles.largeFilesIcon, { backgroundColor: colors.blueTint }]}>
-              <Ionicons name="wifi-outline" size={22} color={colors.blue} />
+              <Ionicons name="desktop-outline" size={22} color={colors.blue} />
             </View>
             <View>
               <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Network (SMB)</Text>
