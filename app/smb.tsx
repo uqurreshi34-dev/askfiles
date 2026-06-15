@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
 import RNFS from 'react-native-fs';
 import { listShares, listDirectory, downloadFile, uploadFile, addDownloadProgressListener } from 'smb-client';
-import * as FileSystem from 'expo-file-system';
+import { readDirectory } from 'file-reader';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
@@ -266,22 +266,16 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
-      const dir = new FileSystem.Directory(path);
-      const contents = dir.list();
-      const folders = contents
-        .filter(item => item instanceof FileSystem.Directory)
-        .map(item => {
-          const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
-          try { return { name: decodeURIComponent(raw), uri: item.uri, isDirectory: true }; }
-          catch { return { name: raw, uri: item.uri, isDirectory: true }; }
-        })
-        .filter(f => !f.name.startsWith('.'))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      const files = contents
-        .filter(item => item instanceof FileSystem.File)
-        .map(item => ({ name: item.name, uri: item.uri, isDirectory: false }))
-        .filter(f => !f.name.startsWith('.'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      const decoded = (() => { try { return decodeURIComponent(path.replace('file://', '')); } catch { return path.replace('file://', ''); } })();
+      const items = await readDirectory(decoded, false);
+      const folders = items
+        .filter((item: any) => item.isDirectory)
+        .map((item: any) => ({ name: item.name, uri: item.uri, isDirectory: true }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      const files = items
+        .filter((item: any) => !item.isDirectory)
+        .map((item: any) => ({ name: item.name, uri: item.uri, isDirectory: false }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setPickerItems([...folders, ...files]);
     } catch {}
     finally { setPickerLoading(false); }
