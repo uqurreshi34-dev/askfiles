@@ -31,6 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
 import { extractTextFromImage, extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { MediaSlideshowView } from 'media-slideshow';
+import { MediaViewerView } from 'media-viewer';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -169,6 +170,7 @@ export default function CategoryScreen() {
   const [ssControlsVisible, setSsControlsVisible] = useState(false);
   const [ssIsFav, setSsIsFav] = useState(false);
   const ssTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const SS_SPEEDS = [2000, 4000, 7000, 10000];
   const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
@@ -636,6 +638,10 @@ async function handleSsInfo() {
 
   async function openItem(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    if (isImageFile(item.name)) {
+      setViewerUri(item.uri);
+      return;
+    }
     setOpeningUri(item.uri);
     const mime = getMimeType(item.name);
     try {
@@ -653,7 +659,7 @@ async function handleSsInfo() {
           flags: 1,
           type: mime,
         });
-      } catch{} 
+      } catch {}
     } finally {
       setOpeningUri(null);
     }
@@ -1685,69 +1691,98 @@ async function handleSsInfo() {
         </View>
       </Modal>
       <Modal visible={slideshowVisible} transparent={false} animationType="fade" onRequestClose={() => setSlideshowVisible(false)} statusBarTranslucent>
-  <View style={{ flex: 1, backgroundColor: '#000' }}>
-    <StatusBar barStyle="light-content" backgroundColor="#000" />
-    {slideshowItems.length > 0 && ssOrder.length > 0 && (
-      <MediaSlideshowView
-        uris={slideshowItems.map(i => i.uri)}
-        currentIndex={ssOrder[ssPos] ?? 0}
-        onImagePress={() => setSsControlsVisible(v => { const next = !v; if (next) setSsPlaying(false); return next; })}
-        style={StyleSheet.absoluteFill}
-      />
-    )}
-    <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
-        <TouchableOpacity onPress={() => { setSlideshowVisible(false); setSsPlaying(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="close" size={26} color="#fff" />
-        </TouchableOpacity>
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>{ssPos + 1} / {ssOrder.length}</Text>
-        <TouchableOpacity onPress={() => setSsShuffle(s => !s)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="shuffle" size={24} color={ssShuffle ? '#fff' : 'rgba(255,255,255,0.35)'} />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-    {ssControlsVisible && (
-      <SafeAreaView style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' }} pointerEvents="box-none">
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 }} pointerEvents="box-none">
-          <TouchableOpacity onPress={() => setSsPos(prev => { let next = prev - 1; if (next < 0) next = ssOrder.length - 1; return next; })} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="chevron-back" size={32} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setSsPos(prev => { let next = prev + 1; if (next >= ssOrder.length) { if (ssShuffle) setSsOrder(ssShuffledIndices(slideshowItems.length)); return 0; } return next; })} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="chevron-forward" size={32} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', paddingTop: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
-            {SS_SPEEDS.map(s => (
-              <TouchableOpacity key={s} onPress={() => setSsSpeed(s)} style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: ssSpeed === s ? '#185FA5' : 'rgba(255,255,255,0.15)' }}>
-                <Text style={{ color: ssSpeed === s ? '#fff' : '#ccc', fontSize: 13, fontWeight: '500' }}>{SS_SPEED_LABELS[s]}</Text>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {slideshowItems.length > 0 && ssOrder.length > 0 && (
+            <MediaSlideshowView
+              uris={slideshowItems.map(i => i.uri)}
+              currentIndex={ssOrder[ssPos] ?? 0}
+              onImagePress={() => setSsControlsVisible(v => { const next = !v; if (next) setSsPlaying(false); return next; })}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
+              <TouchableOpacity onPress={() => { setSlideshowVisible(false); setSsPlaying(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="close" size={26} color="#fff" />
               </TouchableOpacity>
-            ))}
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
-            <TouchableOpacity onPress={() => { setSsControlsVisible(false); setSsPlaying(true); }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
-              <Ionicons name="play" size={26} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Play</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={async () => { if (!ssCurrent) return; try { await shareFiles([toPath(ssCurrent.uri)], 'image/*'); } catch {} }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
-              <Ionicons name="share-outline" size={26} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Share</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={async () => { if (!ssCurrent) return; if (ssIsFav) { await removeFavourite(ssCurrent.uri); setSsIsFav(false); } else { await addFavourite({ name: ssCurrent.name, uri: ssCurrent.uri }); setSsIsFav(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
-              <Ionicons name={ssIsFav ? 'heart' : 'heart-outline'} size={26} color={ssIsFav ? '#E24B4A' : '#fff'} />
-              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{ssIsFav ? 'Faved' : 'Favourite'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSsInfo} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
-              <Ionicons name="information-circle-outline" size={26} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Info</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={{ color: '#888', fontSize: 12, textAlign: 'center', paddingVertical: 4 }} numberOfLines={1}>{ssCurrent?.name}</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>{ssPos + 1} / {ssOrder.length}</Text>
+              <TouchableOpacity onPress={() => setSsShuffle(s => !s)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="shuffle" size={24} color={ssShuffle ? '#fff' : 'rgba(255,255,255,0.35)'} />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+          {ssControlsVisible && (
+            <SafeAreaView style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' }} pointerEvents="box-none">
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 }} pointerEvents="box-none">
+                <TouchableOpacity onPress={() => setSsPos(prev => { let next = prev - 1; if (next < 0) next = ssOrder.length - 1; return next; })} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="chevron-back" size={32} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setSsPos(prev => { let next = prev + 1; if (next >= ssOrder.length) { if (ssShuffle) setSsOrder(ssShuffledIndices(slideshowItems.length)); return 0; } return next; })} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="chevron-forward" size={32} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <View style={{ paddingHorizontal: 16, paddingBottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', paddingTop: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+                  {SS_SPEEDS.map(s => (
+                    <TouchableOpacity key={s} onPress={() => setSsSpeed(s)} style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: ssSpeed === s ? '#185FA5' : 'rgba(255,255,255,0.15)' }}>
+                      <Text style={{ color: ssSpeed === s ? '#fff' : '#ccc', fontSize: 13, fontWeight: '500' }}>{SS_SPEED_LABELS[s]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
+                  <TouchableOpacity onPress={() => { setSsControlsVisible(false); setSsPlaying(true); }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+                    <Ionicons name="play" size={26} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Play</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={async () => { if (!ssCurrent) return; try { await shareFiles([toPath(ssCurrent.uri)], 'image/*'); } catch {} }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+                    <Ionicons name="share-outline" size={26} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Share</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={async () => { if (!ssCurrent) return; if (ssIsFav) { await removeFavourite(ssCurrent.uri); setSsIsFav(false); } else { await addFavourite({ name: ssCurrent.name, uri: ssCurrent.uri }); setSsIsFav(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+                    <Ionicons name={ssIsFav ? 'heart' : 'heart-outline'} size={26} color={ssIsFav ? '#E24B4A' : '#fff'} />
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{ssIsFav ? 'Faved' : 'Favourite'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleSsInfo} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
+                    <Ionicons name="information-circle-outline" size={26} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Info</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ color: '#888', fontSize: 12, textAlign: 'center', paddingVertical: 4 }} numberOfLines={1}>{ssCurrent?.name}</Text>
+              </View>
+            </SafeAreaView>
+          )}
         </View>
-      </SafeAreaView>
-    )}
-  </View>
-</Modal>
+      </Modal>
+      <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {viewerUri && (
+            <MediaViewerView
+              uri={viewerUri}
+              onTap={() => setViewerUri(null)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
+            <TouchableOpacity onPress={() => setViewerUri(null)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="close" size={26} color="#fff" />
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                <TouchableOpacity onPress={async () => { if (!viewerUri) return; try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="share-outline" size={24} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 11 }}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={async () => { if (!viewerUri) return; try { await openFile(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="open-outline" size={24} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 11 }}>Open with</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

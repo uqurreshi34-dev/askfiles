@@ -55,6 +55,7 @@
     "media-grid": "file:modules/media-grid",
     "media-store": "file:modules/media-store",
     "media-slideshow": "file:modules/media-slideshow",
+    "media-viewer": "file:modules/media-viewer",
     "pdf-creator": "file:modules/pdf-creator",
     "react": "19.1.0",
     "react-native": "0.81.5",

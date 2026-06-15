@@ -1,0 +1,9 @@
+{
+    "name": "media-viewer",
+    "version": "0.1.0",
+    "description": "Native image viewer with pinch-to-zoom for AskFiles",
+    "main": "index.ts",
+    "peerDependencies": {
+      "expo": "*"
+    }
+  }
