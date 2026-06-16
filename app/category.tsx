@@ -176,6 +176,7 @@ export default function CategoryScreen() {
   const [playerUri, setPlayerUri] = useState<string | null>(null);
   const [playerPaused, setPlayerPaused] = useState(false);
   const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
+  const [playerSpeed, setPlayerSpeed] = useState(1.0);
 
   const SS_SPEEDS = [2000, 4000, 7000, 10000];
   const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
@@ -223,7 +224,7 @@ export default function CategoryScreen() {
   useEffect(() => {
     if (playerUri !== null) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
-      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); };
+      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerSpeed(1.0); };
     }
   }, [playerUri]);
 
@@ -1806,37 +1807,49 @@ async function handleSsInfo() {
           {playerUri && (
             <MediaPlayerView
               uri={playerUri}
+              speed={playerSpeed}
               paused={playerPaused}
-              onTap={() => {
-                setPlayerControlsVisible(v => !v);
-                setPlayerPaused(p => !p);
-              }}
+              onTap={() => setPlayerControlsVisible(v => !v)}
+              onPlayingStateChange={(e: any) => { if (e.nativeEvent.isPlaying) setPlayerControlsVisible(false); }}
               onComplete={() => setPlayerPaused(true)}
               style={StyleSheet.absoluteFill}
             />
           )}
         {playerControlsVisible && (
-          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="box-none">
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
-              <TouchableOpacity onPress={() => { setPlayerUri(null); setPlayerPaused(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="close" size={26} color="#fff" />
-              </TouchableOpacity>
-              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                <TouchableOpacity onPress={() => setPlayerPaused(p => !p)} style={{ alignItems: 'center', gap: 4 }}>
-                  <Ionicons name={playerPaused ? 'play' : 'pause'} size={24} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 11 }}>{playerPaused ? 'Play' : 'Pause'}</Text>
+          <>
+            <TouchableOpacity
+              onPress={() => setPlayerPaused(p => !p)}
+              style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -32 }, { translateY: -32 }], width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name={playerPaused ? 'play' : 'pause'} size={32} color="#fff" />
+            </TouchableOpacity>
+          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
+              {/* Left: close + speed pills stacked vertically */}
+              <View style={{ alignItems: 'center', gap: 8 }} onStartShouldSetResponder={() => true}>
+                <TouchableOpacity onPress={() => { setPlayerUri(null); setPlayerPaused(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="close" size={26} color="#fff" />
                 </TouchableOpacity>
+                {[0.5, 1.0, 1.5, 2.0].map(s => (
+                  <TouchableOpacity key={s} onPress={() => setPlayerSpeed(s)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: playerSpeed === s ? '#185FA5' : 'rgba(255,255,255,0.15)' }}>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>{s}x</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* Top: share, open with */}
+              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', paddingTop: 8 }}>
                 <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
                   <Ionicons name="share-outline" size={24} color="#fff" />
                   <Text style={{ color: '#fff', fontSize: 11 }}>Share</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={async () => { if (!playerUri) return; setPlayerPaused(true); try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }}style={{ alignItems: 'center', gap: 4 }}>
+                <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
                   <Ionicons name="open-outline" size={24} color="#fff" />
                   <Text style={{ color: '#fff', fontSize: 11 }}>Open with</Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </SafeAreaView>
+            </SafeAreaView>
+          </>
         )}
         </View>
       </Modal>

@@ -14,7 +14,10 @@ class ExpoMediaPlayerModule : Module() {
       Prop("paused") { view: ExpoMediaPlayerView, paused: Boolean ->
         view.setPaused(paused)
       }
-      Events("onTap", "onComplete", "onError")
+      Prop("speed") { view: ExpoMediaPlayerView, speed: Float ->
+        view.setSpeed(speed)
+      }
+      Events("onTap", "onComplete", "onError", "onPlayingStateChange")
     }
   }
 }

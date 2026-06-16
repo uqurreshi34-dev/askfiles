@@ -18,6 +18,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
     private val onTap by EventDispatcher()
     private val onComplete by EventDispatcher()
     private val onError by EventDispatcher()
+    private val onPlayingStateChange by EventDispatcher()
 
     private var currentUri: String? = null
     private var pendingPaused: Boolean = false
@@ -28,6 +29,17 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
 
     @Suppress("DEPRECATION")
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                mediaPlayer?.let { if (it.isPlaying) it.pause() }
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                // Don't auto-resume — let user tap to play again
+            }
+        }
+    }
 
     private inner class AspectTextureView(context: Context) : TextureView(context) {
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -89,7 +101,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
 
         @Suppress("DEPRECATION")
         audioManager.requestAudioFocus(
-            null,
+            audioFocusListener,
             AudioManager.STREAM_MUSIC,
             AudioManager.AUDIOFOCUS_GAIN
         )
@@ -110,7 +122,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
             videoWidth = player.videoWidth
             videoHeight = player.videoHeight
             textureView.requestLayout()
-            if (!pendingPaused) player.start()
+            if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true)) }
         }
         mp.setOnCompletionListener {
             releaseAudioFocus()
@@ -129,10 +141,19 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         pendingPaused = paused
         val mp = mediaPlayer ?: return
         if (paused) {
-            if (mp.isPlaying) mp.pause()
+            if (mp.isPlaying) { mp.pause(); onPlayingStateChange(mapOf("isPlaying" to false)) }
         } else {
-            if (!mp.isPlaying) mp.start()
+            if (!mp.isPlaying) { mp.start(); onPlayingStateChange(mapOf("isPlaying" to true)) }
         }
+    }
+
+    fun setSpeed(speed: Float) {
+        val mp = mediaPlayer ?: return
+        try {
+            val params = mp.playbackParams
+            params.speed = speed
+            mp.playbackParams = params
+        } catch (e: Exception) {}
     }
 
     private fun releasePlayer() {
@@ -148,7 +169,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
 
     @Suppress("DEPRECATION")
     private fun releaseAudioFocus() {
-        audioManager.abandonAudioFocus(null)
+        audioManager.abandonAudioFocus(audioFocusListener)
     }
 
     override fun onDetachedFromWindow() {
