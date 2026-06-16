@@ -177,6 +177,7 @@ export default function CategoryScreen() {
   const [playerPaused, setPlayerPaused] = useState(false);
   const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
   const [playerSpeed, setPlayerSpeed] = useState(1.0);
+  const [playerDuration, setPlayerDuration] = useState<number>(0);
 
   const SS_SPEEDS = [2000, 4000, 7000, 10000];
   const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
@@ -260,6 +261,13 @@ async function handleSsInfo() {
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
     catch { return uri.replace('file://', ''); }
+  }
+
+  function formatDuration(ms: number): string {
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   async function loadPickerDir(path: string) {
@@ -1813,8 +1821,10 @@ async function handleSsInfo() {
               onTap={() => setPlayerControlsVisible(v => !v)}
               onPlayingStateChange={(e: any) => {
                 const isPlaying = e.nativeEvent.isPlaying;
+                const duration = e.nativeEvent.duration;
                 setPlayerControlsVisible(!isPlaying);
                 setPlayerPaused(!isPlaying);
+                if (duration) setPlayerDuration(duration);
               }}
               onComplete={() => setPlayerPaused(true)}
               style={StyleSheet.absoluteFill}
@@ -1841,6 +1851,14 @@ async function handleSsInfo() {
                   </TouchableOpacity>
                 ))}
               </View>
+                {/* Duration — centred, disappears when playing */}
+                {playerDuration > 0 && (
+                <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', top: 16 }} pointerEvents="none">
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>
+                    {formatDuration(playerDuration)}
+                  </Text>
+                </View>
+              )}
               {/* Top: share, open with */}
               <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', paddingTop: 8 }}>
                 <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>

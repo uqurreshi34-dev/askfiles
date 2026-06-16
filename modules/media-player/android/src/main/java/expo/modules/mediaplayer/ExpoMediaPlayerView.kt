@@ -145,7 +145,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
             videoWidth = player.videoWidth
             videoHeight = player.videoHeight
             textureView.requestLayout()
-            if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true)) }
+            if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true, "duration" to player.duration)) }
         }
         mp.setOnCompletionListener {
             releaseAudioFocus()
@@ -164,7 +164,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         pendingPaused = paused
         val mp = mediaPlayer ?: return
         if (paused) {
-            if (mp.isPlaying) { mp.pause(); onPlayingStateChange(mapOf("isPlaying" to false)) }
+            if (mp.isPlaying) { mp.pause(); onPlayingStateChange(mapOf("isPlaying" to false, "duration" to mp.duration)) }
         } else {
             if (!mp.isPlaying) { mp.start(); onPlayingStateChange(mapOf("isPlaying" to true)) }
         }
