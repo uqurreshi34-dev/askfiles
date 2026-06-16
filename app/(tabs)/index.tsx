@@ -603,16 +603,15 @@ async function indexScansInBackground(paths: string[]) {
         <TouchableOpacity
           activeOpacity={0.8}
           style={[styles.largeFilesCard, { backgroundColor: colors.blueBg }]}
-          onPress={() => router.push('/smb' as any)}
+          onPress={() => router.push('/network' as any)}
         >
           <View style={styles.largeFilesLeft}>
             <View style={[styles.largeFilesIcon, { backgroundColor: colors.blueTint }]}>
-              <Ionicons name="desktop-outline" size={22} color={colors.blue} />
+              <Ionicons name="globe-outline" size={22} color={colors.blue} />
             </View>
             <View>
-              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Network (SMB)</Text>
-              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Browse your PC or network drive over WiFi</Text>
-              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Enable file sharing on your PC first</Text>
+              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Network</Text>
+              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>SMB, SFTP — connect to PC, NAS or server</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />

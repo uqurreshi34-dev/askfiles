@@ -1,0 +1,9 @@
+{
+    "name": "sftp-client",
+    "version": "0.1.0",
+    "description": "SFTP client native module for AskFiles",
+    "main": "index.ts",
+    "android": {
+      "gradlePath": "android/build.gradle"
+    }
+  }

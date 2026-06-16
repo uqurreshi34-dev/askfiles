@@ -1,0 +1,27 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.sftpclient'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.sftpclient"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+  packaging {
+    resources {
+      excludes += ['META-INF/versions/9/OSGI-INF/MANIFEST.MF']
+    }
+  }
+}
+
+dependencies {
+  implementation 'com.github.mwiede:jsch:2.28.3'
+}
