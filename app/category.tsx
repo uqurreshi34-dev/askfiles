@@ -32,6 +32,8 @@ import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs
 import { extractTextFromImage, extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { MediaSlideshowView } from 'media-slideshow';
 import { MediaViewerView } from 'media-viewer';
+import { MediaPlayerView } from 'media-player';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -171,6 +173,9 @@ export default function CategoryScreen() {
   const [ssIsFav, setSsIsFav] = useState(false);
   const ssTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [playerUri, setPlayerUri] = useState<string | null>(null);
+  const [playerPaused, setPlayerPaused] = useState(false);
+  const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
 
   const SS_SPEEDS = [2000, 4000, 7000, 10000];
   const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
@@ -214,6 +219,13 @@ export default function CategoryScreen() {
   useEffect(() => {
     if (ssCurrent) isFavourite(ssCurrent.uri).then(setSsIsFav);
   }, [ssCurrent?.uri]);
+
+  useEffect(() => {
+    if (playerUri !== null) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); };
+    }
+  }, [playerUri]);
 
 function openSlideshow() {
   const seen = new Set<string>();
@@ -640,6 +652,11 @@ async function handleSsInfo() {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     if (isImageFile(item.name)) {
       setViewerUri(item.uri);
+      return;
+    }
+    if (isVideoFile(item.name)) {
+      setPlayerPaused(false);
+      setPlayerUri(item.uri);
       return;
     }
     setOpeningUri(item.uri);
@@ -1781,6 +1798,46 @@ async function handleSsInfo() {
               </View>
             </View>
           </SafeAreaView>
+        </View>
+      </Modal>
+      <Modal visible={playerUri !== null} transparent={false} animationType="fade" onRequestClose={() => { setPlayerUri(null); setPlayerPaused(false); }} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {playerUri && (
+            <MediaPlayerView
+              uri={playerUri}
+              paused={playerPaused}
+              onTap={() => {
+                setPlayerControlsVisible(v => !v);
+                setPlayerPaused(p => !p);
+              }}
+              onComplete={() => setPlayerPaused(true)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+        {playerControlsVisible && (
+          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="box-none">
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
+              <TouchableOpacity onPress={() => { setPlayerUri(null); setPlayerPaused(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="close" size={26} color="#fff" />
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => setPlayerPaused(p => !p)} style={{ alignItems: 'center', gap: 4 }}>
+                  <Ionicons name={playerPaused ? 'play' : 'pause'} size={24} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 11 }}>{playerPaused ? 'Play' : 'Pause'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="share-outline" size={24} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 11 }}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={async () => { if (!playerUri) return; setPlayerPaused(true); try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }}style={{ alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="open-outline" size={24} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 11 }}>Open with</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        )}
         </View>
       </Modal>
     </SafeAreaView>

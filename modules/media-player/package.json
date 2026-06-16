@@ -1,0 +1,9 @@
+{
+    "name": "media-player",
+    "version": "0.1.0",
+    "description": "Native video player for AskFiles",
+    "main": "index.ts",
+    "peerDependencies": {
+      "expo": "*"
+    }
+  }
