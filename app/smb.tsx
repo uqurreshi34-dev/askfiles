@@ -387,7 +387,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const headerTitle = stage === 'connect' ? 'Network' : stage === 'shares' ? 'Shares' : breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse';
+  const headerTitle = stage === 'connect' ? 'SMB' : stage === 'shares' ? 'Shares' : breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse';
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>

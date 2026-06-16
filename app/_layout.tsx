@@ -42,7 +42,7 @@ const COMMANDS = [
   { keywords: ['browse', 'folders', 'explore', 'memory card'], route: '/(tabs)/browse' },
   { keywords: ['home', 'start', 'main page', 'main screen'], route: '/(tabs)/' },
   { keywords: ['trash', 'bin', 'recycle bin', 'rubbish', 'delete', 'deleted', 'deletion'], route: '/trash' },
-  { keywords: ['network', 'computer', 'laptop', 'access computer files'], route: '/smb'},
+  { keywords: ['network', 'computer', 'laptop', 'access computer files'], route: '/network'},
 ];
 
 function parseCommand(transcript: string): string | null {
@@ -105,7 +105,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     QuickActions.setItems([
-      { id: 'smb', title: 'Network (SMB)', icon: 'shortcut_network', params: { href: '/smb' } },
+      { id: 'smb', title: 'SMB — Windows / NAS', icon: 'shortcut_network', params: { href: '/smb' } },
+      { id: 'sftp', title: 'SFTP — Server / NAS', icon: 'shortcut_sftp', params: { href: '/sftp' } },
     ]);
   }, []);
 
