@@ -227,6 +227,7 @@ export default function CategoryScreen() {
       return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerSpeed(1.0); };
     }
   }, [playerUri]);
+  
 
 function openSlideshow() {
   const seen = new Set<string>();
@@ -1810,7 +1811,11 @@ async function handleSsInfo() {
               speed={playerSpeed}
               paused={playerPaused}
               onTap={() => setPlayerControlsVisible(v => !v)}
-              onPlayingStateChange={(e: any) => { if (e.nativeEvent.isPlaying) setPlayerControlsVisible(false); }}
+              onPlayingStateChange={(e: any) => {
+                const isPlaying = e.nativeEvent.isPlaying;
+                setPlayerControlsVisible(!isPlaying);
+                setPlayerPaused(!isPlaying);
+              }}
               onComplete={() => setPlayerPaused(true)}
               style={StyleSheet.absoluteFill}
             />
@@ -1842,7 +1847,7 @@ async function handleSsInfo() {
                   <Ionicons name="share-outline" size={24} color="#fff" />
                   <Text style={{ color: '#fff', fontSize: 11 }}>Share</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
+                <TouchableOpacity onPress={async () => { if (!playerUri) return; setPlayerPaused(true); try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }}style={{ alignItems: 'center', gap: 4 }}>
                   <Ionicons name="open-outline" size={24} color="#fff" />
                   <Text style={{ color: '#fff', fontSize: 11 }}>Open with</Text>
                 </TouchableOpacity>

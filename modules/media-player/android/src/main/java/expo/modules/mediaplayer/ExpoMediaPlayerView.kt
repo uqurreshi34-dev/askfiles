@@ -41,6 +41,29 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         }
     }
 
+    private val lifecycleCallbacks = object : android.app.Application.ActivityLifecycleCallbacks {
+        override fun onActivityPaused(activity: android.app.Activity) {
+            mediaPlayer?.let { 
+                if (it.isPlaying) { 
+                    it.pause()
+                    onPlayingStateChange(mapOf("isPlaying" to false))
+                } 
+            }
+        }
+        override fun onActivityResumed(activity: android.app.Activity) {}
+        override fun onActivityCreated(activity: android.app.Activity, bundle: android.os.Bundle?) {}
+        override fun onActivityStarted(activity: android.app.Activity) {}
+        override fun onActivityStopped(activity: android.app.Activity) {}
+        override fun onActivitySaveInstanceState(activity: android.app.Activity, bundle: android.os.Bundle) {}
+        override fun onActivityDestroyed(activity: android.app.Activity) {}
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        appContext.activityProvider?.currentActivity?.application
+            ?.registerActivityLifecycleCallbacks(lifecycleCallbacks)
+    }
+
     private inner class AspectTextureView(context: Context) : TextureView(context) {
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             if (videoWidth > 0 && videoHeight > 0) {
@@ -174,6 +197,8 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        appContext.activityProvider?.currentActivity?.application
+            ?.unregisterActivityLifecycleCallbacks(lifecycleCallbacks)
         releasePlayer()
         releaseAudioFocus()
         currentUri = null
