@@ -160,67 +160,6 @@ async function indexScansInBackground(paths: string[]) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.settingsBtn}
-              onPress={async () => {
-                if (scanning) return;
-                try {
-                  const uris = await scanDocument();
-                  if (uris.length === 0) return;
-                  const scansFolder = '/storage/emulated/0/Documents/Scans';
-
-                  Alert.alert(
-                    'Save scan as',
-                    `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`,
-                    [
-                      {
-                        text: 'Images (JPG)',
-                        onPress: async () => {
-                          setScanning(true);
-                          try {
-                            const saved = await saveScanPages(uris, scansFolder);
-                            Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            indexScansInBackground(saved);
-                            const show = await shouldShowRatePrompt();
-                            if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
-                          } finally {
-                            setScanning(false);
-                          }
-                        }
-                      },
-                      {
-                        text: 'PDF',
-                        onPress: async () => {
-                          setScanning(true);
-                          try {
-                            const path = await saveScanAsPdf(uris, scansFolder);
-                            Alert.alert('Saved', 'PDF saved to Documents/Scans');
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            indexScansInBackground([path]);
-                            const show = await shouldShowRatePrompt();
-                            if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
-                          } finally {
-                            setScanning(false);
-                          }
-                        }
-                      },
-                      { text: 'Cancel', style: 'cancel' }
-                    ]
-                  );
-                } catch (e: any) {
-                  if (e?.message?.includes('SCAN_CANCELLED')) return;
-                  Alert.alert('Scan failed', e?.message ?? 'Could not complete scan');
-                }
-              }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              {scanning
-                ? <ActivityIndicator size="small" color={colors.textSecondary} />
-                : <Ionicons name="camera-outline" size={22} color={colors.textSecondary} />
-              }
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.settingsBtn}
               onPress={() => setSettingsVisible(true)}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -484,138 +423,120 @@ async function indexScansInBackground(paths: string[]) {
           ))}
           </View>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Tools</Text>
-          <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
-            <TouchableOpacity 
+          <View style={styles.quickGrid}>
+          <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
+              onPress={() => router.push('/network' as any)}
+            >
+              <View style={[styles.quickCircle, { backgroundColor: colors.blueBg }]}>
+                <Ionicons name="globe-outline" size={26} color={colors.blue} />
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Network</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
               disabled={!hasMediaAccess}
-              activeOpacity={0.8} 
-              style={[styles.largeFilesCard, { backgroundColor: colors.redBrownBg }]} 
               onPress={() => router.push('/large-files')}
-          >
+            >
+              <View style={[styles.quickCircle, { backgroundColor: colors.redBrownBg, opacity: hasMediaAccess ? 1 : 0.4 }]}>
+                <Ionicons name="folder-open-outline" size={26} color={colors.redBrown} />
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Large Files</Text>
+            </TouchableOpacity>
 
-          <View style={styles.largeFilesLeft}>
-            <View style={[styles.largeFilesIcon, { backgroundColor: colors.redBrownTint }]}>
-              <Ionicons name="folder-open-outline" size={22} color={colors.redBrown} />
-            </View>
-            <View>
-              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Large Files</Text>
-              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Find files taking up the most space</Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
+              disabled={!hasMediaAccess}
+              onPress={() => router.push('/storage-breakdown')}
+            >
+              <View style={[styles.quickCircle, { backgroundColor: colors.purpleBg, opacity: hasMediaAccess ? 1 : 0.4 }]}>
+                <Ionicons name="stats-chart-outline" size={26} color={colors.purple} />
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Storage</Text>
+            </TouchableOpacity>
 
-        <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
-          <TouchableOpacity 
-            disabled={!hasMediaAccess}
-            activeOpacity={0.8} 
-            style={[styles.largeFilesCard, { backgroundColor: colors.amberTint }]} 
-            onPress={() => router.push('/sensitive-files')}
-          >
-          <View style={styles.largeFilesLeft}>
-            <View style={[styles.largeFilesIcon, { backgroundColor: colors.amberTint }]}>
-              <Ionicons name="shield-outline" size={22} color={colors.amber} />
-            </View>
-            <View>
-              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Sensitive Files</Text>
-              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Find and protect sensitive documents</Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={styles.quickCell}
+              onPress={async () => {
+                if (scanning) return;
+                try {
+                  const uris = await scanDocument();
+                  if (uris.length === 0) return;
+                  const scansFolder = '/storage/emulated/0/Documents/Scans';
 
-      <View style={{ opacity: hasMediaAccess ? 1 : 0.4 }}>
-          <TouchableOpacity 
-            disabled={!hasMediaAccess}
-            activeOpacity={0.8} 
-            style={[styles.breakdownCard, { backgroundColor: colors.purpleBg }]} 
-            onPress={() => router.push('/storage-breakdown')}
-          >
-          <View style={styles.largeFilesLeft}>
-            <View style={[styles.breakdownIcon, { backgroundColor: colors.purpleTint }]}>
-              <Ionicons name="pie-chart-outline" size={22} color={colors.purple} />
-            </View>
-            <View style={{ flex: 1 }}>
-                <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Storage Breakdown</Text>
-                <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>See what's using your space</Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.largeFilesCard, {
-            backgroundColor: wifiActive ? colors.greenBg : colors.surface,
-            borderWidth: wifiActive ? 0 : 0.5,
-            borderColor: colors.border,
-          }]}
-          onPress={async () => {
-            if (wifiActive) {
-              setWifiQrVisible(true);
-            } else {
-              try {
-                const url = await startWifiServer('/storage/emulated/0/');
-                setWifiUrl(url);
-                setWifiActive(true);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              } catch (e: any) {
-                Alert.alert('Error', e?.message ?? 'Failed to start server');
-              }
-            }
-          }}
-        >
-          <View style={styles.largeFilesLeft}>
-            <View style={[styles.largeFilesIcon, {
-              backgroundColor: wifiActive ? colors.greenBg : colors.surface,
-            }]}>
-              <Ionicons
-                name={wifiActive ? 'wifi' : 'wifi-outline'}
-                size={22}
-                color={wifiActive ? colors.green : colors.textMuted}
-              />
-            </View>
-            <View>
-              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
-              {wifiActive
-                ? <>
-                    <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Type this in your browser to connect:</Text>
-                    <Text style={[styles.largeFilesSub, { color: colors.green, fontWeight: '600' }]}>{wifiUrl}</Text>
-                    <Text style={[styles.largeFilesSub, { color: colors.green, opacity: 0.7 }]}>or tap to show QR code</Text>
-                    <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Stop & restart if browser can't connect</Text>
-                  </>
-                : <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>Browse & transfer files from your PC browser</Text>
-              }
-            </View>
-          </View>
-          {wifiActive
-          ? <TouchableOpacity
-              onPress={async () => { await stopWifiServer(); setWifiActive(false); setWifiUrl(''); setWifiQrVisible(false); }}
-              style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
+                  Alert.alert(
+                    'Save scan as',
+                    `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`,
+                    [
+                      {
+                        text: 'Images (JPG)',
+                        onPress: async () => {
+                          setScanning(true);
+                          try {
+                            const saved = await saveScanPages(uris, scansFolder);
+                            Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            indexScansInBackground(saved);
+                            const show = await shouldShowRatePrompt();
+                            if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
+                          } finally {
+                            setScanning(false);
+                          }
+                        }
+                      },
+                      {
+                        text: 'PDF',
+                        onPress: async () => {
+                          setScanning(true);
+                          try {
+                            const path = await saveScanAsPdf(uris, scansFolder);
+                            Alert.alert('Saved', 'PDF saved to Documents/Scans');
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            indexScansInBackground([path]);
+                            const show = await shouldShowRatePrompt();
+                            if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
+                          } finally {
+                            setScanning(false);
+                          }
+                        }
+                      },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
+                  );
+                } catch (e: any) {
+                  if (e?.message?.includes('SCAN_CANCELLED')) return;
+                  Alert.alert('Scan failed', e?.message ?? 'Could not complete scan');
+                }
+              }}
+              activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
+             <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>
+                {scanning
+                  ? <ActivityIndicator size="small" color={colors.green} />
+                  : <Ionicons name="camera-outline" size={26} color={colors.green} />
+                }
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Document Scanner</Text>
             </TouchableOpacity>
-            : <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-          }
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.largeFilesCard, { backgroundColor: colors.blueBg }]}
-          onPress={() => router.push('/network' as any)}
-        >
-          <View style={styles.largeFilesLeft}>
-            <View style={[styles.largeFilesIcon, { backgroundColor: colors.blueTint }]}>
-              <Ionicons name="globe-outline" size={22} color={colors.blue} />
-            </View>
-            <View>
-              <Text style={[styles.largeFilesTitle, { color: colors.textPrimary }]}>Network</Text>
-              <Text style={[styles.largeFilesSub, { color: colors.textSecondary }]}>SMB, SFTP — connect to PC, NAS or server</Text>
-            </View>
+
+            <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
+              disabled={!hasMediaAccess}
+              onPress={() => router.push('/sensitive-files')}
+            >
+              <View style={[styles.quickCircle, { backgroundColor: colors.amberTint, opacity: hasMediaAccess ? 1 : 0.4 }]}>
+                <Ionicons name="shield-outline" size={26} color={colors.amber} />
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Sensitive Files</Text>
+            </TouchableOpacity>
+
           </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
           {recents.length > 0 && (

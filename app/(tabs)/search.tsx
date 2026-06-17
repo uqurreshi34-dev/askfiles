@@ -24,7 +24,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { setAiSearchListening } from '@/app/_layout';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative } from '@/modules/share-module';
@@ -181,15 +180,13 @@ export default function SearchScreen() {
     const text = e.results?.[0]?.transcript ?? '';
     if (text) setAiQuery(text);
   });
-  useSpeechRecognitionEvent('end', () => { setListening(false); setAiSearchListening(false); });
-  useSpeechRecognitionEvent('error', () => setListening(false));
-  useSpeechRecognitionEvent('end', () => { setListening(false); setAiSearchListening(false); });
+
+  useSpeechRecognitionEvent('end', () => { setListening(false); });
   useSpeechRecognitionEvent('error', () => setListening(false));
   
   async function toggleListening() {
     if (listening) {
       ExpoSpeechRecognitionModule.stop();
-      setAiSearchListening(false);
       return;
     }
     const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -200,7 +197,6 @@ export default function SearchScreen() {
     }
     setAiQuery('');
     setListening(true);
-    setAiSearchListening(true);
     ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: true });
   }
 
