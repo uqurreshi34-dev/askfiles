@@ -502,29 +502,6 @@ export default function SearchScreen() {
     }
   }
 
-  async function scanDir(base: string, extensions: string[], results: { uri: string; name: string }[], remaining: { count: number }) {
-    if (remaining.count <= 0) return;
-    try {
-      const dir = new FileSystem.Directory(base);
-      const contents = dir.list();
-      for (const item of contents) {
-        if (remaining.count <= 0) return;
-        if (item instanceof FileSystem.File) {
-          const lower = item.name.toLowerCase();
-          if (!extensions.some(ext => lower.endsWith(ext))) continue;
-          if (remaining.count <= 0) break;
-          const alreadyIndexed = await DocIndexer.isIndexed(item.uri);
-          if (!alreadyIndexed && remaining.count > 0) {
-            results.push({ uri: item.uri, name: item.name });
-            remaining.count--;
-          }
-        }else if (item instanceof FileSystem.Directory && remaining.count > 0) {
-          await scanDir(item.uri, extensions, results, remaining);
-        }
-      }
-    } catch {}
-  }
-  
   async function handleIndexNow() {
     if (indexing) return;
     setIndexing(true);
