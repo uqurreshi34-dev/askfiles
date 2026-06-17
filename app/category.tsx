@@ -1791,19 +1791,15 @@ async function handleSsInfo() {
               style={StyleSheet.absoluteFill}
             />
           )}
-          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
-            <TouchableOpacity onPress={() => setViewerUri(null)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="close" size={26} color="#fff" />
-              </TouchableOpacity>
-              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                <TouchableOpacity onPress={async () => { if (!viewerUri) return; try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="share-outline" size={24} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 11 }}>Share</Text>
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                <TouchableOpacity onPress={async () => { if (!viewerUri) return; try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="share-outline" size={22} color="#222" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={async () => { if (!viewerUri) return; try { await openFile(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="open-outline" size={24} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 11 }}>Open with</Text>
+                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                <TouchableOpacity onPress={async () => { if (!viewerUri) return; try { await openFile(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1838,40 +1834,40 @@ async function handleSsInfo() {
             >
               <Ionicons name={playerPaused ? 'play' : 'pause'} size={32} color="#fff" />
             </TouchableOpacity>
-          <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
-              {/* Left: close + speed pills stacked vertically */}
+              {/* Left: speed pills stacked vertically */}
               <View style={{ alignItems: 'center', gap: 8 }} onStartShouldSetResponder={() => true}>
-                <TouchableOpacity onPress={() => { setPlayerUri(null); setPlayerPaused(false); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="close" size={26} color="#fff" />
-                </TouchableOpacity>
                 {[0.5, 1.0, 1.5, 2.0].map(s => (
                   <TouchableOpacity key={s} onPress={() => setPlayerSpeed(s)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: playerSpeed === s ? '#185FA5' : 'rgba(255,255,255,0.15)' }}>
                     <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>{s}x</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-                {/* Duration — centred, disappears when playing */}
-                {playerDuration > 0 && (
+              {/* Duration — centred */}
+              {playerDuration > 0 && (
                 <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', top: 16 }} pointerEvents="none">
                   <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>
                     {formatDuration(playerDuration)}
                   </Text>
                 </View>
               )}
-              {/* Top: share, open with */}
-              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', paddingTop: 8 }}>
-                <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {} }} style={{ alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="share-outline" size={24} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 11 }}>Share</Text>
+            </View>
+          </SafeAreaView>
+          {/* Bottom pill — share + open with */}
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="share-outline" size={22} color="#222" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={async () => { if (!playerUri) return; setPlayerPaused(true); try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }}style={{ alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="open-outline" size={24} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 11 }}>Open with</Text>
+                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                <TouchableOpacity onPress={async () => { if (!playerUri) return; setPlayerPaused(true); try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
                 </TouchableOpacity>
               </View>
             </View>
-            </SafeAreaView>
+          </SafeAreaView>
           </>
         )}
         </View>
