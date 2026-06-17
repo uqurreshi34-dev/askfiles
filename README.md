@@ -19,10 +19,10 @@ AI-powered Android file manager - file management made easy
 - Native file browser with copy, move, rename, zip, extract
 - Password-protected ZIP with AES-256 encryption
 - Document scanner powered by google ML kit
+- SMB and SFTP file management
 - Wi-Fi file transfer
-- SMB File Share
-- Smart search - search inside your documents (Pro)
 - QR file transfer and file share
+- Smart search - search inside your documents (Pro)
 - AI-powered file search (Pro)
 - Secure vault with PIN + biometric lock
 - Google Drive, OneDrive & Dropbox backup
