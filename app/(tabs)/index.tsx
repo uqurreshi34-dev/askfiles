@@ -53,6 +53,7 @@ export default function HomeScreen() {
   const { count: favCount } = useFavourites();
   const [, setTick] = useState(0);
   const [scanning, setScanning] = useState(false);
+  const [activeSection, setActiveSection] = useState<'categories' | 'tools'>('categories');
   const [ratePromptVisible, setRatePromptVisible] = useState(false);
   useEffect(() => {
     async function checkOnboarding() {
@@ -406,7 +407,23 @@ async function indexScansInBackground(paths: string[]) {
           <Text style={[styles.searchText, { color: colors.textMuted }]}>Search files...</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Quick access</Text>
+        {/* Section tabs */}
+        <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, borderRadius: 10, backgroundColor: colors.surface, padding: 3 }}>
+          <TouchableOpacity
+            style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: activeSection === 'categories' ? colors.card : 'transparent' }}
+            onPress={() => setActiveSection('categories')}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '500', color: activeSection === 'categories' ? colors.blue : colors.textMuted }}>Quick Access</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: activeSection === 'tools' ? colors.card : 'transparent' }}
+            onPress={() => setActiveSection('tools')}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '500', color: activeSection === 'tools' ? colors.blue : colors.textMuted }}>Tools</Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeSection === 'categories' ? (
         <View style={styles.quickGrid}>
           {QUICK_ACCESS.map(item => (
             <TouchableOpacity
@@ -422,8 +439,8 @@ async function indexScansInBackground(paths: string[]) {
             </TouchableOpacity>
           ))}
           </View>
-          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Tools</Text>
-          <View style={styles.quickGrid}>
+        ) : (
+        <View style={styles.quickGrid}>
           <TouchableOpacity
               style={styles.quickCell}
               activeOpacity={0.7}
@@ -536,7 +553,8 @@ async function indexScansInBackground(paths: string[]) {
               <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Sensitive Files</Text>
             </TouchableOpacity>
 
-          </View>
+            </View>
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
           {recents.length > 0 && (
