@@ -107,12 +107,12 @@ export default function NetworkScreen() {
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
             {wifiActive ? (
               <>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Type this in your PC browser:</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Type this in any browser:</Text>
                 <Text style={[styles.cardSub, { color: colors.green, fontWeight: '600' }]}>{wifiUrl}</Text>
                 <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>or tap to show QR code</Text>
               </>
             ) : (
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Browse & transfer files from your PC browser</Text>
+              <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Browse & transfer files from any device on the same WiFi</Text>
             )}
           </View>
         </View>
