@@ -47,9 +47,6 @@ export default function HomeScreen() {
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
   const [appLockEnabled, setAppLockEnabled] = useState(false);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
-  const [wifiActive, setWifiActive] = useState(false);
-  const [wifiUrl, setWifiUrl] = useState('');
-  const [wifiQrVisible, setWifiQrVisible] = useState(false);
   const { count: favCount } = useFavourites();
   const [, setTick] = useState(0);
   const [scanning, setScanning] = useState(false);
@@ -274,43 +271,6 @@ async function indexScansInBackground(paths: string[]) {
           </TouchableOpacity>
         </Modal>
 
-        {/* WiFi Transfer QR Modal */}
-        <Modal
-          visible={wifiQrVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setWifiQrVisible(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setWifiQrVisible(false)}
-          >
-            <View style={[styles.modalCard, { 
-              backgroundColor: colors.modalCard, 
-              width: modalWidth, 
-              alignItems: 'center', 
-              paddingBottom: 16,
-              overflow: 'hidden'
-            }]} onStartShouldSetResponder={() => true}>
-              <TouchableOpacity
-                onPress={() => setWifiQrVisible(false)}
-                style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 4 }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="close" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
-              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Scan with your PC camera</Text>
-              <View style={[styles.modalDivider, { backgroundColor: colors.divider, width: '100%' }]} />
-              <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
-                <QRCode value={wifiUrl || 'http://localhost:8080'} size={180} />
-              </View>
-              <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 4 }}>Or type in your PC browser:</Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center', marginBottom: 12 }}>{wifiUrl}</Text>
-            </View>
-          </TouchableOpacity>
-        </Modal>
         {/* Rate Prompt Modal */}
         <Modal
           visible={ratePromptVisible}
@@ -551,6 +511,17 @@ async function indexScansInBackground(paths: string[]) {
                 <Ionicons name="shield-outline" size={26} color={colors.amber} />
               </View>
               <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Sensitive Files</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
+              onPress={() => router.push('/file-converter' as any)}
+            >
+              <View style={[styles.quickCircle, { backgroundColor: colors.favRedBg }]}>
+                <Ionicons name="swap-horizontal-outline" size={26} color={colors.favRed} />
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Image Converter</Text>
             </TouchableOpacity>
 
             </View>

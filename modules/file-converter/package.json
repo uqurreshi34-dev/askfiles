@@ -1,0 +1,9 @@
+{
+    "name": "file-converter",
+    "version": "0.1.0",
+    "description": "Native image format conversion module for AskFiles",
+    "main": "index.ts",
+    "android": {
+      "gradlePath": "android/build.gradle"
+    }
+  }
