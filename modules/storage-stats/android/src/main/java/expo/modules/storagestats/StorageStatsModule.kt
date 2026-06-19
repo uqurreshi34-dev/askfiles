@@ -18,6 +18,21 @@ class StorageStatsModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("StorageStats")
 
+         View(StorageStatsView::class) {
+            Prop("usedBytes") { view: StorageStatsView, value: Double ->
+                view.usedBytes = value
+            }
+            Prop("totalBytes") { view: StorageStatsView, value: Double ->
+                view.totalBytes = value
+            }
+            Prop("trackColor") { view: StorageStatsView, color: String ->
+                view.trackColor = color
+            }
+            Prop("strokeWidth") { view: StorageStatsView, width: Float ->
+                view.strokeWidth = width
+            }
+        }
+
         AsyncFunction("getStorageStats") {
             val context = appContext.reactContext ?: return@AsyncFunction mapOf("error" to "No context")
 

@@ -17,3 +17,11 @@ export type StorageStatsViewProps = {
   onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
   style?: StyleProp<ViewStyle>;
 };
+
+export type DonutViewProps = {
+  usedBytes: number;
+  totalBytes: number;
+  trackColor?: string;
+  strokeWidth?: number;
+  style?: StyleProp<ViewStyle>;
+};

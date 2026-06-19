@@ -1,11 +1,10 @@
 import { requireNativeView } from 'expo';
 import * as React from 'react';
+import { DonutViewProps } from './StorageStats.types';
 
-import { StorageStatsViewProps } from './StorageStats.types';
-
-const NativeView: React.ComponentType<StorageStatsViewProps> =
+const NativeDonutView: React.ComponentType<DonutViewProps> =
   requireNativeView('StorageStats');
 
-export default function StorageStatsView(props: StorageStatsViewProps) {
-  return <NativeView {...props} />;
+export function DonutView(props: DonutViewProps) {
+  return <NativeDonutView {...props} />;
 }
