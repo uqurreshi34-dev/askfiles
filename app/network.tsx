@@ -157,7 +157,7 @@ export default function NetworkScreen() {
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
               <QRCode value={wifiUrl || 'http://localhost:8080'} size={180} />
             </View>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>Or type in your PC browser:</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>Or type in your browser:</Text>
             <Text style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center' }}>{wifiUrl}</Text>
           </View>
         </TouchableOpacity>
