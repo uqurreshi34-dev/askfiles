@@ -39,7 +39,7 @@ export default function StorageBreakdownScreen() {
     { label: 'Downloads', size: folderSizes.downloads,bytes: parseSize(folderSizes.downloads),color: '#3B6D11', icon: 'download-outline',    route: '/category?category=downloads' },
     { label: 'Documents', size: folderSizes.documents,bytes: parseSize(folderSizes.documents),color: '#534AB7', icon: 'document-outline',    route: '/category?category=documents' },
     { label: 'Music',     size: folderSizes.music,    bytes: parseSize(folderSizes.music),    color: '#F5B731', icon: 'musical-notes-outline', route: '/browse?initialPath=file:///storage/emulated/0/Music/' },
-    { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: '/browse' },
+    { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: null},
   ].sort((a, b) => b.bytes - a.bytes);
 
   const totalBytes = storageInfo?.totalBytes ?? 1;
