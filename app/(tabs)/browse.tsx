@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { PanResponder } from 'react-native';
+import { BackHandler, PanResponder } from 'react-native';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList,
@@ -30,7 +30,6 @@ import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { setAiSearchListening } from '@/app/_layout';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -171,6 +170,17 @@ export default function BrowseScreen() {
   useEffect(() => {
     AsyncStorage.getItem('askfiles_show_hidden').then(v => { if (v === 'true') setShowHidden(true); });
   }, []);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (breadcrumbs.length > 1) {
+        navigateToBreadcrumb(breadcrumbs.length - 2);
+        return true; // handled — go up one level
+      }
+      return false; // at root — let system handle, exits browse
+    });
+    return () => sub.remove();
+  }, [breadcrumbs]);
 
   function toggleHidden() {
     const next = !showHidden;
@@ -799,18 +809,17 @@ export default function BrowseScreen() {
   });
   
   useSpeechRecognitionEvent('end', () => {
-    if (editorListening) { setEditorListening(false); setAiSearchListening(false); }
+    if (editorListening) { setEditorListening(false); }
   });
   
   useSpeechRecognitionEvent('error', () => {
-    if (editorListening) { setEditorListening(false); setAiSearchListening(false); }
+    if (editorListening) { setEditorListening(false); }
   });
   
   async function toggleEditorListening() {
     if (editorListening) {
       ExpoSpeechRecognitionModule.stop();
       setEditorListening(false);
-      setAiSearchListening(false);
       return;
     }
     const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -820,7 +829,6 @@ export default function BrowseScreen() {
       return;
     }
     setEditorListening(true);
-    setAiSearchListening(true);
     ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: false });
   }
 
