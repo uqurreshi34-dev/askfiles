@@ -29,6 +29,7 @@ export interface FolderSizes {
   downloads: string;
   documents: string;
   dcim: string;
+  music: string;
   other: string;
 }
 
@@ -64,6 +65,7 @@ const cache: StorageCache = {
     downloads: '0 MB',
     documents: '0 MB',
     dcim: '0 MB',
+    music: '0 MB',
     other: '0 MB',
   },
   mediaContext: { recentImages: [], recentVideos: [], screenshotCount: 0, allDocuments: [], allDownloads: [] },
@@ -128,18 +130,19 @@ async function requestManageStoragePermission(): Promise<void> {
 }
 
 async function loadFolderSizes(): Promise<void> {
-  const [downloadsSize, docItems, dcimSize, totalImagesSize, totalVideosSize] =
+  const [downloadsSize, docItems, dcimSize, totalImagesSize, totalVideosSize, musicSize] =
   await Promise.all([
     queryFolderSize('/storage/emulated/0/Download/'),
     queryDocuments(),
     queryFolderSize('/storage/emulated/0/DCIM/'),
     queryImageSize(),
     queryVideoSize(),
+    queryFolderSize('/storage/emulated/0/Music/'),
   ]);
 
   const documentsSize = docItems.reduce((sum, f) => sum + (f.size ?? 0), 0);
 
-  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize;
+  const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize + musicSize;
   const usedBytes = cache.storageInfo?.usedBytes ?? 0;
 
   cache.folderSizes = {
@@ -148,6 +151,7 @@ async function loadFolderSizes(): Promise<void> {
     downloads: formatSize(downloadsSize),
     documents: formatSize(documentsSize),
     dcim: formatSize(dcimSize),
+    music: formatSize(musicSize),
     other: formatSize(Math.max(0, usedBytes - knownBytes)),
   };
 }

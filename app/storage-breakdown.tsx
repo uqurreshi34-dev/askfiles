@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 import { useTheme } from '@/hooks/useTheme';
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { getStorageVolumes, getVolumeStats } from '@/modules/storage-stats';
 import { formatSize } from '@/utils/files';
 
@@ -38,7 +38,8 @@ export default function StorageBreakdownScreen() {
     { label: 'Videos',    size: folderSizes.videos,   bytes: parseSize(folderSizes.videos),   color: '#993C1D', icon: 'videocam-outline',    route: '/category?category=videos' },
     { label: 'Downloads', size: folderSizes.downloads,bytes: parseSize(folderSizes.downloads),color: '#3B6D11', icon: 'download-outline',    route: '/category?category=downloads' },
     { label: 'Documents', size: folderSizes.documents,bytes: parseSize(folderSizes.documents),color: '#534AB7', icon: 'document-outline',    route: '/category?category=documents' },
-    { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: null },
+    { label: 'Music',     size: folderSizes.music,    bytes: parseSize(folderSizes.music),    color: '#F5B731', icon: 'musical-notes-outline', route: '/browse?initialPath=file:///storage/emulated/0/Music/' },
+    { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: '/browse' },
   ].sort((a, b) => b.bytes - a.bytes);
 
   const totalBytes = storageInfo?.totalBytes ?? 1;
