@@ -26,8 +26,8 @@ import { scanDocument, saveScanPages, saveScanAsPdf, ocrScanPages } from '@/modu
 import { DocIndexer } from '@/modules/doc-indexer';
 import { shouldShowRatePrompt, markRatePromptShown } from '@/hooks/useRatePrompt';
 import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system/next';
-import { countFolder } from 'file-reader';
+import FolderPickerModal from '@/components/FolderPickerModal';
+
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -53,9 +53,6 @@ export default function HomeScreen() {
   const [activeSection, setActiveSection] = useState<'categories' | 'tools'>('categories');
   const [ratePromptVisible, setRatePromptVisible] = useState(false);
   const [scanPickerVisible, setScanPickerVisible] = useState(false);
-  const [scanPickerPath, setScanPickerPath] = useState('file:///storage/emulated/0/');
-  const [scanPickerFolders, setScanPickerFolders] = useState<{ name: string; uri: string; count: number; isDirectory: boolean }[]>([]);
-  const [scanPickerLoading, setScanPickerLoading] = useState(false);
   const [pendingScanUris, setPendingScanUris] = useState<string[]>([]);
   const [pendingScanFormat, setPendingScanFormat] = useState<'images' | 'pdf'>('images');
 
@@ -132,44 +129,6 @@ async function indexScansInBackground(paths: string[]) {
   } catch (e) {
     // silent — OCR failure never surfaces to user
   }
-}
-
-async function loadScanPickerDir(path: string) {
-  setScanPickerLoading(true);
-  try {
-    const dir = new FileSystem.Directory(path);
-    const contents = dir.list();
-    const folders = await Promise.all(
-      contents
-        .filter(item => item instanceof FileSystem.Directory)
-        .map(item => {
-          const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
-          let name = raw;
-          try { name = decodeURIComponent(raw); } catch {}
-          return { name, uri: item.uri, isDirectory: true };
-        })
-        .filter(f => !f.name.startsWith('.'))
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map(async f => {
-          let count = 0;
-          try { count = await countFolder(toPath(f.uri), false); } catch {}
-          return { ...f, count };
-        })
-    );
-    const files = contents
-      .filter(item => item instanceof FileSystem.File)
-      .map(item => ({
-        name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(),
-        uri: item.uri,
-        isDirectory: false,
-        count: 0,
-      }))
-      .filter(f => !f.name.startsWith('.'))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    setScanPickerFolders([...folders, ...files]);
-    setScanPickerPath(path);
-  } catch { setScanPickerFolders([]); }
-  finally { setScanPickerLoading(false); }
 }
 
   if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
@@ -495,7 +454,6 @@ async function loadScanPickerDir(path: string) {
                         onPress: () => {
                           setPendingScanUris(uris);
                           setPendingScanFormat('images');
-                          loadScanPickerDir('file:///storage/emulated/0/');
                           setScanPickerVisible(true);
                         }
                       },
@@ -504,7 +462,6 @@ async function loadScanPickerDir(path: string) {
                         onPress: () => {
                           setPendingScanUris(uris);
                           setPendingScanFormat('pdf');
-                          loadScanPickerDir('file:///storage/emulated/0/');
                           setScanPickerVisible(true);
                         }
                       },
@@ -632,115 +589,22 @@ async function loadScanPickerDir(path: string) {
             })()
           )}
         </View>
-        <Modal visible={scanPickerVisible} transparent={false} animationType="slide" onRequestClose={() => setScanPickerVisible(false)}>
-  <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
-      <TouchableOpacity
-        onPress={() => {
-          const ROOT = 'file:///storage/emulated/0/';
-          if (scanPickerPath === ROOT) { setScanPickerVisible(false); }
-          else {
-            const parent = scanPickerPath.endsWith('/') ? scanPickerPath.slice(0, -1) : scanPickerPath;
-            const up = parent.substring(0, parent.lastIndexOf('/') + 1);
-            loadScanPickerDir(up);
-          }
-        }}
-        style={{ width: 40, height: 40, justifyContent: 'center' }}
-      >
-        <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-      </TouchableOpacity>
-      <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', color: colors.textPrimary, textAlign: 'center', letterSpacing: -0.5 }}>
-        Choose location
-      </Text>
-      <View style={{ width: 40 }} />
-    </View>
-
-    <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }} numberOfLines={1}>
-      {(() => { try { return decodeURIComponent(scanPickerPath.replace('file:///storage/emulated/0/', 'Storage/')); } catch { return scanPickerPath; } })()}
-    </Text>
-
-    {/* Documents/Scans shortcut */}
-    <TouchableOpacity
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 10, backgroundColor: colors.greenBg }}
-      onPress={async () => {
-        setScanPickerVisible(false);
-        setScanning(true);
-        const scansFolder = '/storage/emulated/0/Documents/Scans';
-        try {
-          if (pendingScanFormat === 'images') {
-            const saved = await saveScanPages(pendingScanUris, scansFolder);
-            Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to Documents/Scans`);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            indexScansInBackground(saved);
-          } else {
-            const path = await saveScanAsPdf(pendingScanUris, scansFolder);
-            Alert.alert('Saved', 'PDF saved to Documents/Scans');
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            indexScansInBackground([path]);
-          }
-          const show = await shouldShowRatePrompt();
-          if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
-        } finally { setScanning(false); }
-      }}
-    >
-      <Ionicons name="folder-outline" size={20} color={colors.green} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textPrimary }}>Documents/Scans</Text>
-        <Text style={{ fontSize: 11, color: colors.textMuted }}>Default save location</Text>
-      </View>
-      <Ionicons name="checkmark-circle" size={18} color={colors.green} />
-    </TouchableOpacity>
-
-    {scanPickerLoading ? (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.blue} />
-      </View>
-    ) : scanPickerFolders.length === 0 ? (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 13, color: colors.textMuted }}>No folders here</Text>
-      </View>
-    ) : (
-      <FlatList
-        data={scanPickerFolders}
-        keyExtractor={item => item.uri}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }: { item: { name: string; uri: string; count: number; isDirectory: boolean } }) => (
-          <TouchableOpacity
-            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
-            onPress={() => { if (item.isDirectory) loadScanPickerDir(item.uri); }}
-            activeOpacity={item.isDirectory ? 0.7 : 1}
-          >
-            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: item.isDirectory ? colors.amberTint : getFileColor(item.name) + '22', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-              <Ionicons name={item.isDirectory ? 'folder' : getFileIcon(item.name) as any} size={22} color={item.isDirectory ? colors.amber : getFileColor(item.name)} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary }} numberOfLines={1}>{item.name}</Text>
-              {item.isDirectory && <Text style={{ fontSize: 11, color: colors.textMuted }}>{item.count} item{item.count !== 1 ? 's' : ''}</Text>}
-            </View>
-            {item.isDirectory && <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />}
-          </TouchableOpacity>
-        )}
-      />
-    )}
-
-    <View style={{ padding: 16, borderTopWidth: 0.5, borderTopColor: colors.border }}>
-      <TouchableOpacity
-        style={{ backgroundColor: colors.blue, borderRadius: 12, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
-        onPress={async () => {
+        <FolderPickerModal
+        visible={scanPickerVisible}
+        onClose={() => setScanPickerVisible(false)}
+        onSave={async (folderPath) => {
           setScanPickerVisible(false);
           setScanning(true);
-          const destFolder = toPath(scanPickerPath);
           try {
             if (pendingScanFormat === 'images') {
-              const saved = await saveScanPages(pendingScanUris, destFolder);
-              const folderName = destFolder.split('/').filter(Boolean).pop() ?? 'folder';
+              const saved = await saveScanPages(pendingScanUris, folderPath);
+              const folderName = folderPath.split('/').pop() ?? 'folder';
               Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to ${folderName}`);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               indexScansInBackground(saved);
             } else {
-              const path = await saveScanAsPdf(pendingScanUris, destFolder);
-              const folderName = destFolder.split('/').filter(Boolean).pop() ?? 'folder';
+              const path = await saveScanAsPdf(pendingScanUris, folderPath);
+              const folderName = folderPath.split('/').pop() ?? 'folder';
               Alert.alert('Saved', `PDF saved to ${folderName}`);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               indexScansInBackground([path]);
@@ -749,13 +613,11 @@ async function loadScanPickerDir(path: string) {
             if (show) { await markRatePromptShown(); setRatePromptVisible(true); }
           } finally { setScanning(false); }
         }}
-      >
-        <Ionicons name="checkmark" size={18} color="#fff" />
-        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Save here</Text>
-      </TouchableOpacity>
-    </View>
-  </SafeAreaView>
-</Modal>
+        defaultPath="/storage/emulated/0/Documents/Scans"
+        defaultLabel="Documents/Scans"
+        defaultSubLabel="Default save location"
+        title="Choose location"
+      />
       </ScrollView>
     </SafeAreaView>
   );

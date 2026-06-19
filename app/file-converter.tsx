@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Image,
   ActivityIndicator, Alert, ScrollView,
@@ -12,6 +12,8 @@ import { convertImage } from '@/modules/file-converter';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { shouldShowRatePrompt, markRatePromptShown } from '@/hooks/useRatePrompt';
 import * as Haptics from 'expo-haptics';
+import FolderPickerModal from '@/components/FolderPickerModal';
+import { BackHandler } from 'react-native';
 
 type OutFormat = 'JPG' | 'PNG' | 'WEBP';
 
@@ -28,20 +30,36 @@ export default function FileConverterScreen() {
   const [sourceUri, setSourceUri] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>('');
   const [sourceExt, setSourceExt] = useState<string>('');
-  const [converting, setConverting] = useState(false);
+  const [converting, setConverting] = useState<OutFormat | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pendingFormat, setPendingFormat] = useState<OutFormat | null>(null);
 
   function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
     catch { return uri.replace('file://', ''); }
   }
 
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (converting) return true; // block back during conversion
+      if (sourceUri) {
+        setSourceUri(null);
+        setSourceName('');
+        setSourceExt('');
+        return true; // handled — don't exit screen
+      }
+      return false; // let system handle — exits screen
+    });
+    return () => sub.remove();
+  }, [sourceUri, converting]);
+
   async function pickImage() {
     try {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            quality: 1,
-            allowsEditing: false,
-            });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsEditing: false,
+      });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       setSourceUri(asset.uri);
@@ -53,46 +71,60 @@ export default function FileConverterScreen() {
     }
   }
 
-  async function handleConvert(format: OutFormat) {
-    if (!sourceUri || converting) return;
-    setConverting(true);
+  async function saveConverted(format: OutFormat, folderPath: string) {
+    if (!sourceUri) return;
+    setConverting(format);
     try {
-      const convertedFolder = '/storage/emulated/0/Pictures/AskFiles Converted';
-      const baseName = sourceName.replace(/\.[^.]+$/, '');
+  
+      const baseName = sourceName.replace(/\.[^.]+$/, '').replace(/%20/g, ' ');
       const ext = format.toLowerCase();
       const stamp = Date.now();
-      const outputPath = `${convertedFolder}/${baseName}_${stamp}.${ext}`;
-
+      const outputPath = `${folderPath}/${baseName}_${stamp}.${ext}`;
+  
       await convertImage(toPath(sourceUri), outputPath, format, 90);
       await scanFile(outputPath).catch(() => {});
-
+  
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const folderName = folderPath.split('/').pop() ?? 'folder';
       Alert.alert(
         'Converted',
-        `Saved to Pictures/AskFiles Converted`,
+        `Saved to ${folderName}`,
         [
           { text: 'Open', onPress: async () => { try { await openFileNative(outputPath, `image/${ext === 'jpg' ? 'jpeg' : ext}`); } catch {} } },
           { text: 'Done', style: 'cancel' },
         ]
       );
-
+  
       const show = await shouldShowRatePrompt();
       if (show) { await markRatePromptShown(); }
-
-      // Reset for next conversion
       setSourceUri(null);
       setSourceName('');
     } catch (e: any) {
       Alert.alert('Conversion failed', e?.message ?? 'Could not convert this image.');
     } finally {
-      setConverting(false);
-    }
+        setConverting(null);
+      }
+  }
+
+  async function handleConvert(format: OutFormat) {
+    if (!sourceUri || converting) return;
+    setPendingFormat(format);
+    Alert.alert(
+      'Save as',
+      `Convert to ${format}`,
+      [
+        // { text: 'Save to Pictures', onPress: () => saveConverted(format, '/storage/emulated/0/Pictures') },
+        { text: 'Save to TestFolder', onPress: () => saveConverted(format, '/storage/emulated/0/TestFolder') },
+        { text: 'Choose location', onPress: () => setPickerVisible(true) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   }
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => !converting && router.back()} style={styles.backBtn} disabled={converting}>
+        <TouchableOpacity onPress={() => { if (converting) return; if (sourceUri) { setSourceUri(null); setSourceName(''); setSourceExt(''); } else { router.back(); } }} style={styles.backBtn} disabled={converting !== null}>
           <Ionicons name="arrow-back" size={24} color={converting ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>File Converter</Text>
@@ -120,7 +152,7 @@ export default function FileConverterScreen() {
               <Image source={{ uri: sourceUri }} style={styles.previewImage} resizeMode="contain" />
             </View>
             <Text style={[styles.sourceName, { color: colors.textPrimary }]} numberOfLines={1}>{sourceName}</Text>
-            <TouchableOpacity onPress={pickImage} disabled={converting} style={{ alignSelf: 'center', marginBottom: 24 }}>
+            <TouchableOpacity onPress={pickImage} disabled={converting !== null} style={{ alignSelf: 'center', marginBottom: 24 }}>
               <Text style={{ color: colors.favRed, fontSize: 13, fontWeight: '500' }}>Choose a different image</Text>
             </TouchableOpacity>
 
@@ -136,7 +168,7 @@ export default function FileConverterScreen() {
                 key={fmt.value}
                 style={[styles.formatRow, { backgroundColor: colors.surface }]}
                 onPress={() => handleConvert(fmt.value)}
-                disabled={converting}
+                disabled={converting !== null}
                 activeOpacity={0.7}
               >
                 <View style={[styles.formatBadge, { backgroundColor: colors.favRedBg }]}>
@@ -146,7 +178,7 @@ export default function FileConverterScreen() {
                   <Text style={[styles.formatTitle, { color: colors.textPrimary }]}>Convert to {fmt.label}</Text>
                   <Text style={[styles.formatDesc, { color: colors.textMuted }]}>{fmt.desc}</Text>
                 </View>
-                {converting
+                {converting === fmt.value
                   ? <ActivityIndicator size="small" color={colors.favRed} />
                   : <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 }
@@ -155,6 +187,20 @@ export default function FileConverterScreen() {
           </View>
         )}
       </ScrollView>
+      <FolderPickerModal
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onSave={(folderPath) => {
+          setPickerVisible(false);
+          if (pendingFormat) saveConverted(pendingFormat, folderPath);
+        }}
+        // defaultPath="/storage/emulated/0/Pictures"
+        // defaultLabel="Pictures"
+        defaultPath="/storage/emulated/0/TestFolder"
+defaultLabel="TestFolder"
+        defaultSubLabel="Default save location"
+        title="Save converted image"
+      />
     </SafeAreaView>
   );
 }
