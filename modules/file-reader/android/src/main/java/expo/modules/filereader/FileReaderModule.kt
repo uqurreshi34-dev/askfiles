@@ -42,6 +42,18 @@ class FileReaderModule : Module() {
       dir.listFiles()?.count { includeHidden || !it.name.startsWith('.') } ?: 0
     }
 
+    Function("getShowHidden") {
+      val prefs = appContext.reactContext
+          ?.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
+      prefs?.getBoolean("show_hidden", false) ?: false
+    }
+
+    Function("setShowHidden") { value: Boolean ->
+        val prefs = appContext.reactContext
+            ?.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
+        prefs?.edit()?.putBoolean("show_hidden", value)?.apply()
+    }
+
     AsyncFunction("copyFileStream") { srcUri: String, destPath: String ->
       val context = appContext.reactContext ?: throw Exception("No context")
       val srcFile = if (srcUri.startsWith("content://")) {

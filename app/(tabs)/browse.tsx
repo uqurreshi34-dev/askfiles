@@ -24,14 +24,13 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile } from 'file-reader';
+import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative  } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FileItem {
   name: string;
@@ -154,6 +153,7 @@ export default function BrowseScreen() {
   const [videoLabels, setVideoLabels] = useState<string[]>([]);
   const [loadingVideoSummary, setLoadingVideoSummary] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
+  const showHiddenRef = useRef(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -168,7 +168,9 @@ export default function BrowseScreen() {
   }, [currentPath]));
 
   useEffect(() => {
-    AsyncStorage.getItem('askfiles_show_hidden').then(v => { if (v === 'true') setShowHidden(true); });
+    const hidden = getShowHidden();
+    setShowHidden(hidden);
+    showHiddenRef.current = hidden;
   }, []);
 
   useEffect(() => {
@@ -185,7 +187,8 @@ export default function BrowseScreen() {
   function toggleHidden() {
     const next = !showHidden;
     setShowHidden(next);
-    AsyncStorage.setItem('askfiles_show_hidden', String(next));
+    showHiddenRef.current = next;
+    setShowHiddenNative(next);
     Object.keys(dirCacheStore).forEach(k => delete dirCacheStore[k]);
     loadDirectory(currentPath, next);
   }
@@ -219,7 +222,7 @@ export default function BrowseScreen() {
   }
 
   async function loadDirectory(path: string, hiddenOverride?: boolean) {
-    const hidden = hiddenOverride ?? showHidden;
+    const hidden = hiddenOverride ?? showHiddenRef.current;
     if (dirCacheStore[path]) {
       setItems(dirCacheStore[path]);
       setLoading(false);

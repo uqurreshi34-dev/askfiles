@@ -62,3 +62,11 @@ export async function createDirectory(path: string): Promise<string> {
 export async function writeTextFile(path: string, content: string): Promise<string> {
   return FileReader.writeTextFile(path, content);
 }
+
+export function getShowHidden(): boolean {
+  return FileReader.getShowHidden();
+}
+
+export function setShowHidden(value: boolean): void {
+  FileReader.setShowHidden(value);
+}
