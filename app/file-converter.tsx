@@ -113,8 +113,7 @@ export default function FileConverterScreen() {
       'Save as',
       `Convert to ${format}`,
       [
-        // { text: 'Save to Pictures', onPress: () => saveConverted(format, '/storage/emulated/0/Pictures') },
-        { text: 'Save to TestFolder', onPress: () => saveConverted(format, '/storage/emulated/0/TestFolder') },
+        { text: 'Save to Pictures', onPress: () => saveConverted(format, '/storage/emulated/0/Pictures') },
         { text: 'Choose location', onPress: () => setPickerVisible(true) },
         { text: 'Cancel', style: 'cancel' },
       ]
@@ -194,10 +193,8 @@ export default function FileConverterScreen() {
           setPickerVisible(false);
           if (pendingFormat) saveConverted(pendingFormat, folderPath);
         }}
-        // defaultPath="/storage/emulated/0/Pictures"
-        // defaultLabel="Pictures"
-        defaultPath="/storage/emulated/0/TestFolder"
-defaultLabel="TestFolder"
+        defaultPath="/storage/emulated/0/Pictures"
+        defaultLabel="Pictures"
         defaultSubLabel="Default save location"
         title="Save converted image"
       />
