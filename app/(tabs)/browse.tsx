@@ -159,10 +159,6 @@ export default function BrowseScreen() {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
   }, []);
 
-  useEffect(() => {
-    loadDirectory(currentPath);
-  }, [currentPath]);
-
   useFocusEffect(useCallback(() => {
     loadDirectory(currentPath);
   }, [currentPath]));
