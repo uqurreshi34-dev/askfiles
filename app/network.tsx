@@ -153,7 +153,7 @@ export default function NetworkScreen() {
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
             <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>WiFi Transfer</Text>
-            <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Scan with your PC camera</Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Scan with your device camera</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
               <QRCode value={wifiUrl || 'http://localhost:8080'} size={180} />
             </View>
