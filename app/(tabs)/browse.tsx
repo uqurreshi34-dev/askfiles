@@ -1541,7 +1541,11 @@ export default function BrowseScreen() {
                       style={styles.sheetAction}
                       onPress={() => {
                         closeSheet();
-                        const location = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
+                        const rawUri = selectedItem?.uri ?? '';
+                        const sdVolume = volumes.find(v => v.type === 'sdcard' && rawUri.includes(v.path));
+                        const location = sdVolume
+                          ? rawUri.replace(`file://${sdVolume.path}/`, `${sdVolume.name}/`).split('/').slice(0, -1).join('/')
+                          : rawUri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
                         const locationDecoded = decodeURIComponent(location);
                         Alert.alert(
                           selectedItem?.name ?? '',
