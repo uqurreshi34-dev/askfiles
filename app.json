@@ -42,7 +42,21 @@
           "android": {
             "enableEdgeToEdge": true,
             "compileSdkVersion": 35,
-            "targetSdkVersion": 35
+            "targetSdkVersion": 35,
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "proguardRules": [
+              "-keep class com.facebook.react.** { *; }",
+              "-keep class com.facebook.hermes.** { *; }",
+              "-keep class com.facebook.jni.** { *; }",
+              "-keep class com.swmansion.reanimated.** { *; }",
+              "-keep class com.facebook.react.turbomodule.** { *; }",
+              "-keep class expo.modules.** { *; }",
+              "-keep class com.revenuecat.purchases.** { *; }",
+              "-keep class net.lingala.zip4j.** { *; }",
+              "-keepclassmembers enum * { *; }",
+              "-keepclassmembers class * implements android.os.Parcelable { static ** CREATOR; }"
+            ]
           }
         }
       ],
