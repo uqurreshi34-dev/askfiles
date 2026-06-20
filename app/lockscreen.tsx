@@ -7,10 +7,13 @@ import { useRouter } from 'expo-router';
 import { verifyPin } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { showBiometricPrompt } from '@/modules/storage-stats';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function LockScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { next } = useLocalSearchParams<{ next?: string }>();
+  const destination = next ? decodeURIComponent(next) : '/(tabs)';
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +25,7 @@ export default function LockScreen() {
     try {
       const result = await showBiometricPrompt('Unlock AskFiles', 'Use your fingerprint or face to unlock');
       if (result === 'success') {
-        router.replace('/(tabs)');
+        router.replace(destination as any);
       }
     } catch {}
   }
@@ -69,7 +72,7 @@ export default function LockScreen() {
   async function handleVerify(entered: string) {
     const correct = await verifyPin(entered);
     if (correct) {
-      router.replace('/(tabs)');
+      router.replace(destination as any);
     } else {
       setError('Incorrect PIN. Try again.');
       setPin('');

@@ -85,10 +85,10 @@ export default function FileConverterScreen() {
       await scanFile(outputPath).catch(() => {});
   
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const folderName = folderPath.split('/').pop() ?? 'folder';
+      const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '');
       Alert.alert(
         'Converted',
-        `Saved to ${folderName}`,
+        `Saved to ${friendlyPath}`,
         [
           { text: 'Open', onPress: async () => { try { await openFileNative(outputPath, `image/${ext === 'jpg' ? 'jpeg' : ext}`); } catch {} } },
           { text: 'Done', style: 'cancel' },

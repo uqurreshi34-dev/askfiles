@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "expo.modules.mediaslideshow.media-slideshow-mergeReleaseResources-20:/values-v17/values-v17.xml",
+            "outputFile": "expo.modules.mediaslideshow.media-slideshow-mergeReleaseResources-21:/values-v17/values-v17.xml",
             "map": [
                 {
                     "source": "C:\\Users\\uqurr\\.gradle\\caches\\8.14.3\\transforms\\19c4a7e5db7750419bcfd64d0a0fbd96\\transformed\\appcompat-1.7.0\\res\\values-v17\\values-v17.xml",
@@ -17,7 +17,7 @@
             ]
         },
         {
-            "outputFile": "expo.modules.mediaslideshow.media-slideshow-release-22:/values-v17/values-v17.xml",
+            "outputFile": "expo.modules.mediaslideshow.media-slideshow-release-23:/values-v17/values-v17.xml",
             "map": [
                 {
                     "source": "C:\\Users\\uqurr\\.gradle\\caches\\8.14.3\\transforms\\19c4a7e5db7750419bcfd64d0a0fbd96\\transformed\\appcompat-1.7.0\\res\\values-v17\\values-v17.xml",

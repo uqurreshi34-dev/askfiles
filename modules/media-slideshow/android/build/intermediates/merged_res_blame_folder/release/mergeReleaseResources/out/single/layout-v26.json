@@ -1,6 +1,6 @@
 [
     {
-        "merged": "expo.modules.mediaslideshow.media-slideshow-release-22:/layout-v26/abc_screen_toolbar.xml",
+        "merged": "expo.modules.mediaslideshow.media-slideshow-release-23:/layout-v26/abc_screen_toolbar.xml",
         "source": "expo.modules.mediaslideshow.media-slideshow-appcompat-1.7.0-0:/layout-v26/abc_screen_toolbar.xml"
     }
 ]

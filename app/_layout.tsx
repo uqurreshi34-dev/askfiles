@@ -21,16 +21,7 @@ export default function RootLayout() {
   const { dark } = useTheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const [listening, setListening] = useState(false);
-  const [banner, setBanner] = useState<{ text: string; success: boolean } | null>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const bannerAnim = useRef(new Animated.Value(0)).current;
-  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const transcriptRef = useRef('');
-
-
   //cloud backup in progress
   const syncPulse = useRef(new Animated.Value(1)).current;
   const [cloudSyncing, setCloudSyncing] = useState(isCloudSyncing());
@@ -75,7 +66,9 @@ export default function RootLayout() {
     const enabled = isAppLockEnabled();
     if (enabled) {
       setTimeout(() => {
-        router.replace('/lockscreen');
+        const lastAction = QuickActions.initial;
+        const dest = lastAction?.params?.href;
+        router.replace(dest ? `/lockscreen?next=${encodeURIComponent(dest)}` : '/lockscreen');
         SplashScreen.hideAsync();
       }, 0);
     } else {
