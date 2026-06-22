@@ -930,8 +930,8 @@ async function handleSsInfo() {
   
       const sdVol = volumes.find(v => v.type === 'sdcard' && folderPath.includes(v.path));
       const friendlyPath = sdVol
-        ? folderPath.replace(`${sdVol.path}/`, `${sdVol.name}/`).replace(/\/$/, '')
-        : folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '');
+        ? (folderPath.replace(`${sdVol.path}/`, '').replace(/\/$/, '') || sdVol.name)
+        : (folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage');
       const msg = failed > 0
         ? `${succeeded} file${succeeded !== 1 ? 's' : ''} renamed. ${failed} failed.\nSaved to ${friendlyPath}`
         : `${succeeded} file${succeeded !== 1 ? 's' : ''} renamed as ${baseName}_1, ${baseName}_2...\nSaved to ${friendlyPath}`;

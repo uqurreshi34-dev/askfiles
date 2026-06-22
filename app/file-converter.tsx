@@ -85,7 +85,7 @@ export default function FileConverterScreen() {
       await scanFile(outputPath).catch(() => {});
   
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '');
+      const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
       Alert.alert(
         'Converted',
         `Saved to ${friendlyPath}`,

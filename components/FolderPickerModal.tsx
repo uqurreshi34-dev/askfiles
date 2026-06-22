@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, FlatList,
-  ActivityIndicator, StyleSheet,
+  ActivityIndicator, StyleSheet, TextInput, Alert,
+  KeyboardAvoidingView, useWindowDimensions, Keyboard, Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/next';
-import { countFolder } from 'file-reader';
+import { countFolder, createDirectory } from 'file-reader';
 import { useTheme } from '@/hooks/useTheme';
 import { getFileColor, getFileIcon } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import * as Haptics from 'expo-haptics';
 
 interface FolderItem {
   name: string;
@@ -48,7 +50,11 @@ export default function FolderPickerModal({
   const [currentPath, setCurrentPath] = useState(ROOT);
   const [items, setItems] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
 useEffect(() => {
   getStorageVolumes().then(setVolumes);
@@ -58,6 +64,8 @@ useEffect(() => {
   useEffect(() => {
     if (visible) {
       loadDir(ROOT);
+      setShowNewFolder(false);
+      setNewFolderName('');
     }
   }, [visible]);
 
@@ -230,17 +238,115 @@ useEffect(() => {
 
         {/* Save here footer */}
         <View style={[styles.footer, { borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: colors.blue }]}
-            onPress={() => onSave(toPath(currentPath))}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="checkmark" size={18} color="#fff" />
-            <Text style={styles.saveBtnText}>Save here</Text>
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.newFolderBtn, { backgroundColor: colors.greenBg }]}
+                onPress={() => setShowNewFolder(true)}
+                activeOpacity={0.8}
+              >
+                <View style={{ position: 'relative' }}>
+                  <Ionicons name="folder" size={28} color={colors.amber} />
+                  <View style={{ position: 'absolute', bottom: -1, right: -3, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="add" size={10} color="#fff" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { flex: 2, backgroundColor: colors.blue }]}
+                onPress={() => onSave(toPath(currentPath))}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="checkmark" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>Save here</Text>
+              </TouchableOpacity>
+            </View>
         </View>
-
-      </SafeAreaView>
+        <Modal visible={showNewFolder} transparent animationType="fade" onRequestClose={() => { setShowNewFolder(false); setNewFolderName(''); }}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.2 : 24, paddingBottom: SCREEN_WIDTH > SCREEN_HEIGHT ? 0 : SCREEN_HEIGHT * 0.3 }}
+              onPress={() => { Keyboard.dismiss(); setShowNewFolder(false); setNewFolderName(''); }}>
+              <Pressable style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>New Folder</Text>
+                  <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowNewFolder(false); setNewFolderName(''); }}>
+                    <Ionicons name="close" size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, marginBottom: 16 }}
+                  value={newFolderName}
+                  onChangeText={setNewFolderName}
+                  placeholder="Folder name..."
+                  placeholderTextColor={colors.textMuted}
+                  autoFocus
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={async () => {
+                    const name = newFolderName.trim();
+                    if (!name) return;
+                    const invalidChars = /[*\\:?"<>|]/;
+                    if (invalidChars.test(name)) {
+                      Alert.alert('Invalid name', 'Folder names cannot contain: * \\ : ? " < > |');
+                      return;
+                    }
+                    const newPath = toPath(currentPath) + name;
+                    setCreatingFolder(true);
+                    try {
+                      await createDirectory(newPath);
+                      Keyboard.dismiss();
+                      setShowNewFolder(false);
+                      setNewFolderName('');
+                      const newUri = currentPath.endsWith('/') ? currentPath + name + '/' : currentPath + '/' + name + '/';
+                      await loadDir(newUri);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    } catch {
+                      Alert.alert('Error', 'Could not create folder.');
+                    } finally {
+                      setCreatingFolder(false);
+                    }
+                  }}
+                />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: 'center' }}
+                    onPress={() => { Keyboard.dismiss(); setShowNewFolder(false); setNewFolderName(''); }}
+                  >
+                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: newFolderName.trim() ? colors.blue : colors.textDisabled, alignItems: 'center' }}
+                    onPress={async () => {
+                      const name = newFolderName.trim();
+                      if (!name) return;
+                      const newPath = toPath(currentPath) + name;
+                      setCreatingFolder(true);
+                      try {
+                        await createDirectory(newPath);
+                        Keyboard.dismiss();
+                        setShowNewFolder(false);
+                        setNewFolderName('');
+                        const newUri = currentPath.endsWith('/') ? currentPath + name + '/' : currentPath + '/' + name + '/';
+                        await loadDir(newUri);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      } catch {
+                        Alert.alert('Error', 'Could not create folder.');
+                      } finally {
+                        setCreatingFolder(false);
+                      }
+                    }}
+                    disabled={!newFolderName.trim() || creatingFolder}
+                  >
+                    {creatingFolder
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={{ fontSize: 14, color: '#fff', fontWeight: '500' }}>Create</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
+        </SafeAreaView>
     </Modal>
   );
 }
@@ -261,7 +367,8 @@ const styles = StyleSheet.create({
   icon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   itemName: { fontSize: 14, fontWeight: '500' },
   itemCount: { fontSize: 11 },
-  footer: { padding: 16, borderTopWidth: 0.5 },
+  footer: { padding: 16, borderTopWidth: 0.5, flexShrink: 0 },
   saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  newFolderBtn: { width: 52, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
 });

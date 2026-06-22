@@ -598,13 +598,13 @@ async function indexScansInBackground(paths: string[]) {
           try {
             if (pendingScanFormat === 'images') {
               const saved = await saveScanPages(pendingScanUris, folderPath);
-              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '');
+              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
               Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to ${friendlyPath}`);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               indexScansInBackground(saved);
             } else {
               const path = await saveScanAsPdf(pendingScanUris, folderPath);
-              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '');
+              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
               Alert.alert('Saved', `PDF saved to ${friendlyPath}`);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               indexScansInBackground([path]);
