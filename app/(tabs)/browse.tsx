@@ -31,6 +31,8 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
+import { batchRename } from 'file-reader';
+import FolderPickerModal from '@/components/FolderPickerModal';
 
 interface FileItem {
   name: string;
@@ -154,6 +156,11 @@ export default function BrowseScreen() {
   const [loadingVideoSummary, setLoadingVideoSummary] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const showHiddenRef = useRef(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [showMultiRename, setShowMultiRename] = useState(false);
+  const [multiRenameBase, setMultiRenameBase] = useState('');
+  const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
+  const [multiRenaming, setMultiRenaming] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -709,6 +716,54 @@ export default function BrowseScreen() {
     const sizes = await statFiles(paths);
     const totalSize = sizes.reduce((sum, s) => sum + s, 0);
     Alert.alert(`${files.length} item${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
+  }
+
+  async function handleMultiRename(folderPath: string) {
+    const files = Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory);
+    const baseName = multiRenameBase.trim();
+    if (!baseName) return;
+  
+    setMultiRenamePickerVisible(false);
+    setShowMultiRename(false);
+    setMultiRenaming(true);
+  
+    try {
+      const items = files.map((file, index) => {
+        const ext = file.name.includes('.') ? '.' + file.name.split('.').pop()! : '';
+        const newName = `${baseName}_${index + 1}${ext}`;
+        const dst = `${folderPath.replace(/\/$/, '')}/${newName}`;
+        return { src: toPath(file.uri), dst };
+      });
+  
+      const results = await batchRename(items);
+      const succeeded = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+  
+      if (succeeded > 0) {
+        await scanFile(folderPath).catch(() => {});
+        loadDirectory(currentPath);
+      }
+  
+      const sdVol = volumes.find(v => v.type === 'sdcard' && folderPath.includes(v.path));
+      const friendlyPath = sdVol
+        ? folderPath.replace(`${sdVol.path}/`, `${sdVol.name}/`).replace(/\/$/, '')
+        : folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '');
+      const msg = failed > 0
+        ? `${succeeded} file${succeeded !== 1 ? 's' : ''} renamed. ${failed} failed.\nSaved to ${friendlyPath}`
+        : `${succeeded} file${succeeded !== 1 ? 's' : ''} renamed as ${baseName}_1, ${baseName}_2...\nSaved to ${friendlyPath}`;
+  
+      Alert.alert('Renamed', msg);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setSelectMode(false);
+      setSelectedUris(new Set());
+      setSelectedItemsMap(new Map());
+    } catch {
+      Alert.alert('Error', 'Could not rename files.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setMultiRenaming(false);
+      setMultiRenameBase('');
+    }
   }
 
   async function handleCreateFolder() {
@@ -1409,6 +1464,12 @@ export default function BrowseScreen() {
             </Text>
           </View>
         )}
+        {multiRenaming && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Renaming files...</Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />
@@ -1879,11 +1940,12 @@ export default function BrowseScreen() {
             <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Zip</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleMultiInfo}
+            onPress={() => setShowMoreSheet(true)}
+            disabled={sharing || zipping || deleting || vaulting || multiPasting}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
           >
-            <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-            <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Info</Text>
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />
+            <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>More</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleMultiDelete}
@@ -1896,6 +1958,36 @@ export default function BrowseScreen() {
           </View>
         </>
       )}
+      <Modal visible={showMoreSheet} transparent animationType="none" onRequestClose={() => setShowMoreSheet(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowMoreSheet(false)}>
+          <Animated.View
+            style={SCREEN_WIDTH > SCREEN_HEIGHT
+              ? [styles.sheetLandscape, { backgroundColor: colors.card }]
+              : [styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16 }]
+            }
+          >
+            {SCREEN_WIDTH > SCREEN_HEIGHT
+              ? <TouchableOpacity onPress={() => setShowMoreSheet(false)} style={{ alignSelf: 'flex-end', padding: 4 }}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              : <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
+            }
+            <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); setTimeout(() => setShowMultiRename(true), 150); }}>
+              <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Multi-rename</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleMultiInfo(); }}>
+              <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+            </TouchableOpacity>
+            <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+            <TouchableOpacity style={styles.sheetAction} onPress={() => setShowMoreSheet(false)}>
+              <Ionicons name="close-outline" size={20} color={colors.textMuted} />
+              <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Pressable>
+      </Modal>
       {/* Sort sheet */}
       <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
@@ -2147,6 +2239,65 @@ export default function BrowseScreen() {
           </View>
         </View>
       </Modal>
+      <Modal visible={showMultiRename} transparent animationType="fade" onRequestClose={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.2 : 24, paddingBottom: SCREEN_WIDTH > SCREEN_HEIGHT ? 0 : SCREEN_HEIGHT * 0.3 }}
+            onPress={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
+            <Pressable style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
+                  Rename {Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory).length} file{Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory).length !== 1 ? 's' : ''}
+                </Text>
+                <TouchableOpacity onPress={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
+                Files will be named: {multiRenameBase.trim() || 'name'}_1, {multiRenameBase.trim() || 'name'}_2...
+              </Text>
+              <TextInput
+                style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, marginBottom: 16 }}
+                value={multiRenameBase}
+                onChangeText={setMultiRenameBase}
+                placeholder="Base name e.g. holiday"
+                placeholderTextColor={colors.textMuted}
+                autoFocus
+                autoCapitalize="none"
+                returnKeyType="next"
+              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: 'center' }}
+                  onPress={() => { setShowMultiRename(false); setMultiRenameBase(''); }}
+                >
+                  <Text style={{ fontSize: 14, color: colors.textSecondary }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: multiRenameBase.trim() ? colors.blue : colors.textDisabled, alignItems: 'center' }}
+                  onPress={() => {
+                    if (!multiRenameBase.trim()) return;
+                    setShowMultiRename(false);
+                    setTimeout(() => setMultiRenamePickerVisible(true), 300);
+                  }}
+                  disabled={!multiRenameBase.trim()}
+                >
+                  <Text style={{ fontSize: 14, color: '#fff', fontWeight: '500' }}>Choose location</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <FolderPickerModal
+        visible={multiRenamePickerVisible}
+        onClose={() => setMultiRenamePickerVisible(false)}
+        onSave={(folderPath) => handleMultiRename(folderPath)}
+        defaultPath="/storage/emulated/0/"
+        defaultLabel="Internal Storage"
+        defaultSubLabel="Root of internal storage"
+        title="Save renamed files"
+      />
     </SafeAreaView>
   );
 }
