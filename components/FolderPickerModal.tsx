@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, FlatList,
   ActivityIndicator, StyleSheet,
@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system/next';
 import { countFolder } from 'file-reader';
 import { useTheme } from '@/hooks/useTheme';
 import { getFileColor, getFileIcon } from '@/utils/files';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 interface FolderItem {
   name: string;
@@ -47,9 +48,14 @@ export default function FolderPickerModal({
   const [currentPath, setCurrentPath] = useState(ROOT);
   const [items, setItems] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+
+useEffect(() => {
+  getStorageVolumes().then(setVolumes);
+}, []);
 
   // Reset to root when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       loadDir(ROOT);
     }
@@ -100,7 +106,8 @@ export default function FolderPickerModal({
   }
 
   function goBack() {
-    if (currentPath === ROOT) {
+    const isAnyRoot = currentPath === ROOT || volumes.some(v => currentPath === `file://${v.path}/`);
+    if (isAnyRoot) {
       onClose();
       return;
     }
@@ -111,7 +118,10 @@ export default function FolderPickerModal({
 
   function displayPath(): string {
     try {
-      return decodeURIComponent(currentPath.replace('file:///storage/emulated/0/', 'Storage/'));
+      let path = currentPath;
+      const sdVol = volumes.find(v => v.type === 'sdcard' && path.includes(v.path));
+      if (sdVol) return decodeURIComponent(path.replace(`file://${sdVol.path}/`, `${sdVol.name}/`));
+      return decodeURIComponent(path.replace('file:///storage/emulated/0/', 'Storage/'));
     } catch { return currentPath; }
   }
 
@@ -132,6 +142,29 @@ export default function FolderPickerModal({
         <Text style={[styles.pathText, { color: colors.textMuted }]} numberOfLines={1}>
           {displayPath()}
         </Text>
+
+        {/* Volume switcher — only at root level */}
+        {volumes.length > 1 && (
+          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+            {volumes.map(vol => {
+              const volPath = `file://${vol.path}/`;
+              const isActive = currentPath === volPath || (vol.type === 'internal' && currentPath === ROOT);
+              return (
+                <TouchableOpacity
+                  key={vol.path}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: isActive ? colors.blue : colors.surface }}
+                  onPress={() => {
+                    const newPath = vol.type === 'internal' ? ROOT : `file://${vol.path}/`;
+                    loadDir(newPath);
+                  }}
+                >
+                  <Ionicons name={vol.type === 'sdcard' ? 'card-outline' : 'phone-portrait-outline'} size={14} color={isActive ? '#fff' : colors.textSecondary} />
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: isActive ? '#fff' : colors.textSecondary }}>{vol.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Default location shortcut */}
         <TouchableOpacity

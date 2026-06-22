@@ -70,3 +70,9 @@ export function getShowHidden(): boolean {
 export function setShowHidden(value: boolean): void {
   FileReader.setShowHidden(value);
 }
+
+export function batchRename(
+  items: { src: string; dst: string }[]
+): Promise<{ src: string; dst: string; success: boolean; error?: string }[]> {
+  return FileReader.batchRename(items);
+}

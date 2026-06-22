@@ -54,6 +54,57 @@ class FileReaderModule : Module() {
         prefs?.edit()?.putBoolean("show_hidden", value)?.apply()
     }
 
+    AsyncFunction("batchRename") { items: List<Map<String, String>> ->
+      val results = mutableListOf<Map<String, Any>>()
+      for (item in items) {
+          val src = item["src"] ?: continue
+          val dst = item["dst"] ?: continue
+          val srcFile = File(src)
+          val dstFile = File(dst)
+          try {
+              if (!srcFile.exists()) {
+                  results.add(mapOf("src" to src, "dst" to dst, "success" to false, "error" to "Source not found"))
+                  continue
+              }
+              // Resolve collision: if dst exists, append _2, _3 etc
+              var finalDst = dstFile
+              if (finalDst.exists() && finalDst.absolutePath != srcFile.absolutePath) {
+                  val nameNoExt = dstFile.nameWithoutExtension
+                  val ext = dstFile.extension
+                  var counter = 2
+                  while (finalDst.exists()) {
+                      finalDst = File(dstFile.parent, if (ext.isNotEmpty()) "${nameNoExt}_$counter.$ext" else "${nameNoExt}_$counter")
+                      counter++
+                  }
+              }
+              finalDst.parentFile?.mkdirs()
+              var ok = srcFile.renameTo(finalDst)
+            if (!ok) {
+                // Cross-filesystem — fall back to copy + delete
+                try {
+                    srcFile.inputStream().use { input ->
+                        finalDst.outputStream().use { output ->
+                            input.copyTo(output, bufferSize = 65536)
+                        }
+                    }
+                    srcFile.delete()
+                    ok = true
+                } catch (e2: Exception) {
+                    ok = false
+                }
+            }
+            if (ok) {
+                results.add(mapOf("src" to src, "dst" to finalDst.absolutePath, "success" to true))
+            } else {
+                results.add(mapOf("src" to src, "dst" to dst, "success" to false, "error" to "Rename failed"))
+            }
+          } catch (e: Exception) {
+              results.add(mapOf("src" to src, "dst" to dst, "success" to false, "error" to (e.message ?: "Unknown error")))
+          }
+      }
+      results
+  }
+
     AsyncFunction("copyFileStream") { srcUri: String, destPath: String ->
       val context = appContext.reactContext ?: throw Exception("No context")
       val srcFile = if (srcUri.startsWith("content://")) {
