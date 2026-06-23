@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,7 @@ export default function StorageBreakdownScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { storageInfo, folderSizes, loading, permissionGranted, refreshSizes } = useStorage();
+  const [refreshing, setRefreshing] = useState(false);
 
   const categories: Category[] = [
     { label: 'Images',    size: folderSizes.pictures, bytes: parseSize(folderSizes.pictures), color: '#185FA5', icon: 'image-outline',      route: '/category?category=images' },
@@ -47,6 +48,12 @@ export default function StorageBreakdownScreen() {
   const usedBytes = storageInfo?.usedBytes ?? 0;
 
   const [sdCard, setSdCard] = useState<{ name: string; used: number; total: number } | null>(null);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshSizes();
+    setRefreshing(false);
+  }, [refreshSizes]);
 
   useFocusEffect(useCallback(() => {
     getStorageVolumes().then(async (vols: any) => {
@@ -79,7 +86,13 @@ export default function StorageBreakdownScreen() {
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Calculating...</Text>
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.blue]} />
+          }
+        >
           <StorageSummaryCard
             usedBytes={usedBytes}
             totalBytes={totalBytes}
