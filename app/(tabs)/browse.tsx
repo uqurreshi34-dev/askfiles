@@ -77,6 +77,7 @@ export default function BrowseScreen() {
   const [showSheet, setShowSheet] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const [zipping, setZipping] = useState(false);
@@ -978,7 +979,8 @@ export default function BrowseScreen() {
   }
 
   async function handleRename() {
-    if (!selectedItem || !renameValue.trim()) return;
+    if (!selectedItem || !renameValue.trim() || renaming) return;
+    setRenaming(true);
     const uri = selectedItem.uri.endsWith('/') ? selectedItem.uri.slice(0, -1) : selectedItem.uri;
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
@@ -996,10 +998,12 @@ export default function BrowseScreen() {
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
       await scanFile(toPath(newUri)).catch(() => {});
       try {
-        const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
-        const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-        const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(selectedItem.uri));
-        if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+        if (!selectedItem.isDirectory) {
+          const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
+          const allAssets = await MediaLibrary.getAssetsAsync({ first: 500, mediaType: ['photo', 'video'] });
+          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename);
+          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
+        }
       } catch (e) {}
       closeSheet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1013,6 +1017,8 @@ export default function BrowseScreen() {
           { text: 'Open Settings', onPress: requestManagePermission },
         ]
       );
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -1543,8 +1549,11 @@ export default function BrowseScreen() {
                       <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowRename(false); setRenameValue(''); }}>
                         <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.renameConfirmBtn} onPress={handleRename}>
-                        <Text style={styles.renameConfirmText}>Rename</Text>
+                      <TouchableOpacity style={[styles.renameConfirmBtn, renaming && { opacity: 0.6 }]} onPress={handleRename} disabled={renaming}>
+                        {renaming
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <Text style={styles.renameConfirmText}>Rename</Text>
+                        }
                       </TouchableOpacity>
                     </View>
                   </View>
