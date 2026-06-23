@@ -99,16 +99,8 @@ export default function StorageBreakdownScreen() {
             freeBytes={freeBytes}
             note="Includes apps and user files"
             showChevron={false}
+            sdCard={sdCard}
           />
-
-          {sdCard && (
-            <View style={[styles.sdRow, { backgroundColor: colors.surfaceAlt }]}>
-              <Ionicons name="card-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.sdText, { color: colors.textSecondary }]}>
-                {sdCard.name}: {formatSize(sdCard.used)} used of {formatSize(sdCard.total)}
-              </Text>
-            </View>
-          )}
 
           <View style={[styles.segmentCard, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>BY CATEGORY</Text>
@@ -194,6 +186,4 @@ const styles = StyleSheet.create({
   catBarTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   catBarFill: { height: '100%', borderRadius: 2 },
   note: { fontSize: 10, textAlign: 'center', marginTop: 16, marginHorizontal: 16 },
-  sdRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 16, padding: 14, borderRadius: 14 },
-  sdText: { fontSize: 13, fontWeight: '500' },
 });
