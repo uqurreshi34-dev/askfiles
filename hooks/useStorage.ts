@@ -297,7 +297,22 @@ export function useStorage() {
   }, []);
 
   const refreshSizes = useCallback(async () => {
-    await loadFolderSizes();
+    await Promise.all([
+      getStorageStats().then(stats => {
+        const total = stats.total;
+        const free = stats.free;
+        const used = (stats as any).used ?? (total - free);
+        cache.storageInfo = {
+          totalBytes: total,
+          freeBytes: free,
+          usedBytes: used,
+          usedPercent: Math.round((used / total) * 100),
+          totalReadable: formatSize(total),
+          usedReadable: formatSize(used),
+        };
+      }).catch(() => {}),
+      loadFolderSizes(),
+    ]);
     setTick(t => t + 1);
   }, []);
 
