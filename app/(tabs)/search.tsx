@@ -3,14 +3,17 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
-  Modal, Animated, PanResponder, Platform, Pressable, KeyboardAvoidingView, Alert, useWindowDimensions,
+  Modal, Animated, Platform, Pressable, KeyboardAvoidingView, Alert, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearch } from '@/hooks/useSearch';
 import { useAskAI } from '@/hooks/useAskAI';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate } from '@/utils/files';
+import { useBottomSheet } from '@/hooks/useBottomSheet';
+import { getMediaInfo } from 'media-store';
+import FileDetailsModal from '@/components/FileDetailsModal';
 import { addRecent } from '@/hooks/useRecents';
 import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
@@ -156,23 +159,15 @@ export default function SearchScreen() {
   const [pasting, setPasting] = useState(false);
   const [isFav, setIsFav] = useState(false);
   const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
-  const sheetAnim = useRef(new Animated.Value(400)).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
-      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80 || g.vy > 0.5) {
-          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-            setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue(''); setShowRename(false); setRenameValue('');
-          });
-        } else {
-          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-        }
-      },
-    })
-  ).current;
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
+  const [detailsName, setDetailsName] = useState('');
+  const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
+    setShowSheet(false);
+    setSelectedItem(null);
+  });
+
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
   useSpeechRecognitionEvent('result', (e) => {
@@ -207,25 +202,14 @@ export default function SearchScreen() {
     setShowRename(false);
     setRenameValue('');
     setIsFav(await isFavourite(item.uri));
-    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    animateOpen();
     try {
       const file = new FileSystem.File(item.uri);
       setFileSize(formatSize(file.size ?? 0));
     } catch { setFileSize('Unknown'); }
   }
 
-  function closeSheet() {
-    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-      setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue('');
-    });
-  }
-
   const ROOT_PATH = 'file:///storage/emulated/0/';
-
-  function toPath(uri: string): string { 
-    try { return decodeURIComponent(uri.replace('file://', '')); }
-    catch { return uri.replace('file://', ''); } 
-  }
 
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
@@ -998,15 +982,28 @@ export default function SearchScreen() {
                     {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                <TouchableOpacity style={styles.sheetAction} onPress={async () => {
+                  if (!selectedItem) return;
                   closeSheet();
-                  const locationRaw = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
-                  const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
-                  Alert.alert(selectedItem?.name ?? '', [
-                    fileSize ? `Size: ${fileSize}` : null,
-                    `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
-                    `Location: /${location}`,
-                  ].filter(Boolean).join('\n'));
+                  const lines: { label: string; value: string }[] = [];
+                  if (fileSize) lines.push({ label: 'Size', value: fileSize });
+                  lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                  lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                  try {
+                    const stat = await RNFS.stat(toPath(selectedItem.uri));
+                    if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
+                    if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                  } catch {}
+                  if (isImageFile(selectedItem.name) || isVideoFile(selectedItem.name)) {
+                    try {
+                      const info = await getMediaInfo(toPath(selectedItem.uri));
+                      if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                      if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                    } catch {}
+                  }
+                  setDetailsName(selectedItem.name);
+                  setDetailsData(lines);
+                  setShowDetailsModal(true);
                 }}>
                   <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
                   <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
@@ -1150,6 +1147,7 @@ export default function SearchScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+      <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
     </SafeAreaView>
   );
 }
