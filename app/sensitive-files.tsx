@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert,
@@ -11,10 +11,11 @@ import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
-import { getFileColor, formatSize, getMimeType } from '@/utils/files';
+import { getFileColor, formatSize, getMimeType, getFriendlyPath } from '@/utils/files';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { useTrash } from '@/hooks/useTrash';
 import { querySensitiveFiles } from 'media-store';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 interface SensitiveFile {
   name: string;
@@ -42,6 +43,11 @@ export default function SensitiveFilesScreen() {
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const { moveToTrash } = useTrash();
   const [deletingUri, setDeletingUri] = useState<string | null>(null);
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+
+  useEffect(() => {
+    getStorageVolumes().then(setVolumes);
+  }, []);
 
   async function scan() {
     setScanning(true);
@@ -197,7 +203,9 @@ export default function SensitiveFilesScreen() {
                     <View style={[styles.keywordBadge, { backgroundColor: colors.amberTint }]}>
                       <Text style={[styles.keywordText, { color: colors.amber }]}>{item.matchedKeyword}</Text>
                     </View>
-                    <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{formatSize(item.size)}</Text>
+                    <Text numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1, fontSize: 11, color: colors.textMuted }}>
+                      {formatSize(item.size)} · {getFriendlyPath(item.uri, volumes)}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.actions}>

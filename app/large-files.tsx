@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -7,12 +7,13 @@ import { queryLargestFiles } from 'media-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { isImageFile, getFileColor, formatSize, getFileIcon } from '@/utils/files';
+import { isImageFile, getFileColor, formatSize, getFileIcon, getFriendlyPath } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 interface LargeFile {
   name: string;
@@ -34,6 +35,11 @@ export default function LargeFilesScreen() {
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+
+  useEffect(() => {
+    getStorageVolumes().then(setVolumes);
+  }, []);
 
   async function scan() {
     setScanning(true);
@@ -103,7 +109,6 @@ export default function LargeFilesScreen() {
 
   function renderFile(file: LargeFile) {
     const color = getFileColor(file.name);
-    const ext = file.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
       <View key={file.uri} style={[styles.row, { borderBottomColor: colors.border }]}>
         <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
@@ -117,8 +122,8 @@ export default function LargeFilesScreen() {
         </View>
         <View style={styles.fileInfo}>
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
-          <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
-            {formatSize(file.size)} · {(() => { try { return decodeURIComponent(file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/')) || 'Storage'; } catch { return file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage'; } })()}
+          <Text style={[styles.fileMeta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+            {formatSize(file.size)} · {getFriendlyPath(file.uri, volumes)}
           </Text>
         </View>
         <TouchableOpacity

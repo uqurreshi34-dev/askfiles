@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image,
@@ -10,9 +10,10 @@ import { useDuplicates, DuplicateGroup, DuplicateFile } from '@/hooks/useDuplica
 import { useTheme } from '@/hooks/useTheme';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-import { isImageFile, getFileColor, getFileIcon } from '@/utils/files';
+import { isImageFile, getFileColor, getFileIcon, getFriendlyPath } from '@/utils/files';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 export default function DuplicatesScreen() {
   const { colors } = useTheme();
@@ -21,6 +22,11 @@ export default function DuplicatesScreen() {
   const { isPro } = usePro();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [keepingGroup, setKeepingGroup] = useState<string | null>(null);
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  
+  useEffect(() => {
+    getStorageVolumes().then(setVolumes);
+  }, []);
 
   async function handleDelete(group: DuplicateGroup, file: DuplicateFile) {
     Alert.alert(
@@ -65,7 +71,6 @@ export default function DuplicatesScreen() {
 
   function renderGroup({ item: group }: { item: DuplicateGroup }) {
     const color = getFileColor(group.name);
-    const ext = group.name.split('.').pop()?.toUpperCase() ?? '?';
     const showThumb = isImageFile(group.name) && group.files[0]?.uri;
     return (
       <View style={[styles.groupCard, { backgroundColor: colors.surfaceAlt }]}>
@@ -91,7 +96,7 @@ export default function DuplicatesScreen() {
           <View key={file.uri} style={[styles.fileRow, { borderTopColor: colors.border }]}>
             <Ionicons name="copy-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
             <Text style={[styles.filePath, { color: colors.textSecondary }]} numberOfLines={1}>
-              {(() => { try { return 'Internal Storage/' + decodeURIComponent(file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '')) || '/'; } catch { return 'Internal Storage/' + file.uri.replace('file:///storage/emulated/0/', '').replace(file.name, '') || '/'; } })()}
+            {getFriendlyPath(file.uri, volumes)}
             </Text>
             <TouchableOpacity
               style={[styles.deleteBtn, deleting === file.uri && { opacity: 0.5 }]}
