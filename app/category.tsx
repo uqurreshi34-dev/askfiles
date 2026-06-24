@@ -1240,7 +1240,7 @@ async function handleSsInfo() {
         <Animated.View
             style={SCREEN_WIDTH > SCREEN_HEIGHT
               ? [styles.sheetLandscape, { backgroundColor: colors.card }]
-              : [styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16 }]
+              : [styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16, maxHeight: SCREEN_HEIGHT * 0.75 }]
             }
             {...(SCREEN_WIDTH > SCREEN_HEIGHT ? {} : panResponder.panHandlers)}
           >
