@@ -526,7 +526,11 @@ async function handleSsInfo() {
   }
 
   async function handleCreatePdf() {
-    const files = Array.from(selectedItemsMap.values());
+    const files = Array.from(selectedItemsMap.values()).filter(f => isImageFile(f.name));
+    if (files.length === 0) {
+      Alert.alert('No images selected', 'Select at least one image to create a PDF.');
+      return;
+    }
     const imagePaths = files.map(f => toPath(f.uri));
     const timestamp = Date.now();
     const outputPath = `/storage/emulated/0/Documents/Scans/AskFiles_${timestamp}.pdf`;
