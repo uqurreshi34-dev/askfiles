@@ -76,3 +76,24 @@ export function getMimeType(name: string): string {
     if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
     return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
+
+  export function toPath(uri: string): string {
+    try { return decodeURIComponent(uri.replace('file://', '')); }
+    catch { return uri.replace('file://', ''); }
+  }
+  
+  export function getFriendlyPath(
+    uri: string,
+    volumes: { name: string; path: string; type: string }[] = []
+  ): string {
+    const sdVolume = volumes.find(v => v.type === 'sdcard' && uri.includes(v.path));
+    const raw = sdVolume
+      ? uri.replace(`file://${sdVolume.path}/`, `${sdVolume.name}/`).split('/').slice(0, -1).join('/')
+      : uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Internal Storage';
+      const decoded = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })();
+      return decoded.startsWith('/') ? decoded : '/' + decoded;
+  }
+
+  export function decodeName(name: string): string {
+    try { return decodeURIComponent(name); } catch { return name; }
+  }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BackHandler, PanResponder } from 'react-native';
+import { BackHandler } from 'react-native';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList,
@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, decodeName } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -33,6 +33,9 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-spe
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
 import { batchRename } from 'file-reader';
 import FolderPickerModal from '@/components/FolderPickerModal';
+import { getMediaInfo } from 'media-store';
+import FileDetailsModal from '@/components/FileDetailsModal';
+import { useBottomSheet } from '@/hooks/useBottomSheet';
 
 interface FileItem {
   name: string;
@@ -45,14 +48,6 @@ interface FileItem {
 const dirCacheStore: Record<string, FileItem[]> = {};
 const folderCountsStore: Record<string, number> = {};
 const ROOT_PATH = 'file:///storage/emulated/0/';
-
-function decodeName(name: string): string {
-  try { return decodeURIComponent(name); } catch { return name; }
-}
-
-function toPath(uri: string): string {
-  try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
-}
 
 export default function BrowseScreen() {
   const { colors } = useTheme();
@@ -108,27 +103,12 @@ export default function BrowseScreen() {
   const pendingItem = useRef<FileItem | null>(null);
   const pendingMultiItems = useRef<FileItem[]>([]);
   const dupeAction = useRef<'skip' | 'replace'>('skip');
-  const sheetAnim = useRef(new Animated.Value(400)).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) sheetAnim.setValue(gestureState.dy);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 80 || gestureState.vy > 0.5) {
-          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-            setShowSheet(false);
-            setSelectedItem(null);
-            setShowRename(false);
-            setRenameValue('');
-          });
-        } else {
-          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-        }
-      },
-    })
-  ).current;
+  const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
+    setShowSheet(false);
+    setSelectedItem(null);
+    setShowRename(false);
+    setRenameValue('');
+  });
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [openingUri, setOpeningUri] = useState<string | null>(null);
@@ -162,6 +142,9 @@ export default function BrowseScreen() {
   const [multiRenameBase, setMultiRenameBase] = useState('');
   const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
   const [multiRenaming, setMultiRenaming] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
+  const [detailsName, setDetailsName] = useState('');
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -205,7 +188,7 @@ export default function BrowseScreen() {
     setShowSheet(true);
     setIsFav(await isFavourite(item.uri));
     setIsBkmk(item.isDirectory ? isBookmarkedSync(item.uri) : false);
-    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    animateOpen();
     if (!item.isDirectory) {
       try {
         const file = new FileSystem.File(item.uri);
@@ -214,15 +197,6 @@ export default function BrowseScreen() {
         setFileSize('Unknown');
       }
     }
-  }
-
-  function closeSheet() {
-    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-      setShowSheet(false);
-      setSelectedItem(null);
-      setShowRename(false);
-      setRenameValue('');
-    });
   }
 
   async function loadDirectory(path: string, hiddenOverride?: boolean) {
@@ -1609,22 +1583,28 @@ export default function BrowseScreen() {
                     )}
                     <TouchableOpacity
                       style={styles.sheetAction}
-                      onPress={() => {
+                      onPress={async () => {
+                        if (!selectedItem) return;
                         closeSheet();
-                        const rawUri = selectedItem?.uri ?? '';
-                        const sdVolume = volumes.find(v => v.type === 'sdcard' && rawUri.includes(v.path));
-                        const location = sdVolume
-                          ? rawUri.replace(`file://${sdVolume.path}/`, `${sdVolume.name}/`).split('/').slice(0, -1).join('/')
-                          : rawUri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
-                        const locationDecoded = decodeURIComponent(location);
-                        Alert.alert(
-                          selectedItem?.name ?? '',
-                          [
-                            fileSize ? `Size: ${fileSize}` : null,
-                            selectedItem?.isDirectory ? 'Type: Folder' : `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
-                            `Location: /${locationDecoded}`,
-                          ].filter(Boolean).join('\n')
-                        );
+                        const lines: { label: string; value: string }[] = [];
+                        if (fileSize) lines.push({ label: 'Size', value: fileSize });
+                        lines.push({ label: 'Type', value: selectedItem.isDirectory ? 'Folder' : (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                        lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                        try {
+                          const stat = await RNFS.stat(toPath(selectedItem.uri));
+                          if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
+                          if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                        } catch {}
+                        if (!selectedItem.isDirectory && (isImageFile(selectedItem.name) || isVideoFile(selectedItem.name))) {
+                          try {
+                            const info = await getMediaInfo(toPath(selectedItem.uri));
+                            if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                            if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                          } catch {}
+                        }
+                        setDetailsName(selectedItem.name);
+                        setDetailsData(lines);
+                        setShowDetailsModal(true);
                       }}
                     >
                       <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
@@ -2248,6 +2228,8 @@ export default function BrowseScreen() {
           </View>
         </View>
       </Modal>
+      {/* File Details Modal */}
+      <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
       <Modal visible={showMultiRename} transparent animationType="fade" onRequestClose={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.2 : 24, paddingBottom: SCREEN_WIDTH > SCREEN_HEIGHT ? 0 : SCREEN_HEIGHT * 0.3 }}

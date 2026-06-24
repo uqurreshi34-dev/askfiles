@@ -1,6 +1,6 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -36,6 +36,8 @@ import { MediaPlayerView } from 'media-player';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { batchRename } from 'file-reader';
 import FolderPickerModal from '@/components/FolderPickerModal';
+import FileDetailsModal from '@/components/FileDetailsModal';
+import { useBottomSheet } from '@/hooks/useBottomSheet';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -96,22 +98,10 @@ export default function CategoryScreen() {
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const insets = useSafeAreaInsets();
-  const sheetAnim = useRef(new Animated.Value(400)).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
-      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80 || g.vy > 0.5) {
-          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-            setShowSheet(false); setSelectedItem(null);
-          });
-        } else {
-          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-        }
-      },
-    })
-  ).current;
+  const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
+    setShowSheet(false);
+    setSelectedItem(null);
+  });
   const sharingRef = useRef(false);
   const suppressWatcherRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
@@ -186,6 +176,9 @@ export default function CategoryScreen() {
   const [multiRenameBase, setMultiRenameBase] = useState('');
   const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
   const [multiRenaming, setMultiRenaming] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
+  const [detailsName, setDetailsName] = useState('');
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -262,11 +255,6 @@ async function handleSsInfo() {
   } catch {}
   Alert.alert(ssCurrent.name, lines.join('\n'));
 }
-
-  function toPath(uri: string): string {
-    try { return decodeURIComponent(uri.replace('file://', '')); }
-    catch { return uri.replace('file://', ''); }
-  }
 
   function formatDuration(ms: number): string {
     const totalSecs = Math.floor(ms / 1000);
@@ -403,7 +391,7 @@ async function handleSsInfo() {
     setShowRename(false);
     setRenameValue('');
     setShowSheet(true);
-    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    animateOpen();
     if (!item.size || item.size === 0) {
       try {
         const file = new FileSystem.File(item.uri);
@@ -411,12 +399,6 @@ async function handleSsInfo() {
       } catch {}
       setFileSize('Unknown');
     }
-  }
-
-  function closeSheet() {
-    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-      setShowSheet(false); setSelectedItem(null); setShowRename(false); setRenameValue('');
-    });
   }
 
   async function handleDelete() {
@@ -1337,21 +1319,27 @@ async function handleSsInfo() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={async () => {
+                if (!selectedItem) return;
                 closeSheet();
-                const locationRaw = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
-                const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
-                const lines: string[] = [];
-                if (fileSize) lines.push(`Size: ${fileSize}`);
-                lines.push(`Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`);
-                lines.push(`Location: /${location}`);
+                const lines: { label: string; value: string }[] = [];
+                if (fileSize) lines.push({ label: 'Size', value: fileSize });
+                lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                try {
+                  const stat = await RNFS.stat(toPath(selectedItem.uri));
+                  if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
+                  if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                } catch {}
                 if (isMediaCategory && selectedItem) {
                   try {
                     const info = await getMediaInfo(toPath(selectedItem.uri));
-                    if (info.width && info.height) lines.push(`Resolution: ${info.width}×${info.height}`);
-                    if (info.duration) lines.push(`Duration: ${info.duration}`);
+                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
                   } catch {}
                 }
-                Alert.alert(selectedItem?.name ?? '', lines.join('\n'));
+                setDetailsName(selectedItem.name);
+                setDetailsData(lines);
+                setShowDetailsModal(true);
               }}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
@@ -1936,6 +1924,8 @@ async function handleSsInfo() {
         )}
         </View>
       </Modal>
+        {/* File Details Modal */}
+        <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
       {/* Multi-rename modal */}
       <Modal visible={showMultiRename} transparent animationType="fade" onRequestClose={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
