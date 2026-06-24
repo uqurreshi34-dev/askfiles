@@ -1269,14 +1269,8 @@ async function handleSsInfo() {
                   {fileSize && <Text style={[styles.sheetMeta, { color: colors.textMuted }]}>{fileSize}</Text>}
                 </View>
               </View>
-              {!isMediaCategory && selectedItem?.name.toLowerCase().endsWith('.pdf') && (
-                <TouchableOpacity style={styles.sheetAction} onPress={handleExtractPdf}>
-                  <Ionicons name="document-outline" size={20} color={colors.green} />
-                  <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract pages as images</Text>
-                </TouchableOpacity>
-              )}
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-              {isVideoFile(selectedItem?.name ?? '') && (
+            {isVideoFile(selectedItem?.name ?? '') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleVideoSummary}>
                   <Ionicons name="film-outline" size={20} color={colors.textPrimary} />
                   <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Video Summary</Text>
@@ -1286,6 +1280,12 @@ async function handleSsInfo() {
                 <TouchableOpacity style={styles.sheetAction} onPress={handleExtractText}>
                   <Ionicons name="text-outline" size={20} color={colors.textPrimary} />
                   <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Extract Text</Text>
+                </TouchableOpacity>
+              )}
+              {!isMediaCategory && selectedItem?.name.toLowerCase().endsWith('.pdf') && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handleExtractPdf}>
+                  <Ionicons name="document-outline" size={20} color={colors.green} />
+                  <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract pages as images</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
@@ -1663,13 +1663,13 @@ async function handleSsInfo() {
               <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
               <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
             </TouchableOpacity>
-            {category === 'images' && (
-              <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
+            {Array.from(selectedItemsMap.values()).some(f => isImageFile(f.name)) && (
+            <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
                 <Ionicons name="document-outline" size={20} color={colors.blue} />
                 <Text style={[styles.sheetActionText, { color: colors.blue }]}>Create PDF</Text>
               </TouchableOpacity>
             )}
-            {!isMediaCategory && (
+            {Array.from(selectedItemsMap.values()).some(f => f.name.toLowerCase().endsWith('.pdf')) && (
               <TouchableOpacity style={styles.sheetAction} onPress={handleMergePdfs}>
                 <Ionicons name="documents-outline" size={20} color={colors.blue} />
                 <Text style={[styles.sheetActionText, { color: colors.blue }]}>Merge PDFs</Text>
@@ -1699,6 +1699,7 @@ async function handleSsInfo() {
                   style={{ maxHeight: SCREEN_HEIGHT * (SCREEN_WIDTH > SCREEN_HEIGHT ? 0.5 : 0.45) }}
                   showsVerticalScrollIndicator={true}
                   bounces={true}
+                  nestedScrollEnabled={true}
                 >
                   <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 22 }} selectable>{extractedText}</Text>
                 </ScrollView>

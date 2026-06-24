@@ -36,6 +36,9 @@ import FolderPickerModal from '@/components/FolderPickerModal';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
+import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
+import { extractTextFromImage } from '@/modules/scan-module';
+import * as Clipboard from 'expo-clipboard';
 
 interface FileItem {
   name: string;
@@ -145,6 +148,12 @@ export default function BrowseScreen() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
   const [detailsName, setDetailsName] = useState('');
+  const [creatingPdf, setCreatingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
+  const [extractingPdf, setExtractingPdf] = useState(false);
+  const [mergingPdf, setMergingPdf] = useState(false);
+  const [extractingText, setExtractingText] = useState(false);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -293,6 +302,122 @@ export default function BrowseScreen() {
     setCurrentPath(crumb.path);
     setSearchQuery('');
     setSearchActive(false);
+  }
+
+  async function handleCreatePdf() {
+    const files = Array.from(selectedItemsMap.values()).filter(f => isImageFile(f.name));
+    if (files.length === 0) {
+      Alert.alert('No images selected', 'Select at least one image to create a PDF.');
+      return;
+    }
+    const imagePaths = files.map(f => toPath(f.uri));
+    const timestamp = Date.now();
+    const outputPath = `/storage/emulated/0/Documents/Scans/AskFiles_${timestamp}.pdf`;
+    setCreatingPdf(true);
+    setPdfProgress({ current: 0, total: files.length });
+    const sub = addPdfProgressListener((event) => {
+      setPdfProgress({ current: event.current, total: event.total });
+    });
+    try {
+      await createPdfFromImages(imagePaths, outputPath);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('PDF Created', `${files.length} image${files.length !== 1 ? 's' : ''} saved to Documents/Scans`);
+      setSelectMode(false);
+      setSelectedUris(new Set());
+      setSelectedItemsMap(new Map());
+    } catch (e) {
+      Alert.alert('Error', 'Could not create PDF.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      sub.remove();
+      setCreatingPdf(false);
+      setPdfProgress(null);
+    }
+  }
+  
+  async function handleExtractPdf() {
+    if (!selectedItem) return;
+    const fileName = selectedItem.name.replace(/\.pdf$/i, '');
+    const outputDir = `/storage/emulated/0/Documents/Scans/${fileName}_pages`;
+    closeSheet();
+    setExtractingPdf(true);
+    setPdfProgress({ current: 0, total: 0 });
+    const sub = addPdfProgressListener((event) => {
+      setPdfProgress({ current: event.current, total: event.total });
+    });
+    try {
+      const paths = await extractPdfPages(toPath(selectedItem.uri), outputDir);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Extracted', `${paths.length} page${paths.length !== 1 ? 's' : ''} saved to Documents/Scans/${fileName}_pages`);
+    } catch (e) {
+      Alert.alert('Error', 'Could not extract PDF pages.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      sub.remove();
+      setExtractingPdf(false);
+      setPdfProgress(null);
+    }
+  }
+  
+  async function handleMergePdfs() {
+    const files = Array.from(selectedItemsMap.values());
+    const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    const nonPdfs = files.filter(f => !f.name.toLowerCase().endsWith('.pdf'));
+    if (pdfs.length < 2) {
+      Alert.alert('Not enough PDFs', 'Select at least 2 PDF files to merge.');
+      return;
+    }
+    const proceed = async () => {
+      setShowMoreSheet(false);
+      const timestamp = Date.now();
+      const outputPath = `/storage/emulated/0/Documents/Scans/AskFiles_merged_${timestamp}.pdf`;
+      setMergingPdf(true);
+      setPdfProgress({ current: 0, total: pdfs.length });
+      const sub = addPdfProgressListener((event) => {
+        setPdfProgress({ current: event.current, total: event.total });
+      });
+      try {
+        await mergePdfs(pdfs.map(f => toPath(f.uri)), outputPath);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Merged', `${pdfs.length} PDFs merged successfully. Saved to Documents/Scans.`);
+        setSelectMode(false);
+        setSelectedUris(new Set());
+        setSelectedItemsMap(new Map());
+      } catch (e) {
+        Alert.alert('Error', 'Could not merge PDFs.');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } finally {
+        sub.remove();
+        setMergingPdf(false);
+        setPdfProgress(null);
+      }
+    };
+    if (nonPdfs.length > 0) {
+      Alert.alert(
+        'Mixed selection',
+        `Only PDF files will be merged. ${pdfs.length} PDF${pdfs.length !== 1 ? 's' : ''} selected, ${nonPdfs.length} file${nonPdfs.length !== 1 ? 's' : ''} will be skipped. Continue?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Merge PDFs', onPress: proceed },
+        ]
+      );
+    } else {
+      proceed();
+    }
+  }
+  
+  async function handleExtractText() {
+    if (!selectedItem) return;
+    closeSheet();
+    setExtractingText(true);
+    try {
+      const text = await extractTextFromImage(toPath(selectedItem.uri));
+      setExtractedText(text.trim() || '');
+    } catch {
+      Alert.alert('Error', 'Could not extract text from this image.');
+    } finally {
+      setExtractingText(false);
+    }
   }
 
   async function handleShare() {
@@ -1557,6 +1682,18 @@ export default function BrowseScreen() {
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Video Summary</Text>
                       </TouchableOpacity>
                     )}
+                    {isImageFile(selectedItem?.name ?? '') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleExtractText}>
+                        <Ionicons name="text-outline" size={20} color={colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Extract Text</Text>
+                      </TouchableOpacity>
+                    )}
+                    {!selectedItem?.isDirectory && selectedItem?.name.toLowerCase().endsWith('.pdf') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleExtractPdf}>
+                        <Ionicons name="document-outline" size={20} color={colors.green} />
+                        <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract pages as images</Text>
+                      </TouchableOpacity>
+                    )}
                     {!selectedItem?.isDirectory && (
                       <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                         () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
@@ -1879,6 +2016,30 @@ export default function BrowseScreen() {
           </Text>
         </View>
       )}
+      {creatingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Creating PDF... {pdfProgress.current} of {pdfProgress.total}</Text>
+        </View>
+      )}
+      {extractingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Extracting page {pdfProgress.current} of {pdfProgress.total}...</Text>
+        </View>
+      )}
+      {mergingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Merging PDF {pdfProgress.current} of {pdfProgress.total}...</Text>
+        </View>
+      )}
+      {extractingText && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
+        </View>
+      )}
       {selectMode && selectedUris.size > 0 && (
         <>
           {sharing && (
@@ -1969,7 +2130,18 @@ export default function BrowseScreen() {
               <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
               <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
             </TouchableOpacity>
-            <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+            {Array.from(selectedItemsMap.values()).some(f => isImageFile(f.name)) && (
+              <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
+                <Ionicons name="document-outline" size={20} color={colors.blue} />
+                <Text style={[styles.sheetActionText, { color: colors.blue }]}>Create PDF</Text>
+              </TouchableOpacity>
+            )}
+            {Array.from(selectedItemsMap.values()).some(f => f.name.toLowerCase().endsWith('.pdf')) && (
+              <TouchableOpacity style={styles.sheetAction} onPress={handleMergePdfs}>
+                <Ionicons name="documents-outline" size={20} color={colors.blue} />
+                <Text style={[styles.sheetActionText, { color: colors.blue }]}>Merge PDFs</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.sheetAction} onPress={() => setShowMoreSheet(false)}>
               <Ionicons name="close-outline" size={20} color={colors.textMuted} />
               <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
@@ -2278,6 +2450,39 @@ export default function BrowseScreen() {
             </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={extractedText !== null} transparent animationType="fade" onRequestClose={() => setExtractedText(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setExtractedText(null)} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.5 : SCREEN_WIDTH - 48, maxHeight: SCREEN_HEIGHT * 0.8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Extracted Text</Text>
+              <TouchableOpacity onPress={() => setExtractedText(null)}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {extractedText ? (
+              <>
+                <ScrollView style={{ maxHeight: SCREEN_HEIGHT * (SCREEN_WIDTH > SCREEN_HEIGHT ? 0.5 : 0.45) }} showsVerticalScrollIndicator={true} bounces={true} nestedScrollEnabled={true}>
+                  <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 22 }} selectable>{extractedText}</Text>
+                </ScrollView>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await Clipboard.setStringAsync(extractedText ?? '');
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert('Copied', 'Text copied to clipboard.');
+                  }}
+                  style={{ marginTop: 16, backgroundColor: colors.blue, borderRadius: 10, padding: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '500' }}>Copy Text</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>No text found in this image.</Text>
+            )}
+          </View>
+        </View>
       </Modal>
 
       <FolderPickerModal
