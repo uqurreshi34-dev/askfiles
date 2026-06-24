@@ -1,10 +1,10 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, Image,
-  ActivityIndicator, Modal, Animated, PanResponder, Pressable, Alert,
+  ActivityIndicator, Modal, Animated, Pressable, Alert,
   useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
 import { useVault } from '@/hooks/useVault';
@@ -22,6 +22,10 @@ import { openFile as openFileNative, printImage, printPdf } from '@/modules/shar
 import RNFS from 'react-native-fs';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
+import { useBottomSheet } from '@/hooks/useBottomSheet';
+import { getStorageVolumes } from '@/modules/storage-stats';
+import { getMediaInfo } from 'media-store';
+import FileDetailsModal from '@/components/FileDetailsModal';
 
 
 export default function FavouritesScreen() {
@@ -40,48 +44,31 @@ export default function FavouritesScreen() {
   const [selectedItem, setSelectedItem] = useState<FavouriteItem | null>(null);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
+  const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
+  const [detailsName, setDetailsName] = useState('');
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
-  const sheetAnim = useRef(new Animated.Value(400)).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
-      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80 || g.vy > 0.5) {
-          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-            setShowSheet(false); setSelectedItem(null);
-          });
-        } else {
-          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-        }
-      },
-    })
-  ).current;
+  const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
+    setShowSheet(false);
+    setSelectedItem(null);
+  });
+
+  useEffect(() => {
+    getStorageVolumes().then(setVolumes);
+  }, []);
 
   async function openSheet(item: FavouriteItem) {
     setSelectedItem(item);
     setFileSize('Calculating...');
     setShowSheet(true);
-    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    animateOpen();
     try {
       const file = new FileSystem.File(item.uri);
       if (file.size && file.size > 0) { setFileSize(formatSize(file.size)); return; }
     } catch {}
     setFileSize('Unknown');
-  }
-
-  function closeSheet() {
-    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => {
-      setShowSheet(false); setSelectedItem(null);
-    });
-  }
-
-  //const ROOT_PATH = 'file:///storage/emulated/0/';
-
-  function toPath(uri: string): string { 
-    try { return decodeURIComponent(uri.replace('file://', '')); } 
-    catch { return uri.replace('file://', ''); } 
   }
 
   async function openItem(item: FavouriteItem) {
@@ -276,19 +263,32 @@ export default function FavouritesScreen() {
                   Move to Vault{!isPro ? '  🔒' : ''}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetAction} onPress={() => {
-                closeSheet();
-                const locationRaw = selectedItem?.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Storage';
-                const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
-                Alert.alert(selectedItem?.name ?? '', [
-                  `Size: ${fileSize ?? 'Unknown'}`,
-                  `Type: ${selectedItem?.name.split('.').pop()?.toUpperCase()} file`,
-                  `Location: /${location}`,
-                ].join('\n'));
-              }}>
-                <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAction} onPress={async () => {
+                  if (!selectedItem) return;
+                  closeSheet();
+                  const lines: { label: string; value: string }[] = [];
+                  if (fileSize) lines.push({ label: 'Size', value: fileSize });
+                  lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                  lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                  try {
+                    const stat = await RNFS.stat(toPath(selectedItem.uri));
+                    if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
+                    if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                  } catch {}
+                  if (isImageFile(selectedItem.name) || isVideoFile(selectedItem.name)) {
+                    try {
+                      const info = await getMediaInfo(toPath(selectedItem.uri));
+                      if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                      if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                    } catch {}
+                  }
+                  setDetailsName(selectedItem.name);
+                  setDetailsData(lines);
+                  setShowDetailsModal(true);
+                }}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+                </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleRemove}>
                 <Ionicons name="heart-dislike-outline" size={20} color={colors.deleteRed} />
                 <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Remove from Favourites</Text>
@@ -304,6 +304,7 @@ export default function FavouritesScreen() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+      <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
     </SafeAreaView>
   );
 }
