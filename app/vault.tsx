@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
-  Pressable, PanResponder, useWindowDimensions, ScrollView,
+  Pressable, useWindowDimensions, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
@@ -22,6 +22,9 @@ import { usePro } from '@/hooks/usePro';
 import { copyFileStream } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
+import { useBottomSheet } from '@/hooks/useBottomSheet';
+import { getMediaInfo } from 'media-store';
+import FileDetailsModal from '@/components/FileDetailsModal';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
@@ -41,28 +44,20 @@ export default function VaultScreen() {
   const [pickerFiles, setPickerFiles] = useState<{ name: string; uri: string; isDirectory: boolean }[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const pendingFile = useRef<VaultFile | null>(null);
-  const sheetAnim = useRef(new Animated.Value(400)).current;
   const insets = useSafeAreaInsets();
   const [openingFile, setOpeningFile] = useState(false);
   const [movingFile, setMovingFile] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [selectedFilesMap, setSelectedFilesMap] = useState<Map<string, VaultFile>>(new Map());
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
+  const [detailsName, setDetailsName] = useState('');
   const { isPro } = usePro();
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
-      onPanResponderMove: (_, g) => { if (g.dy > 0) sheetAnim.setValue(g.dy); },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80 || g.vy > 0.5) {
-          Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true })
-            .start(() => { setShowSheet(false); setSelectedFile(null); });
-        } else {
-          Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-        }
-      },
-    })
-  ).current;
+  const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
+    setShowSheet(false);
+    setSelectedFile(null);
+  });
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
@@ -78,10 +73,6 @@ export default function VaultScreen() {
     }
     init();
   }, []);
-
-  function toPath(uri: string): string {
-    try { return decodeURIComponent(uri.replace('file://', '')); } catch { return uri.replace('file://', ''); }
-  }
 
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
@@ -208,12 +199,7 @@ export default function VaultScreen() {
   function openSheet(file: VaultFile) {
     setSelectedFile(file);
     setShowSheet(true);
-    Animated.spring(sheetAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
-  }
-
-  function closeSheet() {
-    Animated.timing(sheetAnim, { toValue: 400, duration: 200, useNativeDriver: true })
-      .start(() => { setShowSheet(false); setSelectedFile(null); });
+    animateOpen();
   }
 
   async function openFile(file: VaultFile) {
@@ -619,11 +605,27 @@ export default function VaultScreen() {
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.sheetAction} onPress={() => {
+              <TouchableOpacity style={styles.sheetAction} onPress={async () => {
                 if (!selectedFile) return;
                 closeSheet();
-                const ext = selectedFile.name.split('.').pop()?.toUpperCase() ?? 'FILE';
-                Alert.alert(selectedFile.name, `Size: ${formatSize(selectedFile.size)}\nType: ${ext} file\nLocation: Secure Vault`);
+                const lines: { label: string; value: string }[] = [];
+                try {
+                  const stat = await RNFS.stat(toPath(selectedFile.uri));
+                  if (stat.size) lines.push({ label: 'Size', value: formatSize(stat.size) });
+                  if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
+                  if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                } catch {}
+                lines.push({ label: 'Type', value: (selectedFile.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                if (isImageFile(selectedFile.name) || isVideoFile(selectedFile.name)) {
+                  try {
+                    const info = await getMediaInfo(toPath(selectedFile.uri));
+                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                  } catch {}
+                }
+                setDetailsName(selectedFile.name);
+                setDetailsData(lines);
+                setShowDetailsModal(true);
               }}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
@@ -733,6 +735,7 @@ export default function VaultScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+      <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
     </SafeAreaView>
   );
 }
