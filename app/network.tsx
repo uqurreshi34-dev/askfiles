@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { startWifiServer, stopWifiServer } from 'file-reader';
 import QRCode from 'react-native-qrcode-svg';
 import * as Haptics from 'expo-haptics';
 import { useWindowDimensions } from 'react-native';
+import { startServer, stopServer, isRunning } from '@/modules/ftp-server';
 
 export default function NetworkScreen() {
   const { colors } = useTheme();
@@ -18,9 +19,15 @@ export default function NetworkScreen() {
   const [wifiActive, setWifiActive] = useState(false);
   const [wifiUrl, setWifiUrl] = useState('');
   const [wifiQrVisible, setWifiQrVisible] = useState(false);
+  const [ftpActive, setFtpActive] = useState(false);
+  const [ftpUrl, setFtpUrl] = useState('');
+  const [ftpQrVisible, setFtpQrVisible] = useState(false);
 
   useEffect(() => {
-    return () => { stopWifiServer().catch(() => {}); };
+    return () => {
+      stopWifiServer().catch(() => {});
+      stopServer().catch(() => {});
+    };
   }, []);
 
   return (
@@ -35,6 +42,7 @@ export default function NetworkScreen() {
 
       <Text style={[styles.sub, { color: colors.textMuted }]}>Connect to a device on your network</Text>
 
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
       {/* SMB */}
       <TouchableOpacity
         activeOpacity={0.8}
@@ -162,6 +170,106 @@ export default function NetworkScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      {/* FTP Server */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={[styles.card, {
+          backgroundColor: ftpActive ? colors.greenBg : colors.surface,
+          borderWidth: ftpActive ? 0 : 0.5,
+          borderColor: colors.border,
+        }]}
+        onPress={async () => {
+          if (ftpActive) {
+            setFtpQrVisible(true);
+          } else {
+            try {
+              const ip = await startServer(2121, '/storage/emulated/0/');
+              const url = `ftp://${ip}:2121`;
+              setFtpUrl(url);
+              setFtpActive(true);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch (e: any) {
+              Alert.alert('Error', e?.message ?? 'Failed to start FTP server');
+            }
+          }
+        }}
+      >
+        <View style={styles.cardLeft}>
+          <View style={[styles.cardIcon, { backgroundColor: ftpActive ? colors.greenBg : colors.surface }]}>
+            <Ionicons
+              name={ftpActive ? 'folder-open' : 'folder-open-outline'}
+              size={22}
+              color={ftpActive ? colors.green : colors.textMuted}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>FTP Server</Text>
+            {ftpActive ? (
+              <>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Tap to show QR — scan in Windows Explorer</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>FileZilla: Host <Text style={{ color: colors.green, fontWeight: '600' }}>{ftpUrl.replace('ftp://', '').split(':')[0]}</Text> Port 2121</Text>
+                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Username: askfiles · No password</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Mount phone as a network drive</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Works with FileZilla, Windows Explorer & more</Text>
+              </>
+            )}
+          </View>
+        </View>
+        {ftpActive ? (
+          <TouchableOpacity
+            onPress={async () => {
+              await stopServer();
+              setFtpActive(false);
+              setFtpUrl('');
+              setFtpQrVisible(false);
+            }}
+            style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
+          </TouchableOpacity>
+        ) : (
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        )}
+      </TouchableOpacity>
+
+    {/* FTP QR Modal */}
+    <Modal visible={ftpQrVisible} transparent animationType="fade" onRequestClose={() => setFtpQrVisible(false)}>
+      <TouchableOpacity
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}
+        activeOpacity={1}
+        onPress={() => setFtpQrVisible(false)}
+      >
+        <View style={{
+          backgroundColor: colors.modalCard,
+          borderRadius: 16,
+          padding: 16,
+          paddingBottom: 24,
+          alignItems: 'center',
+          width: modalWidth,
+          overflow: 'hidden',
+        }} onStartShouldSetResponder={() => true}>
+          <TouchableOpacity
+            onPress={() => setFtpQrVisible(false)}
+            style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 4 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>FTP Server</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Open in FileZilla or Windows Explorer</Text>
+          <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
+            <QRCode value={ftpUrl || 'ftp://localhost:2121'} size={180} />
+          </View>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — Host: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpUrl.replace('ftp://', '').split(':')[0]}</Text> Port: 2121</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Username: askfiles · No password needed</Text>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+    </ScrollView>
     </SafeAreaView>
   );
 }

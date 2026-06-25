@@ -76,6 +76,7 @@
     "scan-module": "file:modules/scan-module",
     "sftp-client": "file:modules/sftp-client",
     "smb-client": "file:modules/smb-client",
+    "ftp-server": "file:modules/ftp-server",
     "upload-manager": "file:modules/upload-manager",
     "upload-service": "file:modules/upload-service"
   },

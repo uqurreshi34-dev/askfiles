@@ -1,0 +1,9 @@
+{
+    "name": "ftp-server",
+    "version": "0.1.0",
+    "description": "Native FTP server module for AskFiles",
+    "main": "index.ts",
+    "android": {
+      "gradlePath": "android/build.gradle"
+    }
+  }
