@@ -36,12 +36,39 @@ export interface MediaInfo {
   size: number;
 }
 
-export async function queryDocuments(): Promise<MediaFile[]> {
-  return MediaStore.queryDocuments();
+export interface FolderGroup {
+  folderPath: string;
+  folderName: string;
+  previewUri: string;
+  count: number;
+  uris: string[];
 }
 
-export async function queryDownloads(): Promise<MediaFile[]> {
-  return MediaStore.queryDownloads();
+export async function queryImageFolders(): Promise<FolderGroup[]> {
+  return MediaStore.queryImageFolders();
+}
+
+export async function queryVideoFolders(): Promise<FolderGroup[]> {
+  return MediaStore.queryVideoFolders();
+}
+
+export async function queryDocumentFolders(mimeTypes: string[] = []): Promise<FolderGroup[]> {
+  return MediaStore.queryDocumentFolders(mimeTypes);
+}
+
+export async function queryDocuments(sortKey: string = 'name_asc'): Promise<MediaFile[]> {
+  return MediaStore.queryDocuments(sortKey);
+}
+
+export async function queryDownloads(sortKey: string = 'name_asc'): Promise<MediaFile[]> {
+  return MediaStore.queryDownloads(sortKey);
+}
+
+export async function queryDocumentsByMimeWithFolders(
+  mimeTypes: string[] = [],
+  sortKey: string = 'name_asc'
+): Promise<{ files: MediaFile[]; folders: FolderGroup[] }> {
+  return MediaStore.queryDocumentsByMimeWithFolders(mimeTypes, sortKey);
 }
 
 export async function queryImageSize(): Promise<number> {
@@ -81,15 +108,11 @@ export async function searchFiles(query: string): Promise<{
   return MediaStore.searchFiles(query);
 }
 
-export async function queryDocumentsByMime(mimeTypes: string[]): Promise<MediaFile[]> {
-  return MediaStore.queryDocumentsByMime(mimeTypes);
-}
+export const queryImages = async (sortKey: string = 'date_desc'): Promise<{ name: string; uri: string; date: number; size: number }[]> =>
+  MediaStore.queryImages(sortKey);
 
-export const queryImages = async (): Promise<{ name: string; uri: string; date: number; size: number }[]> =>
-  MediaStore.queryImages();
-
-export const queryVideos = async (): Promise<{ name: string; uri: string; date: number; size: number }[]> =>
-  MediaStore.queryVideos();
+export const queryVideos = async (sortKey: string = 'date_desc'): Promise<{ name: string; uri: string; date: number; size: number }[]> =>
+  MediaStore.queryVideos(sortKey);
 
 export async function getMediaInfo(filePath: string): Promise<MediaInfo> {
   return MediaStore.getMediaInfo(filePath);

@@ -24,7 +24,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { queryDocuments, queryDownloads, queryDocumentsByMime, queryImages, queryVideos, getMediaInfo } from 'media-store';
+import { queryDocuments, queryDownloads, queryDocumentsByMimeWithFolders, queryImages, queryVideos, getMediaInfo, queryImageFolders, queryVideoFolders, queryDocumentFolders, FolderGroup } from 'media-store';
 import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
@@ -58,15 +58,6 @@ const CATEGORY_CONFIG: Record<Category, { title: string; icon: string; color: st
 const DOC_TABS = ['All', 'PDF', 'Word', 'Excel', 'Other'] as const;
 const DL_TABS  = ['All', 'APK', 'PDF', 'Docs', 'Other'] as const;
 
-function getDocTab(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  if (ext === 'pdf') return 'PDF';
-  if (['doc', 'docx', 'txt', 'rtf', 'odt', 'pages'].includes(ext)) return 'Word';
-  if (['xls', 'xlsx', 'csv', 'ods', 'numbers'].includes(ext)) return 'Excel';
-  if (['ppt', 'pptx', 'odp'].includes(ext)) return 'Other';
-  return 'Other';
-}
-
 function getDlTab(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   if (ext === 'apk') return 'APK';
@@ -83,6 +74,13 @@ const TAB_MIMES: Record<string, string[]> = {
   'APK': ['application/vnd.android.package-archive'],
   'Docs': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain', 'text/csv'],
 };
+
+const SS_SPEEDS = [2000, 4000, 7000, 10000];
+const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
+
+const ROOT_PATH = 'file:///storage/emulated/0/';
+
+type SortKey = 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc';
 
 export default function CategoryScreen() {
   const { colors } = useTheme();
@@ -121,7 +119,6 @@ export default function CategoryScreen() {
   const config = CATEGORY_CONFIG[category ?? 'images'];
   const { addToVault } = useVault();
   const { isPro } = usePro();
-  type SortKey = 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc';
   const [sortKey, setSortKey] = useState<SortKey>('name_asc');
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [gridView, setGridView] = useState(true);
@@ -131,6 +128,9 @@ export default function CategoryScreen() {
   const [sharing, setSharing] = useState(false);
   const [vaulting, setVaulting] = useState(false);
   const isMediaCategory = category === 'images' || category === 'videos';
+  const [folderView, setFolderView] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<FolderGroup | null>(null);
+  const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [pasting, setPasting] = useState(false);
@@ -141,7 +141,6 @@ export default function CategoryScreen() {
   const [multiPasteProgress, setMultiPasteProgress] = useState<{ current: number; total: number; name: string } | null>(null);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
-  const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [creatingPdf, setCreatingPdf] = useState(false);
@@ -170,8 +169,6 @@ export default function CategoryScreen() {
   const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
   const [playerSpeed, setPlayerSpeed] = useState(1.0);
   const [playerDuration, setPlayerDuration] = useState<number>(0);
-  const SS_SPEEDS = [2000, 4000, 7000, 10000];
-  const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
   const [showMultiRename, setShowMultiRename] = useState(false);
   const [multiRenameBase, setMultiRenameBase] = useState('');
   const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
@@ -179,6 +176,7 @@ export default function CategoryScreen() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
   const [detailsName, setDetailsName] = useState('');
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -226,11 +224,22 @@ export default function CategoryScreen() {
       return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerSpeed(1.0); };
     }
   }, [playerUri]);
+
+  useEffect(() => {
+    if (selectedFolder) {
+      const handler = () => { setSelectedFolder(null); return true; };
+      const sub = require('react-native').BackHandler.addEventListener('hardwareBackPress', handler);
+      return () => sub.remove();
+    }
+  }, [selectedFolder]);
   
 
-function openSlideshow() {
-  const seen = new Set<string>();
-  const deduped = filteredItems.filter(it => {
+  function openSlideshow() {
+    const sourceItems = (folderView && selectedFolder)
+      ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
+      : filteredItems;
+    const seen = new Set<string>();
+    const deduped = sourceItems.filter(it => {
     if (seen.has(it.name)) return false;
     seen.add(it.name);
     return true;
@@ -296,6 +305,36 @@ async function handleSsInfo() {
     loadPickerDir(ROOT_PATH);
     setShowPicker(true);
     closeSheet();
+  }
+
+  async function loadCategoryWithSort(sk: SortKey) {
+    setLoading(true);
+    try {
+      if (category === 'images' || category === 'videos') {
+        const assets = category === 'images' ? await queryImages(sk) : await queryVideos(sk);
+        setItems(assets.map(a => ({ name: a.name, uri: a.uri, date: a.date, size: a.size })));
+      } else if (category === 'downloads') {
+        const dlItems = await queryDownloads(sk);
+        setItems(dlItems);
+      } else if (category === 'documents') {
+        const docItems = await queryDocuments(sk);
+        setItems(docItems);
+      }
+    } catch (e) {
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadFolders(tab: string = activeTab) {
+    if (category === 'images') {
+      setFolderGroups(await queryImageFolders());
+    } else if (category === 'videos') {
+      setFolderGroups(await queryVideoFolders());
+    } else if (category === 'documents') {
+      const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
+      setFolderGroups(await queryDocumentFolders(mimes));
+    }
   }
 
   async function handlePaste() {
@@ -634,13 +673,13 @@ async function handleSsInfo() {
     setLoading(true);
     try {
       if (category === 'images' || category === 'videos') {
-        const assets = category === 'images' ? await queryImages() : await queryVideos();
+        const assets = category === 'images' ? await queryImages(sortKey) : await queryVideos(sortKey);
         setItems(assets.map(a => ({ name: a.name, uri: a.uri, date: a.date, size: a.size })));
       } else if (category === 'downloads') {
         const dlItems = await queryDownloads();
         setItems(dlItems);
       } else if (category === 'documents') {
-        const docItems = await queryDocuments();
+        const docItems = await queryDocuments(sortKey);
         setItems(docItems);
       }
     } catch (e) {
@@ -939,30 +978,34 @@ async function handleSsInfo() {
   const tabs = category === 'documents' ? DOC_TABS : category === 'downloads' ? DL_TABS : null;
 
   const filteredItems = useMemo(() => {
-    let result = (tabs && activeTab !== 'All')
-      ? items.filter(item => {
-          const tab = category === 'documents' ? getDocTab(item.name) : getDlTab(item.name);
-          return tab === activeTab;
-        })
+    let result = (activeTab !== 'All' && category === 'downloads')
+      ? items.filter(item => getDlTab(item.name) === activeTab)
       : items;
-      result = result.slice().sort((a, b) => {
-        switch (sortKey) {
-          case 'name_asc': return a.name.localeCompare(b.name);
-          case 'name_desc': return b.name.localeCompare(a.name);
-          case 'size_desc': return (b.size ?? 0) - (a.size ?? 0);
-          case 'size_asc': return (a.size ?? 0) - (b.size ?? 0);
-          case 'date_desc': return (b.date ?? 0) - (a.date ?? 0);
-          case 'date_asc': return (a.date ?? 0) - (b.date ?? 0);
-          default: return a.name.localeCompare(b.name);
-        }
-      });
     if (searchQuery.trim()) {
       result = result.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
     return result;
-  }, [items, activeTab, sortKey, searchQuery, category]);
+  }, [items, activeTab, searchQuery, category]);
 
   const gridUris = useMemo(() => filteredItems.map(i => i.uri), [filteredItems]);
+
+  const selectedHasImages = useMemo(() =>
+    Array.from(selectedItemsMap.values()).some(f => isImageFile(f.name)),
+    [selectedItemsMap]
+  );
+  const selectedHasPdfs = useMemo(() =>
+    Array.from(selectedItemsMap.values()).some(f => f.name.toLowerCase().endsWith('.pdf')),
+    [selectedItemsMap]
+  );
+
+  const pickerData = useMemo(() => [...pickerItems, ...pickerFiles], [pickerItems, pickerFiles]);
+
+  const pickerPathDisplay = useMemo(() => {
+    let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+    const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
+    if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
+    try { return decodeURIComponent(display); } catch { return display; }
+  }, [pickerPath, volumes]);
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -972,10 +1015,16 @@ async function handleSsInfo() {
             <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={styles.backBtn}>
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{selectedUris.size} selected</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {selectedUris.size} {selectedUris.size === 1
+                ? config.title.slice(0, -1).toLowerCase()
+                : config.title.toLowerCase()} selected
+            </Text>
             <TouchableOpacity
               onPress={() => {
-                const allFiles = filteredItems;
+                const allFiles = (folderView && selectedFolder)
+                  ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
+                  : filteredItems;
                 const newSet = new Set(allFiles.map(f => f.uri));
                 const newMap = new Map(allFiles.map(f => [f.uri, f]));
                 setSelectedUris(newSet);
@@ -993,29 +1042,49 @@ async function handleSsInfo() {
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            {category === 'images' && (
-                <TouchableOpacity
-                  onPress={() => {
-                    if (filteredItems.length === 0) return;
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    openSlideshow();
-                  }}
-                  style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
-                >
-                  <Ionicons name="shuffle" size={22} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }}
+                style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+              >
                 <Ionicons name="checkmark-circle-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
-              {isMediaCategory && (
-                <TouchableOpacity onPress={() => setGridView(v => !v)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+              {isMediaCategory && !(folderView && selectedFolder === null) && (
+                <TouchableOpacity
+                  onPress={() => setGridView(v => !v)}
+                  style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                >
                   <Ionicons name={gridView ? 'list-outline' : 'grid-outline'} size={22} color={colors.textSecondary} />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => setShowSortSheet(true)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="swap-vertical-outline" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
+              {isMediaCategory ? (
+                <TouchableOpacity
+                  onPress={() => setShowHeaderMenu(true)}
+                  style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                >
+                  <Ionicons name="ellipsis-vertical" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              ) : (
+                <>
+                  {(category === 'documents') && (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        const next = !folderView;
+                        setFolderView(next);
+                        setSelectedFolder(null);
+                        if (next) { setLoading(true); await loadFolders(activeTab); setLoading(false); }
+                      }}
+                      style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <Ionicons name={folderView ? 'folder' : 'folder-outline'} size={22} color={folderView ? colors.blue : colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                  {(!folderView || selectedFolder !== null) && (
+                    <TouchableOpacity onPress={() => setShowSortSheet(true)} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="swap-vertical-outline" size={22} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
             </View>
           </>
         )}
@@ -1029,25 +1098,17 @@ async function handleSsInfo() {
               onPress={async () => {
                 setActiveTab(tab);
                 setVisibleCount(100);
-                setLoading(true); 
-                if (tab === 'All') {
-                  const all = category === 'documents' ? await queryDocuments() : await queryDownloads();
-                  setItems(all);
+                setSelectedFolder(null);
+                setLoading(true);
+                const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
+                if (category === 'documents') {
+                  const result = await queryDocumentsByMimeWithFolders(mimes, sortKey);
+                  setItems(result.files);
+                  if (folderView) setFolderGroups(result.folders);
                 } else {
-                  const mimes = TAB_MIMES[tab] ?? [];
-                  if (mimes.length > 0) {
-                    if (category === 'downloads') {
-                      const all = await queryDownloads();
-                      const filtered = all.filter(item => {
-                        const tab2 = getDlTab(item.name);
-                        return tab2 === tab;
-                      });
-                      setItems(filtered);
-                    } else {
-                      const result = await queryDocumentsByMime(mimes);
-                      setItems(result);
-                    }
-                  }
+                  const all = await queryDownloads(sortKey);
+                  const filtered = tab === 'All' ? all : all.filter(item => getDlTab(item.name) === tab);
+                  setItems(filtered);
                 }
                 setLoading(false);
               }}
@@ -1123,6 +1184,188 @@ async function handleSsInfo() {
           <ActivityIndicator color={config.color} />
           <Text style={[styles.empty, { color: colors.textMuted, marginTop: 8 }]}>Loading...</Text>
         </View>
+      ) : folderView && selectedFolder === null ? (
+        // Folder list view
+        <FlatList
+          data={folderGroups}
+          keyExtractor={item => item.folderPath}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={[styles.count, { color: colors.textMuted }]}>
+              {folderGroups.length} folder{folderGroups.length !== 1 ? 's' : ''}
+            </Text>
+          }
+          renderItem={({ item: group }) => (
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: colors.border }]}
+              onPress={() => setSelectedFolder(group)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.icon, { backgroundColor: colors.yellow + '22', overflow: 'hidden' }]}>
+                {(category === 'images' || category === 'videos') ? (
+                  category === 'images' ? (
+                    <Image source={{ uri: group.previewUri }} style={styles.thumb} resizeMode="cover" />
+                  ) : (
+                    <VideoThumb uri={group.previewUri} style={styles.thumb} />
+                  )
+                ) : (
+                  <Ionicons name="folder" size={22} color={colors.yellow} />
+                )}
+              </View>
+              <View style={styles.info}>
+                <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{group.folderName}</Text>
+                <Text style={[styles.meta, { color: colors.textMuted }]}>{group.count} file{group.count !== 1 ? 's' : ''}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+            </TouchableOpacity>
+          )}
+        />
+      ) : folderView && selectedFolder !== null ? (
+        // Folder drill-down — grid of files in selected folder
+        <>
+          <TouchableOpacity
+            onPress={() => setSelectedFolder(null)}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+          >
+            <Ionicons name="arrow-back" size={18} color={colors.blue} />
+            <Text style={{ fontSize: 13, color: colors.blue, fontWeight: '500' }}>{selectedFolder?.folderName}</Text>
+            <Text style={{ fontSize: 13, color: colors.textMuted }}>· {selectedFolder?.count} files</Text>
+          </TouchableOpacity>
+          {(category === 'images' || category === 'videos') && gridView ? (
+            <MediaGridView
+              selectedUris={Array.from(selectedUris)}
+              style={{ flex: 1 }}
+              key={`folder-${selectedFolder?.folderPath}`}
+              uris={selectedFolder?.uris ?? []}
+              selectMode={selectMode}
+              category={(category === 'videos' ? 'videos' : 'images')}
+              openingUri={openingUri ?? ''}
+              onItemPress={(e) => {
+                const { uri } = e.nativeEvent;
+                const item = filteredItems.find(i => i.uri === uri);
+                if (!item || selectMode) return;
+                openItem(item);
+              }}
+              onItemLongPress={(e) => {
+                const { uri } = e.nativeEvent;
+                const item = filteredItems.find(i => i.uri === uri);
+                if (!item || selectMode) return;
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                openSheet(item);
+              }}
+              onSelectionChange={(e) => {
+                const uris: string[] = e.nativeEvent.selectedUris;
+                const newSet = new Set(uris);
+                setSelectedUris(newSet);
+                setSelectedItemsMap(() => {
+                  const newMap = new Map<string, FileItem>();
+                  uris.forEach(uri => {
+                    const item = filteredItems.find(i => i.uri === uri);
+                    if (item) newMap.set(uri, item);
+                  });
+                  return newMap;
+                });
+              }}
+            />
+          ) : (category === 'images' || category === 'videos') && !gridView ? (
+            <FlatList
+              data={selectedFolder?.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]}
+              keyExtractor={item => item.uri}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const color = getFileColor(item.name);
+                const isSelected = selectedUris.has(item.uri);
+                return (
+                  <TouchableOpacity
+                    style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
+                    onPress={() => {
+                      if (selectMode) {
+                        const newSet = new Set(selectedUris);
+                        const newMap = new Map(selectedItemsMap);
+                        if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
+                        else { newSet.add(item.uri); newMap.set(item.uri, item); }
+                        setSelectedUris(newSet);
+                        setSelectedItemsMap(newMap);
+                      } else {
+                        openItem(item);
+                      }
+                    }}
+                    onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openSheet(item); }}
+                    activeOpacity={0.7}
+                  >
+                    {selectMode && (
+                      <View style={{ marginRight: 12 }}>
+                        <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
+                      </View>
+                    )}
+                    <View style={[styles.icon, { backgroundColor: getFileColor(item.name) + '22', overflow: 'hidden' }]}>
+                      <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                    </View>
+                    <View style={styles.info}>
+                      <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                      <Text style={[styles.meta, { color: colors.textMuted }]}>
+                        {item.size ? formatSize(item.size) : ''}
+                        {item.size && item.date ? ' · ' : ''}
+                        {item.date ? formatDate(item.date) : ''}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          ) : (
+            <FlatList
+              data={selectedFolder?.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]}
+              keyExtractor={item => item.uri}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const color = getFileColor(item.name);
+                const isSelected = selectedUris.has(item.uri);
+                return (
+                  <TouchableOpacity
+                    style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
+                    onPress={() => {
+                      if (selectMode) {
+                        const newSet = new Set(selectedUris);
+                        const newMap = new Map(selectedItemsMap);
+                        if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
+                        else { newSet.add(item.uri); newMap.set(item.uri, item); }
+                        setSelectedUris(newSet);
+                        setSelectedItemsMap(newMap);
+                      } else {
+                        openItem(item);
+                      }
+                    }}
+                    onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openSheet(item); }}
+                    activeOpacity={0.7}
+                  >
+                    {selectMode && (
+                      <View style={{ marginRight: 12 }}>
+                        <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
+                      </View>
+                    )}
+                    <View style={[styles.icon, { backgroundColor: color + '22' }]}>
+                      <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
+                    </View>
+                    <View style={styles.info}>
+                      <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                      <Text style={[styles.meta, { color: colors.textMuted }]}>
+                        {item.size ? formatSize(item.size) : ''}
+                        {item.size && item.date ? ' · ' : ''}
+                        {item.date ? formatDate(item.date) : ''}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+        </>
       ) : filteredItems.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name={config.icon as any} size={40} color={colors.textDisabled} />
@@ -1139,7 +1382,7 @@ async function handleSsInfo() {
             key={`grid-${sortKey}-${searchQuery}-${selectMode}`}
             uris={gridUris}
             selectMode={selectMode}
-            category={category ?? 'images'}
+            category={(category === 'videos' ? 'videos' : 'images')}
             openingUri={openingUri ?? ''}
             onItemPress={(e) => {
               const { uri } = e.nativeEvent;
@@ -1427,12 +1670,7 @@ async function handleSsInfo() {
             <View style={{ width: 40 }} />
           </View>
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
-          {(() => {
-              let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
-              const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
-              if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
-              try { return decodeURIComponent(display); } catch { return display; }
-            })()}
+            {pickerPathDisplay}
           </Text>
           {volumes.length > 1 && (
             <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
@@ -1454,7 +1692,7 @@ async function handleSsInfo() {
             <View style={styles.centered}><Text style={[styles.empty, { color: colors.textMuted }]}>This folder is empty</Text></View>
           ) : (
             <FlatList
-              data={[...pickerItems, ...pickerFiles]}
+              data={pickerData}
               keyExtractor={item => item.uri}
               contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
               showsVerticalScrollIndicator={false}
@@ -1522,7 +1760,7 @@ async function handleSsInfo() {
               <TouchableOpacity
                 key={key}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
-                onPress={() => { setSortKey(key); setShowSortSheet(false); }}
+                onPress={() => { setSortKey(key); setShowSortSheet(false); loadCategoryWithSort(key); }}
               >
                 <Text style={{ fontSize: 15, color: sortKey === key ? colors.blue : colors.textPrimary, fontWeight: sortKey === key ? '600' : '400' }}>
                   {label}
@@ -1645,6 +1883,52 @@ async function handleSsInfo() {
           </View>
         </TouchableOpacity>
       </Modal>
+      <Modal visible={showHeaderMenu} transparent animationType="fade" onRequestClose={() => setShowHeaderMenu(false)}>
+      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-start', alignItems: 'flex-end' }} activeOpacity={1} onPress={() => setShowHeaderMenu(false)}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={{ alignItems: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, paddingVertical: 8, marginTop: 8, marginRight: 8, minWidth: 180, elevation: 8 }}>
+            {category === 'images' && !(folderView && selectedFolder === null) && (
+              <TouchableOpacity
+                style={styles.sheetAction}
+                onPress={() => {
+                  setShowHeaderMenu(false);
+                  if (filteredItems.length === 0) return;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  openSlideshow();
+                }}
+              >
+                <Ionicons name="shuffle" size={20} color={colors.textPrimary} style={{ marginLeft: 16 }} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Slideshow</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.sheetAction}
+              onPress={async () => {
+                setShowHeaderMenu(false);
+                const next = !folderView;
+                setFolderView(next);
+                setSelectedFolder(null);
+                if (next) { setLoading(true); await loadFolders(activeTab); setLoading(false); }
+              }}
+            >
+              <Ionicons name={folderView ? 'folder' : 'folder-outline'} size={20} color={folderView ? colors.blue : colors.textPrimary} style={{ marginLeft: 16 }} />
+              <Text style={[styles.sheetActionText, { color: folderView ? colors.blue : colors.textPrimary }]}>
+                {folderView ? 'Exit folders' : 'View folders'}
+              </Text>
+            </TouchableOpacity>
+            {!folderView && (
+              <TouchableOpacity
+                style={styles.sheetAction}
+                onPress={() => { setShowHeaderMenu(false); setShowSortSheet(true); }}
+              >
+                <Ionicons name="swap-vertical-outline" size={20} color={colors.textPrimary} style={{ marginLeft: 16 }} />
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Sort</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          </SafeAreaView>
+        </TouchableOpacity>
+      </Modal>
       <Modal visible={showMoreSheet} transparent animationType="none" onRequestClose={() => setShowMoreSheet(false)}>
         <Pressable style={styles.overlay} onPress={() => setShowMoreSheet(false)}>
           <Animated.View
@@ -1667,13 +1951,13 @@ async function handleSsInfo() {
               <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
               <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
             </TouchableOpacity>
-            {Array.from(selectedItemsMap.values()).some(f => isImageFile(f.name)) && (
+            {selectedHasImages && (
             <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
                 <Ionicons name="document-outline" size={20} color={colors.blue} />
                 <Text style={[styles.sheetActionText, { color: colors.blue }]}>Create PDF</Text>
               </TouchableOpacity>
             )}
-            {Array.from(selectedItemsMap.values()).some(f => f.name.toLowerCase().endsWith('.pdf')) && (
+            {selectedHasPdfs && (
               <TouchableOpacity style={styles.sheetAction} onPress={handleMergePdfs}>
                 <Ionicons name="documents-outline" size={20} color={colors.blue} />
                 <Text style={[styles.sheetActionText, { color: colors.blue }]}>Merge PDFs</Text>

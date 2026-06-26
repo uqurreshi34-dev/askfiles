@@ -7,50 +7,80 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 class MediaStoreModule : Module() {
 
-  private val DOCUMENT_MIME_TYPES = listOf(
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "text/plain",
-    "text/csv",
-    "application/rtf",
-    "application/vnd.oasis.opendocument.text",
-    "application/vnd.oasis.opendocument.spreadsheet",
-    "application/vnd.oasis.opendocument.presentation",
-  )
+    private val DOCUMENT_MIME_TYPES = listOf(
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+      "text/csv",
+      "application/rtf",
+      "application/vnd.oasis.opendocument.text",
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "application/vnd.oasis.opendocument.presentation",
+    )
 
-  private val SENSITIVE_MIME_TYPES = listOf(
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.oasis.opendocument.text",
-    "application/vnd.oasis.opendocument.spreadsheet",
-    "text/plain",
-  )
+    private val SENSITIVE_MIME_TYPES = listOf(
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.oasis.opendocument.text",
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "text/plain",
+    )
 
-  private val ALL_FILE_MIME_TYPES = listOf(
-    "image/jpeg", "image/png", "image/gif", "image/webp",
-    "image/heic", "image/heif", "image/bmp",
-    "video/mp4", "video/3gpp", "video/x-matroska",
-    "video/quicktime", "video/webm", "video/avi",
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/plain",
-    "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/ogg",
-    "application/zip", "application/x-rar-compressed",
-    "application/vnd.android.package-archive",
-  )
+    private val ALL_FILE_MIME_TYPES = listOf(
+      "image/jpeg", "image/png", "image/gif", "image/webp",
+      "image/heic", "image/heif", "image/bmp",
+      "video/mp4", "video/3gpp", "video/x-matroska",
+      "video/quicktime", "video/webm", "video/avi",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/plain",
+      "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/ogg",
+      "application/zip", "application/x-rar-compressed",
+      "application/vnd.android.package-archive",
+    )
+
+    private fun sortOrder(sortKey: String): String = when (sortKey) {
+    "name_desc" -> "${MediaStore.Files.FileColumns.DISPLAY_NAME} DESC"
+    "size_desc" -> "${MediaStore.Files.FileColumns.SIZE} DESC"
+    "size_asc"  -> "${MediaStore.Files.FileColumns.SIZE} ASC"
+    "date_desc" -> "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
+    "date_asc"  -> "${MediaStore.Files.FileColumns.DATE_MODIFIED} ASC"
+    else        -> "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC" // name_asc default
+  }
+
+  private fun imageSortOrder(sortKey: String): String = when (sortKey) {
+    "name_asc"  -> "${MediaStore.Images.Media.DISPLAY_NAME} ASC"
+    "name_desc" -> "${MediaStore.Images.Media.DISPLAY_NAME} DESC"
+    "size_desc" -> "${MediaStore.Images.Media.SIZE} DESC"
+    "size_asc"  -> "${MediaStore.Images.Media.SIZE} ASC"
+    "date_desc" -> "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    "date_asc"  -> "${MediaStore.Images.Media.DATE_ADDED} ASC"
+    else        -> "${MediaStore.Images.Media.DATE_ADDED} DESC"
+  }
+
+  private fun videoSortOrder(sortKey: String): String = when (sortKey) {
+    "name_asc"  -> "${MediaStore.Video.Media.DISPLAY_NAME} ASC"
+    "name_desc" -> "${MediaStore.Video.Media.DISPLAY_NAME} DESC"
+    "size_desc" -> "${MediaStore.Video.Media.SIZE} DESC"
+    "size_asc"  -> "${MediaStore.Video.Media.SIZE} ASC"
+    "date_desc" -> "${MediaStore.Video.Media.DATE_ADDED} DESC"
+    "date_asc"  -> "${MediaStore.Video.Media.DATE_ADDED} ASC"
+    else        -> "${MediaStore.Video.Media.DATE_ADDED} DESC"
+  }
+
   override fun definition() = ModuleDefinition {
     Name("MediaStore")
 
-    AsyncFunction("queryDocuments") {
+    AsyncFunction("queryDocuments") { sortKey: String ->
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
 
@@ -72,7 +102,7 @@ class MediaStoreModule : Module() {
       try {
         val cursor: Cursor? = context.contentResolver.query(
           uri, projection, selection, selectionArgs,
-          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+          sortOrder(sortKey)
         )
         cursor?.use {
           val idCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
@@ -101,7 +131,7 @@ class MediaStoreModule : Module() {
       results
     }
 
-    AsyncFunction("queryDownloads") {
+    AsyncFunction("queryDownloads") { sortKey: String ->
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
 
@@ -120,7 +150,7 @@ class MediaStoreModule : Module() {
       try {
         val cursor: Cursor? = context.contentResolver.query(
           uri, projection, selection, selectionArgs,
-          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+          sortOrder(sortKey)
         )
         cursor?.use {
           val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
@@ -376,43 +406,7 @@ class MediaStoreModule : Module() {
       results
     }
 
-    AsyncFunction("queryDocumentsByMime") { mimeTypes: List<String> ->
-      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
-      val results = mutableListOf<Map<String, Any>>()
-      val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
-      val selectionArgs = mimeTypes.toTypedArray()
-      val projection = arrayOf(
-        MediaStore.Files.FileColumns.DISPLAY_NAME,
-        MediaStore.Files.FileColumns.SIZE,
-        MediaStore.Files.FileColumns.DATE_MODIFIED,
-        MediaStore.Files.FileColumns.DATA,
-      )
-      try {
-        val cursor = context.contentResolver.query(
-          MediaStore.Files.getContentUri("external"),
-          projection, selection, selectionArgs,
-          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
-        )
-        cursor?.use {
-          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-          val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
-          val dateCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
-          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-          while (it.moveToNext()) {
-            val name = it.getString(nameCol) ?: continue
-            val size = it.getLong(sizeCol)
-            val date = it.getLong(dateCol)
-            val path = it.getString(dataCol) ?: continue
-            if (name.startsWith('.')) continue
-            if (path.contains("/.")) continue
-            results.add(mapOf("name" to name, "uri" to "file://$path", "size" to size.toDouble(), "date" to date * 1000L))
-          }
-        }
-      } catch (e: Exception) {}
-      results
-    }
-
-    AsyncFunction("queryImages") {
+    AsyncFunction("queryImages") { sortKey: String ->
       val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
       val projection = arrayOf(
@@ -422,7 +416,7 @@ class MediaStoreModule : Module() {
         MediaStore.Images.Media.SIZE,
         MediaStore.Images.Media.DATA,
       )
-      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC") ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val cursor = resolver.query(uri, projection, null, null, imageSortOrder(sortKey)) ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
       cursor.use {
         val idCol = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
@@ -445,7 +439,7 @@ class MediaStoreModule : Module() {
       results
     }
 
-    AsyncFunction("queryVideos") {
+    AsyncFunction("queryVideos") { sortKey: String ->
       val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
       val projection = arrayOf(
@@ -455,7 +449,7 @@ class MediaStoreModule : Module() {
         MediaStore.Video.Media.SIZE,
         MediaStore.Video.Media.DATA,
       )
-      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC") ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val cursor = resolver.query(uri, projection, null, null, videoSortOrder(sortKey)) ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
       cursor.use {
         val idCol = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
@@ -526,6 +520,180 @@ class MediaStoreModule : Module() {
 
         result["size"] = file.length()
         result
+    }
+
+    AsyncFunction("queryImageFolders") {
+      val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+      val projection = arrayOf(
+        MediaStore.Images.Media.DISPLAY_NAME,
+        MediaStore.Images.Media.DATA,
+        MediaStore.Images.Media.DATE_ADDED,
+        MediaStore.Images.Media.SIZE,
+      )
+      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC")
+        ?: return@AsyncFunction emptyList<Map<String, Any>>()
+
+      // folderPath -> { name, previewUri, uris, count }
+      val folderMap = linkedMapOf<String, MutableMap<String, Any>>()
+      cursor.use {
+        val nameCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+        val dataCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+        while (it.moveToNext()) {
+          val name = it.getString(nameCol) ?: continue
+          val path = it.getString(dataCol) ?: continue
+          if (name.startsWith('.') || path.contains("/.")) continue
+          val folderPath = path.substringBeforeLast('/')
+          val folderName = folderPath.substringAfterLast('/')
+          val uri = "file://$path"
+          val group = folderMap.getOrPut(folderPath) {
+            mutableMapOf(
+              "folderPath" to folderPath,
+              "folderName" to folderName,
+              "previewUri" to uri,
+              "count" to 0,
+              "uris" to mutableListOf<String>()
+            )
+          }
+          @Suppress("UNCHECKED_CAST")
+          (group["uris"] as MutableList<String>).add(uri)
+          group["count"] = (group["count"] as Int) + 1
+        }
+      }
+      folderMap.values.sortedByDescending { it["count"] as Int }
+    }
+
+    AsyncFunction("queryVideoFolders") {
+      val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+      val projection = arrayOf(
+        MediaStore.Video.Media.DISPLAY_NAME,
+        MediaStore.Video.Media.DATA,
+        MediaStore.Video.Media.DATE_ADDED,
+        MediaStore.Video.Media.SIZE,
+      )
+      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC")
+        ?: return@AsyncFunction emptyList<Map<String, Any>>()
+
+      val folderMap = linkedMapOf<String, MutableMap<String, Any>>()
+      cursor.use {
+        val nameCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+        val dataCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+        while (it.moveToNext()) {
+          val name = it.getString(nameCol) ?: continue
+          val path = it.getString(dataCol) ?: continue
+          if (name.startsWith('.') || path.contains("/.")) continue
+          val folderPath = path.substringBeforeLast('/')
+          val folderName = folderPath.substringAfterLast('/')
+          val uri = "file://$path"
+          val group = folderMap.getOrPut(folderPath) {
+            mutableMapOf(
+              "folderPath" to folderPath,
+              "folderName" to folderName,
+              "previewUri" to uri,
+              "count" to 0,
+              "uris" to mutableListOf<String>()
+            )
+          }
+          @Suppress("UNCHECKED_CAST")
+          (group["uris"] as MutableList<String>).add(uri)
+          group["count"] = (group["count"] as Int) + 1
+        }
+      }
+      folderMap.values.sortedByDescending { it["count"] as Int }
+    }
+
+    AsyncFunction("queryDocumentsByMimeWithFolders") { mimeTypes: List<String>, sortKey: String ->
+      val context = appContext.reactContext ?: return@AsyncFunction mapOf<String, Any>()
+      val actualMimes = if (mimeTypes.isEmpty()) DOCUMENT_MIME_TYPES else mimeTypes
+      val selection = actualMimes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
+      val selectionArgs = actualMimes.toTypedArray()
+      val projection = arrayOf(
+        MediaStore.Files.FileColumns.DISPLAY_NAME,
+        MediaStore.Files.FileColumns.SIZE,
+        MediaStore.Files.FileColumns.DATE_MODIFIED,
+        MediaStore.Files.FileColumns.DATA,
+      )
+      val cursor = context.contentResolver.query(
+        MediaStore.Files.getContentUri("external"),
+        projection, selection, selectionArgs, sortOrder(sortKey)
+      ) ?: return@AsyncFunction mapOf<String, Any>()
+
+      val files = mutableListOf<Map<String, Any>>()
+      val folderMap = linkedMapOf<String, MutableMap<String, Any>>()
+
+      cursor.use {
+        val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+        val dateCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
+        val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+        while (it.moveToNext()) {
+          val name = it.getString(nameCol) ?: continue
+          val path = it.getString(dataCol) ?: continue
+          if (name.startsWith('.') || path.contains("/.")) continue
+          val size = it.getLong(sizeCol)
+          val date = it.getLong(dateCol)
+          val uri = "file://$path"
+          files.add(mapOf("name" to name, "uri" to uri, "size" to size.toDouble(), "date" to date * 1000L))
+          val folderPath = path.substringBeforeLast('/')
+          val folderName = folderPath.substringAfterLast('/')
+          val group = folderMap.getOrPut(folderPath) {
+            mutableMapOf("folderPath" to folderPath, "folderName" to folderName, "previewUri" to uri, "count" to 0, "uris" to mutableListOf<String>())
+          }
+          @Suppress("UNCHECKED_CAST")
+          (group["uris"] as MutableList<String>).add(uri)
+          group["count"] = (group["count"] as Int) + 1
+        }
+      }
+      mapOf(
+        "files" to files,
+        "folders" to folderMap.values.sortedByDescending { it["count"] as Int }
+      )
+    }
+
+    AsyncFunction("queryDocumentFolders") { filterMimes: List<String> ->
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val mimeTypes = if (filterMimes.isEmpty()) DOCUMENT_MIME_TYPES else filterMimes
+      val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
+      val selectionArgs = mimeTypes.toTypedArray()
+      val projection = arrayOf(
+        MediaStore.Files.FileColumns.DISPLAY_NAME,
+        MediaStore.Files.FileColumns.DATA,
+        MediaStore.Files.FileColumns.SIZE,
+        MediaStore.Files.FileColumns.DATE_MODIFIED,
+      )
+      val cursor = context.contentResolver.query(
+        MediaStore.Files.getContentUri("external"),
+        projection, selection, selectionArgs,
+        "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+      ) ?: return@AsyncFunction emptyList<Map<String, Any>>()
+
+      val folderMap = linkedMapOf<String, MutableMap<String, Any>>()
+      cursor.use {
+        val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+        while (it.moveToNext()) {
+          val name = it.getString(nameCol) ?: continue
+          val path = it.getString(dataCol) ?: continue
+          if (name.startsWith('.') || path.contains("/.")) continue
+          val folderPath = path.substringBeforeLast('/')
+          val folderName = folderPath.substringAfterLast('/')
+          val uri = "file://$path"
+          val group = folderMap.getOrPut(folderPath) {
+            mutableMapOf(
+              "folderPath" to folderPath,
+              "folderName" to folderName,
+              "previewUri" to uri,
+              "count" to 0,
+              "uris" to mutableListOf<String>()
+            )
+          }
+          @Suppress("UNCHECKED_CAST")
+          (group["uris"] as MutableList<String>).add(uri)
+          group["count"] = (group["count"] as Int) + 1
+        }
+      }
+      folderMap.values.sortedByDescending { it["count"] as Int }
     }
   }
 }
