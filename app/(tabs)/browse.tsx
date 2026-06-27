@@ -27,7 +27,7 @@ import { DocIndexer } from '@/modules/doc-indexer';
 import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative  } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
-import { getStorageVolumes } from '@/modules/storage-stats';
+import { getStorageVolumes, getPinnedFolders, setPinnedFolders, getPendingBrowsePath } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
@@ -162,6 +162,16 @@ export default function BrowseScreen() {
   useFocusEffect(useCallback(() => {
     loadDirectory(currentPath);
   }, [currentPath]));
+
+  useFocusEffect(useCallback(() => {
+    const path = getPendingBrowsePath();
+    console.log('pending path:', path);
+    if (path) {
+      const folderName = decodeURIComponent(path.replace(/\/$/, '').split('/').pop() ?? 'Folder');
+      setCurrentPath(path);
+      setBreadcrumbs([{ name: 'Storage', path: ROOT_PATH }, { name: folderName, path }]);
+    }
+  }, []));
 
   useEffect(() => {
     const hidden = getShowHidden();
@@ -1718,6 +1728,41 @@ export default function BrowseScreen() {
                         <Text style={[styles.sheetActionText, { color: isBkmk ? colors.blue : colors.textPrimary }]}>{isBkmk ? 'Remove bookmark' : 'Bookmark folder'}</Text>
                       </TouchableOpacity>
                     )}
+                    {selectedItem?.isDirectory && (() => {
+                    const path = toPath(selectedItem.uri).replace(/\/$/, '');
+                    const isPinned = (() => {
+                      try { return JSON.parse(getPinnedFolders()).some((f: any) => f.path === path); }
+                      catch { return false; }
+                    })();
+                    return (
+                      <TouchableOpacity
+                        style={styles.sheetAction}
+                        onPress={() => {
+                          try {
+                            const existing: { path: string; name: string }[] = JSON.parse(getPinnedFolders());
+                            if (isPinned) {
+                              const updated = existing.filter(f => f.path !== path);
+                              setPinnedFolders(JSON.stringify(updated));
+                              closeSheet();
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            } else {
+                              const updated = [...existing, { path, name: selectedItem.name }];
+                              setPinnedFolders(JSON.stringify(updated));
+                              closeSheet();
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            }
+                          } catch {
+                            Alert.alert('Error', 'Could not update pinned folders.');
+                          }
+                        }}
+                      >
+                        <Ionicons name="pin" size={20} color={isPinned ? colors.blue : colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: isPinned ? colors.blue : colors.textPrimary }]}>
+                          {isPinned ? 'Unpin from Home' : 'Pin to Home'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
                     <TouchableOpacity
                       style={styles.sheetAction}
                       onPress={async () => {

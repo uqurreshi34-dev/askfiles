@@ -29,3 +29,18 @@ export function getStorageVolumes(): Promise<{ name: string; path: string; type:
 export function getVolumeStats(path: string): Promise<{ total: number; free: number; used: number; error?: string }> {
   return StorageStats.getVolumeStats(path);
 }
+
+export function getPinnedFolders(): string {
+  return StorageStats.getPinnedFolders();
+}
+
+export function setPinnedFolders(json: string): void {
+  StorageStats.setPinnedFolders(json);
+}
+
+export function getPendingBrowsePath(): string {
+  return StorageStats.getPendingBrowsePath();
+}
+export function setPendingBrowsePath(path: string): void {
+  StorageStats.setPendingBrowsePath(path);
+}

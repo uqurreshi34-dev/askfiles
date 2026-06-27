@@ -14,7 +14,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '@/hooks/useTheme';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { isStorageManager } from '@/modules/storage-stats';
+import { isStorageManager, getPinnedFolders, setPinnedFolders, setPendingBrowsePath } from '@/modules/storage-stats';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
 import { isImageFile, getFileIcon, getMimeType, getFileColor } from '@/utils/files';
@@ -55,6 +55,7 @@ export default function HomeScreen() {
   const [scanPickerVisible, setScanPickerVisible] = useState(false);
   const [pendingScanUris, setPendingScanUris] = useState<string[]>([]);
   const [pendingScanFormat, setPendingScanFormat] = useState<'images' | 'pdf'>('images');
+  const [pinnedList, setPinnedList] = useState<{ path: string; name: string }[]>([]);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -79,6 +80,7 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => {
     reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
     reloadTrash();
+    try { setPinnedList(JSON.parse(getPinnedFolders())); } catch { setPinnedList([]); }
     isStorageManager().then(setHasAllFilesAccess);
     MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
   }, [reload]));
@@ -385,21 +387,57 @@ async function indexScansInBackground(paths: string[]) {
         </View>
 
         {activeSection === 'categories' ? (
-        <View style={styles.quickGrid}>
-          {QUICK_ACCESS.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              onPress={() => router.push(item.route as any)}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: item.color }]}>
-                <Ionicons name={item.icon as any} size={26} color={item.iconColor} />
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-          </View>
+          <>
+            <View style={styles.quickGrid}>
+              {QUICK_ACCESS.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.quickCell}
+                  activeOpacity={0.7}
+                  onPress={() => router.push(item.route as any)}
+                >
+                  <View style={[styles.quickCircle, { backgroundColor: item.color }]}>
+                    <Ionicons name={item.icon as any} size={26} color={item.iconColor} />
+                  </View>
+                  <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {pinnedList.length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 4, marginBottom: 8 }]}>Pinned</Text>
+                <View style={styles.quickGrid}>
+                {pinnedList.map((folder) => (
+                    <TouchableOpacity
+                      key={folder.path}
+                      style={styles.quickCell}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setPendingBrowsePath(`file://${folder.path.replace(/\/$/, '')}/`);
+                        router.push('/browse' as any);
+                      }}
+                      onLongPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        Alert.alert('Unpin folder', `Remove "${folder.name}" from Home?`, [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Unpin', style: 'destructive', onPress: () => {
+                            const updated = pinnedList.filter(f => f.path !== folder.path);
+                            setPinnedList(updated);
+                            setPinnedFolders(JSON.stringify(updated));
+                          }},
+                        ]);
+                      }}
+                    >
+                      <View style={[styles.quickCircle, { backgroundColor: colors.yellow + '22' }]}>
+                        <Ionicons name="folder" size={28} color={colors.yellow} />
+                      </View>
+                      <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>{folder.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+          </>
         ) : (
         <View style={styles.quickGrid}>
           <TouchableOpacity

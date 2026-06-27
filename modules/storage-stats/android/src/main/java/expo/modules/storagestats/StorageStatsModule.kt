@@ -175,5 +175,31 @@ class StorageStatsModule : Module() {
 
             future.get()
         }
+
+        Function("getPinnedFolders") {
+            val context = appContext.reactContext ?: return@Function "[]"
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.getString("pinned_folders", "[]") ?: "[]"
+        }
+
+        Function("setPinnedFolders") { json: String ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("pinned_folders", json).apply()
+        }
+
+        Function("getPendingBrowsePath") {
+            val context = appContext.reactContext ?: return@Function ""
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            val path = prefs.getString("pending_browse_path", "") ?: ""
+            prefs.edit().remove("pending_browse_path").apply()
+            path
+        }
+
+        Function("setPendingBrowsePath") { path: String ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("pending_browse_path", path).apply()
+        }
     }
 }
