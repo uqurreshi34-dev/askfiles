@@ -1,0 +1,7 @@
+expo.modules.ftpserver.ftp-server-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\build\generated\res\pngs\release
+expo.modules.ftpserver.ftp-server-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\build\generated\res\resValues\release
+expo.modules.ftpserver.ftp-server-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
+expo.modules.ftpserver.ftp-server-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+expo.modules.ftpserver.ftp-server-release-4 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\build\intermediates\merged_res\release\mergeReleaseResources
+expo.modules.ftpserver.ftp-server-main-5 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\src\main\res
+expo.modules.ftpserver.ftp-server-release-6 C:\Users\uqurr\Projects\askfiles\modules\ftp-server\android\src\release\res
