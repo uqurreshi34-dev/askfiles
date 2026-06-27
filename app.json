@@ -59,7 +59,13 @@
               "-dontwarn com.gemalto.jp2.**",
               "-keep class com.gemalto.jp2.** { *; }",
               "-dontwarn org.slf4j.impl.**",
-              "-keep class org.slf4j.impl.** { *; }"
+              "-keep class org.slf4j.impl.** { *; }",
+              "-keep class org.apache.ftpserver.** { *; }",
+              "-keep class org.apache.mina.** { *; }",
+              "-keep class com.hierynomus.sshj.** { *; }",
+              "-keep class net.schmizz.sshj.** { *; }",
+              "-keep class jcifs.** { *; }",
+              "-keep class com.hierynomus.mssmb2.** { *; }"
             ]
           }
         }
