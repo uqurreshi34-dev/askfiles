@@ -165,7 +165,6 @@ export default function BrowseScreen() {
 
   useFocusEffect(useCallback(() => {
     const path = getPendingBrowsePath();
-    console.log('pending path:', path);
     if (path) {
       const folderName = decodeURIComponent(path.replace(/\/$/, '').split('/').pop() ?? 'Folder');
       setCurrentPath(path);

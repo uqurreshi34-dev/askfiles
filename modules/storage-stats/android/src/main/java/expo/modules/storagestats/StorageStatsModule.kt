@@ -192,7 +192,7 @@ class StorageStatsModule : Module() {
             val context = appContext.reactContext ?: return@Function ""
             val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
             val path = prefs.getString("pending_browse_path", "") ?: ""
-            prefs.edit().remove("pending_browse_path").apply()
+            prefs.edit().remove("pending_browse_path").commit()
             path
         }
 
