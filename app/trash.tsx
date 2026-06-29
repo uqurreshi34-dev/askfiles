@@ -183,8 +183,8 @@ export default function TrashScreen() {
              <Text style={{ fontSize: 12, color: multiRestoring ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
           </TouchableOpacity>
         ) : files.length > 0 ? (
-          <TouchableOpacity onPress={handleEmptyTrash} style={styles.backBtn}>
-            <Ionicons name="trash-outline" size={22} color={colors.deleteRed} />
+          <TouchableOpacity onPress={handleEmptyTrash} style={styles.backBtn} disabled={multiRestoring}>
+            <Ionicons name="trash-outline" size={22} color={multiRestoring ? colors.textDisabled : colors.deleteRed} />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
