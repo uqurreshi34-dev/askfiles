@@ -520,6 +520,7 @@ async function handleSsInfo() {
     }
 
     setMultiPasting(true);
+    suppressWatcherRef.current = true;
     let copiedCount = 0;
     const sub = addCopyProgressListener(() => {});
     try {
@@ -527,7 +528,9 @@ async function handleSsInfo() {
         const file = files[i];
         const dst = toPath(destDir + file.name);
         const src = toPath(file.uri);
-        setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+        if (i % 10 === 0 || i === files.length - 1) {
+          setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+        }
 
         const exists = await RNFS.exists(dst);
         if (exists && dupeAction.current === 'skip') continue;
@@ -550,7 +553,9 @@ async function handleSsInfo() {
       setSelectedItemsMap(new Map());
       Alert.alert(
         'Success',
-        `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
+        copiedCount < actualTotal
+          ? `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
+          : `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -558,6 +563,7 @@ async function handleSsInfo() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
+      suppressWatcherRef.current = false;
       setMultiPasting(false);
       setMultiPasteProgress(null);
       pendingMultiItems.current = [];
@@ -1012,7 +1018,8 @@ async function handleSsInfo() {
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         {selectMode ? (
           <>
-            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); 
+              setSelectedItemsMap(new Map()); }} style={styles.backBtn} disabled={multiPasting || deleting}>
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -1030,9 +1037,10 @@ async function handleSsInfo() {
                 setSelectedUris(newSet);
                 setSelectedItemsMap(newMap);
               }}
-              style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+              style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center'}}
+              disabled={multiPasting || deleting}
             >
-              <Text style={{ fontSize: 12, color: colors.blue, fontWeight: '500' }}>All</Text>
+              <Text style={{ fontSize: 12, color: (multiPasting || deleting) ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -1275,7 +1283,6 @@ async function handleSsInfo() {
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
-                const color = getFileColor(item.name);
                 const isSelected = selectedUris.has(item.uri);
                 return (
                   <TouchableOpacity
@@ -1381,7 +1388,7 @@ async function handleSsInfo() {
             style={{ flex: 1 }}
             key={`grid-${sortKey}-${searchQuery}-${selectMode}`}
             uris={gridUris}
-            selectMode={selectMode}
+            selectMode={selectMode && !multiPasting && !deleting}
             category={(category === 'videos' ? 'videos' : 'images')}
             openingUri={openingUri ?? ''}
             onItemPress={(e) => {
@@ -1422,12 +1429,12 @@ async function handleSsInfo() {
           onEndReachedThreshold={0.3}
           renderItem={({ item }) => {
                 const isSelected = selectedUris.has(item.uri);
-                const isImg = isImageFile(item.name);
-                const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
+                const isImg = isImageFile(item.name)
                 return (
                   <TouchableOpacity
                     style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
                     onPress={() => {
+                      if (multiPasting || deleting) return;
                       if (selectMode) {
                         const newSet = new Set(selectedUris);
                         const newMap = new Map(selectedItemsMap);

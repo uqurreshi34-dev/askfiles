@@ -1200,7 +1200,9 @@ export default function BrowseScreen() {
         const exists = await RNFS.exists(dst);
         if (exists && dupeAction.current === 'skip') continue;
 
-        setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+        if (i % 10 === 0 || i === files.length - 1) {
+          setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+        }
 
         if (multiPasteMode === 'copy') {
           await copyFileStream(file.uri, dst);
@@ -1237,7 +1239,9 @@ export default function BrowseScreen() {
       setSelectedItemsMap(new Map());
       Alert.alert(
         'Success',
-        `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
+        copiedCount < actualTotal
+          ? `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
+          : `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -1267,12 +1271,12 @@ export default function BrowseScreen() {
       }
     }
     const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
-    const ext = item.isDirectory ? null : (item.name.split('.').pop()?.toUpperCase() ?? '?');
     const isSelected = selectedUris.has(item.uri);
     return (
       <TouchableOpacity
         style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
         onPress={() => {
+          if (multiPasting || deleting) return;
           if (selectMode && item.isDirectory) {
             navigateTo(item);
           } else if (selectMode) {
@@ -1404,6 +1408,7 @@ export default function BrowseScreen() {
                   setSelectedItemsMap(new Map());
                 }
               }}
+              disabled={multiPasting || deleting}
             >
               <Ionicons name={selectMode ? 'close-circle' : 'checkmark-circle-outline'} size={22} color={selectMode ? colors.blue : colors.textSecondary} />
             </TouchableOpacity>
@@ -1441,8 +1446,8 @@ export default function BrowseScreen() {
         )}
         {selectMode && (
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 }}>
-            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }}>
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
+            <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }} disabled={multiPasting || deleting}>
+              <Text style={{ fontSize: 13, color: (multiPasting || deleting) ? colors.textDisabled : colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
             <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected</Text>
             <TouchableOpacity
@@ -1454,8 +1459,9 @@ export default function BrowseScreen() {
                 setSelectedItemsMap(newMap);
               }}
               style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }}
+              disabled={multiPasting || deleting}
             >
-              <Text style={{ fontSize: 13, color: colors.blue }}>Select All</Text>
+              <Text style={{ fontSize: 13, color: (multiPasting || deleting) ? colors.textDisabled : colors.blue }}>Select All</Text>
             </TouchableOpacity>
           </View>
         )}

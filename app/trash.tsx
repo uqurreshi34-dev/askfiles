@@ -167,7 +167,7 @@ export default function TrashScreen() {
           } else {
             router.back();
           }
-        }} style={styles.backBtn}>
+        }} style={styles.backBtn} disabled={multiRestoring}>
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -179,8 +179,8 @@ export default function TrashScreen() {
             const newMap = new Map(files.map(f => [f.uri, f]));
             setSelectedUris(newSet);
             setSelectedFilesMap(newMap);
-          }} style={styles.backBtn}>
-            <Text style={{ fontSize: 12, color: colors.blue, fontWeight: '500' }}>All</Text>
+          }} style={styles.backBtn} disabled={multiRestoring}>
+             <Text style={{ fontSize: 12, color: multiRestoring ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
           </TouchableOpacity>
         ) : files.length > 0 ? (
           <TouchableOpacity onPress={handleEmptyTrash} style={styles.backBtn}>
@@ -209,72 +209,73 @@ export default function TrashScreen() {
         </View>
       ) : (
         <FlatList
-  data={files}
-  keyExtractor={item => item.uri}
-  contentContainerStyle={styles.list}
-  showsVerticalScrollIndicator={false}
-  ListHeaderComponent={
-    <Text style={[styles.count, { color: colors.textMuted }]}>
-      {files.length} file{files.length !== 1 ? 's' : ''} · Kept for up to 30 days
-    </Text>
-  }
-  renderItem={({ item }) => {
-    const color = getFileColor(item.name);
-    const days = 30 - Math.floor((Date.now() - item.deletedAt) / 86400000);
-    const expiryColor = days <= 7 ? colors.deleteRed : days <= 14 ? colors.yellow : colors.textMuted;
-    return (
-      <TouchableOpacity
-        style={[styles.row, { borderBottomColor: colors.border, backgroundColor: selectedUris.has(item.uri) ? colors.blueTint : 'transparent' }]}
-        onPress={() => {
-          if (selectMode) {
-            const newSet = new Set(selectedUris);
-            const newMap = new Map(selectedFilesMap);
-            if (selectedUris.has(item.uri)) { newSet.delete(item.uri); newMap.delete(item.uri); }
-            else { newSet.add(item.uri); newMap.set(item.uri, item); }
-            setSelectedUris(newSet);
-            setSelectedFilesMap(newMap);
-          } else {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            openSheet(item);
-          }
-        }}
-        onLongPress={() => {
-          if (!selectMode) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setSelectMode(true);
-            setSelectedUris(new Set([item.uri]));
-            setSelectedFilesMap(new Map([[item.uri, item]]));
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        {selectMode && (
-          <View style={{ marginRight: 12 }}>
-            <Ionicons name={selectedUris.has(item.uri) ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selectedUris.has(item.uri) ? colors.blue : colors.textMuted} />
-          </View>
-        )}
-        <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
-          {isImageFile(item.name) ? (
-            <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
-          ) : isVideoFile(item.name) ? (
-            <VideoThumb uri={item.uri} style={styles.thumb} />
-          ) : (
-            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
-          )}
-        </View>
-        <View style={styles.info}>
-          <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.fileMeta, { color: expiryColor }]}>
-            {formatSize(item.size)} · {formatDaysLeft(item.deletedAt)}
+        data={files}
+        keyExtractor={item => item.uri}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <Text style={[styles.count, { color: colors.textMuted }]}>
+            {files.length} file{files.length !== 1 ? 's' : ''} · Kept for up to 30 days
           </Text>
-        </View>
-        {!selectMode && (
-          <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-      );
+        }
+        renderItem={({ item }) => {
+          const color = getFileColor(item.name);
+          const days = 30 - Math.floor((Date.now() - item.deletedAt) / 86400000);
+          const expiryColor = days <= 7 ? colors.deleteRed : days <= 14 ? colors.yellow : colors.textMuted;
+      return (
+        <TouchableOpacity
+          style={[styles.row, { borderBottomColor: colors.border, backgroundColor: selectedUris.has(item.uri) ? colors.blueTint : 'transparent' }]}
+          onPress={() => {
+            if (multiRestoring) return;
+            if (selectMode) {
+              const newSet = new Set(selectedUris);
+              const newMap = new Map(selectedFilesMap);
+              if (selectedUris.has(item.uri)) { newSet.delete(item.uri); newMap.delete(item.uri); }
+              else { newSet.add(item.uri); newMap.set(item.uri, item); }
+              setSelectedUris(newSet);
+              setSelectedFilesMap(newMap);
+            } else {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              openSheet(item);
+            }
+          }}
+          onLongPress={() => {
+            if (!selectMode) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setSelectMode(true);
+              setSelectedUris(new Set([item.uri]));
+              setSelectedFilesMap(new Map([[item.uri, item]]));
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          {selectMode && (
+            <View style={{ marginRight: 12 }}>
+              <Ionicons name={selectedUris.has(item.uri) ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selectedUris.has(item.uri) ? colors.blue : colors.textMuted} />
+            </View>
+          )}
+          <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
+            {isImageFile(item.name) ? (
+              <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+            ) : isVideoFile(item.name) ? (
+              <VideoThumb uri={item.uri} style={styles.thumb} />
+            ) : (
+              <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
+            )}
+          </View>
+          <View style={styles.info}>
+            <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+            <Text style={[styles.fileMeta, { color: expiryColor }]}>
+              {formatSize(item.size)} · {formatDaysLeft(item.deletedAt)}
+            </Text>
+          </View>
+          {!selectMode && (
+            <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+        );
     }}
   />
       )}
