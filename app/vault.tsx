@@ -319,11 +319,11 @@ export default function VaultScreen() {
 
   function renderFile({ item }: { item: VaultFile }) {
     const color = getFileColor(item.name);
-    const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
     return (
       <TouchableOpacity
         style={[styles.row, { borderBottomColor: colors.border, backgroundColor: selectedUris.has(item.uri) ? colors.blueTint : 'transparent' }]}
         onPress={() => {
+          if (movingFile || busy) return;
           if (selectMode) {
             const newSet = new Set(selectedUris);
             const newMap = new Map(selectedFilesMap);
@@ -334,7 +334,7 @@ export default function VaultScreen() {
         }}
         onLongPress={() => { if (!selectMode) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); const newSet = new Set([item.uri]); const newMap = new Map([[item.uri, item]]); setSelectedUris(newSet); setSelectedFilesMap(newMap); } }}
         activeOpacity={0.7}
-        disabled={openingFile && !selectMode}
+        disabled={(openingFile && !selectMode) || movingFile || busy}
       >
         {selectMode && (
           <View style={{ marginRight: 12 }}>
@@ -464,10 +464,10 @@ export default function VaultScreen() {
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
-            if (selectMode) { setSelectMode(false); setSelectedUris(new Set()); setSelectedFilesMap(new Map()); }
+        <TouchableOpacity onPress={() => {
+          if (selectMode) { setSelectMode(false); setSelectedUris(new Set()); setSelectedFilesMap(new Map()); }
           else { router.back(); }
-        }} style={styles.backBtn}>
+        }} style={styles.backBtn} disabled={movingFile || busy}>
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -492,8 +492,9 @@ export default function VaultScreen() {
               setSelectedFilesMap(newMap);
             }}
             style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+            disabled={movingFile || busy}
           >
-            <Text style={{ fontSize: 12, color: colors.blue, fontWeight: '500' }}>All</Text>
+            <Text style={{ fontSize: 12, color: (movingFile || busy) ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
           </TouchableOpacity>
         )} 
         </View>
