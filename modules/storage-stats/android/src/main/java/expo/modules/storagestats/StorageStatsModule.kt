@@ -201,5 +201,59 @@ class StorageStatsModule : Module() {
             val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
             prefs.edit().putString("pending_browse_path", path).apply()
         }
+
+         Function("getFavourites") {
+            val context = appContext.reactContext ?: return@Function "[]"
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.getString("favourites", "[]") ?: "[]"
+        }
+ 
+        Function("setFavourites") { json: String ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("favourites", json).apply()
+        }
+ 
+        // Tag definitions: [{ id, name, color, icon }]
+        Function("getTags") {
+            val context = appContext.reactContext ?: return@Function "[]"
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.getString("tags", "[]") ?: "[]"
+        }
+ 
+        Function("setTags") { json: String ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("tags", json).apply()
+        }
+ 
+        // File-to-tag assignments: [{ path, name, tagIds: [id, id, ...] }]
+        // Stored separately from tag definitions so renaming/deleting a tag
+        // definition doesn't require rewriting every file's record.
+        Function("getFileTags") {
+            val context = appContext.reactContext ?: return@Function "[]"
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.getString("file_tags", "[]") ?: "[]"
+        }
+ 
+        Function("setFileTags") { json: String ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("file_tags", json).apply()
+        }
+ 
+        Function("getPendingBrowsePath") {
+            val context = appContext.reactContext ?: return@Function ""
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            val path = prefs.getString("pending_browse_path", "") ?: ""
+            prefs.edit().remove("pending_browse_path").commit()
+            path
+        }
+ 
+        Function("setPendingBrowsePath") { path: String ->
+            val context = appContext.reactContext ?: return@Function
+            val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("pending_browse_path", path).apply()
+        }
     }
 }

@@ -34,6 +34,7 @@ import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
 import { copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { syncPathReferences } from '@/hooks/usePathSync';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -264,6 +265,7 @@ export default function SearchScreen() {
         Alert.alert('Success', `"${item.name}" copied successfully.`);
       } else {
         await moveFileStream(src, dst);
+        await syncPathReferences(item.uri, destUri, item.name);
         await scanFile(dst).catch(() => {});
         if (item.inFolder) { removeFolderItem(item.uri); }
         else { removeResult(item.uri); }
@@ -295,6 +297,7 @@ export default function SearchScreen() {
         return;
       }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      await syncPathReferences(selectedItem.uri, newUri, renameValue.trim());
       await scanFile(toPath(newUri)).catch(() => {});
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');

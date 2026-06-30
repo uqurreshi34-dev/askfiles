@@ -38,6 +38,30 @@ export function setPinnedFolders(json: string): void {
   StorageStats.setPinnedFolders(json);
 }
 
+export function getFavourites(): string {
+  return StorageStats.getFavourites();
+}
+ 
+export function setFavourites(json: string): void {
+  StorageStats.setFavourites(json);
+}
+ 
+export function getTags(): string {
+  return StorageStats.getTags();
+}
+ 
+export function setTags(json: string): void {
+  StorageStats.setTags(json);
+}
+ 
+export function getFileTags(): string {
+  return StorageStats.getFileTags();
+}
+ 
+export function setFileTags(json: string): void {
+  StorageStats.setFileTags(json);
+}
+
 export function getPendingBrowsePath(): string {
   return StorageStats.getPendingBrowsePath();
 }

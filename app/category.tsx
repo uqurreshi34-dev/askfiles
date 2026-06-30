@@ -38,6 +38,7 @@ import { batchRename } from 'file-reader';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
+import { syncPathReferences } from '@/hooks/usePathSync';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -362,6 +363,7 @@ async function handleSsInfo() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
+        await syncPathReferences(item.uri, destUri, item.name);
         await scanFile(dst).catch(() => {});
         setItems(prev => prev.filter(f => f.uri !== item.uri));
         Alert.alert('Success', `"${item.name}" moved successfully.`);
@@ -394,6 +396,7 @@ async function handleSsInfo() {
         return;
       }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      await syncPathReferences(selectedItem.uri, newUri, renameValue.trim());
       await scanFile(toPath(newUri)).catch(() => {});
       try {
         const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
@@ -540,6 +543,7 @@ async function handleSsInfo() {
           await scanFile(dst).catch(() => {});
         } else {
           await moveFileStream(src, dst);
+          await syncPathReferences(file.uri, destDir + file.name, file.name);
           await scanFile(dst).catch(() => {});
         }
         copiedCount++;

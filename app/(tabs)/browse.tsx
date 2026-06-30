@@ -40,6 +40,7 @@ import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs
 import { extractTextFromImage } from '@/modules/scan-module';
 import * as Clipboard from 'expo-clipboard';
 import { extract7z } from 'archive-extractor'
+import { syncPathReferences } from '@/hooks/usePathSync';
 
 interface FileItem {
   name: string;
@@ -543,6 +544,7 @@ export default function BrowseScreen() {
           return;
         }
         await RNFS.moveFile(toPath(item.uri), toPath(newUri));
+        await syncPathReferences(item.uri, newUri, newName);
         await scanFile(toPath(newUri)).catch(() => {});
         try {
           const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
@@ -1067,6 +1069,7 @@ export default function BrowseScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
+        await syncPathReferences(item.uri, destUri, item.name);
         await scanFile(dst).catch(() => {});
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
         const isInternalRoot = destFolder === ROOT_PATH;
@@ -1117,6 +1120,7 @@ export default function BrowseScreen() {
         return;
       }
       await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
+      await syncPathReferences(selectedItem.uri, newUri, renameValue.trim());
       await scanFile(toPath(newUri)).catch(() => {});
       try {
         if (!selectedItem.isDirectory) {
@@ -1222,6 +1226,7 @@ export default function BrowseScreen() {
           await scanFile(dst).catch(() => {});
         } else {
           await moveFileStream(src, dst);
+          await syncPathReferences(file.uri, destDir + file.name, file.name);
           await scanFile(dst).catch(() => {});
         }
         copiedCount++;
