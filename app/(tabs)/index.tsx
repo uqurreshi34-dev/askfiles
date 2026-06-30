@@ -27,6 +27,10 @@ import { DocIndexer } from '@/modules/doc-indexer';
 import { shouldShowRatePrompt, markRatePromptShown } from '@/hooks/useRatePrompt';
 import * as Haptics from 'expo-haptics';
 import FolderPickerModal from '@/components/FolderPickerModal';
+import { useTags } from '@/hooks/useTags';
+import { removeTagFromAllFiles } from '@/hooks/useFileTags';
+import { setPendingTagId } from '@/modules/storage-stats';
+import { removeTag } from '@/hooks/useTags';
 
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
@@ -56,6 +60,7 @@ export default function HomeScreen() {
   const [pendingScanUris, setPendingScanUris] = useState<string[]>([]);
   const [pendingScanFormat, setPendingScanFormat] = useState<'images' | 'pdf'>('images');
   const [pinnedList, setPinnedList] = useState<{ path: string; name: string }[]>([]);
+  const { tags } = useTags();
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -435,10 +440,43 @@ async function indexScansInBackground(paths: string[]) {
                     </TouchableOpacity>
                   ))}
                 </View>
-              </>
-            )}
+                </>
+        )}
+        {tags.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 4, marginBottom: 8 }]}>Tags</Text>
+            <View style={styles.quickGrid}>
+              {tags.map(tag => (
+                <TouchableOpacity
+                  key={tag.id}
+                  style={styles.quickCell}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setPendingTagId(tag.id);
+                    router.push('/tag-files' as any);
+                  }}
+                  onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    Alert.alert('Delete tag', `Delete "${tag.name}" and remove it from all files?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: async () => {
+                        await removeTagFromAllFiles(tag.id);
+                        await removeTag(tag.id);
+                      }},
+                    ]);
+                  }}
+                >
+                  <View style={[styles.quickCircle, { backgroundColor: tag.color + '22' }]}>
+                    <Ionicons name={tag.icon as any} size={26} color={tag.color} />
+                  </View>
+                  <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>{tag.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </>
-        ) : (
+        )}
+      </>
+    ) : (
         <View style={styles.quickGrid}>
           <TouchableOpacity
               style={styles.quickCell}

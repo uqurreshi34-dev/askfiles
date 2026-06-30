@@ -68,3 +68,11 @@ export function getPendingBrowsePath(): string {
 export function setPendingBrowsePath(path: string): void {
   StorageStats.setPendingBrowsePath(path);
 }
+
+export function getPendingTagId(): string {
+  return StorageStats.getPendingTagId();
+}
+
+export function setPendingTagId(id: string): void {
+  StorageStats.setPendingTagId(id);
+}

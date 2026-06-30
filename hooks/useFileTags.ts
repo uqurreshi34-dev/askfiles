@@ -39,7 +39,7 @@ export async function addTagToFile(uri: string, name: string, tagId: string) {
   if (items[idx].tagIds.includes(tagId)) return;
   const updated = [...items];
   updated[idx] = { ...updated[idx], tagIds: [...updated[idx].tagIds, tagId] };
-  save(updated);
+    save(updated);
 }
 
 // Removes tagId from uri's entry. If that was the file's last tag, the
@@ -82,9 +82,11 @@ export async function updateFileTagsPath(oldUri: string, newUri: string, newName
 }
 
 export async function getTagsForFile(uri: string): Promise<string[]> {
-  const items = load();
-  return items.find(f => f.uri === uri)?.tagIds ?? [];
-}
+    // Always reload from native storage to avoid stale cache after writes
+    cache = null;
+    const items = load();
+    return items.find(f => f.uri === uri)?.tagIds ?? [];
+  }
 
 export async function getFilesForTag(tagId: string): Promise<FileTagEntry[]> {
   const items = load();

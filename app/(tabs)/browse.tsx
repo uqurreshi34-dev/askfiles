@@ -41,6 +41,9 @@ import { extractTextFromImage } from '@/modules/scan-module';
 import * as Clipboard from 'expo-clipboard';
 import { extract7z } from 'archive-extractor'
 import { syncPathReferences } from '@/hooks/usePathSync';
+import { useTags } from '@/hooks/useTags';
+import { addTagToFile, getTagsForFile, removeTagFromFile } from '@/hooks/useFileTags';
+import { addTag } from '@/hooks/useTags';
 
 interface FileItem {
   name: string;
@@ -156,6 +159,13 @@ export default function BrowseScreen() {
   const [mergingPdf, setMergingPdf] = useState(false);
   const [extractingText, setExtractingText] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
+  const { tags } = useTags();
+  const [showTagPicker, setShowTagPicker] = useState(false);
+  const [fileTags, setFileTags] = useState<string[]>([]);
+  const [showNewTag, setShowNewTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3B6D11');
+  const [newTagIcon, setNewTagIcon] = useState('pricetag-outline');
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -207,6 +217,7 @@ export default function BrowseScreen() {
     setRenameValue('');
     setShowSheet(true);
     setIsFav(await isFavourite(item.uri));
+    setFileTags(await getTagsForFile(item.uri));
     setIsBkmk(item.isDirectory ? isBookmarkedSync(item.uri) : false);
     animateOpen();
     if (!item.isDirectory) {
@@ -1739,6 +1750,18 @@ export default function BrowseScreen() {
                         </Text>
                       </TouchableOpacity>
                     )}
+                    {!selectedItem?.isDirectory && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                        pendingItem.current = selectedItem;
+                        closeSheet();
+                        setTimeout(() => setShowTagPicker(true), 300);
+                      }}>
+                        <Ionicons name="pricetag-outline" size={20} color={colors.purple} />
+                        <Text style={[styles.sheetActionText, { color: colors.purple }]}>
+                          {fileTags.length > 0 ? `Tags (${fileTags.length})` : 'Add Tag'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                     {!selectedItem?.isDirectory && !selectedItem?.name.toLowerCase().endsWith('.zip') && !selectedItem?.name.toLowerCase().endsWith('.7z') && (
                       <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                         <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
@@ -2556,7 +2579,136 @@ export default function BrowseScreen() {
           </View>
         </View>
       </Modal>
+      {/* Tag picker modal */}
+      <Modal visible={showTagPicker} transparent animationType="fade" onRequestClose={() => setShowTagPicker(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? (Platform.OS === 'android' ? 'height' : 'padding') : undefined}>
+          <Pressable style={[styles.centeredOverlay, { paddingTop: SCREEN_WIDTH < SCREEN_HEIGHT ? '40%' : '10%' }]} onPress={() => setShowTagPicker(false)}>
+            <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
+              <View style={styles.passwordModalHeader}>
+                <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>Tags</Text>
+                <TouchableOpacity onPress={() => setShowTagPicker(false)}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
 
+              {/* Existing tags as toggleable chips */}
+              {tags.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {tags.map(tag => {
+                    const applied = fileTags.includes(tag.id);
+                    return (
+                      <TouchableOpacity
+                        key={tag.id}
+                        onPress={async () => {
+                          if (applied) {
+                            await removeTagFromFile(pendingItem.current!.uri, tag.id);
+                            setFileTags(prev => prev.filter(id => id !== tag.id));
+                          } else {
+                            await addTagToFile(pendingItem.current!.uri, pendingItem.current!.name, tag.id);
+                            setFileTags(prev => [...prev, tag.id]);
+                          }
+                        }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 6,
+                          paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+                          backgroundColor: applied ? tag.color + '33' : colors.surface,
+                          borderWidth: 1, borderColor: applied ? tag.color : colors.border,
+                        }}
+                      >
+                        <Ionicons name={tag.icon as any} size={14} color={tag.color} />
+                        <Text style={{ fontSize: 13, color: applied ? tag.color : colors.textSecondary, fontWeight: applied ? '600' : '400' }}>
+                          {tag.name}
+                        </Text>
+                        {applied && <Ionicons name="checkmark" size={13} color={tag.color} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* New tag form */}
+              {!showNewTag ? (
+                <TouchableOpacity
+                  style={[styles.sheetAction, { paddingVertical: 10 }]}
+                  onPress={() => setShowNewTag(true)}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={colors.purple} />
+                  <Text style={[styles.sheetActionText, { color: colors.purple }]}>New Tag</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  <TextInput
+                    style={[styles.renameInput, { backgroundColor: colors.surface, color: colors.textPrimary }]}
+                    placeholder="Tag name..."
+                    placeholderTextColor={colors.textMuted}
+                    value={newTagName}
+                    onChangeText={setNewTagName}
+                    autoFocus
+                    maxLength={20}
+                  />
+                  {/* Color palette */}
+                  <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                    {[colors.blue, colors.purple, colors.green, colors.amber, colors.redBrown, colors.deleteRed, colors.yellow, colors.favRed].map(c => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => setNewTagColor(c)}
+                        style={{
+                          width: 28, height: 28, borderRadius: 14,
+                          backgroundColor: c,
+                          borderWidth: newTagColor === c ? 3 : 0,
+                          borderColor: colors.textPrimary,
+                        }}
+                      />
+                    ))}
+                  </View>
+                  {/* Icon picker */}
+                  <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                    {['pricetag-outline', 'folder-outline', 'star-outline', 'briefcase-outline', 'home-outline', 'heart-outline', 'shield-outline', 'camera-outline'].map(ic => (
+                      <TouchableOpacity
+                        key={ic}
+                        onPress={() => setNewTagIcon(ic)}
+                        style={{
+                          width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+                          backgroundColor: newTagIcon === ic ? newTagColor + '33' : colors.surface,
+                          borderWidth: newTagIcon === ic ? 1.5 : 0,
+                          borderColor: newTagColor,
+                        }}
+                      >
+                        <Ionicons name={ic as any} size={18} color={newTagIcon === ic ? newTagColor : colors.textMuted} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={[styles.renameActions, { marginTop: 4 }]}>
+                    <TouchableOpacity
+                      style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]}
+                      onPress={() => { setShowNewTag(false); setNewTagName(''); }}
+                    >
+                      <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.renameConfirmBtn, !newTagName.trim() && { opacity: 0.4 }]}
+                      disabled={!newTagName.trim()}
+                      onPress={async () => {
+                        const newTag = await addTag({ name: newTagName.trim(), color: newTagColor, icon: newTagIcon });
+                        if (pendingItem.current) {
+                          await addTagToFile(pendingItem.current!.uri, pendingItem.current!.name, newTag.id);
+                          setFileTags(prev => [...prev, newTag.id]);
+                        }
+                        setShowNewTag(false);
+                        setNewTagName('');
+                        setNewTagColor('#3B6D11');
+                        setNewTagIcon('pricetag-outline');
+                      }}
+                    >
+                      <Text style={styles.renameConfirmText}>Create & Apply</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
       <FolderPickerModal
         visible={multiRenamePickerVisible}
         onClose={() => setMultiRenamePickerVisible(false)}

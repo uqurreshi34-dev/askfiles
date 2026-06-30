@@ -241,19 +241,19 @@ class StorageStatsModule : Module() {
             val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
             prefs.edit().putString("file_tags", json).apply()
         }
- 
-        Function("getPendingBrowsePath") {
+
+        Function("getPendingTagId") {
             val context = appContext.reactContext ?: return@Function ""
             val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
-            val path = prefs.getString("pending_browse_path", "") ?: ""
-            prefs.edit().remove("pending_browse_path").commit()
-            path
+            val id = prefs.getString("pending_tag_id", "") ?: ""
+            prefs.edit().remove("pending_tag_id").commit()
+            id
         }
- 
-        Function("setPendingBrowsePath") { path: String ->
+
+        Function("setPendingTagId") { id: String ->
             val context = appContext.reactContext ?: return@Function
             val prefs = context.getSharedPreferences("askfiles_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putString("pending_browse_path", path).apply()
+            prefs.edit().putString("pending_tag_id", id).apply()
         }
     }
 }
