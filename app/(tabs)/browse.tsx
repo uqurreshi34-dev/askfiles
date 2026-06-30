@@ -39,6 +39,7 @@ import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs } from '@/modules/pdf-creator';
 import { extractTextFromImage } from '@/modules/scan-module';
 import * as Clipboard from 'expo-clipboard';
+import { extract7z } from 'archive-extractor'
 
 interface FileItem {
   name: string;
@@ -680,6 +681,9 @@ export default function BrowseScreen() {
   async function handleUnzip(password?: string) {
     if (password === undefined) {
       if (!selectedItem) return;
+      // Both zip and 7z now go through the same password modal.
+      // The modal itself stays generic; handleUnzip branches on
+      // extension only when it actually calls the native extractor.
       pendingUnzipItem.current = selectedItem;
       closeSheet();
       setUnzipPasswordValue('');
@@ -688,10 +692,19 @@ export default function BrowseScreen() {
     }
     const item = pendingUnzipItem.current;
     if (!item) return;
+    const ext = item.name.split('.').pop()?.toLowerCase();
     setShowUnzipPassword(false);
     setZipping(true);
     try {
       const srcPath = toPath(item.uri);
+      if (ext === '7z') {
+        const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1) + item.name.replace(/\.7z$/i, '') + '/';
+        await extract7z(srcPath, destDir, password.length > 0 ? password : undefined);
+        await loadDirectory(currentPath);
+        Alert.alert('Extracted', `Files extracted to "${item.name.replace(/\.7z$/i, '')}" folder.`);
+        pendingUnzipItem.current = null;
+        return;
+      }
       const destDir = srcPath.substring(0, srcPath.lastIndexOf('/') + 1) + item.name.replace(/\.zip$/i, '') + '/';
       if (password.length > 0) {
         await unzipFileWithPassword(srcPath, destDir, password);
@@ -711,7 +724,7 @@ export default function BrowseScreen() {
         }, 300);
         return;
       }
-      Alert.alert('Error', 'Could not extract zip file.');
+      Alert.alert('Error', ext === '7z' ? 'Could not extract this 7z file.' : 'Could not extract zip file.');
     } finally {
       setZipping(false);
     }
@@ -1721,7 +1734,7 @@ export default function BrowseScreen() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {!selectedItem?.isDirectory && !selectedItem?.name.toLowerCase().endsWith('.zip') && (
+                    {!selectedItem?.isDirectory && !selectedItem?.name.toLowerCase().endsWith('.zip') && !selectedItem?.name.toLowerCase().endsWith('.7z') && (
                       <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                         <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
                         <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>{isFav ? 'Remove from Favourites' : 'Add to Favourites'}</Text>
@@ -1801,10 +1814,12 @@ export default function BrowseScreen() {
                       <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
                       <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
                     </TouchableOpacity>
-                    {!selectedItem?.isDirectory && selectedItem?.name.toLowerCase().endsWith('.zip') && (
+                    {!selectedItem?.isDirectory && (selectedItem?.name.toLowerCase().endsWith('.zip') || selectedItem?.name.toLowerCase().endsWith('.7z')) && (
                       <TouchableOpacity style={styles.sheetAction} onPress={() => handleUnzip()}>
                         <Ionicons name="archive-outline" size={20} color={colors.green} />
-                        <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract ZIP</Text>
+                        <Text style={[styles.sheetActionText, { color: colors.green }]}>
+                          {selectedItem?.name.toLowerCase().endsWith('.7z') ? 'Extract 7Z' : 'Extract ZIP'}
+                        </Text>
                       </TouchableOpacity>
                     )}
                     <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
@@ -2001,7 +2016,9 @@ export default function BrowseScreen() {
         <Pressable style={[styles.centeredOverlay, { paddingTop: SCREEN_WIDTH < SCREEN_HEIGHT ? '50%' : '10%' }]} onPress={() => setShowUnzipPassword(false)}>
             <Pressable style={[styles.passwordModal, { backgroundColor: colors.card }]}>
               <View style={styles.passwordModalHeader}>
-                <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>Extract ZIP</Text>
+              <Text style={[styles.passwordModalTitle, { color: colors.textPrimary }]}>
+                {pendingUnzipItem.current?.name.toLowerCase().endsWith('.7z') ? 'Extract 7Z' : 'Extract ZIP'}
+              </Text>
                 <TouchableOpacity onPress={() => setShowUnzipPassword(false)}>
                   <Ionicons name="close" size={20} color={colors.textMuted} />
                 </TouchableOpacity>

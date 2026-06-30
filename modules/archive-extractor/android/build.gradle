@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.archiveextractor'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.archiveextractor"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  implementation 'org.apache.commons:commons-compress:1.28.0'
+  implementation 'org.tukaani:xz:1.12'
+}

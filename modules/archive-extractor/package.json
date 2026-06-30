@@ -1,0 +1,9 @@
+{
+    "name": "archive-extractor",
+    "version": "1.0.0",
+    "description": "Native 7z extraction module for AskFiles",
+    "main": "index.ts",
+    "expo-module": {
+      "platforms": ["android"]
+    }
+  }
