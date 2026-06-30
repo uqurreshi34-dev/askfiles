@@ -80,6 +80,24 @@ export default function NetworkScreen() {
         <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
       </TouchableOpacity>
 
+      {/* WebDAV */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={[styles.card, { backgroundColor: colors.purpleBg }]}
+        onPress={() => router.push('/webdav' as any)}
+      >
+        <View style={styles.cardLeft}>
+          <View style={[styles.cardIcon, { backgroundColor: colors.purpleBg }]}>
+            <Ionicons name="cloud-outline" size={22} color={colors.purple} />
+          </View>
+          <View>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>WebDAV — Nextcloud / NAS</Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Connect to any WebDAV server over WiFi or internet</Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      </TouchableOpacity>
+
       {/* WiFi Transfer */}
       <TouchableOpacity
         activeOpacity={0.8}

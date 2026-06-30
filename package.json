@@ -78,7 +78,8 @@
     "smb-client": "file:modules/smb-client",
     "ftp-server": "file:modules/ftp-server",
     "upload-manager": "file:modules/upload-manager",
-    "upload-service": "file:modules/upload-service"
+    "upload-service": "file:modules/upload-service",
+    "webdav-client": "file:modules/webdav-client"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",

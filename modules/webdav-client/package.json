@@ -1,0 +1,9 @@
+{
+    "name": "webdav-client",
+    "version": "1.0.0",
+    "description": "Native WebDAV client module for AskFiles",
+    "main": "index.ts",
+    "expo-module": {
+      "platforms": ["android"]
+    }
+  }
