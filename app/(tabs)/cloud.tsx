@@ -8,8 +8,8 @@ import { useTheme } from '@/hooks/useTheme';
 const PRO_FEATURES = [
   {
     icon: 'cloud-upload-outline' as const,
-    title: 'Cloud Backup',
-    desc: 'Auto-backup your vault files to Google Drive',
+    title: 'Cloud Backup & Settings Sync',
+    desc: 'Back up vault files and sync your tags, favourites and pinned folders across devices via Google Drive, OneDrive or Dropbox',
     route: '/backup' as const,
   },
   {
