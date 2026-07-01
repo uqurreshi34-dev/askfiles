@@ -9,6 +9,10 @@ export interface FileTagEntry {
 
 let listeners: (() => void)[] = [];
 let cache: FileTagEntry[] | null = null;
+export function invalidateCache() {
+  cache = null;
+  listeners.forEach(l => l());
+}
 
 function load(): FileTagEntry[] {
   if (cache) return cache;

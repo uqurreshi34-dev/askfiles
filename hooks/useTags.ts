@@ -10,6 +10,10 @@ export interface Tag {
 
 let listeners: (() => void)[] = [];
 let cache: Tag[] | null = null;
+export function invalidateCache() {
+  cache = null;
+  listeners.forEach(l => l());
+}
 
 function load(): Tag[] {
   if (cache) return cache;

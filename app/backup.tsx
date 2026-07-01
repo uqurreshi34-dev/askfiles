@@ -77,7 +77,7 @@ export default function BackupScreen() {
     const ok = await dbBackupVault(vaultDir);
     if (ok) {
       if (AppState.currentState === 'active') {
-        Alert.alert('Backup complete', 'Your vault files have been backed up to Dropbox.');
+        Alert.alert('Backup complete', 'Your vault and settings have been backed up to Dropbox.');
       }
     }
   }
@@ -118,7 +118,7 @@ export default function BackupScreen() {
     const ok = await odBackupVault(vaultDir);
     if (ok) {
       if (AppState.currentState === 'active') {
-        Alert.alert('Backup complete', 'Your vault files have been backed up to OneDrive.');
+        Alert.alert('Backup complete', 'Your vault and settings have been backed up to OneDrive.');
       }
     }
   }
@@ -161,7 +161,7 @@ export default function BackupScreen() {
     const ok = await backupVault(vaultDir);
     if (ok) {
       if (AppState.currentState === 'active') {
-        Alert.alert('Backup complete', 'Your vault files have been backed up to Google Drive.');
+        Alert.alert('Backup complete', 'Your vault and settings have been backed up to Google Drive.');
       }
     }
   }
@@ -229,13 +229,20 @@ export default function BackupScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <View style={[styles.section, { backgroundColor: colors.surfaceAlt }]}>
+      <View style={[styles.section, { backgroundColor: colors.surfaceAlt }]}>
           <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>What's backed up</Text>
           <View style={styles.itemRow}>
             <Ionicons name="shield-checkmark-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Vault files</Text>
               <Text style={[styles.itemDesc, { color: colors.textMuted }]}>Your files are stored privately in each cloud provider</Text>
+            </View>
+          </View>
+          <View style={[styles.itemRow, { marginTop: 14 }]}>
+            <Ionicons name="pricetag-outline" size={18} color={colors.purple} style={{ marginRight: 10 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Tags, favourites & pinned folders</Text>
+              <Text style={[styles.itemDesc, { color: colors.textMuted }]}>Back up after making changes to keep them in sync across devices</Text>
             </View>
           </View>
         </View>

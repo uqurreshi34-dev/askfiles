@@ -7,6 +7,8 @@ import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToDropbox, downloadFile } from '@/modules/upload-manager';
 import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
+import RNFS from 'react-native-fs';
+import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -164,8 +166,15 @@ export function useDropbox() {
       ) as FileSystem.File[];
 
       if (files.length === 0) {
-        setError('No files in vault to back up.');
-        return false;
+        const settings = exportSettings();
+        const settingsJson = JSON.stringify(settings);
+        const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+        await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
+        await uploadFileToDropbox(token, 'askfiles_settings.json', settingsPath);
+        const now = new Date().toLocaleString();
+        await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
+        setLastBackup(now);
+        return true;
       }
 
       setUploadProgress({ current: 0, total: files.length });
@@ -179,6 +188,13 @@ export function useDropbox() {
         setGlobalUploadProgress('dropbox', { current: i + 1, total: files.length });
         updateUploadService(`Backing up to Dropbox — ${i + 1}/${files.length} files`);
       }
+
+      // Upload settings JSON
+      const settings = exportSettings();
+      const settingsJson = JSON.stringify(settings);
+      const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+      await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
+      await uploadFileToDropbox(token, 'askfiles_settings.json', settingsPath);
 
       const now = new Date().toLocaleString();
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
@@ -220,6 +236,7 @@ export function useDropbox() {
       const dropboxFiles = listData.entries ?? [];
       const fileEntries = dropboxFiles.filter((f: any) => f['.tag'] === 'file');
       const filesToRestore = fileEntries.filter((f: any) => {
+        if (f.name === 'askfiles_settings.json') return false;
         const destFile = new FileSystem.File(vaultDir + f.name);
         return !destFile.exists;
       });
@@ -231,6 +248,7 @@ export function useDropbox() {
       let restoreIndex = 0;
       for (const dropboxFile of dropboxFiles) {
         if (dropboxFile['.tag'] !== 'file') continue;
+        if (dropboxFile.name === 'askfiles_settings.json') continue;
         const fileName = dropboxFile.name;
         const destUri = vaultDir + fileName;
         const destFile = new FileSystem.File(destUri);
@@ -256,6 +274,28 @@ export function useDropbox() {
         );
         if (dlResult !== 'success') continue;
         restored++;
+      }
+
+      // Download and apply settings
+      const settingsEntry = dropboxFiles.find((f: any) => f.name === 'askfiles_settings.json');
+      if (settingsEntry) {
+        const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+        const dlSettings = await downloadFile(
+          'https://content.dropboxapi.com/2/files/download',
+          {
+            Authorization: `Bearer ${token}`,
+            'Dropbox-API-Arg': JSON.stringify({ path: '/askfiles_settings.json' }),
+          },
+          settingsPath,
+          'GET'
+        );
+        if (dlSettings === 'success') {
+          try {
+            const raw = await RNFS.readFile(settingsPath, 'utf8');
+            const bundle: SettingsBundle = JSON.parse(raw);
+            importSettings(bundle);
+          } catch {}
+        }
       }
       return restored;
     } catch {

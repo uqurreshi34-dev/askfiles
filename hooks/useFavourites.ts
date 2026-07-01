@@ -10,6 +10,10 @@ export interface FavouriteItem {
 
 let listeners: (() => void)[] = [];
 let cache: FavouriteItem[] | null = null;
+export function invalidateCache() {
+  cache = null;
+  listeners.forEach(l => l());
+}
 
 function load(): FavouriteItem[] {
   if (cache) return cache;

@@ -7,6 +7,8 @@ import { setCloudSyncing } from '@/hooks/useCloudSync';
 import { uploadToOneDrive, downloadFile } from '@/modules/upload-manager';
 import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
+import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
+import RNFS from 'react-native-fs';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -170,8 +172,15 @@ export function useOneDrive() {
       ) as FileSystem.File[];
 
       if (files.length === 0) {
-        setError('No files in vault to back up.');
-        return false;
+        const settings = exportSettings();
+        const settingsJson = JSON.stringify(settings);
+        const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+        await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
+        await uploadFileToOneDrive(token, 'askfiles_settings.json', settingsPath);
+        const now = new Date().toLocaleString();
+        await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
+        setLastBackup(now);
+        return true;
       }
 
       setUploadProgress({ current: 0, total: files.length });
@@ -185,7 +194,12 @@ export function useOneDrive() {
         setGlobalUploadProgress('onedrive', { current: i + 1, total: files.length });
         updateUploadService(`Backing up to OneDrive — ${i + 1}/${files.length} files`);
       }
-
+      // Upload settings JSON
+      const settings = exportSettings();
+      const settingsJson = JSON.stringify(settings);
+      const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+      await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
+      await uploadFileToOneDrive(token, 'askfiles_settings.json', settingsPath);
       const now = new Date().toLocaleString();
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
       setLastBackup(now);
@@ -222,6 +236,7 @@ export function useOneDrive() {
       const oneDriveFiles = listData.value ?? [];
       const fileEntries = oneDriveFiles.filter((f: any) => !f.folder);
       const filesToRestore = fileEntries.filter((f: any) => {
+        if (f.name === 'askfiles_settings.json') return false;
         const destFile = new FileSystem.File(vaultDir + f.name);
         return !destFile.exists;
       });
@@ -233,6 +248,7 @@ export function useOneDrive() {
       let restoreIndex = 0;
       for (const driveFile of oneDriveFiles) {
         if (driveFile.folder) continue;
+        if (driveFile.name === 'askfiles_settings.json') continue;
         const destUri = vaultDir + driveFile.name;
         const destFile = new FileSystem.File(destUri);
         if (destFile.exists) continue;
@@ -253,6 +269,23 @@ export function useOneDrive() {
         );
         if (dlResult !== 'success') continue;
         restored++;
+      }
+      // Download and apply settings
+      const settingsEntry = oneDriveFiles.find((f: any) => f.name === 'askfiles_settings.json');
+      if (settingsEntry) {
+        const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+        const dlSettings = await downloadFile(
+          settingsEntry['@microsoft.graph.downloadUrl'],
+          {},
+          settingsPath
+        );
+        if (dlSettings === 'success') {
+          try {
+            const raw = await RNFS.readFile(settingsPath, 'utf8');
+            const bundle: SettingsBundle = JSON.parse(raw);
+            importSettings(bundle);
+          } catch {}
+        }
       }
       return restored;
     } catch (e) {
