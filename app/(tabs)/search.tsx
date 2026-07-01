@@ -35,6 +35,8 @@ import { scanFile } from '@/modules/share-module';
 import { copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
+import { useTags } from '@/hooks/useTags';
+import { getTagsForFile } from '@/hooks/useFileTags';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -159,6 +161,8 @@ export default function SearchScreen() {
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [isFav, setIsFav] = useState(false);
+  const { tags } = useTags();
+  const [fileTagsMap, setFileTagsMap] = useState<Record<string, string[]>>({});
   const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -170,6 +174,17 @@ export default function SearchScreen() {
   });
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
+
+  useEffect(() => {
+    if (!results.length) { setFileTagsMap({}); return; }
+    Promise.all(
+      results.map(async item => ({ uri: item.uri, tags: await getTagsForFile(item.uri) }))
+    ).then(entries => {
+      const map: Record<string, string[]> = {};
+      entries.forEach(e => { if (e.tags.length) map[e.uri] = e.tags; });
+      setFileTagsMap(map);
+    });
+  }, [results]);
 
   useSpeechRecognitionEvent('result', (e) => {
     if (!listening) return;
@@ -643,7 +658,19 @@ export default function SearchScreen() {
                     </View>
                     <View style={styles.fileInfo}>
                       <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+                        {(fileTagsMap[item.uri] ?? []).map(tagId => {
+                          const tag = tags.find(t => t.id === tagId);
+                          if (!tag) return null;
+                          return (
+                            <View key={tagId} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: tag.color + '22' }}>
+                              <Ionicons name={tag.icon as any} size={10} color={tag.color} />
+                              <Text style={{ fontSize: 10, color: tag.color, fontWeight: '500' }}>{tag.name}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
                     </View>
                     {!item.isDirectory && (
                       movingUri === item.uri
@@ -837,7 +864,6 @@ export default function SearchScreen() {
               }
               renderItem={({ item }) => {
                 const color = getFileColor(item.name);
-                const ext = item.name.split('.').pop()?.toUpperCase() ?? '?';
                 return (
                   <TouchableOpacity
                     style={[styles.smartRow, { borderBottomColor: colors.border }]}
