@@ -11,7 +11,7 @@ class MediaViewerModule : Module() {
       Prop("uri") { view: MediaViewerView, uri: String ->
         view.setUri(uri)
       }
-      Events("onTap")
+      Events("onTap", "onSwipeNext", "onSwipePrevious")
     }
   }
 }

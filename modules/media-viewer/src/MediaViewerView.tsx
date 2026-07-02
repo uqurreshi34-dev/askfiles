@@ -5,6 +5,8 @@ interface MediaViewerViewProps {
   uri: string;
   onTap?: (event: any) => void;
   style?: StyleProp<ViewStyle>;
+  onSwipeNext?: () => void;
+  onSwipePrevious?: () => void;
 }
 
 const NativeMediaViewerView = requireNativeView<MediaViewerViewProps>('MediaViewer');

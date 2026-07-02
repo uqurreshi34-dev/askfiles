@@ -22,6 +22,8 @@ import kotlin.math.min
 class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
 
     private val onTap by EventDispatcher()
+    private val onSwipeNext by EventDispatcher()
+    private val onSwipePrevious by EventDispatcher()
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
@@ -39,7 +41,6 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     private val matrix = Matrix()
 
     private var currentScale = 1f
-    private val minScale = 1f
     private var fitScale = 1f
     private val maxScale = 5f
     private val doubleTapScale = 2.5f
@@ -85,11 +86,12 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
-                val targetScale = if (currentScale > minScale + 0.1f) minScale else doubleTapScale
+                val isZoomedIn = currentScale > fitScale + 0.1f
+                val targetScale = if (isZoomedIn) fitScale else doubleTapScale
                 val factor = targetScale / currentScale
                 currentScale = targetScale
                 matrix.postScale(factor, factor, e.x, e.y)
-                if (targetScale == minScale) resetMatrix()
+                if (isZoomedIn) resetMatrix()
                 else clampMatrix()
                 imageView.imageMatrix = matrix
                 return true
@@ -111,10 +113,17 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 e1: MotionEvent?, e2: MotionEvent,
                 velocityX: Float, velocityY: Float
             ): Boolean {
-                if (currentScale > minScale + 0.01f) {
+                if (currentScale > fitScale + 0.01f) {
                     matrix.postTranslate(velocityX * 0.1f, velocityY * 0.1f)
                     clampMatrix()
                     imageView.imageMatrix = matrix
+                    return true
+                }
+                // Not zoomed — a clear horizontal swipe navigates instead of panning
+                if (kotlin.math.abs(velocityX) > kotlin.math.abs(velocityY) * 1.5f &&
+                    kotlin.math.abs(velocityX) > 800f) {
+                    if (velocityX < 0) onSwipeNext(mapOf<String, Any>())
+                    else onSwipePrevious(mapOf<String, Any>())
                 }
                 return true
             }

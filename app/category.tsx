@@ -176,6 +176,8 @@ export default function CategoryScreen() {
   const [ssIsFav, setSsIsFav] = useState(false);
   const ssTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerImages, setViewerImages] = useState<FileItem[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
   const [playerPaused, setPlayerPaused] = useState(false);
   const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
@@ -713,6 +715,13 @@ async function handleSsInfo() {
   async function openItem(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     if (isImageFile(item.name)) {
+      const sourceItems = (folderView && selectedFolder)
+        ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
+        : filteredItems;
+      const imgs = sourceItems.filter(i => isImageFile(i.name));
+      const idx = imgs.findIndex(i => i.uri === item.uri);
+      setViewerImages(imgs);
+      setViewerIndex(idx >= 0 ? idx : 0);
       setViewerUri(item.uri);
       return;
     }
@@ -742,6 +751,12 @@ async function handleSsInfo() {
     } finally {
       setOpeningUri(null);
     }
+  }
+
+  function goToViewerImage(newIndex: number) {
+    if (newIndex < 0 || newIndex >= viewerImages.length) return;
+    setViewerIndex(newIndex);
+    setViewerUri(viewerImages[newIndex].uri);
   }
 
   async function handleMoveToVault() {
@@ -2162,6 +2177,8 @@ async function handleSsInfo() {
             <MediaViewerView
               uri={viewerUri}
               onTap={() => setViewerUri(null)}
+              onSwipeNext={() => goToViewerImage(viewerIndex + 1)}
+              onSwipePrevious={() => goToViewerImage(viewerIndex - 1)}
               style={StyleSheet.absoluteFill}
             />
           )}
