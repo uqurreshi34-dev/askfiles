@@ -3,7 +3,7 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Keyboard, ScrollView,
-  Modal, Animated, Platform, Pressable, KeyboardAvoidingView, Alert, useWindowDimensions,
+  Modal, Animated, Platform, Pressable, KeyboardAvoidingView, Alert, useWindowDimensions, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -29,7 +29,7 @@ import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
-import { openFile as openFileNative } from '@/modules/share-module';
+import { openFile as openFileNative, shareFiles } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
 import { copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
@@ -37,6 +37,7 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
 import { getTagsForFile } from '@/hooks/useFileTags';
+import { MediaViewerView } from 'media-viewer';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -165,6 +166,7 @@ export default function SearchScreen() {
   const [fileTagsMap, setFileTagsMap] = useState<Record<string, string[]>>({});
   const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
   const [detailsName, setDetailsName] = useState('');
@@ -451,8 +453,12 @@ export default function SearchScreen() {
   }
 
   async function openFile(name: string, uri: string) {
-    setOpeningUri(uri);
     await addRecent({ name, uri, openedAt: Date.now() });
+    if (isImageFile(name)) {
+      setViewerUri(uri);
+      return;
+    }
+    setOpeningUri(uri);
     const mime = getMimeType(name);
     try {
       await openFileNative(toPath(uri), mime);
@@ -1177,6 +1183,37 @@ export default function SearchScreen() {
         </SafeAreaView>
       </Modal>
       <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
+      <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {viewerUri && (
+            <MediaViewerView
+              uri={viewerUri}
+              onTap={() => setViewerUri(null)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="share-outline" size={22} color="#222" />
+                </TouchableOpacity>
+                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await openFileNative(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

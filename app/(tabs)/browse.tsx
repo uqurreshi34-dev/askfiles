@@ -122,8 +122,6 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
-  const [viewerImages, setViewerImages] = useState<FileItem[]>([]);
-  const [viewerIndex, setViewerIndex] = useState(0);
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [folderCounts, setFolderCounts] = useState<Record<string, number>>(folderCountsStore);
   const [qrModalVisible, setQrModalVisible] = useState(false);
@@ -289,10 +287,6 @@ export default function BrowseScreen() {
   async function openFile(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     if (isImageFile(item.name)) {
-      const imgs = items.filter(i => isImageFile(i.name) && !i.isDirectory);
-      const idx = imgs.findIndex(i => i.uri === item.uri);
-      setViewerImages(imgs);
-      setViewerIndex(idx >= 0 ? idx : 0);
       setViewerUri(item.uri);
       return;
     }
@@ -328,12 +322,6 @@ export default function BrowseScreen() {
     } else {
       openFile(item);
     }
-  }
-
-  function goToViewerImage(newIndex: number) {
-    if (newIndex < 0 || newIndex >= viewerImages.length) return;
-    setViewerIndex(newIndex);
-    setViewerUri(viewerImages[newIndex].uri);
   }
 
   function navigateToBreadcrumb(index: number) {
@@ -2743,8 +2731,6 @@ export default function BrowseScreen() {
             <MediaViewerView
               uri={viewerUri}
               onTap={() => setViewerUri(null)}
-              onSwipeNext={() => goToViewerImage(viewerIndex + 1)}
-              onSwipePrevious={() => goToViewerImage(viewerIndex - 1)}
               style={StyleSheet.absoluteFill}
             />
           )}

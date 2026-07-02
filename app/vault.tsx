@@ -65,8 +65,6 @@ export default function VaultScreen() {
   const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
-  const [viewerImages, setViewerImages] = useState<VaultFile[]>([]);
-  const [viewerIndex, setViewerIndex] = useState(0);
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
@@ -221,12 +219,6 @@ export default function VaultScreen() {
     finally { setOpeningFile(false); }
   }
 
-  function goToViewerImage(newIndex: number) {
-    if (newIndex < 0 || newIndex >= viewerImages.length) return;
-    setViewerIndex(newIndex);
-    setViewerUri(viewerImages[newIndex].uri);
-  }
-
   async function handleShare(file: VaultFile) {
     closeSheet();
     try {
@@ -345,10 +337,6 @@ export default function VaultScreen() {
             setSelectedUris(newSet); setSelectedFilesMap(newMap);
           } else {
             if (isImageFile(item.name)) {
-              const imgs = files.filter(f => isImageFile(f.name));
-              const idx = imgs.findIndex(f => f.uri === item.uri);
-              setViewerImages(imgs);
-              setViewerIndex(idx >= 0 ? idx : 0);
               setViewerUri(item.uri);
             } else {
               openFile(item);
@@ -767,8 +755,6 @@ export default function VaultScreen() {
             <MediaViewerView
               uri={viewerUri}
               onTap={() => setViewerUri(null)}
-              onSwipeNext={() => goToViewerImage(viewerIndex + 1)}
-              onSwipePrevious={() => goToViewerImage(viewerIndex - 1)}
               style={StyleSheet.absoluteFill}
             />
           )}
