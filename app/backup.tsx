@@ -82,23 +82,33 @@ export default function BackupScreen() {
     }
   }
 
-  async function handleDBRestore() {
+  async function runDBRestore(scope: 'all' | 'files' | 'settings') {
+    const count = await dbRestoreVault(vaultDir, scope);
+    if (AppState.currentState === 'active') {
+      if (scope === 'settings') {
+        Alert.alert(dbError ? 'Restore failed' : 'Settings restored', dbError ? undefined : 'Your tags, favourites, pinned folders and appearance have been restored.');
+      } else if (count > 0) {
+        Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault${scope === 'all' ? ' and settings applied' : ''}.`);
+      } else if (count === 0 && !dbError) {
+        Alert.alert('Nothing to restore', 'All Dropbox backup files are already in your vault.');
+      }
+    }
+  }
+
+  function handleDBRestore() {
     Alert.alert(
       'Restore from Dropbox',
-      'This will restore files from your Dropbox backup that are not already in your vault.',
+      'Choose what to restore. Files already in your vault will be skipped.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Restore', onPress: async () => {
-            const count = await dbRestoreVault(vaultDir);
-            if (AppState.currentState === 'active') {
-              if (count > 0) {
-                Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
-              } else if (count === 0 && !dbError) {
-                Alert.alert('Nothing to restore', 'All Dropbox backup files are already in your vault.');
-              }
-            }
-          },
-        },
+        { text: 'Choose what...', onPress: () => {
+          Alert.alert('What would you like to restore?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Files Only', onPress: () => runDBRestore('files') },
+            { text: 'Settings Only', onPress: () => runDBRestore('settings') },
+          ]);
+        }},
+        { text: 'Restore Everything', onPress: () => runDBRestore('all') },
       ]
     );
   }
@@ -123,25 +133,33 @@ export default function BackupScreen() {
     }
   }
 
-  async function handleODRestore() {
+  async function runODRestore(scope: 'all' | 'files' | 'settings') {
+    const count = await odRestoreVault(vaultDir, scope);
+    if (AppState.currentState === 'active') {
+      if (scope === 'settings') {
+        Alert.alert(odError ? 'Restore failed' : 'Settings restored', odError ? undefined : 'Your tags, favourites, pinned folders and appearance have been restored.');
+      } else if (count > 0) {
+        Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault${scope === 'all' ? ' and settings applied' : ''}.`);
+      } else if (count === 0 && !odError) {
+        Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+      }
+    }
+  }
+
+  function handleODRestore() {
     Alert.alert(
       'Restore from OneDrive',
-      'This will download your backed-up vault files to this device. Files already in your vault will be skipped.',
+      'Choose what to restore. Files already in your vault will be skipped.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Restore',
-          onPress: async () => {
-            const count = await odRestoreVault(vaultDir);
-            if (AppState.currentState === 'active') {
-              if (count > 0) {
-                Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
-              } else if (count === 0 && !odError) {
-                Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
-              }
-            }
-          },
-        },
+        { text: 'Choose what...', onPress: () => {
+          Alert.alert('What would you like to restore?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Files Only', onPress: () => runODRestore('files') },
+            { text: 'Settings Only', onPress: () => runODRestore('settings') },
+          ]);
+        }},
+        { text: 'Restore Everything', onPress: () => runODRestore('all') },
       ]
     );
   }
@@ -166,25 +184,33 @@ export default function BackupScreen() {
     }
   }
 
-  async function handleRestore() {
+  async function runRestore(scope: 'all' | 'files' | 'settings') {
+    const count = await restoreVault(vaultDir, scope);
+    if (AppState.currentState === 'active') {
+      if (scope === 'settings') {
+        Alert.alert(error ? 'Restore failed' : 'Settings restored', error ? undefined : 'Your tags, favourites, pinned folders and appearance have been restored.');
+      } else if (count > 0) {
+        Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault${scope === 'all' ? ' and settings applied' : ''}.`);
+      } else if (count === 0 && !error) {
+        Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+      }
+    }
+  }
+
+  function handleRestore() {
     Alert.alert(
       'Restore from Drive',
-      'This will download your backed-up vault files to this device. Files already in your vault will be skipped.',
+      'Choose what to restore. Files already in your vault will be skipped.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Restore',
-          onPress: async () => {
-            const count = await restoreVault(vaultDir);
-            if (AppState.currentState === 'active') {
-              if (count > 0) {
-                Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault.`);
-              } else if (count === 0 && !error) {
-                Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
-              }
-            }
-          },
-        },
+        { text: 'Choose what...', onPress: () => {
+          Alert.alert('What would you like to restore?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Files Only', onPress: () => runRestore('files') },
+            { text: 'Settings Only', onPress: () => runRestore('settings') },
+          ]);
+        }},
+        { text: 'Restore Everything', onPress: () => runRestore('all') },
       ]
     );
   }

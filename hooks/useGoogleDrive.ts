@@ -208,7 +208,7 @@ export function useGoogleDrive() {
     }
   }
 
-  async function restoreVault(vaultDir: string): Promise<number> {
+  async function restoreVault(vaultDir: string, scope: 'all' | 'files' | 'settings' = 'all'): Promise<number> {
     setRestoring(true);
     setCloudSyncing(true);
     setError(null);
@@ -237,6 +237,7 @@ export function useGoogleDrive() {
 
       let restored = 0;
       let restoreIndex = 0;
+      if (scope !== 'settings') {
       for (const driveFile of driveFiles) {
         if (driveFile.mimeType === 'application/vnd.google-apps.folder') continue;
         if (driveFile.name === 'askfiles_settings.json') continue;
@@ -261,8 +262,10 @@ export function useGoogleDrive() {
         if (dlResult !== 'success') continue;
         restored++;
       }
+      }
 
       // Download and apply settings
+      if (scope !== 'files') {
       const settingsFile = driveFiles.find((f: any) => f.name === 'askfiles_settings.json');
       if (settingsFile) {
         const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
@@ -279,6 +282,7 @@ export function useGoogleDrive() {
           } catch {}
         }
       }
+    }
 
       return restored;
     } catch (e) {

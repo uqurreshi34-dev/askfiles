@@ -216,7 +216,7 @@ export function useDropbox() {
     }
   }
 
-  async function restoreVault(vaultDir: string): Promise<number> {
+  async function restoreVault(vaultDir: string, scope: 'all' | 'files' | 'settings' = 'all'): Promise<number> {
     setRestoring(true);
     setCloudSyncing(true);
     setError(null);
@@ -246,6 +246,7 @@ export function useDropbox() {
 
       let restored = 0;
       let restoreIndex = 0;
+      if (scope !== 'settings') {
       for (const dropboxFile of dropboxFiles) {
         if (dropboxFile['.tag'] !== 'file') continue;
         if (dropboxFile.name === 'askfiles_settings.json') continue;
@@ -275,8 +276,10 @@ export function useDropbox() {
         if (dlResult !== 'success') continue;
         restored++;
       }
+     }
 
       // Download and apply settings
+      if (scope !== 'files') {
       const settingsEntry = dropboxFiles.find((f: any) => f.name === 'askfiles_settings.json');
       if (settingsEntry) {
         const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
@@ -297,6 +300,7 @@ export function useDropbox() {
           } catch {}
         }
       }
+    }
       return restored;
     } catch {
       setError('Restore failed. Check your connection and try again.');
