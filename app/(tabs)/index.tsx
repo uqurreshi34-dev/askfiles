@@ -11,7 +11,7 @@ import { usePro } from '@/hooks/usePro';
 import { useTrash } from '@/hooks/useTrash';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme, LIGHT_PALETTES, DARK_PALETTES } from '@/hooks/useTheme';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { isStorageManager, getPinnedFolders, setPinnedFolders, setPendingBrowsePath } from '@/modules/storage-stats';
@@ -37,7 +37,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
 
 export default function HomeScreen() {
-  const { colors, dark, toggleTheme } = useTheme();
+  const { colors, dark, toggleTheme, palette, setPalette } = useTheme();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
   const { recents, reload } = useRecents();
@@ -237,6 +237,34 @@ async function indexScansInBackground(paths: string[]) {
                   <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: appLockEnabled ? 'flex-end' : 'flex-start' }} />
                 </View>
               </TouchableOpacity>
+
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider, marginTop: 8 }]} />
+              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+                Background
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
+                {(dark ? DARK_PALETTES : LIGHT_PALETTES).map(p => (
+                  <TouchableOpacity
+                    key={p.id}
+                    onPress={() => setPalette(p.id)}
+                    activeOpacity={0.7}
+                    style={{ alignItems: 'center' }}
+                  >
+                    <View style={{
+                      width: 36, height: 36, borderRadius: 18,
+                      backgroundColor: p.swatch,
+                      borderWidth: palette === p.id ? 2.5 : 1,
+                      borderColor: palette === p.id ? colors.blue : colors.border,
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {palette === p.id && (
+                        <Ionicons name="checkmark" size={16} color={dark ? '#fff' : '#111'} />
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>{p.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled }]} activeOpacity={0.7} onPress={() => setSettingsVisible(false)}>
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Close</Text>
