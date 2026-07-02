@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getFileTags as getFileTagsNative, setFileTags as setFileTagsNative } from '@/modules/storage-stats';
+import RNFS from 'react-native-fs';
+import { toPath } from '@/utils/files';
 
 export interface FileTagEntry {
   uri: string;
@@ -111,4 +113,12 @@ export function useFileTags() {
   }, [refresh]);
 
   return { fileTags, count: fileTags.length };
+}
+
+export async function cleanupBrokenFileTags(): Promise<void> {
+  const items = load();
+  if (items.length === 0) return;
+  const results = await Promise.all(items.map(f => RNFS.exists(toPath(f.uri))));
+  const alive = items.filter((_, i) => results[i]);
+  if (alive.length !== items.length) save(alive);
 }

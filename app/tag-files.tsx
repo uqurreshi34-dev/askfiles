@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { getPendingTagId } from '@/modules/storage-stats';
 import { getTag } from '@/hooks/useTags';
-import { getFilesForTag, removeTagFromFile, FileTagEntry } from '@/hooks/useFileTags';
+import { getFilesForTag, removeTagFromFile, FileTagEntry, cleanupBrokenFileTags } from '@/hooks/useFileTags';
 import { useTheme } from '@/hooks/useTheme';
 import FileListViewer from '@/components/FileListViewer';
 
@@ -13,6 +13,12 @@ export default function TagFilesScreen() {
   const [files, setFiles] = useState<FileTagEntry[]>([]);
   // Keep tagId stable across renders so onConfirm always removes the right tag
   const tagIdRef = useRef<string>('');
+
+  useFocusEffect(
+    useCallback(() => {
+      cleanupBrokenFileTags();
+    }, [])
+  );
 
   useFocusEffect(
     useCallback(() => {

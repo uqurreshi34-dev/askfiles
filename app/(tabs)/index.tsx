@@ -87,7 +87,14 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => {
     reload();        // rebuilds mediaContext → fresh recents, AI context, folder sizes
     reloadTrash();
-    try { setPinnedList(JSON.parse(getPinnedFolders())); } catch { setPinnedList([]); }
+    try {
+      const pins: { path: string; name: string }[] = JSON.parse(getPinnedFolders());
+      Promise.all(pins.map(f => RNFS.exists(f.path))).then(results => {
+        const alive = pins.filter((_, i) => results[i]);
+        if (alive.length !== pins.length) setPinnedFolders(JSON.stringify(alive));
+        setPinnedList(alive);
+      });
+    } catch { setPinnedList([]); }
     isStorageManager().then(setHasAllFilesAccess);
     MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
   }, [reload]));
