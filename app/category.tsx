@@ -42,7 +42,6 @@ import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
 import { addTag } from '@/hooks/useTags';
 import { addTagToFile, getTagsForFile, removeTagFromFile } from '@/hooks/useFileTags';
-import { setPendingTagId } from '@/modules/storage-stats';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
