@@ -120,7 +120,21 @@ export function useGoogleDrive() {
     if (result !== 'success') throw new Error('upload_failed');
   }
 
-  async function backupVault(vaultDir: string): Promise<boolean> {
+  async function uploadSettingsOnly(token: string, folderId: string): Promise<void> {
+    const settings = await exportSettings();
+    const settingsJson = JSON.stringify(settings);
+    const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+    await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
+    const existsRes2 = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='askfiles_settings.json' and '${folderId}' in parents and trashed=false&fields=files(id)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const existsData2 = await existsRes2.json();
+    const existingSettingsId = existsData2.files?.[0]?.id;
+    await uploadFileToDrive(token, folderId, 'askfiles_settings.json', settingsPath, existingSettingsId);
+  }
+
+  async function backupVault(vaultDir: string, scope: 'all' | 'files' | 'settings' = 'all'): Promise<boolean> {
     setSyncing(true);
     setCloudSyncing(true);
     setError(null);
@@ -131,6 +145,14 @@ export function useGoogleDrive() {
       const folderId = await getOrCreateFolder(token);
       if (!folderId) { setError('Could not create Drive folder.'); return false; }
 
+      if (scope === 'settings') {
+        await uploadSettingsOnly(token, folderId);
+        const now = new Date().toLocaleString();
+        await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
+        setLastBackup(now);
+        return true;
+      }
+
       const dir = new FileSystem.Directory(vaultDir);
       const contents = dir.list();
       const files = contents.filter(
@@ -138,18 +160,9 @@ export function useGoogleDrive() {
       ) as FileSystem.File[];
 
       if (files.length === 0) {
-        // Still upload settings even if vault is empty
-        const settings = await exportSettings();
-        const settingsJson = JSON.stringify(settings);
-        const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
-        await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
-        const existsRes2 = await fetch(
-          `https://www.googleapis.com/drive/v3/files?q=name='askfiles_settings.json' and '${folderId}' in parents and trashed=false&fields=files(id)`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const existsData2 = await existsRes2.json();
-        const existingSettingsId = existsData2.files?.[0]?.id;
-        await uploadFileToDrive(token, folderId, 'askfiles_settings.json', settingsPath, existingSettingsId);
+        if (scope === 'files') { setError('No files in vault to back up.'); return false; }
+        // scope === 'all' with empty vault — still upload settings
+        await uploadSettingsOnly(token, folderId);
         const now = new Date().toLocaleString();
         await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
         setLastBackup(now);
@@ -175,18 +188,9 @@ export function useGoogleDrive() {
         updateUploadService(`Backing up to Google Drive — ${i + 1}/${files.length} files`);
       }
 
-      // Upload settings JSON
-      const settings = await exportSettings();
-      const settingsJson = JSON.stringify(settings);
-      const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
-      await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
-      const existsRes2 = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=name='askfiles_settings.json' and '${folderId}' in parents and trashed=false&fields=files(id)`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const existsData2 = await existsRes2.json();
-      const existingSettingsId = existsData2.files?.[0]?.id;
-      await uploadFileToDrive(token, folderId, 'askfiles_settings.json', settingsPath, existingSettingsId);
+      if (scope === 'all') {
+        await uploadSettingsOnly(token, folderId);
+      }
 
       const now = new Date().toLocaleString();
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);

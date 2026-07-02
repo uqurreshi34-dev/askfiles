@@ -73,13 +73,32 @@ export default function BackupScreen() {
 
   const { vaultDir } = useVault() as any;
 
-  async function handleDBBackup() {
-    const ok = await dbBackupVault(vaultDir);
-    if (ok) {
-      if (AppState.currentState === 'active') {
-        Alert.alert('Backup complete', 'Your vault and settings have been backed up to Dropbox.');
-      }
+  async function runDBBackup(scope: 'all' | 'files' | 'settings') {
+    const ok = await dbBackupVault(vaultDir, scope);
+    if (ok && AppState.currentState === 'active') {
+      const msg = scope === 'files' ? 'Your vault files have been backed up to Dropbox.'
+        : scope === 'settings' ? 'Your tags, favourites, pinned folders and appearance have been backed up to Dropbox.'
+        : 'Your vault and settings have been backed up to Dropbox.';
+      Alert.alert('Backup complete', msg);
     }
+  }
+
+  function handleDBBackup() {
+    Alert.alert(
+      'Back Up to Dropbox',
+      'Choose what to back up.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Choose what...', onPress: () => {
+          Alert.alert('What would you like to back up?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Files Only', onPress: () => runDBBackup('files') },
+            { text: 'Settings Only', onPress: () => runDBBackup('settings') },
+          ]);
+        }},
+        { text: 'Back Up Everything', onPress: () => runDBBackup('all') },
+      ]
+    );
   }
 
   async function runDBRestore(scope: 'all' | 'files' | 'settings') {
@@ -124,13 +143,32 @@ export default function BackupScreen() {
     );
   }
 
-  async function handleODBackup() {
-    const ok = await odBackupVault(vaultDir);
-    if (ok) {
-      if (AppState.currentState === 'active') {
-        Alert.alert('Backup complete', 'Your vault and settings have been backed up to OneDrive.');
-      }
+  async function runODBackup(scope: 'all' | 'files' | 'settings') {
+    const ok = await odBackupVault(vaultDir, scope);
+    if (ok && AppState.currentState === 'active') {
+      const msg = scope === 'files' ? 'Your vault files have been backed up to OneDrive.'
+        : scope === 'settings' ? 'Your tags, favourites, pinned folders and appearance have been backed up to OneDrive.'
+        : 'Your vault and settings have been backed up to OneDrive.';
+      Alert.alert('Backup complete', msg);
     }
+  }
+
+  function handleODBackup() {
+    Alert.alert(
+      'Back Up to OneDrive',
+      'Choose what to back up.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Choose what...', onPress: () => {
+          Alert.alert('What would you like to back up?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Files Only', onPress: () => runODBackup('files') },
+            { text: 'Settings Only', onPress: () => runODBackup('settings') },
+          ]);
+        }},
+        { text: 'Back Up Everything', onPress: () => runODBackup('all') },
+      ]
+    );
   }
 
   async function runODRestore(scope: 'all' | 'files' | 'settings') {
@@ -175,13 +213,32 @@ export default function BackupScreen() {
     );
   }
 
-  async function handleBackup() {
-    const ok = await backupVault(vaultDir);
-    if (ok) {
-      if (AppState.currentState === 'active') {
-        Alert.alert('Backup complete', 'Your vault and settings have been backed up to Google Drive.');
-      }
+  async function runBackup(scope: 'all' | 'files' | 'settings') {
+    const ok = await backupVault(vaultDir, scope);
+    if (ok && AppState.currentState === 'active') {
+      const msg = scope === 'files' ? 'Your vault files have been backed up to Google Drive.'
+        : scope === 'settings' ? 'Your tags, favourites, pinned folders and appearance have been backed up to Google Drive.'
+        : 'Your vault and settings have been backed up to Google Drive.';
+      Alert.alert('Backup complete', msg);
     }
+  }
+
+  function handleBackup() {
+    Alert.alert(
+      'Back Up to Google Drive',
+      'Choose what to back up.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Choose what...', onPress: () => {
+          Alert.alert('What would you like to back up?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Files Only', onPress: () => runBackup('files') },
+            { text: 'Settings Only', onPress: () => runBackup('settings') },
+          ]);
+        }},
+        { text: 'Back Up Everything', onPress: () => runBackup('all') },
+      ]
+    );
   }
 
   async function runRestore(scope: 'all' | 'files' | 'settings') {

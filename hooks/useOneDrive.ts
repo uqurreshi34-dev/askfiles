@@ -157,13 +157,29 @@ export function useOneDrive() {
     if (result !== 'success') throw new Error('upload_failed');
   }
 
-  async function backupVault(vaultDir: string): Promise<boolean> {
+  async function uploadSettingsOnly(token: string): Promise<void> {
+    const settings = await exportSettings();
+    const settingsJson = JSON.stringify(settings);
+    const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
+    await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
+    await uploadFileToOneDrive(token, 'askfiles_settings.json', settingsPath);
+  }
+
+  async function backupVault(vaultDir: string, scope: 'all' | 'files' | 'settings' = 'all'): Promise<boolean> {
     setSyncing(true);
     setCloudSyncing(true);
     setError(null);
     try {
       const token = await getAccessToken();
       if (!token) { setError('Not connected to OneDrive.'); return false; }
+
+      if (scope === 'settings') {
+        await uploadSettingsOnly(token);
+        const now = new Date().toLocaleString();
+        await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
+        setLastBackup(now);
+        return true;
+      }
 
       const dir = new FileSystem.Directory(vaultDir);
       const contents = dir.list();
@@ -172,11 +188,8 @@ export function useOneDrive() {
       ) as FileSystem.File[];
 
       if (files.length === 0) {
-        const settings = await exportSettings();
-        const settingsJson = JSON.stringify(settings);
-        const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
-        await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
-        await uploadFileToOneDrive(token, 'askfiles_settings.json', settingsPath);
+        if (scope === 'files') { setError('No files in vault to back up.'); return false; }
+        await uploadSettingsOnly(token);
         const now = new Date().toLocaleString();
         await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
         setLastBackup(now);
@@ -194,12 +207,9 @@ export function useOneDrive() {
         setGlobalUploadProgress('onedrive', { current: i + 1, total: files.length });
         updateUploadService(`Backing up to OneDrive — ${i + 1}/${files.length} files`);
       }
-      // Upload settings JSON
-      const settings = await exportSettings();
-      const settingsJson = JSON.stringify(settings);
-      const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
-      await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
-      await uploadFileToOneDrive(token, 'askfiles_settings.json', settingsPath);
+      if (scope === 'all') {
+        await uploadSettingsOnly(token);
+      }
       const now = new Date().toLocaleString();
       await AsyncStorage.setItem(LAST_BACKUP_KEY, now);
       setLastBackup(now);
