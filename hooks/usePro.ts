@@ -35,8 +35,7 @@ export function usePro() {
   async function checkEntitlement() {
     try {
       const info = await Purchases.getCustomerInfo();
-      // setIsPro(typeof info.entitlements.active['pro'] !== 'undefined');
-      setIsPro(true);
+      setIsPro(typeof info.entitlements.active['pro'] !== 'undefined');
     } catch (e) {
     } finally {
       setLoading(false);
