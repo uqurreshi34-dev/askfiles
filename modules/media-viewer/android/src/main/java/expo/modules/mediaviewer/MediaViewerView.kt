@@ -45,6 +45,12 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     private val maxScale = 5f
     private val doubleTapScale = 2.5f
 
+    // Overscroll-to-swipe: when zoomed in and panned to a horizontal edge,
+    // continued drag/fling in that direction triggers navigation instead of panning
+    private var edgeOverscroll = 0f
+    private var edgeSwipeFired = false
+    private val edgeSwipeThreshold = context.resources.displayMetrics.density * 70f
+
     // Override setFrame on the ImageView itself — fires after every layout pass
     // with guaranteed non-zero dimensions. This is the correct hook for Fabric.
     private val imageView = object : AppCompatImageView(context) {
@@ -102,6 +108,23 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 distanceX: Float, distanceY: Float
             ): Boolean {
                 if (currentScale > fitScale + 0.01f) {
+                    val (hasOverflow, atLeftBound, atRightBound) = horizontalEdge()
+                    val draggingPastLeft = hasOverflow && atLeftBound && distanceX > 0f
+                    val draggingPastRight = hasOverflow && atRightBound && distanceX < 0f
+                    if (draggingPastLeft || draggingPastRight) {
+                        edgeOverscroll += kotlin.math.abs(distanceX)
+                        if (!edgeSwipeFired && edgeOverscroll > edgeSwipeThreshold) {
+                            edgeSwipeFired = true
+                            if (draggingPastLeft) onSwipeNext(mapOf<String, Any>())
+                            else onSwipePrevious(mapOf<String, Any>())
+                        }
+                        // still allow vertical pan while over-dragging horizontally
+                        matrix.postTranslate(0f, -distanceY)
+                        clampMatrix()
+                        imageView.imageMatrix = matrix
+                        return true
+                    }
+                    edgeOverscroll = 0f
                     matrix.postTranslate(-distanceX, -distanceY)
                     clampMatrix()
                     imageView.imageMatrix = matrix
@@ -114,6 +137,17 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 velocityX: Float, velocityY: Float
             ): Boolean {
                 if (currentScale > fitScale + 0.01f) {
+                    val (hasOverflow, atLeftBound, atRightBound) = horizontalEdge()
+                    val isHorizontalFling = kotlin.math.abs(velocityX) > kotlin.math.abs(velocityY) * 1.5f &&
+                        kotlin.math.abs(velocityX) > 800f
+                    if (hasOverflow && isHorizontalFling && atLeftBound && velocityX < 0f) {
+                        if (!edgeSwipeFired) onSwipeNext(mapOf<String, Any>())
+                        return true
+                    }
+                    if (hasOverflow && isHorizontalFling && atRightBound && velocityX > 0f) {
+                        if (!edgeSwipeFired) onSwipePrevious(mapOf<String, Any>())
+                        return true
+                    }
                     matrix.postTranslate(velocityX * 0.1f, velocityY * 0.1f)
                     clampMatrix()
                     imageView.imageMatrix = matrix
@@ -134,6 +168,10 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
         setBackgroundColor(android.graphics.Color.BLACK)
         addView(imageView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         imageView.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                edgeOverscroll = 0f
+                edgeSwipeFired = false
+            }
             scaleDetector.onTouchEvent(event)
             gestureDetector.onTouchEvent(event)
             true
@@ -214,6 +252,22 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
         currentScale = scale
         fitScale = scale
         imageView.imageMatrix = matrix
+    }
+
+    // Returns (hasHorizontalOverflow, atLeftBound, atRightBound) for the current zoom/pan state.
+    // atLeftBound = panned as far left as possible (viewing the image's right side) -> next
+    // atRightBound = panned as far right as possible (viewing the image's left side) -> previous
+    private fun horizontalEdge(): Triple<Boolean, Boolean, Boolean> {
+        val bmp = currentBitmap ?: return Triple(false, false, false)
+        val vw = viewW.takeIf { it > 0 } ?: screenW
+        val scaledW = bmp.width * currentScale
+        if (scaledW <= vw) return Triple(false, false, false)
+        val values = FloatArray(9)
+        matrix.getValues(values)
+        val transX = values[Matrix.MTRANS_X]
+        val atLeftBound = transX <= (vw - scaledW) + 0.5f
+        val atRightBound = transX >= -0.5f
+        return Triple(true, atLeftBound, atRightBound)
     }
 
     private fun clampMatrix() {
