@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, formatDuration } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -277,13 +277,6 @@ async function handleSsInfo() {
   } catch {}
   Alert.alert(ssCurrent.name, lines.join('\n'));
 }
-
-  function formatDuration(ms: number): string {
-    const totalSecs = Math.floor(ms / 1000);
-    const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
 
   async function loadPickerDir(path: string) {
     setPickerLoading(true);

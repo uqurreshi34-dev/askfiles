@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import {
@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate, formatDuration } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { useVault } from '@/hooks/useVault';
@@ -25,6 +25,8 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { MediaViewerView } from 'media-viewer';
+import { MediaPlayerView } from 'media-player';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 // Minimal shape every list this component renders must satisfy.
 // FavouriteItem and FileTagEntry both already match this.
@@ -75,14 +77,25 @@ export default function FileListViewer<T extends ViewableFile>({
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [playerUri, setPlayerUri] = useState<string | null>(null);
+  const [playerPaused, setPlayerPaused] = useState(false);
+  const [playerDuration, setPlayerDuration] = useState(0);
+  const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
   const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
     setShowSheet(false);
     setSelectedItem(null);
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     getStorageVolumes().then(setVolumes);
   }, []);
+
+  useEffect(() => {
+    if (playerUri !== null) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerPaused(false); setPlayerDuration(0); };
+    }
+  }, [playerUri]);
 
   async function openSheet(item: T) {
     setSelectedItem(item);
@@ -100,6 +113,11 @@ export default function FileListViewer<T extends ViewableFile>({
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     if (isImageFile(item.name)) {
       setViewerUri(item.uri);
+      return;
+    }
+    if (isVideoFile(item.name)) {
+      setPlayerPaused(false);
+      setPlayerUri(item.uri);
       return;
     }
     setOpeningUri(item.uri);
@@ -364,6 +382,64 @@ export default function FileListViewer<T extends ViewableFile>({
               </View>
             </View>
           </SafeAreaView>
+        </View>
+      </Modal>
+      <Modal visible={playerUri !== null} transparent={false} animationType="fade" onRequestClose={() => { setPlayerUri(null); setPlayerPaused(false); }} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {playerUri && (
+            <MediaPlayerView
+              uri={playerUri}
+              paused={playerPaused}
+              onTap={() => setPlayerControlsVisible(v => !v)}
+              onPlayingStateChange={(e: any) => {
+                const isPlaying = e.nativeEvent.isPlaying;
+                const duration = e.nativeEvent.duration;
+                setPlayerControlsVisible(!isPlaying);
+                setPlayerPaused(!isPlaying);
+                if (duration) setPlayerDuration(duration);
+              }}
+              onComplete={() => setPlayerPaused(true)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          {playerControlsVisible && (
+            <>
+              <TouchableOpacity
+                onPress={() => setPlayerPaused(p => !p)}
+                style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -32 }, { translateY: -32 }], width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name={playerPaused ? 'play' : 'pause'} size={32} color="#fff" />
+              </TouchableOpacity>
+              {playerDuration > 0 && (
+                <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', top: 48 }} pointerEvents="none">
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>
+                    {formatDuration(playerDuration)}
+                  </Text>
+                </View>
+              )}
+              <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+                <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+                  <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                    <TouchableOpacity onPress={async () => {
+                      if (!playerUri) return;
+                      try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {}
+                    }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                      <Ionicons name="share-outline" size={22} color="#222" />
+                    </TouchableOpacity>
+                    <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                    <TouchableOpacity onPress={async () => {
+                      if (!playerUri) return;
+                      setPlayerPaused(true);
+                      try { await openFileNative(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {}
+                    }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                      <Ionicons name="open-outline" size={22} color="#222" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </SafeAreaView>
+            </>
+          )}
         </View>
       </Modal>
     </SafeAreaView>

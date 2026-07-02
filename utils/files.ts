@@ -77,6 +77,13 @@ export function getMimeType(name: string): string {
     return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  export function formatDuration(ms: number): string {
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
   export function toPath(uri: string): string {
     try { return decodeURIComponent(uri.replace('file://', '')); }
     catch { return uri.replace('file://', ''); }
