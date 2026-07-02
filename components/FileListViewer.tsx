@@ -4,7 +4,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, Image,
   ActivityIndicator, Modal, Animated, Pressable, Alert,
-  useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform
+  useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, StatusBar
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,13 +17,14 @@ import { DocIndexer } from '@/modules/doc-indexer';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
-import { openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
+import { openFile as openFileNative, printImage, printPdf, shareFiles } from '@/modules/share-module';
 import RNFS from 'react-native-fs';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
+import { MediaViewerView } from 'media-viewer';
 
 // Minimal shape every list this component renders must satisfy.
 // FavouriteItem and FileTagEntry both already match this.
@@ -73,6 +74,7 @@ export default function FileListViewer<T extends ViewableFile>({
   const [detailsName, setDetailsName] = useState('');
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
     setShowSheet(false);
     setSelectedItem(null);
@@ -95,8 +97,12 @@ export default function FileListViewer<T extends ViewableFile>({
   }
 
   async function openItem(item: T) {
-    setOpeningUri(item.uri);
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    if (isImageFile(item.name)) {
+      setViewerUri(item.uri);
+      return;
+    }
+    setOpeningUri(item.uri);
     const mime = getMimeType(item.name);
     try {
       await openFileNative(toPath(item.uri), mime);
@@ -329,6 +335,37 @@ export default function FileListViewer<T extends ViewableFile>({
         </KeyboardAvoidingView>
       </Modal>
       <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
+      <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {viewerUri && (
+            <MediaViewerView
+              uri={viewerUri}
+              onTap={() => setViewerUri(null)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="share-outline" size={22} color="#222" />
+                </TouchableOpacity>
+                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await openFileNative(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

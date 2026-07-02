@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, Alert, useWindowDimensions, AppState, ActivityIndicator, FlatList } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, Modal, Linking, Alert, useWindowDimensions, AppState, ActivityIndicator, } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
@@ -17,8 +17,8 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { isStorageManager, getPinnedFolders, setPinnedFolders, setPendingBrowsePath } from '@/modules/storage-stats';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
-import { isImageFile, getFileIcon, getMimeType, getFileColor } from '@/utils/files';
-import { openFile as openFileNative } from '@/modules/share-module';
+import { isImageFile, getFileIcon, getMimeType, getFileColor, toPath } from '@/utils/files';
+import { openFile as openFileNative, shareFiles } from '@/modules/share-module';
 import Constants from 'expo-constants';
 import * as MediaLibrary from 'expo-media-library';
 import { useFavourites } from '@/hooks/useFavourites';
@@ -31,6 +31,7 @@ import { useTags } from '@/hooks/useTags';
 import { removeTagFromAllFiles } from '@/hooks/useFileTags';
 import { setPendingTagId } from '@/modules/storage-stats';
 import { removeTag } from '@/hooks/useTags';
+import { MediaViewerView } from 'media-viewer';
 
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   const [pendingScanFormat, setPendingScanFormat] = useState<'images' | 'pdf'>('images');
   const [pinnedList, setPinnedList] = useState<{ path: string; name: string }[]>([]);
   const { tags } = useTags();
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -118,11 +120,6 @@ export default function HomeScreen() {
     { id: '5', label: 'Favourites', color: colors.favRedBg, iconColor: favCount > 0 ? colors.favRed : colors.textMuted, icon: favCount > 0 ? 'heart' : 'heart-outline', route: '/favourites' },
     { id: '6', label: 'Trash', color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
   ];
-
-  function toPath(uri: string): string {
-    try { return decodeURIComponent(uri.replace('file://', '')); }
-    catch { return uri.replace('file://', ''); }
-  }
 
   // Helper — fire OCR and index silently in background, never blocks UI
 async function indexScansInBackground(paths: string[]) {
@@ -649,6 +646,10 @@ async function indexScansInBackground(paths: string[]) {
                         key={file.uri}
                         style={[styles.recentRow, { borderBottomColor: colors.border }]}
                         onPress={async () => {
+                          if (isImageFile(file.name)) {
+                            setViewerUri(file.uri);
+                            return;
+                          }
                           setOpeningUri(file.uri);
                           const mime = getMimeType(file.name);
                           try {
@@ -723,6 +724,37 @@ async function indexScansInBackground(paths: string[]) {
         title="Choose location"
       />
       </ScrollView>
+      <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar style="light" backgroundColor="#000" />
+          {viewerUri && (
+            <MediaViewerView
+              uri={viewerUri}
+              onTap={() => setViewerUri(null)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="share-outline" size={22} color="#222" />
+                </TouchableOpacity>
+                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await openFileNative(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
