@@ -12,7 +12,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate, formatDuration } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
@@ -28,6 +28,8 @@ import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { MediaPlayerView } from 'media-player';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
@@ -65,8 +67,19 @@ export default function VaultScreen() {
   const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [playerUri, setPlayerUri] = useState<string | null>(null);
+  const [playerPaused, setPlayerPaused] = useState(false);
+  const [playerDuration, setPlayerDuration] = useState(0);
+  const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
+
+  useEffect(() => {
+    if (playerUri !== null) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerPaused(false); setPlayerDuration(0); };
+    }
+  }, [playerUri]);
 
   useEffect(() => {
     async function init() {
@@ -338,6 +351,9 @@ export default function VaultScreen() {
           } else {
             if (isImageFile(item.name)) {
               setViewerUri(item.uri);
+            } else if (isVideoFile(item.name)) {
+              setPlayerPaused(false);
+              setPlayerUri(item.uri);
             } else {
               openFile(item);
             }
@@ -780,6 +796,67 @@ export default function VaultScreen() {
               </View>
             </View>
           </SafeAreaView>
+        </View>
+      </Modal>
+      <Modal visible={playerUri !== null} transparent={false} animationType="fade" onRequestClose={() => { setPlayerUri(null); setPlayerPaused(false); }} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {playerUri && (
+            <MediaPlayerView
+              uri={playerUri}
+              paused={playerPaused}
+              onTap={() => setPlayerControlsVisible(v => !v)}
+              onPlayingStateChange={(e: any) => {
+                const isPlaying = e.nativeEvent.isPlaying;
+                const duration = e.nativeEvent.duration;
+                setPlayerControlsVisible(!isPlaying);
+                setPlayerPaused(!isPlaying);
+                if (duration) setPlayerDuration(duration);
+              }}
+              onComplete={() => setPlayerPaused(true)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          {playerControlsVisible && (
+            <>
+              <TouchableOpacity
+                onPress={() => setPlayerPaused(p => !p)}
+                style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -32 }, { translateY: -32 }], width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name={playerPaused ? 'play' : 'pause'} size={32} color="#fff" />
+              </TouchableOpacity>
+              {playerDuration > 0 && (
+                <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', top: 48 }} pointerEvents="none">
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>
+                    {formatDuration(playerDuration)}
+                  </Text>
+                </View>
+              )}
+              <SafeAreaView edges={['bottom']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+                <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+                  <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                    <TouchableOpacity onPress={async () => {
+                      if (!playerUri) return;
+                      setPlayerPaused(true);
+                      try {
+                        const name = playerUri.split('/').pop() ?? '';
+                        const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
+                        await RNFS.copyFile(toPath(playerUri), cachePath);
+                        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                          data: contentUri,
+                          flags: 1,
+                          type: getMimeType(name),
+                        });
+                      } catch {}
+                    }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                      <Ionicons name="open-outline" size={22} color="#222" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </SafeAreaView>
+            </>
+          )}
         </View>
       </Modal>
     </SafeAreaView>
