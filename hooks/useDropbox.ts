@@ -166,7 +166,7 @@ export function useDropbox() {
       ) as FileSystem.File[];
 
       if (files.length === 0) {
-        const settings = exportSettings();
+        const settings = await exportSettings();
         const settingsJson = JSON.stringify(settings);
         const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
         await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
@@ -190,7 +190,7 @@ export function useDropbox() {
       }
 
       // Upload settings JSON
-      const settings = exportSettings();
+      const settings = await exportSettings();
       const settingsJson = JSON.stringify(settings);
       const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
       await RNFS.writeFile(settingsPath, settingsJson, 'utf8');

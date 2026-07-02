@@ -139,7 +139,7 @@ export function useGoogleDrive() {
 
       if (files.length === 0) {
         // Still upload settings even if vault is empty
-        const settings = exportSettings();
+        const settings = await exportSettings();
         const settingsJson = JSON.stringify(settings);
         const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
         await RNFS.writeFile(settingsPath, settingsJson, 'utf8');
@@ -176,7 +176,7 @@ export function useGoogleDrive() {
       }
 
       // Upload settings JSON
-      const settings = exportSettings();
+      const settings = await exportSettings();
       const settingsJson = JSON.stringify(settings);
       const settingsPath = `${RNFS.CachesDirectoryPath}/askfiles_settings.json`;
       await RNFS.writeFile(settingsPath, settingsJson, 'utf8');

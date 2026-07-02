@@ -1,20 +1,33 @@
 import { getTags, setTags, getFileTags, setFileTags, getFavourites, setFavourites, getPinnedFolders, setPinnedFolders } from '@/modules/storage-stats';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { THEME_KEY, LIGHT_PALETTE_KEY, DARK_PALETTE_KEY, setThemePreference, setLightPalettePreference, setDarkPalettePreference } from '@/hooks/useTheme';
 
 export interface SettingsBundle {
   tags: any[];
   fileTags: any[];
   favourites: any[];
   pinnedFolders: any[];
+  theme: string | null;
+  lightPalette: string | null;
+  darkPalette: string | null;
   exportedAt: string;
 }
 
-export function exportSettings(): SettingsBundle {
+export async function exportSettings(): Promise<SettingsBundle> {
   const parse = (raw: string) => { try { return JSON.parse(raw); } catch { return []; } };
+  const [theme, lightPalette, darkPalette] = await Promise.all([
+    AsyncStorage.getItem(THEME_KEY),
+    AsyncStorage.getItem(LIGHT_PALETTE_KEY),
+    AsyncStorage.getItem(DARK_PALETTE_KEY),
+  ]);
   return {
     tags: parse(getTags()),
     fileTags: parse(getFileTags()),
     favourites: parse(getFavourites()),
     pinnedFolders: parse(getPinnedFolders()),
+    theme,
+    lightPalette,
+    darkPalette,
     exportedAt: new Date().toISOString(),
   };
 }
@@ -73,6 +86,18 @@ export function importSettings(cloud: SettingsBundle): void {
     if (!pinnedMap.has(pin.path)) pinnedMap.set(pin.path, pin);
   }
   setPinnedFolders(JSON.stringify(Array.from(pinnedMap.values())));
+
+    // --- Theme & palette: cloud wins only if local has never been set ---
+  (async () => {
+    const existingTheme = await AsyncStorage.getItem(THEME_KEY);
+    if (!existingTheme && cloud.theme) await setThemePreference(cloud.theme === 'dark');
+
+    const existingLight = await AsyncStorage.getItem(LIGHT_PALETTE_KEY);
+    if (!existingLight && cloud.lightPalette) await setLightPalettePreference(cloud.lightPalette as any);
+
+    const existingDark = await AsyncStorage.getItem(DARK_PALETTE_KEY);
+    if (!existingDark && cloud.darkPalette) await setDarkPalettePreference(cloud.darkPalette as any);
+  })();
 
   // Invalidate all caches so next read reloads from SharedPreferences
   const { invalidateCache: invalidateTagsCache } = require('@/hooks/useTags');

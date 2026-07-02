@@ -2,9 +2,9 @@ import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
 
-const THEME_KEY = 'askfiles_theme_override';
-const LIGHT_PALETTE_KEY = 'askfiles_light_palette';
-const DARK_PALETTE_KEY = 'askfiles_dark_palette';
+export const THEME_KEY = 'askfiles_theme_override';
+export const LIGHT_PALETTE_KEY = 'askfiles_light_palette';
+export const DARK_PALETTE_KEY = 'askfiles_dark_palette';
 
 export type LightPalette = 'classic' | 'sage' | 'blush' | 'sky' | 'sand';
 export type DarkPalette = 'classic' | 'navy' | 'brown' | 'forest';
