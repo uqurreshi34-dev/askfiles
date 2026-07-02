@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, Image, Modal, Animated,
-  Pressable, useWindowDimensions, ScrollView,
+  Pressable, useWindowDimensions, ScrollView, StatusBar,
 } from 'react-native';
+import { MediaViewerView } from 'media-viewer';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,8 @@ import * as Haptics from 'expo-haptics';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
@@ -61,6 +64,10 @@ export default function VaultScreen() {
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerImages, setViewerImages] = useState<VaultFile[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
   useEffect(() => {
@@ -214,6 +221,12 @@ export default function VaultScreen() {
     finally { setOpeningFile(false); }
   }
 
+  function goToViewerImage(newIndex: number) {
+    if (newIndex < 0 || newIndex >= viewerImages.length) return;
+    setViewerIndex(newIndex);
+    setViewerUri(viewerImages[newIndex].uri);
+  }
+
   async function handleShare(file: VaultFile) {
     closeSheet();
     try {
@@ -330,7 +343,17 @@ export default function VaultScreen() {
             if (newSet.has(item.uri)) { newSet.delete(item.uri); newMap.delete(item.uri); }
             else { newSet.add(item.uri); newMap.set(item.uri, item); }
             setSelectedUris(newSet); setSelectedFilesMap(newMap);
-          } else { openFile(item); }
+          } else {
+            if (isImageFile(item.name)) {
+              const imgs = files.filter(f => isImageFile(f.name));
+              const idx = imgs.findIndex(f => f.uri === item.uri);
+              setViewerImages(imgs);
+              setViewerIndex(idx >= 0 ? idx : 0);
+              setViewerUri(item.uri);
+            } else {
+              openFile(item);
+            }
+          }
         }}
         onLongPress={() => { if (!selectMode) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); const newSet = new Set([item.uri]); const newMap = new Map([[item.uri, item]]); setSelectedUris(newSet); setSelectedFilesMap(newMap); } }}
         activeOpacity={0.7}
@@ -737,6 +760,42 @@ export default function VaultScreen() {
         </SafeAreaView>
       </Modal>
       <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
+      <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {viewerUri && (
+            <MediaViewerView
+              uri={viewerUri}
+              onTap={() => setViewerUri(null)}
+              onSwipeNext={() => goToViewerImage(viewerIndex + 1)}
+              onSwipePrevious={() => goToViewerImage(viewerIndex - 1)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+              <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try {
+                    const name = viewerUri.split('/').pop() ?? '';
+                    const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
+                    await RNFS.copyFile(toPath(viewerUri), cachePath);
+                    const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+                      data: contentUri,
+                      flags: 1,
+                      type: getMimeType(name),
+                    });
+                  } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
