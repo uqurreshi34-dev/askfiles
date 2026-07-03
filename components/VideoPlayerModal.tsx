@@ -8,12 +8,13 @@ import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType, toPath, formatDuration } from '@/utils/files';
 
 interface Props {
-  uri: string | null;
-  onClose: () => void;
-  speedPills?: boolean;
-}
+    uri: string | null;
+    onClose: () => void;
+    speedPills?: boolean;
+    hidePill?: boolean;
+  }
 
-export default function VideoPlayerModal({ uri, onClose, speedPills = false }: Props) {
+  export default function VideoPlayerModal({ uri, onClose, speedPills = false, hidePill = false }: Props) {
   const [paused, setPaused] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(false);
   const [speed, setSpeed] = useState(1.0);
@@ -150,6 +151,7 @@ export default function VideoPlayerModal({ uri, onClose, speedPills = false }: P
                 </View>
               )}
             </SafeAreaView>
+         {!hidePill && (
             <SafeAreaView edges={['bottom']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
               <View style={{ alignItems: 'center', paddingBottom: 24 }}>
                 <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
@@ -163,6 +165,7 @@ export default function VideoPlayerModal({ uri, onClose, speedPills = false }: P
                 </View>
               </View>
             </SafeAreaView>
+        )}
           </>
         )}
       </View>
