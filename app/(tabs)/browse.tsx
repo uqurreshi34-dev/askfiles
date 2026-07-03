@@ -45,6 +45,7 @@ import { useTags } from '@/hooks/useTags';
 import { addTagToFile, getTagsForFile, removeTagFromFile } from '@/hooks/useFileTags';
 import { addTag } from '@/hooks/useTags';
 import { MediaViewerView } from 'media-viewer';
+import VideoPlayerModal from '@/components/VideoPlayerModal';
 
 interface FileItem {
   name: string;
@@ -123,6 +124,7 @@ export default function BrowseScreen() {
   const [openingUri, setOpeningUri] = useState<string | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
+  const [playerUri, setPlayerUri] = useState<string | null>(null);
   const [folderCounts, setFolderCounts] = useState<Record<string, number>>(folderCountsStore);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
@@ -288,6 +290,10 @@ export default function BrowseScreen() {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     if (isImageFile(item.name)) {
       setViewerUri(item.uri);
+      return;
+    }
+    if (isVideoFile(item.name)) {
+      setPlayerUri(item.uri);
       return;
     }
     setOpeningUri(item.uri);
@@ -2755,6 +2761,7 @@ export default function BrowseScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+      <VideoPlayerModal uri={playerUri} onClose={() => setPlayerUri(null)} />
     </SafeAreaView>
   );
 }

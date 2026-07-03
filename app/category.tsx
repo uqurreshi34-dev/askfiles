@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, formatDuration } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -32,8 +32,7 @@ import { createPdfFromImages, addPdfProgressListener, extractPdfPages, mergePdfs
 import { extractTextFromImage, extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { MediaSlideshowView } from 'media-slideshow';
 import { MediaViewerView } from 'media-viewer';
-import { MediaPlayerView } from 'media-player';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { batchRename } from 'file-reader';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import FileDetailsModal from '@/components/FileDetailsModal';
@@ -178,17 +177,6 @@ export default function CategoryScreen() {
   const [viewerImages, setViewerImages] = useState<FileItem[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
-  const [playerPaused, setPlayerPaused] = useState(false);
-  const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
-  const [playerSpeed, setPlayerSpeed] = useState(1.0);
-  const [playerDuration, setPlayerDuration] = useState<number>(0);
-  const [playerPosition, setPlayerPosition] = useState(0);
-  const [playerSeekTo, setPlayerSeekTo] = useState<number | undefined>(undefined);
-  const [seekFlash, setSeekFlash] = useState<'back' | 'forward' | null>(null);
-  const seekFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrubberWidth = useRef(0);
-  const isDragging = useRef(false);
-  const wasPlayingBeforeDrag = useRef(false);
   const [showMultiRename, setShowMultiRename] = useState(false);
   const [multiRenameBase, setMultiRenameBase] = useState('');
   const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
@@ -237,13 +225,6 @@ export default function CategoryScreen() {
   useEffect(() => {
     if (ssCurrent) isFavourite(ssCurrent.uri).then(setSsIsFav);
   }, [ssCurrent?.uri]);
-
-  useEffect(() => {
-    if (playerUri !== null) {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
-      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerSpeed(1.0); setPlayerDuration(0); setPlayerPosition(0); setPlayerSeekTo(undefined); setSeekFlash(null); };
-    }
-  }, [playerUri]);
 
   useEffect(() => {
     if (selectedFolder) {
@@ -725,7 +706,6 @@ async function handleSsInfo() {
       return;
     }
     if (isVideoFile(item.name)) {
-      setPlayerPaused(false);
       setPlayerUri(item.uri);
       return;
     }
@@ -2196,133 +2176,7 @@ async function handleSsInfo() {
           </SafeAreaView>
         </View>
       </Modal>
-      <Modal visible={playerUri !== null} transparent={false} animationType="fade" onRequestClose={() => { setPlayerUri(null); setPlayerPaused(false); }} statusBarTranslucent>
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
-          <StatusBar barStyle="light-content" backgroundColor="#000" />
-          {playerUri && (
-            <MediaPlayerView
-              uri={playerUri}
-              speed={playerSpeed}
-              paused={playerPaused}
-              onTap={() => setPlayerControlsVisible(v => !v)}
-              {...(playerSeekTo !== undefined ? { seekTo: playerSeekTo } : {})}
-              onProgress={(e: any) => {
-                if (!isDragging.current) setPlayerPosition(e.nativeEvent.position);
-                if (e.nativeEvent.duration) setPlayerDuration(e.nativeEvent.duration);
-              }}
-              onSeek={(e: any) => {
-                setPlayerPosition(e.nativeEvent.position);
-                setPlayerSeekTo(undefined);
-                const prev = playerPosition;
-                const next = e.nativeEvent.position;
-                if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
-                setSeekFlash(next > prev ? 'forward' : 'back');
-                seekFlashTimer.current = setTimeout(() => setSeekFlash(null), 600);
-              }}
-              onPlayingStateChange={(e: any) => {
-                const isPlaying = e.nativeEvent.isPlaying;
-                const duration = e.nativeEvent.duration;
-                setPlayerControlsVisible(!isPlaying);
-                setPlayerPaused(!isPlaying);
-                if (duration) setPlayerDuration(duration);
-              }}
-              onComplete={() => setPlayerPaused(true)}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-        {playerControlsVisible && (
-          <>
-            <TouchableOpacity
-              onPress={() => setPlayerPaused(p => !p)}
-              style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -32 }, { translateY: -32 }], width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name={playerPaused ? 'play' : 'pause'} size={32} color="#fff" />
-            </TouchableOpacity>
-            {seekFlash && (
-              <View pointerEvents="none" style={{ position: 'absolute', top: '40%', left: seekFlash === 'back' ? '10%' : undefined, right: seekFlash === 'forward' ? '10%' : undefined, alignItems: 'center', gap: 4 }}>
-                <Ionicons name={seekFlash === 'back' ? 'play-back' : 'play-forward'} size={40} color="rgba(255,255,255,0.85)" />
-                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' }}>10s</Text>
-              </View>
-            )}
-            <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
-              {/* Left: speed pills stacked vertically */}
-              <View style={{ alignItems: 'center', gap: 8 }} onStartShouldSetResponder={() => true}>
-                {[0.5, 1.0, 1.5, 2.0].map(s => (
-                  <TouchableOpacity key={s} onPress={() => setPlayerSpeed(s)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: playerSpeed === s ? '#185FA5' : 'rgba(255,255,255,0.15)' }}>
-                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>{s}x</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {/* Duration — centred */}
-              {playerDuration > 0 && (
-                <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', top: 16 }} pointerEvents="none">
-                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>
-                    {formatDuration(playerDuration)}
-                  </Text>
-                </View>
-              )}
-            </View>
-            {playerDuration > 0 && (
-              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-                <View
-                  style={{ height: 20, justifyContent: 'center' }}
-                  onLayout={(e) => { scrubberWidth.current = e.nativeEvent.layout.width; }}
-                  onStartShouldSetResponder={() => true}
-                  onResponderGrant={(e) => {
-                    isDragging.current = true;
-                    wasPlayingBeforeDrag.current = !playerPaused;
-                    setPlayerPaused(true);
-                    const x = Math.max(0, Math.min(e.nativeEvent.locationX, scrubberWidth.current));
-                    const pct = x / scrubberWidth.current;
-                    const ms = Math.round(pct * playerDuration);
-                    setPlayerPosition(ms);
-                  }}
-                  onResponderMove={(e) => {
-                    const x = Math.max(0, Math.min(e.nativeEvent.locationX, scrubberWidth.current));
-                    const pct = x / scrubberWidth.current;
-                    const ms = Math.round(pct * playerDuration);
-                    setPlayerPosition(ms);
-                  }}
-                  onResponderRelease={(e) => {
-                    const x = Math.max(0, Math.min(e.nativeEvent.locationX, scrubberWidth.current));
-                    const pct = x / scrubberWidth.current;
-                    const ms = Math.round(pct * playerDuration);
-                    setPlayerPosition(ms);
-                    setPlayerSeekTo(ms);
-                    isDragging.current = false;
-                    if (wasPlayingBeforeDrag.current) setPlayerPaused(false);
-                  }}
-                >
-                  <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2 }}>
-                    <View style={{ height: 3, backgroundColor: '#fff', borderRadius: 2, width: `${Math.min((playerPosition / playerDuration) * 100, 100)}%` }} />
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerPosition)}</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerDuration)}</Text>
-                </View>
-              </View>
-            )}
-          </SafeAreaView>
-          {/* Bottom pill — share + open with */}
-          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
-            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
-              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
-                <TouchableOpacity onPress={async () => { if (!playerUri) return; try { await shareFiles([toPath(playerUri)], 'video/*'); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
-                  <Ionicons name="share-outline" size={22} color="#222" />
-                </TouchableOpacity>
-                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
-                <TouchableOpacity onPress={async () => { if (!playerUri) return; setPlayerPaused(true); try { await openFile(toPath(playerUri), getMimeType(playerUri.split('/').pop() ?? '')); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
-                  <Ionicons name="open-outline" size={22} color="#222" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </SafeAreaView>
-          </>
-        )}
-        </View>
-      </Modal>
+      <VideoPlayerModal uri={playerUri} onClose={() => setPlayerUri(null)} speedPills />
         {/* File Details Modal */}
         <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
       {/* Multi-rename modal */}
