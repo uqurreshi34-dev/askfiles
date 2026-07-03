@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, View, TouchableOpacity, Text, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { MediaPlayerView } from 'media-player';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType, toPath, formatDuration } from '@/utils/files';
+import { useWindowDimensions } from 'react-native';
 
 interface Props {
     uri: string | null;
@@ -26,6 +27,8 @@ interface Props {
   const scrubberWidth = useRef(0);
   const isDragging = useRef(false);
   const wasPlayingBeforeDrag = useRef(false);
+  const { width, height } = useWindowDimensions();
+  const isTablet = Math.min(width, height) >= 600;
 
   function reset() {
     setPaused(false);
@@ -38,15 +41,18 @@ interface Props {
     if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
   }
 
-  React.useEffect(() => {
-    if (uri !== null) {
+useEffect(() => {
+  if (uri !== null) {
+    if (!isTablet) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
-      return () => {
-        ScreenOrientation.unlockAsync();
-        reset();
-      };
     }
-  }, [uri]);
+    return () => {
+      if (!isTablet) {
+        ScreenOrientation.unlockAsync();
+      }
+    };
+  }
+}, [uri]);
 
   return (
     <Modal
