@@ -186,6 +186,9 @@ export default function CategoryScreen() {
   const [playerSeekTo, setPlayerSeekTo] = useState<number | undefined>(undefined);
   const [seekFlash, setSeekFlash] = useState<'back' | 'forward' | null>(null);
   const seekFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrubberWidth = useRef(0);
+  const isDragging = useRef(false);
+  const wasPlayingBeforeDrag = useRef(false);
   const [showMultiRename, setShowMultiRename] = useState(false);
   const [multiRenameBase, setMultiRenameBase] = useState('');
   const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
@@ -2202,9 +2205,9 @@ async function handleSsInfo() {
               speed={playerSpeed}
               paused={playerPaused}
               onTap={() => setPlayerControlsVisible(v => !v)}
-              seekTo={playerSeekTo}
+              {...(playerSeekTo !== undefined ? { seekTo: playerSeekTo } : {})}
               onProgress={(e: any) => {
-                setPlayerPosition(e.nativeEvent.position);
+                if (!isDragging.current) setPlayerPosition(e.nativeEvent.position);
                 if (e.nativeEvent.duration) setPlayerDuration(e.nativeEvent.duration);
               }}
               onSeek={(e: any) => {
@@ -2261,19 +2264,46 @@ async function handleSsInfo() {
               )}
             </View>
             {playerDuration > 0 && (
-                <View style={{ paddingHorizontal: 16, paddingTop: 8 }} onStartShouldSetResponder={() => true}>
-                  <View
-                    style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2 }}
-                    onLayout={() => {}}
-                  >
+              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+                <View
+                  style={{ height: 20, justifyContent: 'center' }}
+                  onLayout={(e) => { scrubberWidth.current = e.nativeEvent.layout.width; }}
+                  onStartShouldSetResponder={() => true}
+                  onResponderGrant={(e) => {
+                    isDragging.current = true;
+                    wasPlayingBeforeDrag.current = !playerPaused;
+                    setPlayerPaused(true);
+                    const x = Math.max(0, Math.min(e.nativeEvent.locationX, scrubberWidth.current));
+                    const pct = x / scrubberWidth.current;
+                    const ms = Math.round(pct * playerDuration);
+                    setPlayerPosition(ms);
+                  }}
+                  onResponderMove={(e) => {
+                    const x = Math.max(0, Math.min(e.nativeEvent.locationX, scrubberWidth.current));
+                    const pct = x / scrubberWidth.current;
+                    const ms = Math.round(pct * playerDuration);
+                    setPlayerPosition(ms);
+                  }}
+                  onResponderRelease={(e) => {
+                    const x = Math.max(0, Math.min(e.nativeEvent.locationX, scrubberWidth.current));
+                    const pct = x / scrubberWidth.current;
+                    const ms = Math.round(pct * playerDuration);
+                    setPlayerPosition(ms);
+                    setPlayerSeekTo(ms);
+                    isDragging.current = false;
+                    if (wasPlayingBeforeDrag.current) setPlayerPaused(false);
+                  }}
+                >
+                  <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2 }}>
                     <View style={{ height: 3, backgroundColor: '#fff', borderRadius: 2, width: `${Math.min((playerPosition / playerDuration) * 100, 100)}%` }} />
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerPosition)}</Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerDuration)}</Text>
-                  </View>
                 </View>
-              )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerPosition)}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerDuration)}</Text>
+                </View>
+              </View>
+            )}
           </SafeAreaView>
           {/* Bottom pill — share + open with */}
           <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
