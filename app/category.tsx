@@ -1513,11 +1513,11 @@ async function handleSsInfo() {
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             )}
-            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+            {SCREEN_WIDTH <= SCREEN_HEIGHT && (
+            <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
+          )}
+          <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
             <Pressable>
-              {SCREEN_WIDTH <= SCREEN_HEIGHT && (
-                <View style={[styles.sheetHandle, { backgroundColor: colors.textDisabled }]} />
-              )}
               <View style={styles.sheetHeader}>
               <View style={[styles.sheetIcon, { backgroundColor: getFileColor(selectedItem?.name ?? '') + '22', overflow: 'hidden' }]}>
                 {isImageFile(selectedItem?.name ?? '') ? (
