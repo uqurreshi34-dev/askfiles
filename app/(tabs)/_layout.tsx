@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function TabsLayout() {
-  const { dark } = useTheme();
+  const { dark, colors } = useTheme();
 
   return (
     <Tabs
@@ -11,8 +11,8 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarStyle: {
           borderTopWidth: 0.5,
-          borderTopColor: dark ? '#2A2A2A' : '#D3D1C7',
-          backgroundColor: dark ? '#111111' : '#fff',
+          borderTopColor: colors.border,
+          backgroundColor: colors.background,
         },
         tabBarActiveTintColor: '#185FA5',
         tabBarInactiveTintColor: dark ? '#6B6B65' : '#888780',
