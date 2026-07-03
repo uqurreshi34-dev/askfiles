@@ -5,7 +5,11 @@ import android.graphics.SurfaceTexture
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.view.GestureDetector
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.Surface
 import android.view.TextureView
 import android.widget.FrameLayout
@@ -26,6 +30,26 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
     private var surfaceTexture: SurfaceTexture? = null
     private var videoWidth = 0
     private var videoHeight = 0
+    private val progressHandler = Handler(Looper.getMainLooper())
+    private var progressRunnable: Runnable? = null
+    private val onProgress by EventDispatcher()
+    private val onSeek by EventDispatcher()
+
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            onTap(mapOf<String, Any>())
+            return true
+        }
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            val mp = mediaPlayer ?: return true
+            val viewWidth = textureView.width
+            val seekMs = if (e.x < viewWidth / 2) -10000 else 10000
+            val newPos = (mp.currentPosition + seekMs).coerceIn(0, mp.duration)
+            mp.seekTo(newPos)
+            onSeek(mapOf("position" to newPos, "duration" to mp.duration))
+            return true
+        }
+    })
 
     @Suppress("DEPRECATION")
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -101,7 +125,10 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
             }
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
         }
-        textureView.setOnClickListener { onTap(mapOf<String, Any>()) }
+        textureView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            true
+        }
 
         val lp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -158,6 +185,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         }
         mp.prepareAsync()
         mediaPlayer = mp
+        startProgressTicker()
     }
 
     fun setPaused(paused: Boolean) {
@@ -179,7 +207,37 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         } catch (e: Exception) {}
     }
 
+    private fun startProgressTicker() {
+        stopProgressTicker()
+        val runnable = object : Runnable {
+            override fun run() {
+                val mp = mediaPlayer ?: return
+                try {
+                    if (mp.isPlaying) {
+                        onProgress(mapOf("position" to mp.currentPosition, "duration" to mp.duration))
+                    }
+                } catch (e: Exception) {}
+                progressHandler.postDelayed(this, 500)
+            }
+        }
+        progressRunnable = runnable
+        progressHandler.post(runnable)
+    }
+
+    private fun stopProgressTicker() {
+        progressRunnable?.let { progressHandler.removeCallbacks(it) }
+        progressRunnable = null
+    }
+
+    fun seekTo(positionMs: Int) {
+        val mp = mediaPlayer ?: return
+        val clamped = positionMs.coerceIn(0, mp.duration)
+        mp.seekTo(clamped)
+        onSeek(mapOf("position" to clamped, "duration" to mp.duration))
+    }
+
     private fun releasePlayer() {
+        stopProgressTicker()
         mediaPlayer?.let {
             try {
                 if (it.isPlaying) it.stop()

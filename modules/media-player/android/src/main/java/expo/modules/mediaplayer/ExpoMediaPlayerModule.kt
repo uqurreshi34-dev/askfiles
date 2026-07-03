@@ -17,7 +17,10 @@ class ExpoMediaPlayerModule : Module() {
       Prop("speed") { view: ExpoMediaPlayerView, speed: Float ->
         view.setSpeed(speed)
       }
-      Events("onTap", "onComplete", "onError", "onPlayingStateChange")
+      Prop("seekTo") { view: ExpoMediaPlayerView, position: Int ->
+        view.seekTo(position)
+      }
+      Events("onTap", "onComplete", "onError", "onPlayingStateChange", "onProgress", "onSeek")
     }
   }
 }

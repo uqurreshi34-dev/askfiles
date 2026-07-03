@@ -8,4 +8,7 @@ export interface MediaPlayerProps {
   style?: ViewStyle;
   speed?: number;
   onPlayingStateChange?: (event: { nativeEvent: { isPlaying: boolean } }) => void;
+  onProgress?: (event: { nativeEvent: { position: number; duration: number } }) => void;
+  onSeek?: (event: { nativeEvent: { position: number; duration: number } }) => void;
+  seekTo?: number;
 }

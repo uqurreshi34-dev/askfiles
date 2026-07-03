@@ -182,6 +182,10 @@ export default function CategoryScreen() {
   const [playerControlsVisible, setPlayerControlsVisible] = useState(false);
   const [playerSpeed, setPlayerSpeed] = useState(1.0);
   const [playerDuration, setPlayerDuration] = useState<number>(0);
+  const [playerPosition, setPlayerPosition] = useState(0);
+  const [playerSeekTo, setPlayerSeekTo] = useState<number | undefined>(undefined);
+  const [seekFlash, setSeekFlash] = useState<'back' | 'forward' | null>(null);
+  const seekFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showMultiRename, setShowMultiRename] = useState(false);
   const [multiRenameBase, setMultiRenameBase] = useState('');
   const [multiRenamePickerVisible, setMultiRenamePickerVisible] = useState(false);
@@ -234,7 +238,7 @@ export default function CategoryScreen() {
   useEffect(() => {
     if (playerUri !== null) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
-      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerSpeed(1.0); };
+      return () => { ScreenOrientation.unlockAsync(); setPlayerControlsVisible(false); setPlayerSpeed(1.0); setPlayerDuration(0); setPlayerPosition(0); setPlayerSeekTo(undefined); setSeekFlash(null); };
     }
   }, [playerUri]);
 
@@ -2198,6 +2202,20 @@ async function handleSsInfo() {
               speed={playerSpeed}
               paused={playerPaused}
               onTap={() => setPlayerControlsVisible(v => !v)}
+              seekTo={playerSeekTo}
+              onProgress={(e: any) => {
+                setPlayerPosition(e.nativeEvent.position);
+                if (e.nativeEvent.duration) setPlayerDuration(e.nativeEvent.duration);
+              }}
+              onSeek={(e: any) => {
+                setPlayerPosition(e.nativeEvent.position);
+                setPlayerSeekTo(undefined);
+                const prev = playerPosition;
+                const next = e.nativeEvent.position;
+                if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
+                setSeekFlash(next > prev ? 'forward' : 'back');
+                seekFlashTimer.current = setTimeout(() => setSeekFlash(null), 600);
+              }}
               onPlayingStateChange={(e: any) => {
                 const isPlaying = e.nativeEvent.isPlaying;
                 const duration = e.nativeEvent.duration;
@@ -2217,6 +2235,12 @@ async function handleSsInfo() {
             >
               <Ionicons name={playerPaused ? 'play' : 'pause'} size={32} color="#fff" />
             </TouchableOpacity>
+            {seekFlash && (
+              <View pointerEvents="none" style={{ position: 'absolute', top: '40%', left: seekFlash === 'back' ? '10%' : undefined, right: seekFlash === 'forward' ? '10%' : undefined, alignItems: 'center', gap: 4 }}>
+                <Ionicons name={seekFlash === 'back' ? 'play-back' : 'play-forward'} size={40} color="rgba(255,255,255,0.85)" />
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' }}>10s</Text>
+              </View>
+            )}
             <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
               {/* Left: speed pills stacked vertically */}
@@ -2236,6 +2260,20 @@ async function handleSsInfo() {
                 </View>
               )}
             </View>
+            {playerDuration > 0 && (
+                <View style={{ paddingHorizontal: 16, paddingTop: 8 }} onStartShouldSetResponder={() => true}>
+                  <View
+                    style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2 }}
+                    onLayout={() => {}}
+                  >
+                    <View style={{ height: 3, backgroundColor: '#fff', borderRadius: 2, width: `${Math.min((playerPosition / playerDuration) * 100, 100)}%` }} />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerPosition)}</Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(playerDuration)}</Text>
+                  </View>
+                </View>
+              )}
           </SafeAreaView>
           {/* Bottom pill — share + open with */}
           <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
