@@ -1461,6 +1461,14 @@ export default function BrowseScreen() {
             >
               <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
+            {SCREEN_WIDTH > SCREEN_HEIGHT && (
+              <TouchableOpacity
+                style={styles.backBtn}
+                onPress={() => router.push('/dual-pane')}
+              >
+                <Ionicons name="browsers-outline" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.backBtn}
               onPress={() => setShowSortSheet(true)}
