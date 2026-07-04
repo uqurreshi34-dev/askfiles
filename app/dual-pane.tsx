@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import FilePane, { FilePaneHandle, FileItem } from '@/components/FilePane';
-import { copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
+import { copyFileStream, moveFileStream, copyFolderRecursive, moveFolderRecursive, addCopyProgressListener } from 'file-reader';
 import { toPath } from '@/utils/files';
 import { scanFile } from '@/modules/share-module';
 import { syncPathReferences } from '@/hooks/usePathSync';
@@ -39,6 +39,9 @@ export default function DualPaneScreen() {
   const [operating, setOperating] = useState(false);
   const [operationLabel, setOperationLabel] = useState('');
   const [progress, setProgress] = useState<number | null>(null);
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [filesProgress, setFilesProgress] = useState<{ done: number; total: number } | null>(null);
+  const [, forceUpdate] = useState(0);
 
   // Which pane has selection — derived
   const hasLeftSelection = leftSelected.size > 0;
@@ -76,11 +79,19 @@ export default function DualPaneScreen() {
     setOperationLabel(`Copying ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''}...`);
     setProgress(0);
 
-    const sub = addCopyProgressListener(({ percent }) => setProgress(percent));
+    const sub = addCopyProgressListener(({ percent, currentFile: cf, filesCopied: fc, totalFiles: tf }) => {
+      setProgress(percent);
+      if (cf) setCurrentFile(cf);
+      if (fc !== undefined && tf !== undefined) setFilesProgress({ done: fc, total: tf });
+    });
     try {
       for (const file of sourceFiles) {
         const dst = toPath(dest + file.name);
-        await copyFileStream(toPath(file.uri), dst);
+        if (file.isDirectory) {
+          await copyFolderRecursive(toPath(file.uri), dst);
+        } else {
+          await copyFileStream(toPath(file.uri), dst);
+        }
         await scanFile(dst).catch(() => {});
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -95,6 +106,8 @@ export default function DualPaneScreen() {
       setOperating(false);
       setOperationLabel('');
       setProgress(null);
+      setCurrentFile(null);
+      setFilesProgress(null);
     }
   }
 
@@ -115,14 +128,22 @@ export default function DualPaneScreen() {
             setOperating(true);
             setOperationLabel(`Moving ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''}...`);
             setProgress(0);
-            const sub = addCopyProgressListener(({ percent }) => setProgress(percent));
+            const sub = addCopyProgressListener(({ percent, currentFile: cf, filesCopied: fc, totalFiles: tf }) => {
+              setProgress(percent);
+              if (cf) setCurrentFile(cf);
+              if (fc !== undefined && tf !== undefined) setFilesProgress({ done: fc, total: tf });
+            });
             try {
               for (const file of sourceFiles) {
                 const src = toPath(file.uri);
                 const destUri = dest + file.name;
                 const dst = toPath(destUri);
-                await moveFileStream(src, dst);
-                await syncPathReferences(file.uri, destUri, file.name);
+                if (file.isDirectory) {
+                  await moveFolderRecursive(src, dst);
+                } else {
+                  await moveFileStream(src, dst);
+                  await syncPathReferences(file.uri, destUri, file.name);
+                }
                 await scanFile(dst).catch(() => {});
               }
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -139,6 +160,8 @@ export default function DualPaneScreen() {
               setOperating(false);
               setOperationLabel('');
               setProgress(null);
+              setCurrentFile(null);
+              setFilesProgress(null);
             }
           },
         },
@@ -162,8 +185,11 @@ export default function DualPaneScreen() {
       {operating && (
         <View style={[styles.progressBanner, { backgroundColor: colors.surface }]}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-            {operationLabel}{progress !== null && progress > 0 ? ` ${progress}%` : ''}
+          <Text style={[styles.progressText, { color: colors.textSecondary }]} numberOfLines={1}>
+            {operationLabel}
+            {filesProgress ? ` (${filesProgress.done}/${filesProgress.total})` : ''}
+            {currentFile ? ` · ${currentFile}` : ''}
+            {progress !== null && progress > 0 && !currentFile ? ` ${progress}%` : ''}
           </Text>
         </View>
       )}
@@ -186,6 +212,7 @@ export default function DualPaneScreen() {
               rightSelectedMap.current = new Map();
             }
           }}
+          onPathChange={() => forceUpdate(n => n + 1)}
           onActivate={() => setActivePane('left')}
           onLongPress={() => setActivePane('left')}
         />
@@ -205,6 +232,7 @@ export default function DualPaneScreen() {
               leftSelectedMap.current = new Map();
             }
           }}
+          onPathChange={() => forceUpdate(n => n + 1)}
           onActivate={() => setActivePane('right')}
           onLongPress={() => setActivePane('right')}
         />
@@ -221,7 +249,7 @@ export default function DualPaneScreen() {
           }
         ]}>
           <Text style={[styles.selectionLabel, { color: colors.textMuted }]}>
-            {sourceFiles.length} file{sourceFiles.length !== 1 ? 's' : ''} selected
+          {sourceFiles.length} item{sourceFiles.length !== 1 ? 's' : ''} selected
             {' → '}
             {(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}
           </Text>

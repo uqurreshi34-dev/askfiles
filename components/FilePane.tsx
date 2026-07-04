@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, me
 import {
   View, Text, TouchableOpacity, FlatList, Image,
   ActivityIndicator, StyleSheet, TextInput,
-  Alert,
+  Alert, RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
@@ -38,6 +38,7 @@ interface FilePaneProps {
     otherPaneHasSelection: boolean;
     otherPaneInSelectMode: boolean;
     onSelectModeChange: (active: boolean) => void;
+    onPathChange?: (path: string) => void;
   }
 
 const ROOT_PATH = 'file:///storage/emulated/0/';
@@ -66,7 +67,7 @@ const PaneRow = memo(({ item, isSelected, selectMode, folderCount, colors, onPre
       onLongPress={onLongPress}
       activeOpacity={0.7}
     >
-      {selectMode && !item.isDirectory && (
+      {selectMode && (
         <View style={{ marginRight: 8 }}>
           <Ionicons
             name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
@@ -98,7 +99,7 @@ const PaneRow = memo(({ item, isSelected, selectMode, folderCount, colors, onPre
             : `${formatSize(item.size)} · ${formatDate(item.date)}`}
         </Text>
       </View>
-      {item.isDirectory && (
+      {item.isDirectory && !selectMode && (
         <Ionicons name="chevron-forward" size={14} color={colors.textDisabled} />
       )}
     </TouchableOpacity>
@@ -115,6 +116,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     otherPaneHasSelection,
     otherPaneInSelectMode,
     onSelectModeChange,
+    onPathChange,
   }, ref) => {
   const { colors } = useTheme();
   const startPath = initialPath ?? ROOT_PATH;
@@ -132,6 +134,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useImperativeHandle(ref, () => ({
     currentPath,
@@ -168,6 +171,10 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
       stopWatching(path);
       sub.remove();
     };
+  }, [currentPath]);
+
+  useEffect(() => {
+    onPathChange?.(currentPath);
   }, [currentPath]);
 
   async function loadDirectory(path: string) {
@@ -350,7 +357,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
       {selectMode && !showNewFolder && (
         <TouchableOpacity
           onPress={() => {
-            const allFiles = displayItems.filter(i => !i.isDirectory);
+            const allFiles = displayItems;
             const newSet = new Set(allFiles.map(i => i.uri));
             const newMap = new Map(allFiles.map(i => [i.uri, i]));
             selectedItemsMap.current = newMap;
@@ -464,6 +471,19 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
           removeClippedSubviews={true}
           maxToRenderPerBatch={20}
           windowSize={10}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                delete dirCache[currentPath];
+                await loadDirectory(currentPath);
+                setRefreshing(false);
+              }}
+              colors={[colors.blue]}
+              tintColor={colors.blue}
+            />
+          }
           renderItem={({ item }) => (
             <PaneRow
               item={item}
@@ -473,7 +493,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
               colors={colors}
               onPress={() => {
                 onActivate();
-                if (selectMode && !item.isDirectory && !otherPaneHasSelection) {
+                if (selectMode && !otherPaneHasSelection) {
                   toggleSelect(item);
                 } else {
                   navigateTo(item);
@@ -482,12 +502,10 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
               onLongPress={() => {
                 if (otherPaneHasSelection || otherPaneInSelectMode) return;
                 onActivate();
-                if (!item.isDirectory) {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  if (!selectMode) setSelectMode(true);
-                  toggleSelect(item);
-                  onLongPress(item);
-                }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                if (!selectMode) setSelectMode(true);
+                toggleSelect(item);
+                onLongPress(item);
               }}
             />
           )}

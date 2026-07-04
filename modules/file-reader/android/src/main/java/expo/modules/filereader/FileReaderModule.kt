@@ -213,6 +213,170 @@ class FileReaderModule : Module() {
       destPath
     }
 
+    AsyncFunction("copyFolderRecursive") { srcPath: String, destPath: String ->
+  val srcFolder = File(srcPath)
+  val destFolder = File(destPath)
+  if (!srcFolder.exists() || !srcFolder.isDirectory) throw Exception("Source folder not found")
+
+  var filesCopied = 0
+  val totalFiles = srcFolder.walkTopDown().count { it.isFile }
+
+  fun copyRecursive(src: File, dest: File) {
+    if (src.isDirectory) {
+      dest.mkdirs()
+      src.listFiles()?.forEach { child ->
+        copyRecursive(child, File(dest, child.name))
+      }
+    } else {
+      try {
+        dest.parentFile?.mkdirs()
+        val totalBytes = src.length()
+        var bytesCopied = 0L
+        var lastReportedPercent = -1
+        val buffer = ByteArray(65536)
+        FileInputStream(src).use { input ->
+          FileOutputStream(dest).use { output ->
+            var bytes = input.read(buffer)
+            while (bytes >= 0) {
+              output.write(buffer, 0, bytes)
+              bytesCopied += bytes
+              if (totalBytes > 0) {
+                val percent = ((bytesCopied * 100) / totalBytes).toInt()
+                if (percent != lastReportedPercent && percent % 10 == 0) {
+                  lastReportedPercent = percent
+                  sendEvent("onCopyProgress", mapOf(
+                    "percent" to percent,
+                    "bytesCopied" to bytesCopied,
+                    "totalBytes" to totalBytes,
+                    "currentFile" to src.name,
+                    "filesCopied" to filesCopied,
+                    "totalFiles" to totalFiles
+                  ))
+                }
+              }
+              bytes = input.read(buffer)
+            }
+            output.flush()
+          }
+        }
+        filesCopied++
+        // Fire one event per completed file
+        sendEvent("onCopyProgress", mapOf(
+          "percent" to 100,
+          "bytesCopied" to src.length(),
+          "totalBytes" to src.length(),
+          "currentFile" to src.name,
+          "filesCopied" to filesCopied,
+          "totalFiles" to totalFiles
+        ))
+      } catch (e: Exception) {
+        // Skip unreadable files — don't abort entire folder copy
+      }
+    }
+  }
+
+  destFolder.mkdirs()
+  srcFolder.listFiles()?.forEach { child ->
+    copyRecursive(child, File(destFolder, child.name))
+  }
+
+  android.media.MediaScannerConnection.scanFile(
+    appContext.reactContext,
+    arrayOf(destFolder.absolutePath),
+    null, null
+  )
+  destPath
+}
+
+AsyncFunction("moveFolderRecursive") { srcPath: String, destPath: String ->
+  val srcFolder = File(srcPath)
+  val destFolder = File(destPath)
+  if (!srcFolder.exists() || !srcFolder.isDirectory) throw Exception("Source folder not found")
+
+  // Try atomic rename first — instant on same filesystem
+  destFolder.parentFile?.mkdirs()
+  if (srcFolder.renameTo(destFolder)) {
+    android.media.MediaScannerConnection.scanFile(
+      appContext.reactContext,
+      arrayOf(destFolder.absolutePath),
+      null, null
+    )
+    return@AsyncFunction destPath
+  }
+
+  // Cross-filesystem — copy then delete
+  var filesCopied = 0
+  val totalFiles = srcFolder.walkTopDown().count { it.isFile }
+
+  fun copyRecursive(src: File, dest: File) {
+    if (src.isDirectory) {
+      dest.mkdirs()
+      src.listFiles()?.forEach { child ->
+        copyRecursive(child, File(dest, child.name))
+      }
+    } else {
+      try {
+        dest.parentFile?.mkdirs()
+        val totalBytes = src.length()
+        var bytesCopied = 0L
+        var lastReportedPercent = -1
+        val buffer = ByteArray(65536)
+        FileInputStream(src).use { input ->
+          FileOutputStream(dest).use { output ->
+            var bytes = input.read(buffer)
+            while (bytes >= 0) {
+              output.write(buffer, 0, bytes)
+              bytesCopied += bytes
+              if (totalBytes > 0) {
+                val percent = ((bytesCopied * 100) / totalBytes).toInt()
+                if (percent != lastReportedPercent && percent % 10 == 0) {
+                  lastReportedPercent = percent
+                  sendEvent("onCopyProgress", mapOf(
+                    "percent" to percent,
+                    "bytesCopied" to bytesCopied,
+                    "totalBytes" to totalBytes,
+                    "currentFile" to src.name,
+                    "filesCopied" to filesCopied,
+                    "totalFiles" to totalFiles
+                  ))
+                }
+              }
+              bytes = input.read(buffer)
+            }
+            output.flush()
+          }
+        }
+        filesCopied++
+        sendEvent("onCopyProgress", mapOf(
+          "percent" to 100,
+          "bytesCopied" to src.length(),
+          "totalBytes" to src.length(),
+          "currentFile" to src.name,
+          "filesCopied" to filesCopied,
+          "totalFiles" to totalFiles
+        ))
+      } catch (e: Exception) {
+        // Skip unreadable files
+      }
+    }
+  }
+
+  destFolder.mkdirs()
+  srcFolder.listFiles()?.forEach { child ->
+    copyRecursive(child, File(destFolder, child.name))
+  }
+
+  // Only delete source after successful copy
+  srcFolder.deleteRecursively()
+
+  android.media.MediaScannerConnection.scanFile(
+    appContext.reactContext,
+    arrayOf(destFolder.absolutePath),
+    null, null
+  )
+  destPath
+}
+
     AsyncFunction("zipFiles") { srcPaths: List<String>, destPath: String ->
       val dest = File(destPath)
       dest.parentFile?.mkdirs()

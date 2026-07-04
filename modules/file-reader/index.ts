@@ -18,7 +18,7 @@ export function moveFileStream(srcUri: string, destPath: string): Promise<string
 }
 
 export function addCopyProgressListener(
-  callback: (event: { percent: number; bytesCopied: number; totalBytes: number }) => void
+  callback: (event: { percent: number; bytesCopied: number; totalBytes: number; currentFile?: string; filesCopied?: number; totalFiles?: number }) => void
 ) {
   return FileReader.addListener('onCopyProgress', callback);
 }
@@ -75,4 +75,12 @@ export function batchRename(
   items: { src: string; dst: string }[]
 ): Promise<{ src: string; dst: string; success: boolean; error?: string }[]> {
   return FileReader.batchRename(items);
+}
+
+export function copyFolderRecursive(srcPath: string, destPath: string): Promise<string> {
+  return FileReader.copyFolderRecursive(srcPath, destPath);
+}
+
+export function moveFolderRecursive(srcPath: string, destPath: string): Promise<string> {
+  return FileReader.moveFolderRecursive(srcPath, destPath);
 }

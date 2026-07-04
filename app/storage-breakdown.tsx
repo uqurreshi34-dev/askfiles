@@ -7,7 +7,6 @@ import StorageSummaryCard from '@/components/StorageSummaryCard';
 import { useTheme } from '@/hooks/useTheme';
 import { useCallback, useState } from 'react';
 import { getStorageVolumes, getVolumeStats } from '@/modules/storage-stats';
-import { formatSize } from '@/utils/files';
 
 interface Category {
   label: string;
