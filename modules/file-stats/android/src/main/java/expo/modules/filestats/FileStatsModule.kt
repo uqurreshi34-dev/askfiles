@@ -55,5 +55,23 @@ class FileStatsModule : Module() {
     AsyncFunction("removeStats") { uri: String ->
       prefs.edit().remove(uri).apply()
     }
+
+    Function("getAllStats") {
+      val all = prefs.all
+      val result = mutableListOf<Map<String, Any>>()
+      for ((uri, value) in all) {
+        if (value !is String) continue
+        try {
+          val obj = JSONObject(value)
+          result.add(mapOf(
+            "uri" to uri,
+            "count" to obj.getInt("count"),
+            "firstOpened" to obj.getLong("firstOpened"),
+            "lastOpened" to obj.getLong("lastOpened")
+          ))
+        } catch (_: Exception) {}
+      }
+      result
+    }
   }
 }

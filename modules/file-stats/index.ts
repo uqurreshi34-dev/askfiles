@@ -8,6 +8,13 @@ export interface FileStatsResult {
   lastOpened: number;
 }
 
+export interface FileStatEntry {
+    uri: string;
+    count: number;
+    firstOpened: number;
+    lastOpened: number;
+  }
+
 // Fire and forget — call every time a file is opened
 export function recordOpen(uri: string): void {
   FileStats.recordOpen(uri).catch(() => {});
@@ -25,4 +32,12 @@ export function getStats(uri: string): FileStatsResult | null {
 // Call when file is deleted or moved
 export function removeStats(uri: string): void {
   FileStats.removeStats(uri).catch(() => {});
+}
+  
+export function getAllStats(): FileStatEntry[] {
+try {
+    return FileStats.getAllStats() ?? [];
+} catch {
+    return [];
+}
 }

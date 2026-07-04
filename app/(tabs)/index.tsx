@@ -33,7 +33,7 @@ import { setPendingTagId } from '@/modules/storage-stats';
 import { removeTag } from '@/hooks/useTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
-import { recordOpen } from 'file-stats';
+import { recordOpen, getAllStats, FileStatEntry } from 'file-stats';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -65,6 +65,7 @@ export default function HomeScreen() {
   const { tags } = useTags();
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
+  const [mostUsed, setMostUsed] = useState<FileStatEntry[]>([]);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -99,6 +100,13 @@ export default function HomeScreen() {
     } catch { setPinnedList([]); }
     isStorageManager().then(setHasAllFilesAccess);
     MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
+
+    const allStats = getAllStats();
+    const top = allStats
+      .filter(s => s.count >= 3)
+      .sort((a, b) => b.count - a.count || b.lastOpened - a.lastOpened)
+      .slice(0, 5);
+    setMostUsed(top);
   }, [reload]));
 
   useEffect(() => {
@@ -618,6 +626,58 @@ async function indexScansInBackground(paths: string[]) {
             </TouchableOpacity>
 
             </View>
+        )}
+        {mostUsed.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Most Used</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 16 }}
+            >
+              {mostUsed.map(stat => {
+                const name = stat.uri.split('/').pop() ?? '';
+                const decodedName = (() => { try { return decodeURIComponent(name); } catch { return name; } })();
+                const color = getFileColor(decodedName);
+                return (
+                  <TouchableOpacity
+                    key={stat.uri}
+                    style={{ width: 72, alignItems: 'center', gap: 6 }}
+                    activeOpacity={0.7}
+                    onPress={async () => {
+                      recordOpen(stat.uri);
+                      if (isImageFile(decodedName)) { setViewerUri(stat.uri); return; }
+                      if (isVideoFile(decodedName)) { setPlayerUri(stat.uri); return; }
+                      setOpeningUri(stat.uri);
+                      const mime = getMimeType(decodedName);
+                      try {
+                        await openFileNative(toPath(stat.uri), mime);
+                      } catch {
+                        try {
+                          const cachePath = `${RNFS.CachesDirectoryPath}/${decodedName}`;
+                          await RNFS.copyFile(toPath(stat.uri), cachePath);
+                          const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
+                          await IntentLauncher.startActivityAsync('android.intent.action.VIEW', { data: contentUri, flags: 1, type: mime });
+                        } catch {}
+                      }
+                      setOpeningUri(null);
+                    }}
+                  >
+                    <View style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: color + '22', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {isImageFile(decodedName) ? (
+                        <Image source={{ uri: stat.uri }} style={{ width: 56, height: 56 }} resizeMode="cover" />
+                      ) : isVideoFile(decodedName) ? (
+                        <VideoThumb uri={stat.uri} style={{ width: 56, height: 56 }} />
+                      ) : (
+                        <Ionicons name={getFileIcon(decodedName) as any} size={26} color={color} />
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 10, color: colors.textSecondary, textAlign: 'center', width: 72 }} numberOfLines={2}>{decodedName}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
