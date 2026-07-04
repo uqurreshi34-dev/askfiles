@@ -73,5 +73,37 @@ class FileStatsModule : Module() {
       }
       result
     }
+
+    Function("getValidStats") {
+      val all = prefs.all
+      val result = mutableListOf<Map<String, Any>>()
+      val editor = prefs.edit()
+      var changed = false
+
+      for ((uri, value) in all) {
+        if (value !is String) continue
+        try {
+          val obj = JSONObject(value)
+          // Convert file:// URI to filesystem path
+          val path = uri.removePrefix("file://")
+            .let { java.net.URLDecoder.decode(it, "UTF-8") }
+          val exists = java.io.File(path).exists()
+          if (!exists) {
+            editor.remove(uri)
+            changed = true
+            continue
+          }
+          result.add(mapOf(
+            "uri" to uri,
+            "count" to obj.getInt("count"),
+            "firstOpened" to obj.getLong("firstOpened"),
+            "lastOpened" to obj.getLong("lastOpened")
+          ))
+        } catch (_: Exception) {}
+      }
+
+      if (changed) editor.apply()
+      result
+    }
   }
 }

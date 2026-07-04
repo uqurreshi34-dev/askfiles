@@ -35,9 +35,17 @@ export function removeStats(uri: string): void {
 }
   
 export function getAllStats(): FileStatEntry[] {
-try {
-    return FileStats.getAllStats() ?? [];
-} catch {
-    return [];
+  try {
+      return FileStats.getAllStats() ?? [];
+  } catch {
+      return [];
+  }
 }
+
+export function getValidStats(): FileStatEntry[] {
+  try {
+    return FileStats.getValidStats() ?? [];
+  } catch {
+    return [];
+  }
 }

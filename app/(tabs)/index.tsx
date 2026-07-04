@@ -33,7 +33,7 @@ import { setPendingTagId } from '@/modules/storage-stats';
 import { removeTag } from '@/hooks/useTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
-import { recordOpen, getAllStats, FileStatEntry } from 'file-stats';
+import { recordOpen, getValidStats, FileStatEntry } from 'file-stats';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -101,8 +101,7 @@ export default function HomeScreen() {
     isStorageManager().then(setHasAllFilesAccess);
     MediaLibrary.getPermissionsAsync().then(({ granted }) => setHasMediaAccess(granted));
 
-    const allStats = getAllStats();
-    const top = allStats
+    const top = getValidStats()
       .filter(s => s.count >= 3)
       .sort((a, b) => b.count - a.count || b.lastOpened - a.lastOpened)
       .slice(0, 5);
