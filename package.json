@@ -62,6 +62,7 @@
     "media-store": "file:modules/media-store",
     "media-viewer": "file:modules/media-viewer",
     "pdf-creator": "file:modules/pdf-creator",
+    "file-stats": "file:modules/file-stats",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-device-info": "^15.0.2",

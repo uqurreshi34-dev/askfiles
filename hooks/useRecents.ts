@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import StorageWidgetModule from '@/modules/storage-widget';
 
 const RECENTS_KEY = 'askfiles_recents';
 const MAX_RECENTS = 20;
@@ -13,7 +14,6 @@ export interface RecentFile {
 
 async function syncWidget(recents: RecentFile[]): Promise<void> {
   try {
-    const StorageWidgetModule = require('@/modules/storage-widget').default;
     await StorageWidgetModule.saveRecentsForWidget(JSON.stringify(recents.slice(0, 4)));
   } catch {}
 }

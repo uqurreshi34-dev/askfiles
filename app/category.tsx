@@ -41,6 +41,7 @@ import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
 import { addTag } from '@/hooks/useTags';
 import { addTagToFile, getTagsForFile, removeTagFromFile } from '@/hooks/useFileTags';
+import { recordOpen, getStats } from 'file-stats';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -694,6 +695,7 @@ async function handleSsInfo() {
 
   async function openItem(item: FileItem) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    recordOpen(item.uri);
     if (isImageFile(item.name)) {
       const sourceItems = (folderView && selectedFolder)
         ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
@@ -1599,6 +1601,11 @@ async function handleSsInfo() {
                 if (fileSize) lines.push({ label: 'Size', value: fileSize });
                 lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
                 lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                const stats = getStats(selectedItem.uri);
+                if (stats && stats.count > 0) {
+                  lines.push({ label: 'Times opened', value: `${stats.count}` });
+                  lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
+                }
                 try {
                   const stat = await RNFS.stat(toPath(selectedItem.uri));
                   if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
