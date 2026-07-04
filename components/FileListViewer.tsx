@@ -26,6 +26,7 @@ import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
+import { recordOpen, getStats } from 'file-stats';
 
 // Minimal shape every list this component renders must satisfy.
 // FavouriteItem and FileTagEntry both already match this.
@@ -100,6 +101,7 @@ export default function FileListViewer<T extends ViewableFile>({
 
   async function openItem(item: T) {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
+    recordOpen(item.uri);
     if (isImageFile(item.name)) {
       setViewerUri(item.uri);
       return;
@@ -306,6 +308,11 @@ export default function FileListViewer<T extends ViewableFile>({
                   if (fileSize) lines.push({ label: 'Size', value: fileSize });
                   lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
                   lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                  const stats = getStats(selectedItem.uri);
+                  if (stats && stats.count > 0) {
+                    lines.push({ label: 'Times opened', value: `${stats.count}` });
+                    lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
+                  }
                   try {
                     const stat = await RNFS.stat(toPath(selectedItem.uri));
                     if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
