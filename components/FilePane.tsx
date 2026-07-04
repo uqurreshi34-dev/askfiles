@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, memo } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Image,
   ActivityIndicator, StyleSheet, TextInput,
@@ -6,9 +6,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { isImageFile, getFileColor, getFileIcon, formatSize, formatDate, toPath, decodeName } from '@/utils/files';
+import { isImageFile, getFileColor, getFileIcon, formatSize, formatDate, toPath } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { readDirectory, countFolder, createDirectory } from 'file-reader';
+import { startWatching, stopWatching, addFileChangeListener } from '@/modules/file-watcher';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 
@@ -22,6 +23,7 @@ export interface FileItem {
 
 export interface FilePaneHandle {
   currentPath: string;
+  friendlyPath: string;
   reload: () => void;
   invalidateCache: (path?: string) => void;
 }
@@ -40,6 +42,68 @@ interface FilePaneProps {
 
 const ROOT_PATH = 'file:///storage/emulated/0/';
 const dirCache: Record<string, FileItem[]> = {};
+
+interface PaneRowProps {
+  item: FileItem;
+  isSelected: boolean;
+  selectMode: boolean;
+  folderCount: number | undefined;
+  colors: any;
+  onPress: () => void;
+  onLongPress: () => void;
+}
+
+const PaneRow = memo(({ item, isSelected, selectMode, folderCount, colors, onPress, onLongPress }: PaneRowProps) => {
+  const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
+  return (
+    <TouchableOpacity
+      style={[
+        styles.row,
+        { borderBottomColor: colors.border },
+        isSelected && { backgroundColor: colors.blueTint },
+      ]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+    >
+      {selectMode && !item.isDirectory && (
+        <View style={{ marginRight: 8 }}>
+          <Ionicons
+            name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+            size={18}
+            color={isSelected ? colors.blue : colors.textMuted}
+          />
+        </View>
+      )}
+      <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
+        {item.isDirectory ? (
+          <Ionicons name="folder" size={18} color={color} />
+        ) : isImageFile(item.name) ? (
+          <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+        ) : isVideoFile(item.name) ? (
+          <VideoThumb uri={item.uri} style={styles.thumb} />
+        ) : (
+          <Ionicons name={getFileIcon(item.name) as any} size={16} color={color} />
+        )}
+      </View>
+      <View style={styles.info}>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text style={[styles.meta, { color: colors.textMuted }]}>
+          {item.isDirectory
+            ? folderCount === undefined ? 'Folder'
+              : folderCount === 0 ? 'Empty'
+              : `${folderCount} item${folderCount !== 1 ? 's' : ''}`
+            : `${formatSize(item.size)} · ${formatDate(item.date)}`}
+        </Text>
+      </View>
+      {item.isDirectory && (
+        <Ionicons name="chevron-forward" size={14} color={colors.textDisabled} />
+      )}
+    </TouchableOpacity>
+  );
+});
 
 const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     initialPath,
@@ -71,12 +135,17 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
 
   useImperativeHandle(ref, () => ({
     currentPath,
+    friendlyPath: (() => {
+      const sdVol = volumes.find(v => v.type === 'sdcard' && currentPath.includes(v.path));
+      if (sdVol) return currentPath.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(/\/$/, '');
+      return currentPath.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
+    })(),
     reload: () => loadDirectory(currentPath),
     invalidateCache: (path?: string) => {
       const target = path ?? currentPath;
       delete dirCache[target];
     },
-  }), [currentPath]);
+  }), [currentPath, volumes]);
 
   useEffect(() => {
     getStorageVolumes().then(setVolumes);
@@ -84,6 +153,21 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
 
   useEffect(() => {
     loadDirectory(currentPath);
+  }, [currentPath]);
+
+  useEffect(() => {
+    const path = toPath(currentPath);
+    startWatching(path);
+    const sub = addFileChangeListener(({ path: changedPath }: { path: string }) => {
+      if (changedPath === path) {
+        delete dirCache[currentPath];
+        loadDirectory(currentPath);
+      }
+    });
+    return () => {
+      stopWatching(path);
+      sub.remove();
+    };
   }, [currentPath]);
 
   async function loadDirectory(path: string) {
@@ -240,9 +324,15 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
         </View>
       ) : (
         <TouchableOpacity style={{ flex: 1 }} onPress={onActivate} activeOpacity={0.7}>
-          <Text style={[styles.breadcrumb, { color: colors.textSecondary }]} numberOfLines={1}>
-            {breadcrumbs.slice(-2).map((c, i) => (i > 0 ? '/' : '') + c.name).join('')}
-          </Text>
+          {selectMode && selectedUris.size > 0 ? (
+            <Text style={[styles.breadcrumb, { color: colors.blue }]} numberOfLines={1}>
+              {selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected
+            </Text>
+          ) : (
+            <Text style={[styles.breadcrumb, { color: colors.textSecondary }]} numberOfLines={1}>
+              {breadcrumbs.slice(-2).map((c, i) => (i > 0 ? '/' : '') + c.name).join('')}
+            </Text>
+          )}
         </TouchableOpacity>
       )}
 
@@ -253,6 +343,22 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
           style={styles.upBtn}
         >
           <Ionicons name="add-circle-outline" size={20} color={colors.green} />
+        </TouchableOpacity>
+      )}
+
+      {/* Select All — only in select mode */}
+      {selectMode && !showNewFolder && (
+        <TouchableOpacity
+          onPress={() => {
+            const allFiles = displayItems.filter(i => !i.isDirectory);
+            const newSet = new Set(allFiles.map(i => i.uri));
+            const newMap = new Map(allFiles.map(i => [i.uri, i]));
+            selectedItemsMap.current = newMap;
+            onSelectionChange(newSet, newMap);
+          }}
+          style={styles.upBtn}
+        >
+          <Text style={{ fontSize: 10, fontWeight: '600', color: colors.blue }}>All</Text>
         </TouchableOpacity>
       )}
 
@@ -355,74 +461,36 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
           keyExtractor={item => item.uri}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 8 }}
-          renderItem={({ item }) => {
-            const isSelected = selectedUris.has(item.uri);
-            const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.row,
-                  { borderBottomColor: colors.border },
-                  isSelected && { backgroundColor: colors.blueTint },
-                ]}
-                onPress={() => {
-                  onActivate();
-                  if (selectMode && !item.isDirectory && !otherPaneHasSelection) {
-                    toggleSelect(item);
-                  } else {
-                    navigateTo(item);
-                  }
-                }}
-                onLongPress={() => {
-                    if (otherPaneHasSelection || otherPaneInSelectMode) return;
-                    onActivate();
-                    if (!item.isDirectory) {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      if (!selectMode) setSelectMode(true);
-                      toggleSelect(item);
-                      onLongPress(item);
-                    }
-                  }}
-                activeOpacity={0.7}
-              >
-                {selectMode && !item.isDirectory && (
-                  <View style={{ marginRight: 8 }}>
-                    <Ionicons
-                      name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={18}
-                      color={isSelected ? colors.blue : colors.textMuted}
-                    />
-                  </View>
-                )}
-                <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
-                  {item.isDirectory ? (
-                    <Ionicons name="folder" size={18} color={color} />
-                  ) : isImageFile(item.name) ? (
-                    <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
-                  ) : isVideoFile(item.name) ? (
-                    <VideoThumb uri={item.uri} style={styles.thumb} />
-                  ) : (
-                    <Ionicons name={getFileIcon(item.name) as any} size={16} color={color} />
-                  )}
-                </View>
-                <View style={styles.info}>
-                  <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {item.isDirectory
-                      ? folderCounts[item.uri] === undefined ? 'Folder'
-                        : folderCounts[item.uri] === 0 ? 'Empty'
-                        : `${folderCounts[item.uri]} item${folderCounts[item.uri] !== 1 ? 's' : ''}`
-                      : `${formatSize(item.size)} · ${formatDate(item.date)}`}
-                  </Text>
-                </View>
-                {item.isDirectory && (
-                  <Ionicons name="chevron-forward" size={14} color={colors.textDisabled} />
-                )}
-              </TouchableOpacity>
-            );
-          }}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={20}
+          windowSize={10}
+          renderItem={({ item }) => (
+            <PaneRow
+              item={item}
+              isSelected={selectedUris.has(item.uri)}
+              selectMode={selectMode}
+              folderCount={folderCounts[item.uri]}
+              colors={colors}
+              onPress={() => {
+                onActivate();
+                if (selectMode && !item.isDirectory && !otherPaneHasSelection) {
+                  toggleSelect(item);
+                } else {
+                  navigateTo(item);
+                }
+              }}
+              onLongPress={() => {
+                if (otherPaneHasSelection || otherPaneInSelectMode) return;
+                onActivate();
+                if (!item.isDirectory) {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  if (!selectMode) setSelectMode(true);
+                  toggleSelect(item);
+                  onLongPress(item);
+                }
+              }}
+            />
+          )}
         />
       )}
     </View>

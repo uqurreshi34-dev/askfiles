@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, useWindowDimensions,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -49,10 +49,6 @@ export default function DualPaneScreen() {
   const sourceFiles = hasLeftSelection
     ? Array.from(leftSelectedMap.current.values())
     : Array.from(rightSelectedMap.current.values());
-
-  const destPath = hasLeftSelection
-    ? rightRef.current?.currentPath ?? ''
-    : leftRef.current?.currentPath ?? '';
 
   const destPaneRef = hasLeftSelection ? rightRef : leftRef;
   const sourcePaneRef = hasLeftSelection ? leftRef : rightRef;
@@ -110,7 +106,7 @@ export default function DualPaneScreen() {
 
     Alert.alert(
       'Move files',
-      `Move ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''} to ${liveDestPath.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}?`,
+      `Move ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''} to ${(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -227,8 +223,7 @@ export default function DualPaneScreen() {
           <Text style={[styles.selectionLabel, { color: colors.textMuted }]}>
             {sourceFiles.length} file{sourceFiles.length !== 1 ? 's' : ''} selected
             {' → '}
-            {((hasLeftSelection ? rightRef.current?.currentPath : leftRef.current?.currentPath) ?? '')
-            .replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}
+            {(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}
           </Text>
           <View style={styles.toolbarActions}>
             <TouchableOpacity
