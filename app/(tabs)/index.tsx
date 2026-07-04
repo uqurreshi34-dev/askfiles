@@ -33,7 +33,7 @@ import { setPendingTagId } from '@/modules/storage-stats';
 import { removeTag } from '@/hooks/useTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
-
+import { recordOpen } from 'file-stats';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -654,6 +654,7 @@ async function indexScansInBackground(paths: string[]) {
                         key={file.uri}
                         style={[styles.recentRow, { borderBottomColor: colors.border }]}
                         onPress={async () => {
+                          recordOpen(file.uri);
                           if (isImageFile(file.name)) {
                             setViewerUri(file.uri);
                             return;
