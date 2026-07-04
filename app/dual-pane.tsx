@@ -70,14 +70,11 @@ export default function DualPaneScreen() {
   }
 
   async function handleCopy() {
-    if (!sourceFiles.length || !destPath) return;
-    const dest = destPath.endsWith('/') ? destPath : destPath + '/';
-
-    // Check for duplicates
-    const duplicates = sourceFiles.filter(f => {
-      // simple name collision check — let native handle the rest
-      return false; // skip pre-check, native copyFileStream will error on collision
-    });
+    const liveDestPath = hasLeftSelection
+  ? rightRef.current?.currentPath ?? ''
+  : leftRef.current?.currentPath ?? '';
+    if (!sourceFiles.length || !liveDestPath) return;
+    const dest = liveDestPath.endsWith('/') ? liveDestPath : liveDestPath + '/';
 
     setOperating(true);
     setOperationLabel(`Copying ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''}...`);
@@ -87,11 +84,12 @@ export default function DualPaneScreen() {
     try {
       for (const file of sourceFiles) {
         const dst = toPath(dest + file.name);
-        await copyFileStream(file.uri, dst);
+        await copyFileStream(toPath(file.uri), dst);
         await scanFile(dst).catch(() => {});
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       clearSelection();
+      destPaneRef.current?.invalidateCache();
       destPaneRef.current?.reload();
     } catch {
       Alert.alert('Error', 'Could not copy files.');
@@ -105,12 +103,14 @@ export default function DualPaneScreen() {
   }
 
   async function handleMove() {
-    if (!sourceFiles.length || !destPath) return;
-    const dest = destPath.endsWith('/') ? destPath : destPath + '/';
+    const liveDestPath = hasLeftSelection
+  ? rightRef.current?.currentPath ?? ''
+  : leftRef.current?.currentPath ?? '';
+    const dest = liveDestPath.endsWith('/') ? liveDestPath : liveDestPath + '/';
 
     Alert.alert(
       'Move files',
-      `Move ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''} to ${dest.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}?`,
+      `Move ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''} to ${liveDestPath.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -131,6 +131,8 @@ export default function DualPaneScreen() {
               }
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               clearSelection();
+              sourcePaneRef.current?.invalidateCache();
+              destPaneRef.current?.invalidateCache();
               sourcePaneRef.current?.reload();
               destPaneRef.current?.reload();
             } catch {
@@ -225,7 +227,8 @@ export default function DualPaneScreen() {
           <Text style={[styles.selectionLabel, { color: colors.textMuted }]}>
             {sourceFiles.length} file{sourceFiles.length !== 1 ? 's' : ''} selected
             {' → '}
-            {(destPath.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage')}
+            {((hasLeftSelection ? rightRef.current?.currentPath : leftRef.current?.currentPath) ?? '')
+            .replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}
           </Text>
           <View style={styles.toolbarActions}>
             <TouchableOpacity

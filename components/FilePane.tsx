@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } f
 import {
   View, Text, TouchableOpacity, FlatList, Image,
   ActivityIndicator, StyleSheet, TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { isImageFile, getFileColor, getFileIcon, formatSize, formatDate, toPath, decodeName } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-import { readDirectory, countFolder } from 'file-reader';
+import { readDirectory, countFolder, createDirectory } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 
@@ -22,6 +23,7 @@ export interface FileItem {
 export interface FilePaneHandle {
   currentPath: string;
   reload: () => void;
+  invalidateCache: (path?: string) => void;
 }
 
 interface FilePaneProps {
@@ -63,11 +65,18 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const selectedItemsMap = useRef<Map<string, FileItem>>(new Map());
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   useImperativeHandle(ref, () => ({
     currentPath,
     reload: () => loadDirectory(currentPath),
-  }));
+    invalidateCache: (path?: string) => {
+      const target = path ?? currentPath;
+      delete dirCache[target];
+    },
+  }), [currentPath]);
 
   useEffect(() => {
     getStorageVolumes().then(setVolumes);
@@ -132,6 +141,34 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     }
   }
 
+  async function handleCreateFolder() {
+  const name = newFolderName.trim();
+  if (!name) return;
+  const invalidChars = /[*\\:?"<>|]/;
+  if (invalidChars.test(name)) {
+    Alert.alert('Invalid name', 'Folder names cannot contain: * \\ : ? " < > |');
+    return;
+  }
+  setCreatingFolder(true);
+  try {
+    const path = toPath(currentPath) + name;
+    await createDirectory(path);
+    setShowNewFolder(false);
+    setNewFolderName('');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    delete dirCache[currentPath];
+    await loadDirectory(currentPath);
+  } catch (e: any) {
+    if (e?.message?.includes('EXISTS')) {
+      Alert.alert('Already exists', `A folder named "${name}" already exists here.`);
+    } else {
+      Alert.alert('Error', 'Could not create folder.');
+    }
+  } finally {
+    setCreatingFolder(false);
+  }
+}
+
   function toggleSelect(item: FileItem) {
     const newSet = new Set(selectedUris);
     const newMap = new Map(selectedItemsMap.current);
@@ -163,56 +200,89 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
       { backgroundColor: colors.background, borderColor: isActive ? colors.blue : colors.border }
     ]}>
 
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          onPress={navigateUp}
-          disabled={breadcrumbs.length <= 1}
-          style={styles.upBtn}
-        >
-          <Ionicons
-            name="arrow-up"
-            size={18}
-            color={breadcrumbs.length > 1 ? colors.blue : colors.textDisabled}
-          />
-        </TouchableOpacity>
+    {/* Header */}
+    <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <TouchableOpacity
+        onPress={navigateUp}
+        disabled={breadcrumbs.length <= 1}
+        style={styles.upBtn}
+      >
+        <Ionicons
+          name="arrow-up"
+          size={18}
+          color={breadcrumbs.length > 1 ? colors.blue : colors.textDisabled}
+        />
+      </TouchableOpacity>
 
-        {/* Breadcrumb — show last 2 segments to save space */}
-        <TouchableOpacity
-          style={{ flex: 1 }}
-          onPress={onActivate}
-          activeOpacity={0.7}
-        >
+      {/* Inline new folder input or breadcrumb */}
+      {showNewFolder ? (
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TextInput
+            style={[styles.folderInput, { backgroundColor: colors.surface, color: colors.textPrimary }]}
+            value={newFolderName}
+            onChangeText={setNewFolderName}
+            placeholder="Folder name..."
+            placeholderTextColor={colors.textMuted}
+            autoFocus
+            autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={handleCreateFolder}
+          />
+          <TouchableOpacity onPress={handleCreateFolder} disabled={creatingFolder || !newFolderName.trim()}>
+            {creatingFolder
+              ? <ActivityIndicator size="small" color={colors.blue} />
+              : <Ionicons name="checkmark-circle" size={20} color={newFolderName.trim() ? colors.blue : colors.textDisabled} />
+            }
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { setShowNewFolder(false); setNewFolderName(''); }}>
+            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={{ flex: 1 }} onPress={onActivate} activeOpacity={0.7}>
           <Text style={[styles.breadcrumb, { color: colors.textSecondary }]} numberOfLines={1}>
             {breadcrumbs.slice(-2).map((c, i) => (i > 0 ? '/' : '') + c.name).join('')}
           </Text>
         </TouchableOpacity>
+      )}
 
-        {/* Select toggle */}
+      {/* + FAB — only in select mode */}
+      {selectMode && !showNewFolder && (
         <TouchableOpacity
-            onPress={() => {
-                if (otherPaneHasSelection || otherPaneInSelectMode) return;
-                onActivate();
-                if (selectMode) {
-                  setSelectMode(false);
-                  selectedItemsMap.current = new Map();
-                  onSelectionChange(new Set(), new Map());
-                  onSelectModeChange(false);
-                } else {
-                  setSelectMode(true);
-                  onSelectModeChange(true);
-                }
-              }}
-              style={[styles.upBtn, (otherPaneHasSelection || otherPaneInSelectMode) && { opacity: 0.3 }]}
-              disabled={otherPaneHasSelection || otherPaneInSelectMode}
-            >
-            <Ionicons
-                name={selectMode ? 'close-circle' : 'checkmark-circle-outline'}
-                size={18}
-                color={selectMode ? colors.blue : colors.textSecondary}
-            />
+          onPress={() => { setShowNewFolder(true); setNewFolderName(''); }}
+          style={styles.upBtn}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={colors.green} />
         </TouchableOpacity>
-      </View>
+      )}
+
+      {/* Select toggle */}
+      <TouchableOpacity
+        onPress={() => {
+          if (otherPaneHasSelection || otherPaneInSelectMode) return;
+          onActivate();
+          if (selectMode) {
+            setSelectMode(false);
+            setShowNewFolder(false);
+            setNewFolderName('');
+            selectedItemsMap.current = new Map();
+            onSelectionChange(new Set(), new Map());
+            onSelectModeChange(false);
+          } else {
+            setSelectMode(true);
+            onSelectModeChange(true);
+          }
+        }}
+        style={[styles.upBtn, (otherPaneHasSelection || otherPaneInSelectMode) && { opacity: 0.3 }]}
+        disabled={otherPaneHasSelection || otherPaneInSelectMode}
+      >
+        <Ionicons
+          name={selectMode ? 'close-circle' : 'checkmark-circle-outline'}
+          size={18}
+          color={selectMode ? colors.blue : colors.textSecondary}
+        />
+      </TouchableOpacity>
+    </View>
 
       {/* Volume pills — only at root */}
       {volumes.length > 1 && isVolumeRoot && (
@@ -438,4 +508,11 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 10,
   },
+  folderInput: {
+  flex: 1,
+  fontSize: 11,
+  borderRadius: 6,
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+},
 });
