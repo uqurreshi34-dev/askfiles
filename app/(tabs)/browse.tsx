@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, decodeName } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -24,7 +24,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative  } from 'file-reader';
+import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes, getPinnedFolders, setPinnedFolders, getPendingBrowsePath } from '@/modules/storage-stats';
@@ -837,23 +837,51 @@ export default function BrowseScreen() {
     const files = Array.from(selectedItemsMap.values());
     const fileCount = files.filter(f => !f.isDirectory).length;
     const folderCount = files.filter(f => f.isDirectory).length;
-    Alert.alert('Move to Trash', `Move ${fileCount > 0 ? `${fileCount} file${fileCount !== 1 ? 's' : ''}` : ''}${fileCount > 0 && folderCount > 0 ? ' and ' : ''}${folderCount > 0 ? `${folderCount} folder${folderCount !== 1 ? 's' : ''} (permanently)` : ''} to Trash? Files deleted after 30 days.`, [
+    const alertTitle = folderCount > 0 && fileCount === 0 ? 'Delete Folders' : 'Move to Trash';
+    const alertMsg = (() => {
+      if (fileCount > 0 && folderCount === 0) {
+        return `Move ${fileCount} file${fileCount !== 1 ? 's' : ''} to Trash? Deleted after 30 days.`;
+      }
+      if (folderCount > 0 && fileCount === 0) {
+        return `Delete ${folderCount} folder${folderCount !== 1 ? 's' : ''}? This cannot be undone.`;
+      }
+      return `Move ${fileCount} file${fileCount !== 1 ? 's' : ''} to Trash and permanently delete ${folderCount} folder${folderCount !== 1 ? 's' : ''}? Files can be restored within 30 days.`;
+    })();
+    Alert.alert(alertTitle, alertMsg, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+      { text: folderCount > 0 && fileCount === 0 ? 'Delete' : 'Move to Trash', style: 'destructive', onPress: async () => {
         setDeleting(true);
         setDeletingCount(files.filter(f => !f.isDirectory).length);
         const fileItems = files.filter(f => !f.isDirectory);
+        const folderItems = files.filter(f => f.isDirectory);
         
         for (const file of fileItems) {
           await moveToTrash(file.uri, file.name, false);
           removeFavourite(file.uri);
           DocIndexer.removeFromIndex(file.uri);
         }
+        const skippedFolders: string[] = [];
+        for (const folder of folderItems) {
+          try {
+            const count = await countFolder(toPath(folder.uri));
+            if (count > 0) {
+              skippedFolders.push(folder.name);
+              continue;
+            }
+            await deleteDirectory(toPath(folder.uri));
+          } catch {}
+        }
         setDeleting(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setDeletingCount(0);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
+        if (skippedFolders.length > 0) {
+          Alert.alert(
+            'Some folders skipped',
+            `${skippedFolders.length === 1 ? `"${skippedFolders[0]}"` : `${skippedFolders.length} folders`} could not be deleted because ${skippedFolders.length === 1 ? 'it is' : 'they are'} not empty.`
+          );
+        }
       }},
     ]);
   }
@@ -1038,24 +1066,17 @@ export default function BrowseScreen() {
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
-      const dir = new FileSystem.Directory(path);
-      const contents = dir.list();
-      const folders: FileItem[] = contents
-        .filter(item => item instanceof FileSystem.Directory)
-        .map(item => {
-          const raw = item.uri.split('/').filter(Boolean).pop() ?? '';
-          return { name: decodeName(raw), uri: item.uri, isDirectory: true, size: 0, date: 0 };
-        })
-        .filter(f => !f.name.startsWith('.'))
+      const hidden = getShowHidden();
+      const allItems = await readDirectory(toPath(path), hidden);
+      const folders = allItems
+        .filter(f => f.isDirectory && (hidden || !f.name.startsWith('.')))
         .sort((a, b) => a.name.localeCompare(b.name));
-      const files: FileItem[] = contents
-        .filter(item => item instanceof FileSystem.File)
-        .map(item => ({ name: decodeName(item.name), uri: item.uri, isDirectory: false, size: 0, date: 0 }))
-        .filter(f => !f.name.startsWith('.'))
+      const files = allItems
+        .filter(f => !f.isDirectory && (hidden || !f.name.startsWith('.')))
         .sort((a, b) => a.name.localeCompare(b.name));
       setPickerItems(folders);
       setPickerFiles(files);
-    } catch (e) {}
+    } catch {}
     finally { setPickerLoading(false); }
   }
 
@@ -1078,7 +1099,7 @@ export default function BrowseScreen() {
     const dst = toPath(destUri);
     const exists = await RNFS.exists(dst);
     if (exists) {
-      Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      Alert.alert('Already exists', `"${item.name}" already exists in this folder.`);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
@@ -1088,13 +1109,22 @@ export default function BrowseScreen() {
     const sub = addCopyProgressListener(({ percent }) => setCopyProgress(percent));
     try {
       if (pickerMode === 'copy') {
-        await copyFileStream(item.uri, dst);
+        if (item.isDirectory) {
+          await copyFolderRecursive(toPath(item.uri), dst);
+        } else {
+          await copyFileStream(item.uri, dst);
+        }
+        await scanFile(dst).catch(() => {});
         await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        await moveFileStream(src, dst);
-        await syncPathReferences(item.uri, destUri, item.name);
+        if (item.isDirectory) {
+          await moveFolderRecursive(src, dst);
+        } else {
+          await moveFileStream(src, dst);
+          await syncPathReferences(item.uri, destUri, item.name);
+        }
         await scanFile(dst).catch(() => {});
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
         const isInternalRoot = destFolder === ROOT_PATH;
@@ -1206,7 +1236,7 @@ export default function BrowseScreen() {
         (duplicates.length > 3 ? ` and ${duplicates.length - 3} more` : '');
       const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
         Alert.alert(
-          duplicates.length === 1 ? 'File already exists' : 'Files already exist',
+          duplicates.length === 1 ? 'Already exists' : 'Already exist',
           `${dupeList} already ${duplicates.length === 1 ? 'exists' : 'exist'} in this folder.`,
           [
             { text: 'Skip existing', onPress: () => resolve('skip') },
@@ -1247,11 +1277,19 @@ export default function BrowseScreen() {
         }
 
         if (multiPasteMode === 'copy') {
-          await copyFileStream(file.uri, dst);
+          if (file.isDirectory) {
+            await copyFolderRecursive(toPath(file.uri), dst);
+          } else {
+            await copyFileStream(file.uri, dst);
+          }
           await scanFile(dst).catch(() => {});
         } else {
-          await moveFileStream(src, dst);
-          await syncPathReferences(file.uri, destDir + file.name, file.name);
+          if (file.isDirectory) {
+            await moveFolderRecursive(src, dst);
+          } else {
+            await moveFileStream(src, dst);
+            await syncPathReferences(file.uri, destDir + file.name, file.name);
+          }
           await scanFile(dst).catch(() => {});
         }
         copiedCount++;
@@ -1280,11 +1318,12 @@ export default function BrowseScreen() {
       setSelectMode(false);
       setSelectedUris(new Set());
       setSelectedItemsMap(new Map());
+      const itemWord = (n: number) => `${n} item${n !== 1 ? 's' : ''}`;
       Alert.alert(
         'Success',
         copiedCount < actualTotal
-          ? `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
-          : `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
+          ? `${itemWord(copiedCount)} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
+          : `${itemWord(copiedCount)} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -1320,9 +1359,7 @@ export default function BrowseScreen() {
         style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
         onPress={() => {
           if (multiPasting || deleting) return;
-          if (selectMode && item.isDirectory) {
-            navigateTo(item);
-          } else if (selectMode) {
+          if (selectMode) {
             const newSet = new Set(selectedUris);
             const newMap = new Map(selectedItemsMap);
             if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
@@ -1337,7 +1374,7 @@ export default function BrowseScreen() {
         delayLongPress={400}
         activeOpacity={0.6}
       >
-        {selectMode && !item.isDirectory && (
+        {selectMode && (
           <View style={{ marginRight: 12 }}>
             <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
           </View>
@@ -1503,7 +1540,7 @@ export default function BrowseScreen() {
             <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected</Text>
             <TouchableOpacity
               onPress={() => {
-                const allFiles = items.filter(f => !f.isDirectory);
+                const allFiles = items;
                 const newSet = new Set(allFiles.map(f => f.uri));
                 const newMap = new Map(allFiles.map(f => [f.uri, f]));
                 setSelectedUris(newSet);
@@ -1878,12 +1915,10 @@ export default function BrowseScreen() {
                       </TouchableOpacity>
                     )}
                     <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-                    {!selectedItem?.isDirectory && (
-                      <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
                         <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
                       </TouchableOpacity>
-                    )}
                     <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
                       <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
                       <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
