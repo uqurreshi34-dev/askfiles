@@ -39,6 +39,7 @@ import { useTags } from '@/hooks/useTags';
 import { getTagsForFile } from '@/hooks/useFileTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
+import { recordOpen, getStats } from 'file-stats';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -454,6 +455,7 @@ export default function SearchScreen() {
 
   async function openFile(name: string, uri: string) {
     await addRecent({ name, uri, openedAt: Date.now() });
+    recordOpen(uri);
     if (isImageFile(name)) {
       setViewerUri(uri);
       return;
@@ -1028,6 +1030,11 @@ export default function SearchScreen() {
                   if (fileSize) lines.push({ label: 'Size', value: fileSize });
                   lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
                   lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                  const stats = getStats(selectedItem.uri);
+                  if (stats && stats.count > 0) {
+                    lines.push({ label: 'Times opened', value: `${stats.count}` });
+                    lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
+                  }
                   try {
                     const stat = await RNFS.stat(toPath(selectedItem.uri));
                     if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
