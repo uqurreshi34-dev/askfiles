@@ -183,6 +183,9 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 if (isHorizontalDrag || isDraggingToNavigate) {
                     isDraggingToNavigate = true
                     dragOffsetX -= distanceX
+                    // Clamp at boundaries — no prev means can't drag right, no next means can't drag left
+                    if (prevBitmap == null && dragOffsetX > 0f) dragOffsetX = 0f
+                    if (nextBitmap == null && dragOffsetX < 0f) dragOffsetX = 0f
                     canvasView.invalidate()
                     return true
                 }
