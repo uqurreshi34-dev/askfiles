@@ -1,4 +1,4 @@
-import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer } from 'file-reader';
+import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -341,7 +341,7 @@ async function handleSsInfo() {
     const dst = toPath(destUri);
     const exists = await RNFS.exists(dst);
     if (exists) {
-      Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      Alert.alert('Already exists', `"${item.name}" already exists in this folder.`);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
@@ -481,11 +481,11 @@ async function handleSsInfo() {
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
 
     // Check all duplicates upfront
-    const duplicates: string[] = [];
-    for (const file of files) {
-      const dst = toPath(destDir + file.name);
-      if (await RNFS.exists(dst)) duplicates.push(file.name);
-    }
+    const dstPaths = files.map(f => toPath(destDir + f.name));
+    const existingPaths = await checkDuplicates(dstPaths);
+    const duplicates = files
+      .filter(f => existingPaths.includes(toPath(destDir + f.name)))
+      .map(f => f.name);
 
     // If duplicates exist, ask once before starting
     if (duplicates.length > 0) {
@@ -493,7 +493,7 @@ async function handleSsInfo() {
         (duplicates.length > 3 ? ` and ${duplicates.length - 3} more` : '');
       const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
         Alert.alert(
-          duplicates.length === 1 ? 'File already exists' : 'Files already exist',
+          duplicates.length === 1 ? 'Already exists' : 'Already exist',
           `${dupeList} already ${duplicates.length === 1 ? 'exists' : 'exist'} in this folder.`,
           [
             { text: 'Skip existing', onPress: () => resolve('skip') },
@@ -530,8 +530,7 @@ async function handleSsInfo() {
           setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
         }
 
-        const exists = await RNFS.exists(dst);
-        if (exists && dupeAction.current === 'skip') continue;
+        if (existingPaths.includes(dst) && dupeAction.current === 'skip') continue;
 
         if (multiPasteMode === 'copy') {
           await copyFileStream(file.uri, dst);
@@ -553,8 +552,8 @@ async function handleSsInfo() {
       Alert.alert(
         'Success',
         copiedCount < actualTotal
-          ? `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
-          : `${copiedCount} file${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
+          ? `${copiedCount} item${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
+          : `${copiedCount} item${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {

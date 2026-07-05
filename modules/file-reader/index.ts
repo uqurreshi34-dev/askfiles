@@ -84,3 +84,11 @@ export function copyFolderRecursive(srcPath: string, destPath: string): Promise<
 export function moveFolderRecursive(srcPath: string, destPath: string): Promise<string> {
   return FileReader.moveFolderRecursive(srcPath, destPath);
 }
+
+export async function checkDuplicates(paths: string[]): Promise<string[]> {
+  try {
+    return await FileReader.checkDuplicates(paths) ?? [];
+  } catch {
+    return [];
+  }
+}

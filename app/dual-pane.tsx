@@ -76,7 +76,7 @@ export default function DualPaneScreen() {
     const dest = liveDestPath.endsWith('/') ? liveDestPath : liveDestPath + '/';
 
     setOperating(true);
-    setOperationLabel(`Copying ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''}...`);
+    setOperationLabel(`Copying ${sourceFiles.length} item${sourceFiles.length !== 1 ? 's' : ''}...`);
     setProgress(0);
 
     const sub = addCopyProgressListener(({ percent, currentFile: cf, filesCopied: fc, totalFiles: tf }) => {
@@ -119,14 +119,14 @@ export default function DualPaneScreen() {
 
     Alert.alert(
       'Move files',
-      `Move ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''} to ${(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}?`,
+      `Move ${sourceFiles.length} item${sourceFiles.length !== 1 ? 's' : ''} to ${(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Move',
           onPress: async () => {
             setOperating(true);
-            setOperationLabel(`Moving ${sourceFiles.length} file${sourceFiles.length !== 1 ? 's' : ''}...`);
+            setOperationLabel(`Moving ${sourceFiles.length} item${sourceFiles.length !== 1 ? 's' : ''}...`);
             setProgress(0);
             const sub = addCopyProgressListener(({ percent, currentFile: cf, filesCopied: fc, totalFiles: tf }) => {
               setProgress(percent);

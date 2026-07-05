@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { isImageFile, getFileColor, getFileIcon, formatSize, formatDate, toPath } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
-import { readDirectory, countFolder, createDirectory } from 'file-reader';
+import { readDirectory, countFolder, createDirectory, getShowHidden } from 'file-reader';
 import { startWatching, stopWatching, addFileChangeListener } from '@/modules/file-watcher';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
@@ -181,7 +181,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     if (dirCache[path]) {
       setItems(dirCache[path]);
       setLoading(false);
-      readDirectory(toPath(path), false).then(fileItems => {
+      readDirectory(toPath(path), getShowHidden()).then(fileItems => {
         dirCache[path] = fileItems;
         setItems(fileItems);
         loadFolderCounts(fileItems);
@@ -190,7 +190,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     }
     setLoading(true);
     try {
-      const fileItems = await readDirectory(toPath(path), false);
+      const fileItems = await readDirectory(toPath(path), getShowHidden());
       dirCache[path] = fileItems;
       setItems(fileItems);
       loadFolderCounts(fileItems);
@@ -205,7 +205,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
       const folderPath = toPath(folder.uri);
       if (folderPath.includes('/Android/data')) return;
-      countFolder(folderPath, false)
+      countFolder(folderPath, getShowHidden())
         .then(count => setFolderCounts(prev => ({ ...prev, [folder.uri]: count })))
         .catch(() => {});
     });

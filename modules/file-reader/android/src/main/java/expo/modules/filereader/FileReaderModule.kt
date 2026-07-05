@@ -18,6 +18,10 @@ class FileReaderModule : Module() {
 
     Events("onCopyProgress")
 
+    AsyncFunction("checkDuplicates") { paths: List<String> ->
+      paths.filter { java.io.File(it).exists() }
+    }
+
     AsyncFunction("readDirectory") { path: String, includeHidden: Boolean ->
       val dir = File(path)
       if (!dir.exists() || !dir.isDirectory) return@AsyncFunction emptyList<Map<String, Any>>()

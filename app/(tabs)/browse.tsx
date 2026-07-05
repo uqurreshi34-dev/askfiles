@@ -24,7 +24,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive } from 'file-reader';
+import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes, getPinnedFolders, setPinnedFolders, getPendingBrowsePath } from '@/modules/storage-stats';
@@ -1225,11 +1225,11 @@ export default function BrowseScreen() {
 
     const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
 
-    const duplicates: string[] = [];
-    for (const file of files) {
-      const dst = toPath(destDir + file.name);
-      if (await RNFS.exists(dst)) duplicates.push(file.name);
-    }
+    const dstPaths = files.map(f => toPath(destDir + f.name));
+    const existingPaths = await checkDuplicates(dstPaths);
+    const duplicates = files
+      .filter(f => existingPaths.includes(toPath(destDir + f.name)))
+      .map(f => f.name);
 
     if (duplicates.length > 0) {
       const dupeList = duplicates.slice(0, 3).join(', ') +
