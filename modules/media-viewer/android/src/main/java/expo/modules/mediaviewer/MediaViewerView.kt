@@ -16,6 +16,7 @@ import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 import java.util.concurrent.Executors
+import android.animation.ValueAnimator
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -60,6 +61,7 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     private var edgeOverscroll = 0f
     private var edgeSwipeFired = false
     private val edgeSwipeThreshold = context.resources.displayMetrics.density * 70f
+    private var flingAnimator: ValueAnimator? = null
 
     // Custom view that renders all three panels
     private val canvasView = object : View(context) {
@@ -215,14 +217,33 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                     return true
                 }
 
-                // Fit scale fling — velocity override
+                // Fit scale fling — slide out then navigate
                 val isHorizontalFling = abs(velocityX) > abs(velocityY) * 1.5f &&
                     abs(velocityX) > flingVelocityThreshold
                 if (isHorizontalFling && !dragNavigateFired) {
+                    // Boundary check — no adjacent image in this direction
+                    if (velocityX < 0 && nextBitmap == null) return true
+                    if (velocityX > 0 && prevBitmap == null) return true
                     dragNavigateFired = true
                     isDraggingToNavigate = false
-                    if (velocityX < 0) onSwipeNext(mapOf<String, Any>())
-                    else onSwipePrevious(mapOf<String, Any>())
+                    val vw = viewW.takeIf { it > 0 } ?: screenW
+                    val targetOffset = if (velocityX < 0) -vw.toFloat() else vw.toFloat()
+                    val startOffset = dragOffsetX
+                    flingAnimator?.cancel()
+                    flingAnimator = ValueAnimator.ofFloat(startOffset, targetOffset).apply {
+                        duration = 150
+                        addUpdateListener { anim ->
+                            dragOffsetX = anim.animatedValue as Float
+                            canvasView.invalidate()
+                        }
+                        addListener(object : android.animation.AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: android.animation.Animator) {
+                                if (velocityX < 0) onSwipeNext(mapOf<String, Any>())
+                                else onSwipePrevious(mapOf<String, Any>())
+                            }
+                        })
+                        start()
+                    }
                 }
                 return true
             }
@@ -432,6 +453,7 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        flingAnimator?.cancel()
         executor.shutdownNow()
         recycleBitmap(currentBitmap)
         recycleBitmap(prevBitmap)
