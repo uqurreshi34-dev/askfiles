@@ -1,10 +1,10 @@
 package expo.modules.mediaviewer
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.graphics.PointF
 import android.os.Handler
 import android.os.Looper
 import android.view.GestureDetector
@@ -17,6 +17,7 @@ import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 import java.util.concurrent.Executors
+import kotlin.math.abs
 import kotlin.math.min
 
 class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
@@ -34,7 +35,6 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     private val screenW = context.resources.displayMetrics.widthPixels
     private val screenH = context.resources.displayMetrics.heightPixels
 
-    // Stored from setFrame on the ImageView — guaranteed real dimensions after layout
     private var viewW = 0
     private var viewH = 0
 
@@ -45,14 +45,23 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     private val maxScale = 5f
     private val doubleTapScale = 2.5f
 
-    // Overscroll-to-swipe: when zoomed in and panned to a horizontal edge,
-    // continued drag/fling in that direction triggers navigation instead of panning
+    // Drag-to-navigate state (fit scale only)
+    private var dragOffsetX = 0f           // how far the image has been dragged horizontally
+    private var isDraggingToNavigate = false
+    private var dragNavigateFired = false
+    private var springBackAnimator: ValueAnimator? = null
+
+    // Fling threshold
+    private val flingVelocityThreshold = 600f
+
+    // Snap threshold — 50% of view width
+    private val snapThresholdRatio = 0.50f
+
+    // Zoomed edge-overscroll state
     private var edgeOverscroll = 0f
     private var edgeSwipeFired = false
     private val edgeSwipeThreshold = context.resources.displayMetrics.density * 70f
 
-    // Override setFrame on the ImageView itself — fires after every layout pass
-    // with guaranteed non-zero dimensions. This is the correct hook for Fabric.
     private val imageView = object : AppCompatImageView(context) {
         override fun setFrame(l: Int, t: Int, r: Int, b: Int): Boolean {
             val changed = super.setFrame(l, t, r, b)
@@ -86,6 +95,7 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
 
     private val gestureDetector = GestureDetector(context,
         object : GestureDetector.SimpleOnGestureListener() {
+
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                 onTap(mapOf<String, Any>())
                 return true
@@ -97,8 +107,7 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 val factor = targetScale / currentScale
                 currentScale = targetScale
                 matrix.postScale(factor, factor, e.x, e.y)
-                if (isZoomedIn) resetMatrix()
-                else clampMatrix()
+                if (isZoomedIn) resetMatrix() else clampMatrix()
                 imageView.imageMatrix = matrix
                 return true
             }
@@ -108,17 +117,17 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 distanceX: Float, distanceY: Float
             ): Boolean {
                 if (currentScale > fitScale + 0.01f) {
+                    // --- Zoomed: pan image, edge-overscroll to navigate ---
                     val (hasOverflow, atLeftBound, atRightBound) = horizontalEdge()
                     val draggingPastLeft = hasOverflow && atLeftBound && distanceX > 0f
                     val draggingPastRight = hasOverflow && atRightBound && distanceX < 0f
                     if (draggingPastLeft || draggingPastRight) {
-                        edgeOverscroll += kotlin.math.abs(distanceX)
+                        edgeOverscroll += abs(distanceX)
                         if (!edgeSwipeFired && edgeOverscroll > edgeSwipeThreshold) {
                             edgeSwipeFired = true
                             if (draggingPastLeft) onSwipeNext(mapOf<String, Any>())
                             else onSwipePrevious(mapOf<String, Any>())
                         }
-                        // still allow vertical pan while over-dragging horizontally
                         matrix.postTranslate(0f, -distanceY)
                         clampMatrix()
                         imageView.imageMatrix = matrix
@@ -128,7 +137,21 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                     matrix.postTranslate(-distanceX, -distanceY)
                     clampMatrix()
                     imageView.imageMatrix = matrix
+                    return true
                 }
+
+                // --- Fit scale: drag-to-navigate ---
+                val isHorizontalDrag = e1 != null &&
+                    abs(e2.x - e1.x) > abs(e2.y - e1.y) * 1.2f
+
+                if (isHorizontalDrag || isDraggingToNavigate) {
+                    isDraggingToNavigate = true
+                    springBackAnimator?.cancel()
+                    dragOffsetX -= distanceX
+                    applyDragOffset(dragOffsetX)
+                    return true
+                }
+
                 return true
             }
 
@@ -137,9 +160,10 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 velocityX: Float, velocityY: Float
             ): Boolean {
                 if (currentScale > fitScale + 0.01f) {
+                    // Zoomed fling
                     val (hasOverflow, atLeftBound, atRightBound) = horizontalEdge()
-                    val isHorizontalFling = kotlin.math.abs(velocityX) > kotlin.math.abs(velocityY) * 1.5f &&
-                        kotlin.math.abs(velocityX) > 800f
+                    val isHorizontalFling = abs(velocityX) > abs(velocityY) * 1.5f &&
+                        abs(velocityX) > flingVelocityThreshold
                     if (hasOverflow && isHorizontalFling && atLeftBound && velocityX < 0f) {
                         if (!edgeSwipeFired) onSwipeNext(mapOf<String, Any>())
                         return true
@@ -153,9 +177,15 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                     imageView.imageMatrix = matrix
                     return true
                 }
-                // Not zoomed — a clear horizontal swipe navigates instead of panning
-                if (kotlin.math.abs(velocityX) > kotlin.math.abs(velocityY) * 1.5f &&
-                    kotlin.math.abs(velocityX) > 800f) {
+
+                // Fit scale fling — velocity override, always navigates
+                val isHorizontalFling = abs(velocityX) > abs(velocityY) * 1.5f &&
+                    abs(velocityX) > flingVelocityThreshold
+                if (isHorizontalFling && !dragNavigateFired) {
+                    dragNavigateFired = true
+                    isDraggingToNavigate = false
+                    dragOffsetX = 0f
+                    applyDragOffset(0f)
                     if (velocityX < 0) onSwipeNext(mapOf<String, Any>())
                     else onSwipePrevious(mapOf<String, Any>())
                 }
@@ -167,10 +197,46 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     init {
         setBackgroundColor(android.graphics.Color.BLACK)
         addView(imageView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
         imageView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                edgeOverscroll = 0f
-                edgeSwipeFired = false
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    springBackAnimator?.cancel()
+                    edgeOverscroll = 0f
+                    edgeSwipeFired = false
+                    isDraggingToNavigate = false
+                    dragNavigateFired = false
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (isDraggingToNavigate && !dragNavigateFired) {
+                        val vw = viewW.takeIf { it > 0 } ?: screenW
+                        val snapThreshold = vw * snapThresholdRatio
+                        when {
+                            dragOffsetX < -snapThreshold -> {
+                                // Dragged left past threshold → next
+                                dragNavigateFired = true
+                                isDraggingToNavigate = false
+                                dragOffsetX = 0f
+                                applyDragOffset(0f)
+                                onSwipeNext(mapOf<String, Any>())
+                            }
+                            dragOffsetX > snapThreshold -> {
+                                // Dragged right past threshold → previous
+                                dragNavigateFired = true
+                                isDraggingToNavigate = false
+                                dragOffsetX = 0f
+                                applyDragOffset(0f)
+                                onSwipePrevious(mapOf<String, Any>())
+                            }
+                            else -> {
+                                // Below threshold — spring back instantly
+                                isDraggingToNavigate = false
+                                dragOffsetX = 0f
+                                applyDragOffset(0f)
+                            }
+                        }
+                    }
+                }
             }
             scaleDetector.onTouchEvent(event)
             gestureDetector.onTouchEvent(event)
@@ -178,9 +244,27 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
         }
     }
 
+    // Translate image horizontally by offset — gives the drag-peek effect
+    private fun applyDragOffset(offsetX: Float) {
+        val bmp = currentBitmap ?: return
+        val vw = viewW.takeIf { it > 0 } ?: screenW
+        val vh = viewH.takeIf { it > 0 } ?: screenH
+        val scale = fitScale
+        val dx = (vw - bmp.width * scale) / 2f + offsetX
+        val dy = (vh - bmp.height * scale) / 2f
+        matrix.reset()
+        matrix.setScale(scale, scale)
+        matrix.postTranslate(dx, dy)
+        imageView.imageMatrix = matrix
+    }
+
     fun setUri(uri: String) {
         if (uri == currentUri) return
         currentUri = uri
+        dragOffsetX = 0f
+        isDraggingToNavigate = false
+        dragNavigateFired = false
+        springBackAnimator?.cancel()
         loadImage(uri)
     }
 
@@ -254,9 +338,6 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
         imageView.imageMatrix = matrix
     }
 
-    // Returns (hasHorizontalOverflow, atLeftBound, atRightBound) for the current zoom/pan state.
-    // atLeftBound = panned as far left as possible (viewing the image's right side) -> next
-    // atRightBound = panned as far right as possible (viewing the image's left side) -> previous
     private fun horizontalEdge(): Triple<Boolean, Boolean, Boolean> {
         val bmp = currentBitmap ?: return Triple(false, false, false)
         val vw = viewW.takeIf { it > 0 } ?: screenW
@@ -308,6 +389,7 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        springBackAnimator?.cancel()
         executor.shutdownNow()
         imageView.setImageBitmap(null)
         recycleCurrent()
