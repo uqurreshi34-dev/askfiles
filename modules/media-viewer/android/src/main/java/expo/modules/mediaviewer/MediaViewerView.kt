@@ -228,6 +228,10 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                     isDraggingToNavigate = false
                     val vw = viewW.takeIf { it > 0 } ?: screenW
                     val targetOffset = if (velocityX < 0) -vw.toFloat() else vw.toFloat()
+                    val velocityNudge = (abs(velocityX) / 4000f * 40f).coerceIn(12f, 40f)
+                    val nudge = if (velocityX < 0) -velocityNudge else velocityNudge
+                    dragOffsetX += nudge
+                    canvasView.invalidate()
                     val startOffset = dragOffsetX
                     flingAnimator?.cancel()
                     flingAnimator = ValueAnimator.ofFloat(startOffset, targetOffset).apply {
