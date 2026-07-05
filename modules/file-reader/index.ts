@@ -92,3 +92,11 @@ export async function checkDuplicates(paths: string[]): Promise<string[]> {
     return [];
   }
 }
+
+export function getMostUsedEnabled(): boolean {
+  return FileReader.getMostUsedEnabled();
+}
+
+export function setMostUsedEnabled(value: boolean): void {
+  FileReader.setMostUsedEnabled(value);
+}

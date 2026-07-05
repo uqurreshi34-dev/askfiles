@@ -34,6 +34,7 @@ import { removeTag } from '@/hooks/useTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getValidStats, FileStatEntry } from 'file-stats';
+import { getMostUsedEnabled, setMostUsedEnabled } from 'file-reader';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
   const [mostUsed, setMostUsed] = useState<FileStatEntry[]>([]);
+  const [mostUsedEnabled, setMostUsedEnabledState] = useState(() => getMostUsedEnabled());
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -249,7 +251,21 @@ async function indexScansInBackground(paths: string[]) {
                   <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: appLockEnabled ? 'flex-end' : 'flex-start' }} />
                 </View>
               </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.modalRow}
+                activeOpacity={0.7}
+                onPress={() => {
+                  const next = !mostUsedEnabled;
+                  setMostUsedEnabledState(next);
+                  setMostUsedEnabled(next);
+                }}
+              >
+                <Ionicons name="star-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>Most Used</Text>
+                <View style={{ marginLeft: 'auto', width: 44, height: 26, borderRadius: 13, backgroundColor: mostUsedEnabled ? colors.blue : colors.textDisabled, justifyContent: 'center', paddingHorizontal: 3 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: mostUsedEnabled ? 'flex-end' : 'flex-start' }} />
+                </View>
+              </TouchableOpacity>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider, marginTop: 8 }]} />
               <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
                 Background
@@ -626,7 +642,7 @@ async function indexScansInBackground(paths: string[]) {
 
             </View>
         )}
-        {mostUsed.length > 0 && (
+        {mostUsedEnabled && mostUsed.length > 0 && (
           <>
             <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Most Used</Text>
             <ScrollView
