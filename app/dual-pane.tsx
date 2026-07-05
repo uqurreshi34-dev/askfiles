@@ -1,19 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import FilePane, { FilePaneHandle, FileItem } from '@/components/FilePane';
-import { copyFileStream, moveFileStream, copyFolderRecursive, moveFolderRecursive, addCopyProgressListener } from 'file-reader';
+import { copyFileStream, moveFileStream, copyFolderRecursive, moveFolderRecursive, addCopyProgressListener, checkDuplicates } from 'file-reader';
 import { toPath } from '@/utils/files';
 import { scanFile } from '@/modules/share-module';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { setSelection, getSelection, clearAll } from 'pane-selection';
+
 
 export default function DualPaneScreen() {
   const { colors } = useTheme();
@@ -28,8 +27,6 @@ export default function DualPaneScreen() {
   // Each pane's selection state lives here, keyed by pane
   const [leftSelected, setLeftSelected] = useState<Set<string>>(new Set());
   const [rightSelected, setRightSelected] = useState<Set<string>>(new Set());
-  const leftSelectedMap = useRef<Map<string, FileItem>>(new Map());
-  const rightSelectedMap = useRef<Map<string, FileItem>>(new Map());
 
   // Refs to imperatively call reload on each pane
   const leftRef = useRef<FilePaneHandle>(null);
@@ -48,10 +45,7 @@ export default function DualPaneScreen() {
   const hasRightSelection = rightSelected.size > 0;
   const hasSelection = hasLeftSelection || hasRightSelection;
 
-  // Source and destination for cross-pane operations
-  const sourceFiles = hasLeftSelection
-    ? Array.from(leftSelectedMap.current.values())
-    : Array.from(rightSelectedMap.current.values());
+  const sourceCount = hasLeftSelection ? leftSelected.size : rightSelected.size;
 
   const destPaneRef = hasLeftSelection ? rightRef : leftRef;
   const sourcePaneRef = hasLeftSelection ? leftRef : rightRef;
@@ -64,20 +58,59 @@ export default function DualPaneScreen() {
   function clearSelection() {
     setLeftSelected(new Set());
     setRightSelected(new Set());
-    leftSelectedMap.current = new Map();
-    rightSelectedMap.current = new Map();
+    clearAll();
   }
 
   async function handleCopy() {
-    const liveDestPath = hasLeftSelection
-  ? rightRef.current?.currentPath ?? ''
-  : leftRef.current?.currentPath ?? '';
+    const sourcePane: 'left' | 'right' = hasLeftSelection ? 'left' : 'right';
+    const sourceFiles = getSelection(sourcePane);
+    const liveDestPath = sourcePane === 'left'
+      ? rightRef.current?.currentPath ?? ''
+      : leftRef.current?.currentPath ?? '';
     if (!sourceFiles.length || !liveDestPath) return;
     const dest = liveDestPath.endsWith('/') ? liveDestPath : liveDestPath + '/';
+    
 
     setOperating(true);
-    setOperationLabel(`Copying ${sourceFiles.length} item${sourceFiles.length !== 1 ? 's' : ''}...`);
+    setOperationLabel(`Copying ${sourceCount} item${sourceCount !== 1 ? 's' : ''}...`);
     setProgress(0);
+
+    const dstPaths = sourceFiles.map(f => toPath(dest + f.name));
+    const existingPaths = await checkDuplicates(dstPaths);
+    if (existingPaths.length > 0) {
+      const dupeList = existingPaths
+        .slice(0, 3)
+        .map(p => p.split('/').pop() ?? p)
+        .join(', ') + (existingPaths.length > 3 ? ` and ${existingPaths.length - 3} more` : '');
+      const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
+        Alert.alert(
+          existingPaths.length === 1 ? 'Already exists' : 'Already exist',
+          `${dupeList} already ${existingPaths.length === 1 ? 'exists' : 'exist'} in the destination.`,
+          [
+            { text: 'Skip existing', onPress: () => resolve('skip') },
+            { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+          ]
+        );
+      });
+      if (action === 'cancel') {
+        setOperating(false);
+        setOperationLabel('');
+        return;
+      }
+      if (action === 'skip') {
+        const filtered = sourceFiles.filter(f => !existingPaths.includes(toPath(dest + f.name)));
+        if (filtered.length === 0) {
+          Alert.alert('Nothing to do', 'All selected items already exist at the destination.');
+          setOperating(false);
+          setOperationLabel('');
+          return;
+        }
+      }
+    }
+    const filesToCopy = existingPaths.length > 0
+      ? sourceFiles.filter(f => !existingPaths.includes(toPath(dest + f.name)))
+      : sourceFiles;
 
     const sub = addCopyProgressListener(({ percent, currentFile: cf, filesCopied: fc, totalFiles: tf }) => {
       setProgress(percent);
@@ -85,7 +118,7 @@ export default function DualPaneScreen() {
       if (fc !== undefined && tf !== undefined) setFilesProgress({ done: fc, total: tf });
     });
     try {
-      for (const file of sourceFiles) {
+      for (const file of filesToCopy) {
         const dst = toPath(dest + file.name);
         if (file.isDirectory) {
           await copyFolderRecursive(toPath(file.uri), dst);
@@ -112,29 +145,59 @@ export default function DualPaneScreen() {
   }
 
   async function handleMove() {
-    const liveDestPath = hasLeftSelection
-  ? rightRef.current?.currentPath ?? ''
-  : leftRef.current?.currentPath ?? '';
+    const sourcePane: 'left' | 'right' = hasLeftSelection ? 'left' : 'right';
+    const liveDestPath = sourcePane === 'left'
+      ? rightRef.current?.currentPath ?? ''
+      : leftRef.current?.currentPath ?? '';
     const dest = liveDestPath.endsWith('/') ? liveDestPath : liveDestPath + '/';
 
     Alert.alert(
       'Move files',
-      `Move ${sourceFiles.length} item${sourceFiles.length !== 1 ? 's' : ''} to ${(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}?`,
+      `Move ${sourceCount} item${sourceCount !== 1 ? 's' : ''} to ${(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Move',
           onPress: async () => {
+            const sourceFiles = getSelection(sourcePane);
             setOperating(true);
-            setOperationLabel(`Moving ${sourceFiles.length} item${sourceFiles.length !== 1 ? 's' : ''}...`);
+            setOperationLabel(`Moving ${sourceCount} item${sourceCount !== 1 ? 's' : ''}...`);
             setProgress(0);
+            const dstPaths = sourceFiles.map(f => toPath(dest + f.name));
+            const existingPaths = await checkDuplicates(dstPaths);
+            if (existingPaths.length > 0) {
+              const dupeList = existingPaths
+                .slice(0, 3)
+                .map(p => p.split('/').pop() ?? p)
+                .join(', ') + (existingPaths.length > 3 ? ` and ${existingPaths.length - 3} more` : '');
+              const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
+                Alert.alert(
+                  existingPaths.length === 1 ? 'Already exists' : 'Already exist',
+                  `${dupeList} already ${existingPaths.length === 1 ? 'exists' : 'exist'} in the destination.`,
+                  [
+                    { text: 'Skip existing', onPress: () => resolve('skip') },
+                    { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
+                    { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+                  ]
+                );
+              });
+              if (action === 'cancel') {
+                setOperating(false);
+                setOperationLabel('');
+                return;
+              }
+            }
+            const filesToMove = existingPaths.length > 0
+              ? sourceFiles.filter(f => !existingPaths.includes(toPath(dest + f.name)))
+              : sourceFiles;
+
             const sub = addCopyProgressListener(({ percent, currentFile: cf, filesCopied: fc, totalFiles: tf }) => {
               setProgress(percent);
               if (cf) setCurrentFile(cf);
               if (fc !== undefined && tf !== undefined) setFilesProgress({ done: fc, total: tf });
             });
             try {
-              for (const file of sourceFiles) {
+              for (const file of filesToMove) {
                 const src = toPath(file.uri);
                 const destUri = dest + file.name;
                 const dst = toPath(destUri);
@@ -205,11 +268,11 @@ export default function DualPaneScreen() {
           onSelectModeChange={setLeftInSelectMode}
           onSelectionChange={(uris, map) => {
             setLeftSelected(uris);
-            leftSelectedMap.current = map;
-            // Clear right selection when left selects
+            setSelection('left', Array.from(map.values()));
             if (uris.size > 0) {
               setRightSelected(new Set());
-              rightSelectedMap.current = new Map();
+              clearAll();
+              setSelection('left', Array.from(map.values()));
             }
           }}
           onPathChange={() => forceUpdate(n => n + 1)}
@@ -225,11 +288,11 @@ export default function DualPaneScreen() {
           onSelectModeChange={setRightInSelectMode}
           onSelectionChange={(uris, map) => {
             setRightSelected(uris);
-            rightSelectedMap.current = map;
-            // Clear left selection when right selects
+            setSelection('right', Array.from(map.values()));
             if (uris.size > 0) {
               setLeftSelected(new Set());
-              leftSelectedMap.current = new Map();
+              clearAll();
+              setSelection('right', Array.from(map.values()));
             }
           }}
           onPathChange={() => forceUpdate(n => n + 1)}
@@ -249,7 +312,7 @@ export default function DualPaneScreen() {
           }
         ]}>
           <Text style={[styles.selectionLabel, { color: colors.textMuted }]}>
-          {sourceFiles.length} item{sourceFiles.length !== 1 ? 's' : ''} selected
+          {sourceCount} item{sourceCount !== 1 ? 's' : ''} selected
             {' → '}
             {(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}
           </Text>

@@ -136,6 +136,12 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    if (selectedUris.size === 0) {
+      selectedItemsMap.current = new Map();
+    }
+  }, [selectedUris.size]);
+
   useImperativeHandle(ref, () => ({
     currentPath,
     friendlyPath: (() => {
@@ -333,7 +339,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
         <TouchableOpacity style={{ flex: 1 }} onPress={onActivate} activeOpacity={0.7}>
           {selectMode && selectedUris.size > 0 ? (
             <Text style={[styles.breadcrumb, { color: colors.blue }]} numberOfLines={1}>
-              {selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected
+              {selectedUris.size} item{selectedUris.size !== 1 ? 's' : ''} selected
             </Text>
           ) : (
             <Text style={[styles.breadcrumb, { color: colors.textSecondary }]} numberOfLines={1}>

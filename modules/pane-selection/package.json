@@ -1,0 +1,20 @@
+{
+    "name": "pane-selection",
+    "version": "1.0.0",
+    "description": "Native pane selection store for AskFiles dual pane",
+    "main": "index.ts",
+    "types": "index.ts",
+    "scripts": {
+      "build": "expo-module build",
+      "clean": "expo-module clean",
+      "lint": "expo-module lint",
+      "test": "expo-module test"
+    },
+    "keywords": ["expo", "expo-module"],
+    "license": "MIT",
+    "peerDependencies": {
+      "expo": "*",
+      "react": "*",
+      "react-native": "*"
+    }
+  }
