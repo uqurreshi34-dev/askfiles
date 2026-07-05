@@ -218,8 +218,6 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                 if (isHorizontalFling && !dragNavigateFired) {
                     dragNavigateFired = true
                     isDraggingToNavigate = false
-                    dragOffsetX = 0f
-                    canvasView.invalidate()
                     if (velocityX < 0) onSwipeNext(mapOf<String, Any>())
                     else onSwipePrevious(mapOf<String, Any>())
                 }
@@ -248,15 +246,11 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
                             dragOffsetX < -snapThreshold -> {
                                 dragNavigateFired = true
                                 isDraggingToNavigate = false
-                                dragOffsetX = 0f
-                                canvasView.invalidate()
                                 onSwipeNext(mapOf<String, Any>())
                             }
                             dragOffsetX > snapThreshold -> {
                                 dragNavigateFired = true
                                 isDraggingToNavigate = false
-                                dragOffsetX = 0f
-                                canvasView.invalidate()
                                 onSwipePrevious(mapOf<String, Any>())
                             }
                             else -> {
@@ -278,12 +272,12 @@ class MediaViewerView(context: Context, appContext: AppContext) : ExpoView(conte
     fun setUri(uri: String) {
         if (uri == currentUri) return
         currentUri = uri
-        dragOffsetX = 0f
         isDraggingToNavigate = false
         dragNavigateFired = false
         loadBitmap(uri) { bmp ->
             recycleBitmap(currentBitmap)
             currentBitmap = bmp
+            dragOffsetX = 0f
             canvasView.setImageBitmapAndReset(bmp)
         }
     }
