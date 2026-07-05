@@ -2160,12 +2160,14 @@ async function handleSsInfo() {
           <StatusBar barStyle="light-content" backgroundColor="#000" />
           {viewerUri && (
             <MediaViewerView
-              uri={viewerUri}
-              onTap={() => setViewerUri(null)}
-              onSwipeNext={() => goToViewerImage(viewerIndex + 1)}
-              onSwipePrevious={() => goToViewerImage(viewerIndex - 1)}
-              style={StyleSheet.absoluteFill}
-            />
+            uri={viewerUri}
+            prevUri={viewerImages[viewerIndex - 1]?.uri ?? ''}
+            nextUri={viewerImages[viewerIndex + 1]?.uri ?? ''}
+            onTap={() => setViewerUri(null)}
+            onSwipeNext={() => goToViewerImage(viewerIndex + 1)}
+            onSwipePrevious={() => goToViewerImage(viewerIndex - 1)}
+            style={StyleSheet.absoluteFill}
+          />
           )}
           <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
             <View style={{ alignItems: 'center', paddingBottom: 24 }}>

@@ -3,6 +3,8 @@ import { StyleProp, ViewStyle } from 'react-native';
 
 interface MediaViewerViewProps {
   uri: string;
+  prevUri?: string;
+  nextUri?: string;
   onTap?: (event: any) => void;
   style?: StyleProp<ViewStyle>;
   onSwipeNext?: () => void;
