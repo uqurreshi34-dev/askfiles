@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 import * as QuickActions from 'expo-quick-actions';
 import { useQuickActionRouting } from 'expo-quick-actions/router';
-
+import * as ExpoInAppUpdates from 'expo-in-app-updates';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,6 +38,19 @@ export default function RootLayout() {
       { id: 'smb', title: 'SMB — Windows / NAS', icon: 'shortcut_network', params: { href: '/smb' } },
       { id: 'sftp', title: 'SFTP — Server / NAS', icon: 'shortcut_sftp', params: { href: '/sftp' } },
     ]);
+  }, []);
+
+  useEffect(() => {
+    if (__DEV__) return;
+    const checkUpdate = async () => {
+      try {
+        const result = await ExpoInAppUpdates.checkForUpdate();
+        if (result.updateAvailable) {
+          await ExpoInAppUpdates.startUpdate();
+        }
+      } catch {}
+    };
+    checkUpdate();
   }, []);
 
   useEffect(() => {
