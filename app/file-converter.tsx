@@ -126,7 +126,7 @@ export default function FileConverterScreen() {
         <TouchableOpacity onPress={() => { if (converting) return; if (sourceUri) { setSourceUri(null); setSourceName(''); setSourceExt(''); } else { router.back(); } }} style={styles.backBtn} disabled={converting !== null}>
           <Ionicons name="arrow-back" size={24} color={converting ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>File Converter</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Image Converter</Text>
         <View style={{ width: 40 }} />
       </View>
 
