@@ -20,10 +20,12 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-community/slider": "5.0.1",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@shopify/flash-list": "2.0.2",
     "archive-extractor": "file:modules/archive-extractor",
+    "csv-reader": "file:modules/csv-reader",
     "doc-indexer": "file:modules/doc-indexer",
     "expo": "~54.0.35",
     "expo-auth-session": "~7.0.11",

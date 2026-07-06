@@ -640,6 +640,16 @@ async function indexScansInBackground(paths: string[]) {
               <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Image Converter</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
+              onPress={() => router.push('/csv-reader' as any)}
+            >
+             <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A2200' : '#FFF8E1' }]}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.yellow, letterSpacing: 0.5 }}>CSV</Text>
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>CSV Reader</Text>
+            </TouchableOpacity>
             </View>
         )}
         {mostUsedEnabled && mostUsed.length > 0 && (

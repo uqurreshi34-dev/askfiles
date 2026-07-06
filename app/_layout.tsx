@@ -122,6 +122,7 @@ export default function RootLayout() {
         <Stack.Screen name="backup" />
         <Stack.Screen name="sensitive-files" />
         <Stack.Screen name="trash" />
+        <Stack.Screen name="csv-reader" />
       </Stack>
     </View>
   );

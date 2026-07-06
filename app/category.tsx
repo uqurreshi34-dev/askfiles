@@ -1,7 +1,7 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -2026,7 +2026,7 @@ async function handleSsInfo() {
                 </ScrollView>
                 <TouchableOpacity
                   onPress={async () => {
-                    await Clipboard.setStringAsync(extractedText ?? '');
+                    await Clipboard.setString(extractedText ?? '');
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     Alert.alert('Copied', 'Text copied to clipboard.');
                   }}
