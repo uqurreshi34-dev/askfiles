@@ -11,10 +11,12 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/hooks/useTheme';
-import { parseCsv, CsvData } from '@/modules/csv-reader';
+import { parseCsv, filterCsv, evictCache, CsvData } from '@/modules/csv-reader';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import * as Haptics from 'expo-haptics';
 import RNFS from 'react-native-fs';
+import { toPath } from '@/utils/files';
+import { getStorageVolumes } from '@/modules/storage-stats';
  
 const MIN_COL_WIDTH = 90;
 const MAX_COL_WIDTH = 220;
@@ -42,6 +44,9 @@ export default function CsvReaderScreen() {
  
   const [exportPickerVisible, setExportPickerVisible] = useState(false);
   const [colWidths, setColWidths] = useState<number[]>([]);
+  const [filePath, setFilePath] = useState('');
+  const [processedRows, setProcessedRows] = useState<{ row: string[]; originalIndex: number }[]>([]);
+  const filterDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
  
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -52,8 +57,10 @@ export default function CsvReaderScreen() {
   }, [csvData]);
  
   function resetState() {
+    if (filePath) evictCache(filePath).catch(() => {});
     setCsvData(null);
     setFileName('');
+    setFilePath('');
     setSearch('');
     setSearchCol(null);
     setSortCol(null);
@@ -61,6 +68,7 @@ export default function CsvReaderScreen() {
     selectedRowsRef.current = new Set();
     setSelectionVersion(0);
     setColWidths([]);
+    setProcessedRows([]);
   }
  
   function computeColWidths(headers: string[], rows: string[][]): number[] {
@@ -75,7 +83,7 @@ export default function CsvReaderScreen() {
   async function pickFile() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'application/vnd.ms-excel', 'text/comma-separated-values', '*/*'],
+        type: ['text/csv', 'text/comma-separated-values'],
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets?.[0]) return;
@@ -96,6 +104,8 @@ export default function CsvReaderScreen() {
       setColWidths(computeColWidths(data.headers, data.rows));
       setCsvData(data);
       setFileName(name);
+      setFilePath(path);
+      setProcessedRows(data.rows.map((row, i) => ({ row, originalIndex: i })));
     } catch (e: any) {
       Alert.alert('Parse failed', e?.message ?? 'Could not read this CSV.');
     } finally {
@@ -103,27 +113,21 @@ export default function CsvReaderScreen() {
     }
   }
  
-  const processedRows = React.useMemo(() => {
-    if (!csvData) return [];
-    let rows = csvData.rows.map((row, i) => ({ row, originalIndex: i }));
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      rows = rows.filter(({ row }) =>
-        searchCol !== null
-          ? (row[searchCol] ?? '').toLowerCase().includes(q)
-          : row.some(cell => cell.toLowerCase().includes(q))
-      );
-    }
-    if (sortCol !== null && sortDir !== null) {
-      rows = [...rows].sort((a, b) => {
-        const av = a.row[sortCol] ?? '', bv = b.row[sortCol] ?? '';
-        const an = parseFloat(av), bn = parseFloat(bv);
-        const cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : av.localeCompare(bv);
-        return sortDir === 'asc' ? cmp : -cmp;
-      });
-    }
-    return rows;
-  }, [csvData, search, searchCol, sortCol, sortDir]);
+  // Native filter with 150ms debounce
+  useEffect(() => {
+    if (!csvData || !filePath) return;
+    selectedRowsRef.current = new Set();
+    setSelectionVersion(v => v + 1);
+    if (filterDebounce.current) clearTimeout(filterDebounce.current);
+    filterDebounce.current = setTimeout(async () => {
+      try {
+        const result = await filterCsv(filePath, search, searchCol ?? -1, sortCol ?? -1, sortDir ?? 'none');
+        setProcessedRows(result.rows.map((row, i) => ({ row, originalIndex: i })));
+      } catch {} finally {
+      }
+    }, 150);
+    return () => { if (filterDebounce.current) clearTimeout(filterDebounce.current); };
+  }, [csvData, filePath, search, searchCol, sortCol, sortDir]);
  
   function handleHeaderPress(i: number) {
     if (sortCol === i) {
@@ -157,11 +161,15 @@ export default function CsvReaderScreen() {
   async function exportCsv(folderPath: string) {
     if (!csvData) return;
     try {
-      const rowsToExport = (search.trim() || sortCol !== null)
-        ? processedRows.map(({ row }) => row.join(csvData.delimiter))
-        : csvData.rows.map(r => r.join(csvData.delimiter));
+        const rowsToExport = selectedRowsRef.current.size > 0
+        ? [...selectedRowsRef.current].sort((a, b) => a - b).map(i => csvData.rows[i]?.join(csvData.delimiter) ?? '')
+        : (search.trim() || sortCol !== null)
+          ? processedRows.map(({ row }) => row.join(csvData.delimiter))
+          : csvData.rows.map(r => r.join(csvData.delimiter));
       const content = [csvData.headers.join(csvData.delimiter), ...rowsToExport].join('\n');
-      const outputPath = `${folderPath}/${fileName.replace(/\.[^.]+$/, '')}_export_${Date.now()}.csv`;
+      const decodedFolder = toPath(folderPath);
+      const outputPath = `${decodedFolder}/${fileName.replace(/\.[^.]+$/, '')}_export_${Date.now()}.csv`;
+      if (!(await RNFS.exists(decodedFolder))) await RNFS.mkdir(decodedFolder);
       await RNFS.writeFile(outputPath, content, 'utf8');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Exported', `Saved to ${folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}`);
@@ -182,7 +190,6 @@ export default function CsvReaderScreen() {
     return (
       <TouchableOpacity
         onPress={() => toggleRow(originalIndex)}
-        onLongPress={() => copyCell(row[0] ?? '')}
         activeOpacity={0.7}
         style={{ flexDirection: 'row', height: ROW_HEIGHT, backgroundColor: rowBg }}
       >
@@ -334,9 +341,9 @@ export default function CsvReaderScreen() {
         visible={exportPickerVisible}
         onClose={() => setExportPickerVisible(false)}
         onSave={(folderPath) => { setExportPickerVisible(false); exportCsv(folderPath); }}
-        defaultPath="/storage/emulated/0/Downloads"
-        defaultLabel="Downloads"
-        defaultSubLabel="Default export location"
+        defaultPath="/storage/emulated/0/Download"
+        defaultLabel="Download"
+        defaultSubLabel="Default save location"
         title="Export CSV"
       />
     </SafeAreaView>
