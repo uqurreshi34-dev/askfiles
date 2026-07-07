@@ -159,25 +159,39 @@ export default function CsvReaderScreen() {
   async function handleHeaderLongPress(colIndex: number) {
     if (!csvData || !filePath) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const indices = selectedRowsRef.current.size > 0
-      ? [...selectedRowsRef.current]
-      : [];
+    const colName = csvData.headers[colIndex];
+    const indices = selectedRowsRef.current.size > 0 ? [...selectedRowsRef.current] : [];
     const result = await analyzeColumn(filePath, colIndex, indices);
-    if (!result.isNumeric) {
-      Alert.alert('Not numeric', `"${csvData.headers[colIndex]}" doesn't contain numeric data.`);
-      return;
+
+    const buttons: any[] = [
+      {
+        text: 'Copy column',
+        onPress: () => copyColumn(colIndex),
+      },
+    ];
+
+    if (result.isNumeric) {
+      const scope = indices.length > 0 ? `${indices.length} selected rows` : `${processedRows.length} visible rows`;
+      buttons.push({
+        text: 'Analyse',
+        onPress: () => {
+          setAnalysisColName(`${colName} — ${scope}`);
+          setAnalysisData([
+            { label: 'Count', value: String(result.count) },
+            { label: 'Sum', value: result.sum! },
+            { label: 'Average', value: result.avg! },
+            { label: 'Min', value: result.min! },
+            { label: 'Max', value: result.max! },
+            { label: 'Std Deviation', value: result.stdDev! },
+          ]);
+          setAnalysisVisible(true);
+        },
+      });
     }
-    const scope = indices.length > 0 ? `${indices.length} selected rows` : `${processedRows.length} visible rows`;
-    setAnalysisColName(`${csvData.headers[colIndex]} — ${scope}`);
-    setAnalysisData([
-      { label: 'Count', value: String(result.count) },
-      { label: 'Sum', value: result.sum! },
-      { label: 'Average', value: result.avg! },
-      { label: 'Min', value: result.min! },
-      { label: 'Max', value: result.max! },
-      { label: 'Std Deviation', value: result.stdDev! },
-    ]);
-    setAnalysisVisible(true);
+
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert(colName, 'Choose an action for this column', buttons);
   }
  
   function toggleRow(originalIndex: number) {
@@ -196,6 +210,14 @@ export default function CsvReaderScreen() {
     Alert.alert('Copied', `${rows.length} row${rows.length !== 1 ? 's' : ''} copied.`);
   }
  
+  function copyColumn(colIndex: number) {
+    if (!csvData) return;
+    const values = processedRows.map(({ row }) => row[colIndex] ?? '');
+    Clipboard.setString(values.join('\n'));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('Copied', `${values.length} values from "${csvData.headers[colIndex]}" copied.`);
+  }
+
   async function exportCsv(folderPath: string) {
     if (!csvData) return;
     try {
