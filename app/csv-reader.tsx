@@ -63,6 +63,9 @@ export default function CsvReaderScreen() {
   const [chartValueCol, setChartValueCol] = useState<number>(0);
   const [chartData, setChartData] = useState<GroupSumResult[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  const [colActionVisible, setColActionVisible] = useState(false);
+  const [colActionButtons, setColActionButtons] = useState<{ text: string; onPress: () => void }[]>([]);
+  const [colActionTitle, setColActionTitle] = useState('');
   const { height: SCREEN_HEIGHT } = useWindowDimensions();
 
   const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
@@ -209,7 +212,9 @@ export default function CsvReaderScreen() {
 
     buttons.push({ text: 'Cancel', style: 'cancel' });
 
-    Alert.alert(colName, 'Choose an action for this column', buttons);
+    setColActionTitle(colName);
+    setColActionButtons(buttons.filter(b => b.onPress));
+    setColActionVisible(true);
   }
  
   async function loadChart(groupCol: number, valueCol: number) {
@@ -560,6 +565,29 @@ export default function CsvReaderScreen() {
                 )}
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+       <Modal visible={colActionVisible} transparent animationType="fade" onRequestClose={() => setColActionVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.2 : 24 }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setColActionVisible(false)} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{colActionTitle}</Text>
+              <TouchableOpacity onPress={() => setColActionVisible(false)}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {colActionButtons.map((btn, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => { setColActionVisible(false); btn.onPress(); }}
+                style={{ paddingVertical: 14, borderTopWidth: i === 0 ? 0 : 0.5, borderTopColor: colors.border }}
+              >
+                <Text style={{ fontSize: 15, color: colors.blue, fontWeight: '500' }}>{btn.text}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </Modal>
