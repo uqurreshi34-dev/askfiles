@@ -1,0 +1,18 @@
+<lint-module
+    format="1"
+    dir="C:\Users\uqurr\Projects\askfiles\modules\csv-reader\android"
+    name=":csv-reader"
+    type="LIBRARY"
+    maven="expo.modules.csvreader:csv-reader:"
+    agpVersion="8.11.0"
+    buildFolder="build"
+    bootClassPath="C:\Users\uqurr\AppData\Local\Android\Sdk\platforms\android-35\android.jar;C:\Users\uqurr\AppData\Local\Android\Sdk\build-tools\35.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-35"
+    neverShrinking="true">
+  <lintOptions
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

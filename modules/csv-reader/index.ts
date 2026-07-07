@@ -34,6 +34,6 @@ export async function evictCache(path: string): Promise<void> {
     return CsvReader.evictCache(path);
 }
 
-export async function resolveContentUri(uri: string): Promise<string | null> {
-    return CsvReader.resolveContentUri(uri);
-  }
+export async function resolveContentUri(uri: string): Promise<{ path: string; name: string } | null> {
+  return CsvReader.resolveContentUri(uri);
+}

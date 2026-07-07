@@ -59,14 +59,13 @@ export default function CsvReaderScreen() {
 
   const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
 
-useEffect(() => {
-  if (!incomingUri) return;
-  const uri = decodeURIComponent(incomingUri);
-  const name = uri.split('/').pop()?.split('%2F').pop() ?? 'file.csv';
-  resolveContentUri(uri).then(path => {
-    if (path) loadCsv(path, name);
-  }).catch(() => {});
-}, [incomingUri]);
+  useEffect(() => {
+    if (!incomingUri) return;
+    const uri = decodeURIComponent(incomingUri);
+    resolveContentUri(uri).then(result => {
+      if (result) loadCsv(result.path, result.name);
+    }).catch(() => {});
+  }, [incomingUri]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
