@@ -82,6 +82,23 @@ class CsvReaderModule : Module() {
             )
         }
 
+        AsyncFunction("resolveContentUri") { uriString: String ->
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
+            val uri = android.net.Uri.parse(uriString)
+            val cacheFile = java.io.File(ctx.cacheDir, "pending_import.csv")
+            ctx.contentResolver.openInputStream(uri)?.use { input ->
+                cacheFile.outputStream().buffered(65536).use { output ->
+                    val buffer = ByteArray(65536)
+                    var bytesRead: Int
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                    }
+                    output.flush()
+                }
+            }
+            cacheFile.absolutePath
+        }
+
         // Filter against in-memory cache — no file re-read
         AsyncFunction("filterCsv") { path: String, query: String, colIndex: Int, sortColIndex: Int, sortDirection: String ->
             val c = cache

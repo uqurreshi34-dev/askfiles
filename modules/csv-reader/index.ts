@@ -28,8 +28,12 @@ export async function parseCsv(path: string): Promise<CsvData> {
 
 export async function filterCsv(path: string, query: string, colIndex: number, sortColIndex: number, sortDirection: string): Promise<CsvData & { cacheHit: boolean }> {
     return CsvReader.filterCsv(path, query, colIndex, sortColIndex, sortDirection);
-  }
+}
   
-  export async function evictCache(path: string): Promise<void> {
+export async function evictCache(path: string): Promise<void> {
     return CsvReader.evictCache(path);
+}
+
+export async function resolveContentUri(uri: string): Promise<string | null> {
+    return CsvReader.resolveContentUri(uri);
   }

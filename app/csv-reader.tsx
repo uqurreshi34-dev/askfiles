@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  StyleSheet, Text, View, TouchableOpacity,
+  Text, View, TouchableOpacity,
   ActivityIndicator, Alert, ScrollView, TextInput,
   FlatList, useWindowDimensions, BackHandler,
 } from 'react-native';
@@ -11,12 +11,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/hooks/useTheme';
-import { parseCsv, filterCsv, evictCache, analyzeColumn, CsvData, ColumnAnalysis } from '@/modules/csv-reader';
+import { parseCsv, filterCsv, evictCache, analyzeColumn, resolveContentUri, CsvData } from '@/modules/csv-reader';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import * as Haptics from 'expo-haptics';
 import RNFS from 'react-native-fs';
 import { toPath } from '@/utils/files';
+import { useLocalSearchParams } from 'expo-router';
 
  
 const MIN_COL_WIDTH = 90;
@@ -52,7 +53,18 @@ export default function CsvReaderScreen() {
   const [analysisVisible, setAnalysisVisible] = useState(false);
   const [analysisData, setAnalysisData] = useState<{ label: string; value: string }[]>([]);
   const [analysisColName, setAnalysisColName] = useState('');
- 
+
+  const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
+
+useEffect(() => {
+  if (!incomingUri) return;
+  const uri = decodeURIComponent(incomingUri);
+  const name = uri.split('/').pop()?.split('%2F').pop() ?? 'file.csv';
+  resolveContentUri(uri).then(path => {
+    if (path) loadCsv(path, name);
+  }).catch(() => {});
+}, [incomingUri]);
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (csvData) { resetState(); return true; }
@@ -397,33 +409,3 @@ export default function CsvReaderScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 32 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 40 },
-  startIcon: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  startTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
-  startSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  pickBtn: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
-  pickBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-  searchRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 6, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1 },
-  searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
-  pillRow: { paddingHorizontal: 16, paddingVertical: 6, gap: 6, flexDirection: 'row', alignItems: 'center' },
-  pill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  pillText: { fontSize: 12, fontWeight: '500' },
-  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6, borderBottomWidth: 1 },
-  statsText: { fontSize: 11, fontWeight: '500' },
-  selectionActions: { flexDirection: 'row', alignItems: 'center' },
-  headerScrollRow: { height: HEADER_HEIGHT, borderBottomWidth: 1 },
-  headerCell: { height: HEADER_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRightWidth: 1 },
-  headerText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
-  row: { flexDirection: 'row' },
-  cell: { justifyContent: 'center', paddingHorizontal: 12, borderRightWidth: 1 },
-  cellText: { fontSize: 13 },
-  emptyRows: { paddingVertical: 40, alignItems: 'center' },
-  emptyText: { fontSize: 14 },
-});
