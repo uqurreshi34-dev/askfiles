@@ -1,0 +1,14 @@
+{
+    "name": "chart-view",
+    "version": "1.0.0",
+    "description": "Native Kotlin Canvas chart view for AskFiles CSV reader",
+    "main": "index.ts",
+    "types": "index.ts",
+    "keywords": ["expo", "expo-module"],
+    "license": "MIT",
+    "peerDependencies": {
+      "expo": "*",
+      "react": "*",
+      "react-native": "*"
+    }
+  }

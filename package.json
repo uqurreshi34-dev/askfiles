@@ -68,6 +68,7 @@
     "media-viewer": "file:modules/media-viewer",
     "pane-selection": "file:modules/pane-selection",
     "pdf-creator": "file:modules/pdf-creator",
+    "chart-view": "file:modules/chart-view",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-device-info": "^15.0.2",

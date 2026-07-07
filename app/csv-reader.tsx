@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Text, View, TouchableOpacity,
   ActivityIndicator, Alert, ScrollView, TextInput,
@@ -11,13 +11,15 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/hooks/useTheme';
-import { parseCsv, filterCsv, evictCache, analyzeColumn, resolveContentUri, CsvData } from '@/modules/csv-reader';
+import { parseCsv, filterCsv, evictCache, analyzeColumn, resolveContentUri, groupAndSum, CsvData, GroupSumResult } from '@/modules/csv-reader';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import * as Haptics from 'expo-haptics';
 import RNFS from 'react-native-fs';
 import { toPath } from '@/utils/files';
 import { useLocalSearchParams } from 'expo-router';
+import { Modal } from 'react-native';
+import { ChartView } from '@/modules/chart-view';
 
  
 const MIN_COL_WIDTH = 90;
@@ -56,6 +58,12 @@ export default function CsvReaderScreen() {
   const [analysisData, setAnalysisData] = useState<{ label: string; value: string }[]>([]);
   const [analysisColName, setAnalysisColName] = useState('');
   const [freezeCol, setFreezeCol] = useState(false);
+  const [chartVisible, setChartVisible] = useState(false);
+  const [chartGroupCol, setChartGroupCol] = useState<number>(0);
+  const [chartValueCol, setChartValueCol] = useState<number>(0);
+  const [chartData, setChartData] = useState<GroupSumResult[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
 
   const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
 
@@ -173,6 +181,16 @@ export default function CsvReaderScreen() {
     if (result.isNumeric) {
       const scope = indices.length > 0 ? `${indices.length} selected rows` : `${processedRows.length} visible rows`;
       buttons.push({
+        text: 'Chart',
+        onPress: () => {
+          const groupCol = colIndex === 0 ? 1 : 0;
+          setChartGroupCol(groupCol);
+          setChartValueCol(colIndex);
+          setChartVisible(true);
+          loadChart(groupCol, colIndex);
+        },
+      });
+      buttons.push({
         text: 'Analyse',
         onPress: () => {
           setAnalysisColName(`${colName} — ${scope}`);
@@ -194,6 +212,17 @@ export default function CsvReaderScreen() {
     Alert.alert(colName, 'Choose an action for this column', buttons);
   }
  
+  async function loadChart(groupCol: number, valueCol: number) {
+    if (!filePath) return;
+    setChartLoading(true);
+    try {
+      const data = await groupAndSum(filePath, groupCol, valueCol);
+      setChartData(data);
+    } catch {} finally {
+      setChartLoading(false);
+    }
+  }
+
   function toggleRow(originalIndex: number) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const next = new Set(selectedRowsRef.current);
@@ -240,27 +269,6 @@ export default function CsvReaderScreen() {
  
   const totalWidth = Math.max(colWidths.reduce((a, b) => a + b, 0), SCREEN_WIDTH);
   const selectedCount = selectedRowsRef.current.size;
- 
-  const renderRow = useCallback(({ item, index }: { item: { row: string[]; originalIndex: number }; index: number }) => {
-    const { row, originalIndex } = item;
-    const isSelected = selectedRowsRef.current.has(originalIndex);
-    const rowBg = isSelected
-      ? (dark ? '#0D2A47' : '#E6F1FB')
-      : index % 2 === 0 ? colors.background : colors.surface;
-    return (
-      <TouchableOpacity
-        onPress={() => toggleRow(originalIndex)}
-        activeOpacity={0.7}
-        style={{ flexDirection: 'row', height: ROW_HEIGHT, backgroundColor: rowBg }}
-      >
-        {colWidths.map((w, ci) => (
-          <View key={ci} style={{ width: w, height: ROW_HEIGHT, justifyContent: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.divider }}>
-            <Text style={{ fontSize: 13, color: colors.textPrimary }} numberOfLines={1}>{row[ci] ?? ''}</Text>
-          </View>
-        ))}
-      </TouchableOpacity>
-    );
-  }, [colWidths, selectionVersion, colors, dark]);
  
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -493,6 +501,68 @@ export default function CsvReaderScreen() {
           </View>
         </View>
       )}
+       <Modal visible={chartVisible} transparent animationType="fade" onRequestClose={() => setChartVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.1 : 16, paddingVertical: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_HEIGHT * 0.05 : 32 }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setChartVisible(false)} />
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, width: '100%', maxHeight: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_HEIGHT * 0.9 : SCREEN_HEIGHT * 0.8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Chart</Text>
+              <TouchableOpacity onPress={() => setChartVisible(false)}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {csvData && (
+              <>
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Group by</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
+                    {csvData.headers.map((h, i) => (
+                      <TouchableOpacity key={i} onPress={() => { setChartGroupCol(i); loadChart(i, chartValueCol); }}
+                        style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: chartGroupCol === i ? colors.yellow : colors.surface, borderWidth: 1, borderColor: colors.border }}>
+                        <Text style={{ fontSize: 12, fontWeight: '500', color: chartGroupCol === i ? '#000' : colors.textMuted }} numberOfLines={1}>{h}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Value (sum)</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
+                    {csvData.headers.map((h, i) => {
+                      const isNumeric = processedRows.slice(0, 5).filter(({ row }) => !isNaN(parseFloat(row[i] ?? ''))).length >= 3;
+                      if (!isNumeric) return null;
+                      return (
+                        <TouchableOpacity key={i} onPress={() => { setChartValueCol(i); loadChart(chartGroupCol, i); }}
+                          style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: chartValueCol === i ? colors.blue : colors.surface, borderWidth: 1, borderColor: colors.border }}>
+                          <Text style={{ fontSize: 12, fontWeight: '500', color: chartValueCol === i ? '#fff' : colors.textMuted }} numberOfLines={1}>{h}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+                {chartLoading ? (
+                  <ActivityIndicator color={colors.blue} style={{ marginVertical: 40 }} />
+                ) : chartData.length > 0 ? (
+                  <>
+                    <ScrollView style={{ maxHeight: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_HEIGHT * 0.5 : SCREEN_HEIGHT * 0.4 }}>
+                      <ChartView
+                        xLabels={chartData.map(d => d.label)}
+                        yValues={chartData.map(d => d.value)}
+                        chartType="bar"
+                        style={{ width: '100%', height: chartData.length * 48 + 16, borderRadius: 12, backgroundColor: colors.surface }}
+                      />
+                    </ScrollView>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, textAlign: 'center' }}>
+                      Top {chartData.length} groups by total
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', marginVertical: 40 }}>No data</Text>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
        <FileDetailsModal
         visible={analysisVisible}
         name={analysisColName}

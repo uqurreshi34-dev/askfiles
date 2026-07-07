@@ -157,6 +157,25 @@ class CsvReaderModule : Module() {
             )
         }
 
+        AsyncFunction("groupAndSum") { path: String, groupColIndex: Int, valueColIndex: Int ->
+            val c = cache
+            if (c == null || c.path != path) return@AsyncFunction emptyList<Map<String, Any>>()
+
+            // Group rows by groupCol, sum valueCol per group
+            val groups = mutableMapOf<String, Double>()
+            for (row in c.rows) {
+                val key = (row.getOrNull(groupColIndex) ?: "").trim().ifEmpty { "(empty)" }
+                val value = (row.getOrNull(valueColIndex) ?: "").toDoubleOrNull() ?: 0.0
+                groups[key] = (groups[key] ?: 0.0) + value
+            }
+
+            // Sort by value descending, cap at 20 groups
+            groups.entries
+                .sortedByDescending { it.value }
+                .take(20)
+                .map { mapOf("label" to it.key, "value" to it.value) }
+        }
+
         // Call from JS when user exits CSV reader to free memory
         AsyncFunction("evictCache") { _: String ->
             cache = null

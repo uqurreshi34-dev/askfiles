@@ -17,6 +17,15 @@ export interface ColumnAnalysis {
     max?: string;
     stdDev?: string;
   }
+
+  export interface GroupSumResult {
+    label: string;
+    value: number;
+  }
+  
+  export async function groupAndSum(path: string, groupColIndex: number, valueColIndex: number): Promise<GroupSumResult[]> {
+    return CsvReader.groupAndSum(path, groupColIndex, valueColIndex);
+  }
   
 export async function analyzeColumn(path: string, colIndex: number, selectedIndices: number[]): Promise<ColumnAnalysis> {
 return CsvReader.analyzeColumn(path, colIndex, selectedIndices);
