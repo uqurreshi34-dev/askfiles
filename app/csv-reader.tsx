@@ -247,7 +247,7 @@ useEffect(() => {
     <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, backgroundColor: colors.background }}>
-        <TouchableOpacity onPress={() => { if (csvData) resetState(); else router.back(); }} style={{ width: 40, height: 40, justifyContent: 'center' }}>
+       <TouchableOpacity onPress={() => { if (csvData) resetState(); else if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); }} style={{ width: 40, height: 40, justifyContent: 'center' }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }} numberOfLines={1}>
