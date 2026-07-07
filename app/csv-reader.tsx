@@ -49,10 +49,13 @@ export default function CsvReaderScreen() {
   const [filePath, setFilePath] = useState('');
   const [processedRows, setProcessedRows] = useState<{ row: string[]; originalIndex: number }[]>([]);
   const filterDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const frozenListRef = useRef<any>(null);
+  const mainListRef = useRef<any>(null);
 
   const [analysisVisible, setAnalysisVisible] = useState(false);
   const [analysisData, setAnalysisData] = useState<{ label: string; value: string }[]>([]);
   const [analysisColName, setAnalysisColName] = useState('');
+  const [freezeCol, setFreezeCol] = useState(false);
 
   const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
 
@@ -86,6 +89,7 @@ useEffect(() => {
     setSelectionVersion(0);
     setColWidths([]);
     setProcessedRows([]);
+    setFreezeCol(false);
   }
  
   function computeColWidths(headers: string[], rows: string[][]): number[] {
@@ -193,12 +197,6 @@ useEffect(() => {
     Alert.alert('Copied', `${rows.length} row${rows.length !== 1 ? 's' : ''} copied.`);
   }
  
-  function copyCell(value: string) {
-    Clipboard.setString(value);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Copied', `"${value.length > 40 ? value.slice(0, 40) + '…' : value}" copied.`);
-  }
- 
   async function exportCsv(folderPath: string) {
     if (!csvData) return;
     try {
@@ -254,9 +252,17 @@ useEffect(() => {
           {csvData ? fileName : 'CSV Reader'}
         </Text>
         {csvData ? (
-          <TouchableOpacity style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' }} onPress={() => setExportPickerVisible(true)}>
-            <Ionicons name="download-outline" size={22} color={colors.blue} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={{ width: 36, height: 40, justifyContent: 'center', alignItems: 'center' }}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFreezeCol(f => !f); }}
+            >
+              <Ionicons name={freezeCol ? 'lock-closed' : 'lock-open-outline'} size={20} color={freezeCol ? colors.blue : colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' }} onPress={() => setExportPickerVisible(true)}>
+              <Ionicons name="download-outline" size={22} color={colors.blue} />
+            </TouchableOpacity>
+          </View>
         ) : <View style={{ width: 40 }} />}
       </View>
  
@@ -349,45 +355,121 @@ useEffect(() => {
             </View>
           </View>
  
-          {/* Table — single horizontal ScrollView wrapping frozen header + FlatList */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ width: totalWidth, flexDirection: 'column' }}>
-            {/* Frozen header */}
-            <View style={{ flexDirection: 'row', height: HEADER_HEIGHT, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
-              {csvData.headers.map((h, i) => (
+          {/* Table — frozen col-0 panel + scrollable panel */}
+          <View style={{ flex: 1, flexDirection: 'row' }}>
+            {/* Frozen col-0 */}
+            {freezeCol && colWidths.length > 0 && (
+              <View style={{ width: colWidths[0], borderRightWidth: 2, borderRightColor: colors.blue }}>
+                {/* Frozen col-0 header */}
                 <TouchableOpacity
-                  key={i}
-                  style={{ width: colWidths[i], height: HEADER_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.divider }}
-                  onPress={() => handleHeaderPress(i)}
-                  onLongPress={() => handleHeaderLongPress(i)}
+                  style={{ height: HEADER_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider }}
+                  onPress={() => handleHeaderPress(0)}
+                  onLongPress={() => handleHeaderLongPress(0)}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.2 }} numberOfLines={1}>{h}</Text>
-                  {sortCol === i && (
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.blue, letterSpacing: 0.2 }} numberOfLines={1}>{csvData.headers[0]}</Text>
+                  {sortCol === 0 && (
                     <Ionicons name={sortDir === 'asc' ? 'chevron-up' : 'chevron-down'} size={12} color={colors.blue} style={{ marginLeft: 4 }} />
                   )}
                 </TouchableOpacity>
-              ))}
-            </View>
- 
-            {/* Data rows */}
-            <FlatList
-              data={processedRows}
-              keyExtractor={(item) => String(item.originalIndex)}
-              renderItem={renderRow}
-              extraData={selectionVersion}
-              getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
-              initialNumToRender={30}
-              maxToRenderPerBatch={30}
-              windowSize={15}
-              removeClippedSubviews={true}
-              showsVerticalScrollIndicator={true}
-              ListEmptyComponent={
-                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, color: colors.textMuted }}>No results found</Text>
-                </View>
-              }
-            />
-          </ScrollView>
+                {/* Frozen col-0 data */}
+                <FlatList
+                  data={processedRows}
+                  keyExtractor={(item) => String(item.originalIndex)}
+                  extraData={selectionVersion}
+                  getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
+                  initialNumToRender={30}
+                  maxToRenderPerBatch={30}
+                  windowSize={15}
+                  removeClippedSubviews={true}
+                  ref={frozenListRef}
+                  showsVerticalScrollIndicator={false}
+                  scrollEnabled={false}
+                  renderItem={({ item, index }) => {
+                    const isSelected = selectedRowsRef.current.has(item.originalIndex);
+                    const rowBg = isSelected ? (dark ? '#0D2A47' : '#E6F1FB') : index % 2 === 0 ? colors.background : colors.surface;
+                    return (
+                      <TouchableOpacity onPress={() => toggleRow(item.originalIndex)} activeOpacity={0.7}
+                        style={{ height: ROW_HEIGHT, backgroundColor: rowBg, justifyContent: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.divider }}>
+                        <Text style={{ fontSize: 13, color: colors.blue, fontWeight: '500' }} numberOfLines={1}>{item.row[0] ?? ''}</Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              </View>
+            )}
+
+            {/* Scrollable columns */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
+              contentContainerStyle={{ width: freezeCol ? colWidths.slice(1).reduce((a, b) => a + b, 0) : totalWidth, flexDirection: 'column' }}>
+              {/* Header row */}
+              <View style={{ flexDirection: 'row', height: HEADER_HEIGHT, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                {csvData.headers.map((h, i) => {
+                  if (freezeCol && i === 0) return null;
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      style={{ width: colWidths[i], height: HEADER_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.divider }}
+                      onPress={() => handleHeaderPress(i)}
+                      onLongPress={() => handleHeaderLongPress(i)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.2 }} numberOfLines={1}>{h}</Text>
+                      {sortCol === i && (
+                        <Ionicons name={sortDir === 'asc' ? 'chevron-up' : 'chevron-down'} size={12} color={colors.blue} style={{ marginLeft: 4 }} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Data rows */}
+              <FlatList
+                ref={mainListRef}
+                data={processedRows}
+                keyExtractor={(item) => String(item.originalIndex)}
+                extraData={selectionVersion}
+                getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
+                initialNumToRender={30}
+                maxToRenderPerBatch={30}
+                windowSize={15}
+                removeClippedSubviews={true}
+                showsVerticalScrollIndicator={true}
+                onScroll={(e) => {
+                  if (freezeCol) {
+                    frozenListRef.current?.scrollToOffset({
+                      offset: e.nativeEvent.contentOffset.y,
+                      animated: false,
+                    });
+                  }
+                }}
+                scrollEventThrottle={16}
+                renderItem={({ item, index }) => {
+                  const { row, originalIndex } = item;
+                  const isSelected = selectedRowsRef.current.has(originalIndex);
+                  const rowBg = isSelected ? (dark ? '#0D2A47' : '#E6F1FB') : index % 2 === 0 ? colors.background : colors.surface;
+                  return (
+                    <TouchableOpacity onPress={() => toggleRow(originalIndex)} activeOpacity={0.7}
+                      style={{ flexDirection: 'row', height: ROW_HEIGHT, backgroundColor: rowBg }}>
+                      {colWidths.map((w, ci) => {
+                        if (freezeCol && ci === 0) return null;
+                        return (
+                          <View key={ci} style={{ width: w, height: ROW_HEIGHT, justifyContent: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.divider }}>
+                            <Text style={{ fontSize: 13, color: colors.textPrimary }} numberOfLines={1}>{row[ci] ?? ''}</Text>
+                          </View>
+                        );
+                      })}
+                    </TouchableOpacity>
+                  );
+                }}
+                ListEmptyComponent={
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, color: colors.textMuted }}>No results found</Text>
+                  </View>
+                }
+              />
+            </ScrollView>
+          </View>
         </View>
       )}
        <FileDetailsModal
