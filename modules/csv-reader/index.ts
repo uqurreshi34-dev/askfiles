@@ -8,6 +8,20 @@ export interface CsvData {
   delimiter: string;
 }
 
+export interface ColumnAnalysis {
+    isNumeric: boolean;
+    count?: number;
+    sum?: string;
+    avg?: string;
+    min?: string;
+    max?: string;
+    stdDev?: string;
+  }
+  
+export async function analyzeColumn(path: string, colIndex: number, selectedIndices: number[]): Promise<ColumnAnalysis> {
+return CsvReader.analyzeColumn(path, colIndex, selectedIndices);
+}
+
 export async function parseCsv(path: string): Promise<CsvData> {
   return CsvReader.parseCsv(path);
 }

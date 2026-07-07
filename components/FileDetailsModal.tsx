@@ -13,9 +13,10 @@ interface Props {
   name: string;
   data: DetailRow[];
   onClose: () => void;
+  title?: string;
 }
 
-export default function FileDetailsModal({ visible, name, data, onClose }: Props) {
+export default function FileDetailsModal({ visible, name, data, onClose, title }: Props) {
   const { colors } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
@@ -25,7 +26,7 @@ export default function FileDetailsModal({ visible, name, data, onClose }: Props
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
         <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%', maxHeight: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_HEIGHT * 0.8 : SCREEN_HEIGHT * 0.9 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>File Info</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{title ?? 'File Info'}</Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>

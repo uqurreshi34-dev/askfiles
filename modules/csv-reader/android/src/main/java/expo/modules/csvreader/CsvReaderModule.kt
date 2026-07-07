@@ -135,6 +135,61 @@ class CsvReaderModule : Module() {
             cache = null
             mapOf("evicted" to true)
         }
+
+        AsyncFunction("analyzeColumn") { path: String, colIndex: Int, selectedIndices: List<Int> ->
+            val c = cache
+            if (c == null || c.path != path) {
+                return@AsyncFunction mapOf("isNumeric" to false)
+            }
+
+            // Use selected indices if provided, otherwise all cached rows
+            val targetRows = if (selectedIndices.isNotEmpty())
+                selectedIndices.mapNotNull { c.rows.getOrNull(it) }
+            else c.rows
+
+            if (targetRows.isEmpty()) return@AsyncFunction mapOf("isNumeric" to false)
+
+            // Numeric detection — check first 50 rows, 80%+ must parse as Double
+            val sample = targetRows.take(50)
+            val sampleNumeric = sample.count { row ->
+                (row.getOrNull(colIndex) ?: "").toDoubleOrNull() != null
+            }
+            if (sampleNumeric < sample.size * 0.8) {
+                return@AsyncFunction mapOf("isNumeric" to false)
+            }
+
+            // Parse all values
+            val values = targetRows.mapNotNull { row ->
+                (row.getOrNull(colIndex) ?: "").toDoubleOrNull()
+            }
+
+            if (values.isEmpty()) return@AsyncFunction mapOf("isNumeric" to false)
+
+            val count = values.size
+            val sum = values.sum()
+            val avg = sum / count
+            val min = values.min()
+            val max = values.max()
+
+            // Population standard deviation
+            val variance = values.sumOf { (it - avg) * (it - avg) } / count
+            val stdDev = kotlin.math.sqrt(variance)
+
+            fun fmt(n: Double): String {
+                return if (n % 1.0 == 0.0) "%.0f".format(n)
+                else "%.2f".format(n)
+            }
+
+            mapOf(
+                "isNumeric" to true,
+                "count" to count,
+                "sum" to fmt(sum),
+                "avg" to fmt(avg),
+                "min" to fmt(min),
+                "max" to fmt(max),
+                "stdDev" to fmt(stdDev)
+            )
+        }
     }
 
     private fun parseLine(line: String, delimiter: String): List<String> {

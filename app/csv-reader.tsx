@@ -11,12 +11,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/hooks/useTheme';
-import { parseCsv, filterCsv, evictCache, CsvData } from '@/modules/csv-reader';
+import { parseCsv, filterCsv, evictCache, analyzeColumn, CsvData, ColumnAnalysis } from '@/modules/csv-reader';
+import FileDetailsModal from '@/components/FileDetailsModal';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import * as Haptics from 'expo-haptics';
 import RNFS from 'react-native-fs';
 import { toPath } from '@/utils/files';
-import { getStorageVolumes } from '@/modules/storage-stats';
+
  
 const MIN_COL_WIDTH = 90;
 const MAX_COL_WIDTH = 220;
@@ -47,6 +48,10 @@ export default function CsvReaderScreen() {
   const [filePath, setFilePath] = useState('');
   const [processedRows, setProcessedRows] = useState<{ row: string[]; originalIndex: number }[]>([]);
   const filterDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [analysisVisible, setAnalysisVisible] = useState(false);
+  const [analysisData, setAnalysisData] = useState<{ label: string; value: string }[]>([]);
+  const [analysisColName, setAnalysisColName] = useState('');
  
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -134,6 +139,30 @@ export default function CsvReaderScreen() {
       if (sortDir === 'asc') setSortDir('desc');
       else { setSortCol(null); setSortDir(null); }
     } else { setSortCol(i); setSortDir('asc'); }
+  }
+
+  async function handleHeaderLongPress(colIndex: number) {
+    if (!csvData || !filePath) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const indices = selectedRowsRef.current.size > 0
+      ? [...selectedRowsRef.current]
+      : [];
+    const result = await analyzeColumn(filePath, colIndex, indices);
+    if (!result.isNumeric) {
+      Alert.alert('Not numeric', `"${csvData.headers[colIndex]}" doesn't contain numeric data.`);
+      return;
+    }
+    const scope = indices.length > 0 ? `${indices.length} selected rows` : `${processedRows.length} visible rows`;
+    setAnalysisColName(`${csvData.headers[colIndex]} — ${scope}`);
+    setAnalysisData([
+      { label: 'Count', value: String(result.count) },
+      { label: 'Sum', value: result.sum! },
+      { label: 'Average', value: result.avg! },
+      { label: 'Min', value: result.min! },
+      { label: 'Max', value: result.max! },
+      { label: 'Std Deviation', value: result.stdDev! },
+    ]);
+    setAnalysisVisible(true);
   }
  
   function toggleRow(originalIndex: number) {
@@ -283,17 +312,29 @@ export default function CsvReaderScreen() {
             <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textMuted }}>
               {processedRows.length} rows{search ? ' (filtered)' : ''} · {csvData.headers.length} cols
             </Text>
-            {selectedCount > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>{selectedCount} selected</Text>
-                <TouchableOpacity onPress={copySelectedRows} style={{ marginLeft: 12 }}>
-                  <Ionicons name="copy-outline" size={18} color={colors.blue} />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {selectedCount > 0 ? (
+                <>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>{selectedCount} selected</Text>
+                  <TouchableOpacity onPress={copySelectedRows} style={{ marginLeft: 12 }}>
+                    <Ionicons name="copy-outline" size={18} color={colors.blue} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { selectedRowsRef.current = new Set(); setSelectionVersion(v => v + 1); }} style={{ marginLeft: 10 }}>
+                    <Ionicons name="close-outline" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    selectedRowsRef.current = new Set(processedRows.map(r => r.originalIndex));
+                    setSelectionVersion(v => v + 1);
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>Select all</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => { selectedRowsRef.current = new Set(); setSelectionVersion(v => v + 1); }} style={{ marginLeft: 10 }}>
-                  <Ionicons name="close-outline" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </View>
           </View>
  
           {/* Table — single horizontal ScrollView wrapping frozen header + FlatList */}
@@ -305,6 +346,7 @@ export default function CsvReaderScreen() {
                   key={i}
                   style={{ width: colWidths[i], height: HEADER_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: colors.divider }}
                   onPress={() => handleHeaderPress(i)}
+                  onLongPress={() => handleHeaderLongPress(i)}
                   activeOpacity={0.7}
                 >
                   <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.2 }} numberOfLines={1}>{h}</Text>
@@ -336,7 +378,13 @@ export default function CsvReaderScreen() {
           </ScrollView>
         </View>
       )}
- 
+       <FileDetailsModal
+        visible={analysisVisible}
+        name={analysisColName}
+        data={analysisData}
+        onClose={() => setAnalysisVisible(false)}
+        title="Column Info"
+      />
       <FolderPickerModal
         visible={exportPickerVisible}
         onClose={() => setExportPickerVisible(false)}
