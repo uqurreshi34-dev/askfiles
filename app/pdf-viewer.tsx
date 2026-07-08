@@ -15,7 +15,7 @@ export default function PdfViewerScreen() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   const [pageCount, setPageCount] = useState(0);
