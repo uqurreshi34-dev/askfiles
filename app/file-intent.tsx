@@ -8,7 +8,7 @@ export default function FileIntentScreen() {
   const { uri, type } = useLocalSearchParams<{ uri?: string; type?: string }>();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const handle = setImmediate(() => {
       try {
         const pending = getPendingIntentType();
 
@@ -39,8 +39,8 @@ export default function FileIntentScreen() {
       } catch {
         router.replace('/(tabs)');
       }
-    }, 100);
-    return () => clearTimeout(timer);
+    });
+    return () => clearImmediate(handle);
   }, []);
 
   return (
