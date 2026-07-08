@@ -140,8 +140,11 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
             if (pageIndex < 0 || pageIndex >= renderer.pageCount) return@execute
 
             val page = renderer.openPage(pageIndex)
-            val density = context.resources.displayMetrics.density
-            val scale = density * 2f
+            val screenW = context.resources.displayMetrics.widthPixels
+            val screenH = context.resources.displayMetrics.heightPixels
+            val scaleX = screenW.toFloat() / page.width
+            val scaleY = screenH.toFloat() / page.height
+            val scale = minOf(scaleX, scaleY, 3f) // cap at 3x for quality without OOM
             val width = (page.width * scale).toInt()
             val height = (page.height * scale).toInt()
 
@@ -208,10 +211,13 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        executor.shutdownNow()
-        pdfRenderer?.close()
-        pdfRenderer = null
-        currentBitmap?.recycle()
-        currentBitmap = null
+        executor.execute {
+            pdfRenderer?.close()
+            pdfRenderer = null
+            mainHandler.post {
+                currentBitmap?.recycle()
+                currentBitmap = null
+            }
+        }
     }
 }

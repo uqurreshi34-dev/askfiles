@@ -9,6 +9,9 @@ module.exports = function withPdfViewer(config) {
     );
 
     if (!activity) return config;
+    
+    // singleTask ensures only one instance exists — new intents clear the stack above
+    activity.$['android:launchMode'] = 'singleTask';
     if (!activity['intent-filter']) activity['intent-filter'] = [];
 
     const alreadyAdded = activity['intent-filter'].some((f) =>

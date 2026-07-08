@@ -29,7 +29,11 @@ class PdfViewerModule : Module() {
                 }
             }
 
-            val cacheFile = java.io.File(ctx.cacheDir, "pending_import.pdf")
+            // Clean up old pending PDF files
+            ctx.cacheDir.listFiles { f -> f.name.startsWith("pending_import_") && f.name.endsWith(".pdf") }
+                ?.forEach { it.delete() }
+
+            val cacheFile = java.io.File(ctx.cacheDir, "pending_import_${System.currentTimeMillis()}.pdf")
             ctx.contentResolver.openInputStream(uri)?.use { input ->
                 cacheFile.outputStream().buffered(65536).use { output ->
                     val buffer = ByteArray(65536)

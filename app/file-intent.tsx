@@ -11,16 +11,23 @@ export default function FileIntentScreen() {
     const handle = setImmediate(() => {
       try {
         const pending = getPendingIntentType();
+        clearPendingIntent();
 
         if (pending?.type === 'pdf') {
-          clearPendingIntent();
-          router.replace(`/pdf-viewer?incomingUri=${encodeURIComponent(pending.uri)}`);
+          const pdfUri = pending.uri;
+          router.replace('/(tabs)');
+          setImmediate(() => {
+            router.push(`/pdf-viewer?incomingUri=${encodeURIComponent(pdfUri)}`);
+          });
           return;
         }
 
         if (pending?.type === 'csv') {
-          clearPendingIntent();
-          router.replace(`/csv-reader?incomingUri=${encodeURIComponent(pending.uri)}`);
+          const csvUri = pending.uri;
+          router.replace('/(tabs)');
+          setImmediate(() => {
+            router.push(`/csv-reader?incomingUri=${encodeURIComponent(csvUri)}`);
+          });
           return;
         }
 
@@ -31,11 +38,17 @@ export default function FileIntentScreen() {
         }
 
         if (type === 'pdf') {
-          router.replace(`/pdf-viewer?incomingUri=${encodeURIComponent(rawUri)}`);
+          router.replace('/(tabs)');
+          setImmediate(() => {
+            router.push(`/pdf-viewer?incomingUri=${encodeURIComponent(rawUri)}`);
+          });
           return;
         }
 
-        router.replace(`/csv-reader?incomingUri=${encodeURIComponent(rawUri)}`);
+        router.replace('/(tabs)');
+        setImmediate(() => {
+          router.push(`/csv-reader?incomingUri=${encodeURIComponent(rawUri)}`);
+        });
       } catch {
         router.replace('/(tabs)');
       }
