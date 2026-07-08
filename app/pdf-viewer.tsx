@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { PdfView } from '@/modules/pdf-viewer';
+import { PdfView, resolveContentUri } from '@/modules/pdf-viewer';
+import { useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -15,18 +16,46 @@ export default function PdfViewerScreen() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   const [pageCount, setPageCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
 
+  const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
+
+  function resetState() {
+    setFileUri(null);
+    setFileName('');
+    setCurrentPage(0);
+    setPageCount(0);
+  }
+
+  useEffect(() => {
+    if (!incomingUri) return;
+    const uri = decodeURIComponent(incomingUri);
+    setLoading(true);
+    resolveContentUri(uri).then(result => {
+      if (result) {
+        setFileUri(result.path);
+        setFileName(result.name);
+        setCurrentPage(0);
+        setPageCount(0);
+      } else {
+        Alert.alert('Error', 'Could not open PDF.');
+      }
+    }).catch(() => {
+      Alert.alert('Error', 'Could not open PDF.');
+    }).finally(() => setLoading(false));
+  }, [incomingUri]);
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (router.canGoBack()) { router.back(); return true; }
-      router.replace('/(tabs)');
-      return true;
-    });
+        if (fileUri) { resetState(); return true; }
+        if (router.canGoBack()) { router.back(); return true; }
+        router.replace('/(tabs)');
+        return true;
+      });
     return () => sub.remove();
   }, []);
 
@@ -65,7 +94,7 @@ export default function PdfViewerScreen() {
     <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, backgroundColor: colors.background }}>
-        <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); }} style={{ width: 40, height: 40, justifyContent: 'center' }}>
+      <TouchableOpacity onPress={() => { if (fileUri) resetState(); else if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); }} style={{ width: 40, height: 40, justifyContent: 'center' }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }} numberOfLines={1}>

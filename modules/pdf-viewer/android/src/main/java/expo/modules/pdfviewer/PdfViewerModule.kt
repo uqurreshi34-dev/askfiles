@@ -42,5 +42,27 @@ class PdfViewerModule : Module() {
             }
            mapOf("path" to cacheFile.absolutePath, "name" to displayName)
         }
+
+        Function("getPendingIntentType") { ->
+            val ctx = appContext.reactContext ?: return@Function null
+            val prefs = ctx.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
+            val pdfUri = prefs.getString("pending_pdf_uri", null)
+            val csvUri = prefs.getString("pending_csv_uri", null)
+            when {
+                pdfUri != null -> mapOf("type" to "pdf", "uri" to pdfUri)
+                csvUri != null -> mapOf("type" to "csv", "uri" to csvUri)
+                else -> null
+            }
+        }
+
+        Function("clearPendingIntent") { ->
+            val ctx = appContext.reactContext ?: return@Function null
+            ctx.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
+                .edit()
+                .remove("pending_pdf_uri")
+                .remove("pending_csv_uri")
+                .apply()
+            true
+        }
     }
 }

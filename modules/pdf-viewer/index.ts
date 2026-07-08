@@ -15,3 +15,15 @@ export async function resolveContentUri(uri: string): Promise<{ path: string; na
   const PdfViewer = requireNativeModule('PdfViewer');
   return PdfViewer.resolveContentUri(uri);
 }
+
+export function getPendingIntentType(): { type: 'pdf' | 'csv'; uri: string } | null {
+    const { requireNativeModule } = require('expo-modules-core');
+    const PdfViewer = requireNativeModule('PdfViewer');
+    return PdfViewer.getPendingIntentType();
+  }
+  
+  export function clearPendingIntent(): void {
+    const { requireNativeModule } = require('expo-modules-core');
+    const PdfViewer = requireNativeModule('PdfViewer');
+    PdfViewer.clearPendingIntent();
+  }

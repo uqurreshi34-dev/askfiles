@@ -80,7 +80,8 @@
       "./modules/smb-client/app.plugin.js",
       "./modules/sftp-client/app.plugin.js",
       "./modules/ftp-server/app.plugin.js",
-      "./modules/csv-reader/app.plugin.js"
+      "./modules/csv-reader/app.plugin.js",
+      "./modules/pdf-viewer/app.plugin.js"
     ],
     "extra": {
       "router": {},
