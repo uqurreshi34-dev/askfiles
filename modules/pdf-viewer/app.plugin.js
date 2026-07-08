@@ -52,11 +52,15 @@ module.exports = function withPdfViewer(config) {
     // Inject onNewIntent before invokeDefaultOnBackPressed
     const onNewIntent = `
   override fun onNewIntent(intent: Intent) {
-    super.onNewIntent(intent)
-    setIntent(intent)
-    handlePdfIntent(intent)
-    handleCsvIntent(intent)
-    handleTextIntent(intent)
+    try {
+      super.onNewIntent(intent)
+      setIntent(intent)
+      handlePdfIntent(intent)
+      handleCsvIntent(intent)
+      handleTextIntent(intent)
+    } catch (e: Exception) {
+      android.util.Log.e("AskFiles", "onNewIntent error: \${e.message}")
+    }
   }
 
 `;

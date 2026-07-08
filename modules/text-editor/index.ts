@@ -13,3 +13,7 @@ export async function writeTextFile(path: string, content: string): Promise<bool
 export async function resolveContentUri(uri: string): Promise<{ path: string; name: string } | null> {
   return TextEditor.resolveContentUri(uri);
 }
+
+export async function writeContentUri(uri: string, content: string): Promise<boolean> {
+    return TextEditor.writeContentUri(uri, content);
+  }

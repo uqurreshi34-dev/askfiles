@@ -660,6 +660,16 @@ async function indexScansInBackground(paths: string[]) {
               </View>
               <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>PDF Reader</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickCell}
+              activeOpacity={0.7}
+              onPress={() => router.push('/text-editor' as any)}
+            >
+              <View style={[styles.quickCircle, { backgroundColor: colors.surface }]}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5 }}>.TXT</Text>
+              </View>
+              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Text Editor</Text>
+            </TouchableOpacity>
             </View>
         )}
         {mostUsedEnabled && mostUsed.length > 0 && (

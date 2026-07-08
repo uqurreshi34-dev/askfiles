@@ -63,5 +63,15 @@ class TextEditorModule : Module() {
             }
             mapOf("path" to cacheFile.absolutePath, "name" to displayName)
         }
+
+        AsyncFunction("writeContentUri") { uriString: String, content: String ->
+            val ctx = appContext.reactContext ?: return@AsyncFunction false
+            val uri = android.net.Uri.parse(uriString)
+            ctx.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                output.write(content.toByteArray(Charsets.UTF_8))
+                output.flush()
+            }
+            true
+        }
     }
 }
