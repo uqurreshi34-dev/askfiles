@@ -13,6 +13,10 @@ class TextEditorModule : Module() {
         Name("TextEditor")
 
         AsyncFunction("readTextFile") { path: String ->
+            val file = java.io.File(path)
+            if (file.length() > 1 * 1024 * 1024) {
+                throw Exception("FILE_TOO_LARGE")
+            }
             val sb = StringBuilder()
             BufferedReader(FileReader(path)).use { reader ->
                 var line = reader.readLine()

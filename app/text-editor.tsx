@@ -77,9 +77,13 @@ export default function TextEditorScreen() {
       setFileName(name);
       setFilePath(path);
       setIsDirty(false);
-    } catch {
-      Alert.alert('Error', 'Could not read file.');
-    } finally {
+    } catch (e: any) {
+        if (e?.message?.includes('FILE_TOO_LARGE')) {
+          Alert.alert('File too large', 'Text Editor supports files up to 1MB. For larger files, use a desktop editor.');
+        } else {
+          Alert.alert('Error', 'Could not read file.');
+        }
+      }finally {
       setLoading(false);
     }
   }
