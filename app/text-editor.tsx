@@ -11,6 +11,8 @@ import { readTextFile, writeTextFile, resolveContentUri, writeContentUri } from 
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import FolderPickerModal from '@/components/FolderPickerModal';
+import { getFriendlyPath } from '@/utils/files';
+import { getStorageVolumes } from '@/modules/storage-stats';
 
 export default function TextEditorScreen() {
   const { colors } = useTheme();
@@ -130,6 +132,9 @@ export default function TextEditorScreen() {
       setContentUri('');
       setIsDirty(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const volumes = await getStorageVolumes().catch(() => []);
+      const friendlyPath = getFriendlyPath(`file://${destPath}`, volumes);
+      Alert.alert('Saved', `Saved to ${friendlyPath}`);
     } catch {
       Alert.alert('Error', 'Could not save file.');
     } finally {

@@ -20,7 +20,8 @@ import { toPath } from '@/utils/files';
 import { useLocalSearchParams } from 'expo-router';
 import { Modal } from 'react-native';
 import { ChartView } from '@/modules/chart-view';
-
+import { getFriendlyPath } from '@/utils/files';
+import { getStorageVolumes } from '@/modules/storage-stats';
  
 const MIN_COL_WIDTH = 90;
 const MAX_COL_WIDTH = 220;
@@ -266,7 +267,9 @@ export default function CsvReaderScreen() {
       if (!(await RNFS.exists(decodedFolder))) await RNFS.mkdir(decodedFolder);
       await RNFS.writeFile(outputPath, content, 'utf8');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Exported', `Saved to ${folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage'}`);
+      const volumes = await getStorageVolumes().catch(() => []);
+      const friendlyPath = getFriendlyPath(`file://${outputPath}`, volumes);
+      Alert.alert('Exported', `Saved to ${friendlyPath}`);
     } catch (e: any) {
       Alert.alert('Export failed', e?.message ?? 'Could not export.');
     }
