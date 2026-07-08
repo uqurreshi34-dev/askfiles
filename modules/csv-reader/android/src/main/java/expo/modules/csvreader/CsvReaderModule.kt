@@ -182,6 +182,12 @@ class CsvReaderModule : Module() {
             mapOf("evicted" to true)
         }
 
+        Function("getContentMimeType") { uriString: String ->
+            val ctx = appContext.reactContext ?: return@Function null
+            val uri = android.net.Uri.parse(uriString)
+            ctx.contentResolver.getType(uri)
+        }
+
         AsyncFunction("analyzeColumn") { path: String, colIndex: Int, selectedIndices: List<Int> ->
             val c = cache
             if (c == null || c.path != path) {
