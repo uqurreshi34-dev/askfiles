@@ -52,9 +52,11 @@ class PdfViewerModule : Module() {
             val prefs = ctx.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
             val pdfUri = prefs.getString("pending_pdf_uri", null)
             val csvUri = prefs.getString("pending_csv_uri", null)
+            val textUri = prefs.getString("pending_text_uri", null)
             when {
                 pdfUri != null -> mapOf("type" to "pdf", "uri" to pdfUri)
                 csvUri != null -> mapOf("type" to "csv", "uri" to csvUri)
+                textUri != null -> mapOf("type" to "text", "uri" to textUri)
                 else -> null
             }
         }
@@ -65,6 +67,7 @@ class PdfViewerModule : Module() {
                 .edit()
                 .remove("pending_pdf_uri")
                 .remove("pending_csv_uri")
+                .remove("pending_text_uri")
                 .apply()
             true
         }

@@ -16,7 +16,7 @@ export async function resolveContentUri(uri: string): Promise<{ path: string; na
   return PdfViewer.resolveContentUri(uri);
 }
 
-export function getPendingIntentType(): { type: 'pdf' | 'csv'; uri: string } | null {
+export function getPendingIntentType(): { type: 'pdf' | 'csv' | 'text'; uri: string } | null {
     const { requireNativeModule } = require('expo-modules-core');
     const PdfViewer = requireNativeModule('PdfViewer');
     return PdfViewer.getPendingIntentType();

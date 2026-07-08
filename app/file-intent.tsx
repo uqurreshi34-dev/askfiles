@@ -31,6 +31,15 @@ export default function FileIntentScreen() {
           return;
         }
 
+        if (pending?.type === 'text') {
+          const textUri = pending.uri;
+          router.replace('/(tabs)');
+          setImmediate(() => {
+            router.push(`/text-editor?incomingUri=${encodeURIComponent(textUri)}`);
+          });
+          return;
+        }
+
         const rawUri = uri ? decodeURIComponent(uri) : null;
         if (!rawUri) {
           router.replace('/(tabs)');
@@ -41,6 +50,14 @@ export default function FileIntentScreen() {
           router.replace('/(tabs)');
           setImmediate(() => {
             router.push(`/pdf-viewer?incomingUri=${encodeURIComponent(rawUri)}`);
+          });
+          return;
+        }
+
+        if (type === 'text') {
+          router.replace('/(tabs)');
+          setImmediate(() => {
+            router.push(`/text-editor?incomingUri=${encodeURIComponent(rawUri)}`);
           });
           return;
         }

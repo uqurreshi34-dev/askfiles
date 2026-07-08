@@ -70,6 +70,7 @@
     "pdf-creator": "file:modules/pdf-creator",
     "chart-view": "file:modules/chart-view",
     "pdf-viewer": "file:modules/pdf-viewer",
+    "text-editor": "file:modules/text-editor",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-device-info": "^15.0.2",

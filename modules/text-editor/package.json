@@ -1,0 +1,14 @@
+{
+    "name": "text-editor",
+    "version": "1.0.0",
+    "description": "Native Android text file reader and editor for AskFiles",
+    "main": "index.ts",
+    "types": "index.ts",
+    "keywords": ["expo", "expo-module"],
+    "license": "MIT",
+    "peerDependencies": {
+      "expo": "*",
+      "react": "*",
+      "react-native": "*"
+    }
+  }
