@@ -143,7 +143,7 @@ function DraggableCell({
 
   return (
     <GestureDetector gesture={composed}>
-      <Animated.View style={[{ width: cellWidth, alignItems: 'center', paddingVertical: 8 }, animStyle]}>
+      <Animated.View style={[{ width: '33.33%', alignItems: 'center', paddingVertical: 8 }, animStyle]}>
         <TouchableOpacity
           onPress={editMode ? undefined : onPress}
           activeOpacity={editMode ? 1 : 0.7}
