@@ -1,5 +1,4 @@
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }) {
-  console.log('redirectSystemPath called:', path, initial);
   try {
     if (path.toLowerCase().includes('.pdf')) {
       return `/file-intent?uri=${encodeURIComponent(path)}&type=pdf`;

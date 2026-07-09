@@ -35,6 +35,9 @@ import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getValidStats, FileStatEntry } from 'file-stats';
 import { getMostUsedEnabled, setMostUsedEnabled } from 'file-reader';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useToolsConfig, ToolId } from '@/hooks/useToolsConfig';
+import ToolsGrid, { ToolDef } from '@/components/ToolsGrid';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -68,6 +71,8 @@ export default function HomeScreen() {
   const [playerUri, setPlayerUri] = useState<string | null>(null);
   const [mostUsed, setMostUsed] = useState<FileStatEntry[]>([]);
   const [mostUsedEnabled, setMostUsedEnabledState] = useState(() => getMostUsedEnabled());
+  const [toolsEditMode, setToolsEditMode] = useState(false);
+  const { loaded: toolsLoaded, visibleTools, hiddenTools, reorderTools, hideTool, restoreTool } = useToolsConfig();
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -152,7 +157,60 @@ async function indexScansInBackground(paths: string[]) {
   }
 }
 
-  if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+const ALL_TOOLS: Record<string, ToolDef> = {
+  'network': {
+    id: 'network', label: 'Network', onPress: () => router.push('/network' as any),
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.blueBg }]}><Ionicons name="globe-outline" size={26} color={colors.blue} /></View>,
+  },
+  'large-files': {
+    id: 'large-files', label: 'Large Files', onPress: () => router.push('/large-files'), disabled: !hasMediaAccess,
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.redBrownBg, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="folder-open-outline" size={26} color={colors.redBrown} /></View>,
+  },
+  'storage': {
+    id: 'storage', label: 'Storage', onPress: () => router.push('/storage-breakdown'), disabled: !hasMediaAccess,
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.purpleBg, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="stats-chart-outline" size={26} color={colors.purple} /></View>,
+  },
+  'scanner': {
+    id: 'scanner', label: 'Doc Scanner', onPress: async () => {
+      if (scanning) return;
+      try {
+        const uris = await scanDocument();
+        if (uris.length === 0) return;
+        Alert.alert('Save scan as', `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`, [
+          { text: 'Images (JPG)', onPress: () => { setPendingScanUris(uris); setPendingScanFormat('images'); setScanPickerVisible(true); } },
+          { text: 'PDF', onPress: () => { setPendingScanUris(uris); setPendingScanFormat('pdf'); setScanPickerVisible(true); } },
+          { text: 'Cancel', style: 'cancel' }
+        ]);
+      } catch (e: any) {
+        if (e?.message?.includes('SCAN_CANCELLED')) return;
+        Alert.alert('Scan failed', e?.message ?? 'Could not complete scan');
+      }
+    },
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>{scanning ? <ActivityIndicator size="small" color={colors.green} /> : <Ionicons name="camera-outline" size={26} color={colors.green} />}</View>,
+  },
+  'sensitive': {
+    id: 'sensitive', label: 'Sensitive Files', onPress: () => router.push('/sensitive-files'), disabled: !hasMediaAccess,
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.amberTint, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="shield-outline" size={26} color={colors.amber} /></View>,
+  },
+  'converter': {
+    id: 'converter', label: 'Image Converter', onPress: () => router.push('/file-converter' as any),
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.favRedBg }]}><Ionicons name="swap-horizontal-outline" size={26} color={colors.favRed} /></View>,
+  },
+  'csv': {
+    id: 'csv', label: 'CSV Reader', onPress: () => router.push('/csv-reader' as any),
+    circle: <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A2200' : '#FFF8E1' }]}><Text style={{ fontSize: 13, fontWeight: '800', color: colors.yellow, letterSpacing: 0.5 }}>CSV</Text></View>,
+  },
+  'pdf': {
+    id: 'pdf', label: 'PDF Reader', onPress: () => router.push('/pdf-viewer' as any),
+    circle: <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A0000' : '#FFF0F0' }]}><Text style={{ fontSize: 13, fontWeight: '800', color: colors.favRed, letterSpacing: 0.5 }}>PDF</Text></View>,
+  },
+  'txt': {
+    id: 'txt', label: 'Text Editor', onPress: () => router.push('/text-editor' as any),
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.surface }]}><Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5 }}>.TXT</Text></View>,
+  },
+};
+
+if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -533,145 +591,20 @@ async function indexScansInBackground(paths: string[]) {
         )}
       </>
     ) : (
-        <View style={styles.quickGrid}>
-          <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              onPress={() => router.push('/network' as any)}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: colors.blueBg }]}>
-                <Ionicons name="globe-outline" size={26} color={colors.blue} />
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Network</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              disabled={!hasMediaAccess}
-              onPress={() => router.push('/large-files')}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: colors.redBrownBg, opacity: hasMediaAccess ? 1 : 0.4 }]}>
-                <Ionicons name="folder-open-outline" size={26} color={colors.redBrown} />
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Large Files</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              disabled={!hasMediaAccess}
-              onPress={() => router.push('/storage-breakdown')}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: colors.purpleBg, opacity: hasMediaAccess ? 1 : 0.4 }]}>
-                <Ionicons name="stats-chart-outline" size={26} color={colors.purple} />
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Storage</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickCell}
-              onPress={async () => {
-                if (scanning) return;
-                try {
-                  const uris = await scanDocument();
-                  if (uris.length === 0) return;
-
-                  Alert.alert(
-                    'Save scan as',
-                    `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`,
-                    [
-                      {
-                        text: 'Images (JPG)',
-                        onPress: () => {
-                          setPendingScanUris(uris);
-                          setPendingScanFormat('images');
-                          setScanPickerVisible(true);
-                        }
-                      },
-                      {
-                        text: 'PDF',
-                        onPress: () => {
-                          setPendingScanUris(uris);
-                          setPendingScanFormat('pdf');
-                          setScanPickerVisible(true);
-                        }
-                      },
-                      { text: 'Cancel', style: 'cancel' }
-                    ]
-                  );
-                } catch (e: any) {
-                  if (e?.message?.includes('SCAN_CANCELLED')) return;
-                  Alert.alert('Scan failed', e?.message ?? 'Could not complete scan');
-                }
-              }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-             <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>
-                {scanning
-                  ? <ActivityIndicator size="small" color={colors.green} />
-                  : <Ionicons name="camera-outline" size={26} color={colors.green} />
-                }
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Document Scanner</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              disabled={!hasMediaAccess}
-              onPress={() => router.push('/sensitive-files')}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: colors.amberTint, opacity: hasMediaAccess ? 1 : 0.4 }]}>
-                <Ionicons name="shield-outline" size={26} color={colors.amber} />
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Sensitive Files</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              onPress={() => router.push('/file-converter' as any)}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: colors.favRedBg }]}>
-                <Ionicons name="swap-horizontal-outline" size={26} color={colors.favRed} />
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Image Converter</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              onPress={() => router.push('/csv-reader' as any)}
-            >
-             <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A2200' : '#FFF8E1' }]}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.yellow, letterSpacing: 0.5 }}>CSV</Text>
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>CSV Reader</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              onPress={() => router.push('/pdf-viewer' as any)}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A0000' : '#FFF0F0' }]}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.favRed, letterSpacing: 0.5 }}>PDF</Text>
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>PDF Reader</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickCell}
-              activeOpacity={0.7}
-              onPress={() => router.push('/text-editor' as any)}
-            >
-              <View style={[styles.quickCircle, { backgroundColor: colors.surface }]}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5 }}>.TXT</Text>
-              </View>
-              <Text style={[styles.quickCellLabel, { color: colors.textPrimary }]} numberOfLines={1}>Text Editor</Text>
-            </TouchableOpacity>
-            </View>
-        )}
+      toolsLoaded ? (
+        <ToolsGrid
+          tools={visibleTools.map(id => ALL_TOOLS[id]).filter(Boolean) as ToolDef[]}
+          hiddenTools={hiddenTools}
+          editMode={toolsEditMode}
+          onEditMode={setToolsEditMode}
+          onReorder={reorderTools}
+          onHide={hideTool}
+          onRestore={restoreTool}
+          getToolDef={(id) => ALL_TOOLS[id]}
+          colors={colors}
+        />
+      ) : null
+    )}
         {mostUsedEnabled && mostUsed.length > 0 && (
           <>
             <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Most Used</Text>

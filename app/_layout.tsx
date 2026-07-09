@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/useTheme';
 import * as QuickActions from 'expo-quick-actions';
 import { useQuickActionRouting } from 'expo-quick-actions/router';
 import * as ExpoInAppUpdates from 'expo-in-app-updates';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -99,6 +100,7 @@ export default function RootLayout() {
   }, [pathname]);
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <View style={{ flex: 1, paddingTop: insets.top }}>
       {cloudSyncing && (
         <Animated.View style={{
@@ -127,6 +129,7 @@ export default function RootLayout() {
         <Stack.Screen name="text-editor" options={{ animation: 'none' }} />
         <Stack.Screen name="file-intent" options={{ animation: 'none' }} />
       </Stack>
-    </View>
+      </View>
+    </GestureHandlerRootView>
   );
 }
