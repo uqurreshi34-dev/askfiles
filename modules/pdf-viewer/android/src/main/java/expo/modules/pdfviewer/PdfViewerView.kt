@@ -169,7 +169,7 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
-            setHasFixedSize(true)
+            setHasFixedSize(false)
             itemAnimator = null
             pivotX = 0f
             pivotY = 0f
@@ -222,8 +222,23 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
 
     fun goToPage(page: Int) {
         if (page < 0 || page >= pageCount) return
-        currentPage = page
-        recyclerView.scrollToPosition(page)
+        mainHandler.post {
+            // scrollToPositionWithOffset fails when target page is outside the
+            // layout window (childCount is typically 2 on tall screens).
+            // scrollBy with precomputed pixel offset bypasses layout window
+            // entirely — RecyclerView moves by raw pixels then binds whatever
+            // items fall into the new viewport.
+            val screenW = context.resources.displayMetrics.widthPixels
+            val targetOffset = adapter.getPageOffset(page, screenW)
+            val currentOffset = adapter.getPageOffset(
+                (recyclerView.layoutManager as LinearLayoutManager)
+                    .findFirstVisibleItemPosition().coerceAtLeast(0),
+                screenW
+            )
+            recyclerView.scrollBy(0, targetOffset - currentOffset)
+            currentPage = page
+            onPageChange(mapOf("page" to page))
+        }
     }
 
     fun renderPage(pageIndex: Int, callback: (Bitmap?) -> Unit) {
@@ -290,6 +305,17 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
             bitmapCache.values.forEach { it?.recycle() }
             bitmapCache.clear()
             boundPositions.clear()
+        }
+
+        // Returns the pixel offset of a page using precomputed page sizes —
+        // no layout window dependency, works for any page index instantly.
+        fun getPageOffset(page: Int, screenW: Int): Int {
+            var offset = 0
+            for (i in 0 until page.coerceAtMost(pageSizes.size)) {
+                val (w, h) = pageSizes[i]
+                offset += if (w > 0) (h.toFloat() / w * screenW).toInt() else (screenW * 1.414f).toInt()
+            }
+            return offset
         }
 
         override fun getItemCount() = count

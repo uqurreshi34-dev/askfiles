@@ -27,3 +27,9 @@ export function getPendingIntentType(): { type: 'pdf' | 'csv' | 'text'; uri: str
     const PdfViewer = requireNativeModule('PdfViewer');
     PdfViewer.clearPendingIntent();
   }
+
+  export async function renderThumbnail(filePath: string, pageIndex: number): Promise<string | null> {
+    const { requireNativeModule } = require('expo-modules-core');
+    const PdfViewer = requireNativeModule('PdfViewer');
+    return PdfViewer.renderThumbnail(filePath, pageIndex);
+  }
