@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo} from 'react';
 import {
   View, Text, TouchableOpacity, ActivityIndicator,
   Alert, BackHandler, Modal, FlatList, Image,
@@ -128,6 +128,7 @@ export default function PdfViewerScreen() {
   const [currentPage, setCurrentPage] = useState(0);
   const [targetPage, setTargetPage] = useState(0);
   const [gridVisible, setGridVisible] = useState(false);
+  const [jumping, setJumping] = useState(false);
 
   const { incomingUri } = useLocalSearchParams<{ incomingUri?: string }>();
 
@@ -202,12 +203,21 @@ export default function PdfViewerScreen() {
   // Tapping a card: set target (triggers native goToPage via prop),
   // close modal, unlock orientation.
   const handleCardPress = useCallback((page: number) => {
+    const distance = Math.abs(page - currentPage);
     setGridVisible(false);
-    setTimeout(() => setTargetPage(page), 50);
-  }, []);
+    if (distance > 20) {
+      setJumping(true);
+      setTimeout(() => {
+        setTargetPage(page);
+        setTimeout(() => setJumping(false), 2000);
+      }, 50);
+    } else {
+      setTimeout(() => setTargetPage(page), 50);
+    }
+  }, [currentPage]);
 
   // Build page index array once for FlatList — avoids re-creating on every render
-  const pageIndices = React.useMemo(
+  const pageIndices = useMemo(
     () => Array.from({ length: pageCount }, (_, i) => i),
     [pageCount]
   );
@@ -270,6 +280,25 @@ export default function PdfViewerScreen() {
         </View>
       ) : fileUri ? (
         <View style={{ flex: 1 }}>
+          {jumping && (
+            <View style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              justifyContent: 'center', alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 10,
+            }}>
+              <View style={{
+                backgroundColor: colors.surface, borderRadius: 16,
+                paddingHorizontal: 28, paddingVertical: 20,
+                alignItems: 'center', gap: 12,
+              }}>
+                <ActivityIndicator size="large" color={colors.favRed} />
+                <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500' }}>
+                  Jumping to page {targetPage + 1}...
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* PDF view — targetPage drives goToPage, onPageChange only updates counter */}
           <PdfView
             uri={`file://${fileUri}`}
