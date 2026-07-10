@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef, useMemo} from 'react';
 import {
   View, Text, TouchableOpacity, ActivityIndicator,
   Alert, BackHandler, Modal, FlatList, Image,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -43,7 +42,6 @@ function PageCard({
     renderThumbnail(filePath, pageIndex)
       .then((result: string | null) => {
         if (mounted.current) {
-          console.log(`THUMB page=${pageIndex} result=${result ? 'base64 len=' + result.length : 'NULL'}`);
           setBase64(result);
           setLoading(false);
         }
@@ -305,21 +303,24 @@ export default function PdfViewerScreen() {
             page={targetPage}
             onPageCount={(e: any) => { setPageCount(e.nativeEvent.count); }}
             onPageChange={(e: any) => {
-              console.log('onPageChange fired page=', e.nativeEvent.page);
               setCurrentPage(e.nativeEvent.page);
             }}
             style={{ flex: 1, backgroundColor: colors.surface }}
           />
 
           {/* Page counter */}
+          {/* Page counter */}
           {pageCount > 0 && (
             <View style={{
               alignItems: 'center', justifyContent: 'center',
-              paddingVertical: 10, backgroundColor: colors.background,
+              paddingVertical: 8, backgroundColor: colors.background,
               borderTopWidth: 1, borderTopColor: colors.divider,
             }}>
               <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>
                 {currentPage + 1} / {pageCount}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2, opacity: 0.6 }}>
+                Tip: Convert to images to extract text
               </Text>
             </View>
           )}
