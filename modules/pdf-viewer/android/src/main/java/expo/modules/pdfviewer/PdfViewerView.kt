@@ -336,6 +336,7 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
             pageSizes.getOrNull(position)?.let { (w, h) ->
                 holder.pageView.setPageSize(w, h)
             }
+            holder.pageView.setPageNumber(position + 1)
 
             val cached = bitmapCache[position]
             if (cached != null && !cached.isRecycled) {
@@ -396,6 +397,16 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
         private val destRect = Rect()
         private var pageWidth = 0
         private var pageHeight = 0
+        private var pageNumber = ""
+
+        private val labelBgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(115, 0, 0, 0)
+        }
+        private val labelTextPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 28f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
 
         init {
             setBackgroundColor(Color.WHITE)
@@ -410,6 +421,11 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
 
         fun setBitmap(bmp: Bitmap?) {
             bitmap = bmp
+            invalidate()
+        }
+
+        fun setPageNumber(number: Int) {
+            pageNumber = "$number"
             invalidate()
         }
 
@@ -435,6 +451,26 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
             if (bmp.isRecycled) return
             canvas.drawColor(Color.WHITE)
             canvas.drawBitmap(bmp, null, destRect, null)
+
+            // Page number pill — bottom right, drawn on top of page content
+            if (pageNumber.isNotEmpty()) {
+                val textW = labelTextPaint.measureText(pageNumber)
+                val padH = 10f
+                val padV = 6f
+                val radius = 12f
+                val right = width.toFloat() - 20f
+                val bottom = height.toFloat() - 20f
+                val left = right - textW - padH * 2
+                val top = bottom - labelTextPaint.textSize - padV * 2
+                val rect = android.graphics.RectF(left, top, right, bottom)
+                canvas.drawRoundRect(rect, radius, radius, labelBgPaint)
+                canvas.drawText(
+                    pageNumber,
+                    left + padH,
+                    bottom - padV - labelTextPaint.descent(),
+                    labelTextPaint
+                )
+            }
         }
     }
 }
