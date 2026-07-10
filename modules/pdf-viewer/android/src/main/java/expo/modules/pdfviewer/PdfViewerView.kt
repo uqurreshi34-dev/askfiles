@@ -109,8 +109,8 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
                 mainHandler.post { callback(null) }
                 return@execute
             }
+            val page = renderer.openPage(pageIndex)
             try {
-                val page = renderer.openPage(pageIndex)
                 val screenW = context.resources.displayMetrics.widthPixels
                 val screenH = context.resources.displayMetrics.heightPixels
                 val scaleX = screenW.toFloat() / page.width
@@ -121,17 +121,17 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
                 val bitmap = try {
                     Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 } catch (oom: OutOfMemoryError) {
-                    page.close()
                     mainHandler.post { callback(null) }
                     return@execute
                 }
                 val canvas = Canvas(bitmap)
                 canvas.drawColor(Color.WHITE)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                page.close()
                 mainHandler.post { callback(bitmap) }
             } catch (e: Exception) {
                 mainHandler.post { callback(null) }
+            } finally {
+                page.close()
             }
         }
     }
@@ -142,6 +142,7 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
             pdfRenderer?.close()
             pdfRenderer = null
         }
+        executor.shutdown()
         adapter.recycleBitmaps()
     }
 
@@ -326,6 +327,7 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val bmp = bitmap ?: return
+            if (bmp.isRecycled) return
             canvas.drawColor(Color.WHITE)
             canvas.drawBitmap(bmp, matrix, null)
         }
