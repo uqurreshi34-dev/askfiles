@@ -9,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { PdfView, resolveContentUri } from '@/modules/pdf-viewer';
 import { useLocalSearchParams } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import * as DocumentPicker from 'expo-document-picker';
 
 export default function PdfViewerScreen() {
@@ -59,18 +58,6 @@ export default function PdfViewerScreen() {
     return () => sub.remove();
   }, []);
 
-  function goToPrev() {
-    if (currentPage <= 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentPage(p => p - 1);
-  }
-
-  function goToNext() {
-    if (currentPage >= pageCount - 1) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentPage(p => p + 1);
-  }
-
   async function pickFile() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -113,24 +100,17 @@ export default function PdfViewerScreen() {
           <PdfView
             uri={`file://${fileUri}`}
             page={currentPage}
-            onPageCount={(e: any) => setPageCount(e.nativeEvent.count)}
+            onPageCount={(e: any) => { setPageCount(e.nativeEvent.count); }}
+            onPageChange={(e: any) => setCurrentPage(e.nativeEvent.page)}
             style={{ flex: 1, backgroundColor: colors.surface }}
           />
 
           {/* Page navigation */}
           {pageCount > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 24, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.divider }}>
-              <TouchableOpacity onPress={goToPrev} disabled={currentPage === 0}
-                style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="chevron-back" size={24} color={currentPage === 0 ? colors.textMuted : colors.blue} />
-              </TouchableOpacity>
-              <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500' }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 10, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.divider }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>
                 {currentPage + 1} / {pageCount}
               </Text>
-              <TouchableOpacity onPress={goToNext} disabled={currentPage === pageCount - 1}
-                style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="chevron-forward" size={24} color={currentPage === pageCount - 1 ? colors.textMuted : colors.blue} />
-              </TouchableOpacity>
             </View>
           )}
         </View>

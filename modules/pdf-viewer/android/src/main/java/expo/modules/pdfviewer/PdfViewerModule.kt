@@ -14,7 +14,7 @@ class PdfViewerModule : Module() {
             Prop("page") { view: PdfViewerView, page: Int ->
                 view.goToPage(page)
             }
-            Events("onPageCount")
+            Events("onPageCount", "onPageChange")
         }
 
         AsyncFunction("resolveContentUri") { uriString: String ->
