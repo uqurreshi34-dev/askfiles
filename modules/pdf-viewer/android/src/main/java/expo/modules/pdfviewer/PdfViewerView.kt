@@ -202,11 +202,34 @@ class PdfViewerView(context: Context, appContext: AppContext) : ExpoView(context
                 val count = renderer.pageCount
                 pageCount = count
 
+                // Sample first two pages — most PDFs are uniform size.
+                // Scanning all 690 pages before first render causes a
+                // visible grey screen delay. If page 0 and 1 match,
+                // assume uniform and fill the rest without opening pages.
                 val sizes = ArrayList<Pair<Int, Int>>(count)
-                for (i in 0 until count) {
-                    val page = renderer.openPage(i)
-                    sizes.add(Pair(page.width, page.height))
-                    page.close()
+                val page0 = renderer.openPage(0)
+                val w0 = page0.width; val h0 = page0.height
+                page0.close()
+                sizes.add(Pair(w0, h0))
+
+                val uniform = if (count > 1) {
+                    val page1 = renderer.openPage(1)
+                    val match = page1.width == w0 && page1.height == h0
+                    sizes.add(Pair(page1.width, page1.height))
+                    page1.close()
+                    match
+                } else true
+
+                if (uniform) {
+                    // Fill remaining pages with same dimensions — no openPage needed
+                    for (i in 2 until count) sizes.add(Pair(w0, h0))
+                } else {
+                    // Mixed sizes — full scan required
+                    for (i in 2 until count) {
+                        val page = renderer.openPage(i)
+                        sizes.add(Pair(page.width, page.height))
+                        page.close()
+                    }
                 }
 
                 mainHandler.post {
