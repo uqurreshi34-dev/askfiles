@@ -406,12 +406,18 @@ async function handleSsInfo() {
     }
   }
 
+  const sortKeyRef = useRef<SortKey>('name_asc');
+
+  useEffect(() => {
+    sortKeyRef.current = sortKey;
+  }, [sortKey]);
+
   useEffect(() => {
     setSearchQuery('');
     loadCategory();
     const subscription = addMediaStoreChangeListener(() => {
       if (suppressWatcherRef.current) return;
-      loadCategory();
+      loadCategoryWithSort(sortKeyRef.current);
     });
     return () => subscription.remove();
   }, [category]);
