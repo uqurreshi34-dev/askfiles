@@ -1,10 +1,10 @@
 [
     {
-        "merged": "expo.modules.pdfviewer.pdf-viewer-release-28:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml",
-        "source": "expo.modules.pdfviewer.pdf-viewer-appcompat-1.7.0-1:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml"
+        "merged": "expo.modules.pdfviewer.pdf-viewer-release-30:/layout-watch-v20/abc_alert_dialog_title_material.xml",
+        "source": "expo.modules.pdfviewer.pdf-viewer-appcompat-1.7.0-1:/layout-watch-v20/abc_alert_dialog_title_material.xml"
     },
     {
-        "merged": "expo.modules.pdfviewer.pdf-viewer-release-28:/layout-watch-v20/abc_alert_dialog_title_material.xml",
-        "source": "expo.modules.pdfviewer.pdf-viewer-appcompat-1.7.0-1:/layout-watch-v20/abc_alert_dialog_title_material.xml"
+        "merged": "expo.modules.pdfviewer.pdf-viewer-release-30:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml",
+        "source": "expo.modules.pdfviewer.pdf-viewer-appcompat-1.7.0-1:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml"
     }
 ]

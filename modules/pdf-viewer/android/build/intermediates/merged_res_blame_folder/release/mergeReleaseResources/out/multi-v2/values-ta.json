@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "expo.modules.pdfviewer.pdf-viewer-mergeReleaseResources-26:/values-ta/values-ta.xml",
+            "outputFile": "expo.modules.pdfviewer.pdf-viewer-mergeReleaseResources-28:/values-ta/values-ta.xml",
             "map": [
                 {
                     "source": "C:\\Users\\uqurr\\.gradle\\caches\\8.14.3\\transforms\\936579c3029b54563f9582c4efedaea8\\transformed\\core-1.13.1\\res\\values-ta\\values-ta.xml",
@@ -57,7 +57,7 @@
             ]
         },
         {
-            "outputFile": "expo.modules.pdfviewer.pdf-viewer-release-28:/values-ta/values-ta.xml",
+            "outputFile": "expo.modules.pdfviewer.pdf-viewer-release-30:/values-ta/values-ta.xml",
             "map": [
                 {
                     "source": "C:\\Users\\uqurr\\.gradle\\caches\\8.14.3\\transforms\\936579c3029b54563f9582c4efedaea8\\transformed\\core-1.13.1\\res\\values-ta\\values-ta.xml",

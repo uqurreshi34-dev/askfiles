@@ -27,6 +27,12 @@ module.exports = function withPdfViewer(config) {
   config = withMainActivity(config, (config) => {
     let src = config.modResults.contents;
 
+    // Remove old intent sanitisation injections
+    src = src.replace(
+      /\s*try \{ intent\?\.replaceExtras\(android\.os\.Bundle\(\)\) \} catch \(e: Exception\) \{\}/g,
+      ""
+    );
+
     // Remove ALL old onNewIntent injections
     src = src.replace(/\s*override fun onNewIntent\(intent: Intent\)[\s\S]*?\n  \}\n/g, "\n");
 
@@ -44,9 +50,15 @@ module.exports = function withPdfViewer(config) {
     }
 
     // Inject onCreate calls after super.onCreate(null)
+    // src = src.replace(
+    //   /super\.onCreate\(null\)\n/,
+    //   `super.onCreate(null)\n    handlePdfIntent(intent)\n    handleCsvIntent(intent)\n    handleTextIntent(intent)\n`
+    // );
+    // Inject intent sanitisation BEFORE React Native starts
+    // Then store the incoming file intent
     src = src.replace(
       /super\.onCreate\(null\)\n/,
-      `super.onCreate(null)\n    handlePdfIntent(intent)\n    handleCsvIntent(intent)\n    handleTextIntent(intent)\n`
+      `try { intent?.replaceExtras(android.os.Bundle()) } catch (e: Exception) {}\n    super.onCreate(null)\n    handlePdfIntent(intent)\n    handleCsvIntent(intent)\n    handleTextIntent(intent)\n`
     );
 
     // Inject onNewIntent before invokeDefaultOnBackPressed
