@@ -1,4 +1,4 @@
-import { requireNativeModule } from 'expo-modules-core';
+import { requireNativeModule, EventSubscription } from 'expo-modules-core';
 
 const ImageHash = requireNativeModule('ImageHash');
 
@@ -17,4 +17,12 @@ export interface ImageDuplicateGroup {
 
 export async function scanImageDuplicates(): Promise<ImageDuplicateGroup[]> {
   return ImageHash.scanImageDuplicates();
+}
+
+export function addScanProgressListener(
+  callback: (scanned: number, total: number) => void
+): EventSubscription {
+  return ImageHash.addListener('onScanProgress', (e: { scanned: number; total: number }) => {
+    callback(e.scanned, e.total);
+  });
 }

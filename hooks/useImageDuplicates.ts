@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { scanImageDuplicates, ImageDuplicateGroup } from '@/modules/image-hash';
+import { scanImageDuplicates, ImageDuplicateGroup, addScanProgressListener } from '@/modules/image-hash';
 import * as FileSystem from 'expo-file-system';
 
 function formatSize(bytes: number): string {
@@ -15,12 +15,17 @@ export function useImageDuplicates() {
   const [scanned, setScanned] = useState(false);
   const [totalWasted, setTotalWasted] = useState(0);
   const [listVersion, setListVersion] = useState(0);
+  const [progress, setProgress] = useState({ scanned: 0, total: 0 });
 
   const scan = useCallback(async () => {
     setScanning(true);
     setScanned(false);
     setGroups([]);
     await new Promise(resolve => setTimeout(resolve, 50));
+    setProgress({ scanned: 0, total: 0 });
+    const sub = addScanProgressListener((scanned, total) => {
+      setProgress({ scanned, total });
+    });
     try {
       const result = await scanImageDuplicates();
       const wasted = result.reduce((sum, g) => {
@@ -35,10 +40,11 @@ export function useImageDuplicates() {
     } finally {
       setScanning(false);
       setScanned(true);
+      sub.remove();
     }
   }, []);
 
-  async function deleteFile(groupKey: string, uri: string): Promise<void> {
+  const deleteFile = useCallback(async (groupKey: string, uri: string): Promise<void> => {
     setGroups(prev => {
       const updated = prev.map(g => {
         if (g.key !== groupKey) return g;
@@ -58,7 +64,7 @@ export function useImageDuplicates() {
     } catch (e) {
       console.error('delete failed:', e);
     }
-  }
+  }, []);
 
   const deleteAllButOne = useCallback(async (group: ImageDuplicateGroup) => {
     const sorted = [...group.files].sort((a, b) => b.size - a.size || a.dateAdded - b.dateAdded);
@@ -74,6 +80,7 @@ export function useImageDuplicates() {
     scanned,
     totalWasted,
     listVersion,
+    progress,
     scan,
     deleteFile,
     deleteAllButOne,

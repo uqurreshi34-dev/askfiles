@@ -17,6 +17,8 @@ class ImageHashModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("ImageHash")
 
+        Events("onScanProgress")
+
         AsyncFunction("scanImageDuplicates") {
             val ctx = appContext.reactContext
                 ?: throw Exception("No context")
@@ -167,10 +169,17 @@ class ImageHashModule : Module() {
 
         // Compute hashes — skip on OOM, null = skip
         data class Hashed(val entry: ImgEntry, val hash: LongArray)
+        val total = images.size
         val hashed = mutableListOf<Hashed>()
-        for (img in images) {
+        for ((index, img) in images.withIndex()) {
             val h = try { computePhash(img.path) } catch (e: Exception) { null }
             if (h != null) hashed.add(Hashed(img, h))
+            if (index % 50 == 0) {
+                sendEvent("onScanProgress", mapOf(
+                    "scanned" to index + 1,
+                    "total" to total
+                ))
+            }
         }
 
         // LSH grouping — 7 bands of 9 bits each

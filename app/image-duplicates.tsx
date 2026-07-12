@@ -17,7 +17,7 @@ export default function ImageDuplicatesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
-  const { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, deleteAllButOne, formatSize } = useImageDuplicates();
+  const { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, deleteAllButOne, formatSize, progress } = useImageDuplicates();
   const { isPro } = usePro();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [keepingGroup, setKeepingGroup] = useState<string | null>(null);
@@ -186,10 +186,12 @@ export default function ImageDuplicatesScreen() {
         </View>
       )}
 
-      {scanning && (
+     {scanning && (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.blue} />
-          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>Scanning your images...</Text>
+          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>
+            {progress.total > 0 ? `Scanning ${progress.scanned} of ${progress.total} images...` : 'Scanning your images...'}
+          </Text>
           <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>This may take a moment</Text>
         </View>
       )}
