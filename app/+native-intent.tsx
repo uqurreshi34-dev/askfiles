@@ -9,9 +9,6 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
     if (path.toLowerCase().includes('.txt')) {
       return `/file-intent?uri=${encodeURIComponent(path)}&type=text`;
     }
-    if (path.includes('content://') || path.includes('FileProvider')) {
-      return `/file-intent?uri=${encodeURIComponent(path)}&type=unknown`;
-    }
     return path;
   } catch {
     return path;

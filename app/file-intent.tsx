@@ -61,11 +61,8 @@ export default function FileIntentScreen() {
           });
           return;
         }
-
+//hi there 
         router.replace('/(tabs)');
-        setImmediate(() => {
-          router.push(`/csv-reader?incomingUri=${encodeURIComponent(rawUri)}`);
-        });
       } catch {
         router.replace('/(tabs)');
       }
