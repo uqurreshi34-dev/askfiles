@@ -1,0 +1,9 @@
+{
+    "name": "image-hash",
+    "version": "1.0.0",
+    "description": "Perceptual image hash duplicate finder",
+    "main": "index.ts",
+    "android": {
+      "package": "expo.modules.imagehash"
+    }
+  }

@@ -36,6 +36,12 @@ const PRO_FEATURES = [
     desc: 'Find and remove duplicate files to free up space',
     route: '/duplicates' as const,
   },
+  {
+    icon: 'images-outline' as const,
+    title: 'Similar Image Finder',
+    desc: 'Find visually similar photos across your entire library — even with different filenames or formats',
+    route: '/image-duplicates' as const,
+  },
 ];
 
 export default function CloudScreen() {
