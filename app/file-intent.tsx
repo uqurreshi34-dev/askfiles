@@ -61,7 +61,7 @@ export default function FileIntentScreen() {
           });
           return;
         }
-//hi there 
+
         router.replace('/(tabs)');
       } catch {
         router.replace('/(tabs)');
