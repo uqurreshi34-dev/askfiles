@@ -16,18 +16,6 @@ export async function resolveContentUri(uri: string): Promise<{ path: string; na
   return PdfViewer.resolveContentUri(uri);
 }
 
-export function getPendingIntentType(): { type: 'pdf' | 'csv' | 'text'; uri: string } | null {
-    const { requireNativeModule } = require('expo-modules-core');
-    const PdfViewer = requireNativeModule('PdfViewer');
-    return PdfViewer.getPendingIntentType();
-  }
-  
-  export function clearPendingIntent(): void {
-    const { requireNativeModule } = require('expo-modules-core');
-    const PdfViewer = requireNativeModule('PdfViewer');
-    PdfViewer.clearPendingIntent();
-  }
-
   export async function renderThumbnail(filePath: string, pageIndex: number): Promise<string | null> {
     const { requireNativeModule } = require('expo-modules-core');
     const PdfViewer = requireNativeModule('PdfViewer');
