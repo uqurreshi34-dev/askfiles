@@ -327,38 +327,34 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 drawable.setColor(Color.argb(51, Color.red(colorSet.yellow), Color.green(colorSet.yellow), Color.blue(colorSet.yellow)))
                 iconWrap.background = drawable
             } else if (isImage || isVideo) {
-                iconImage.visibility = View.VISIBLE
-                iconText.visibility = View.GONE
-                iconImage.clearColorFilter()
-                iconWrap.background = null
-                val params = iconImage.layoutParams as FrameLayout.LayoutParams
-                params.width = (20f * context.resources.displayMetrics.density).toInt()
-                params.height = (20f * context.resources.displayMetrics.density).toInt()
-                params.gravity = android.view.Gravity.CENTER
-                iconImage.layoutParams = params
-                iconImage.scaleType = ImageView.ScaleType.FIT_CENTER
-                Glide.with(iconImage)
-                    .load(android.net.Uri.parse(item.uri))
-                    .override(80, 80)
-                    .centerCrop()
-                    .format(DecodeFormat.PREFER_RGB_565)
-                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                    .dontAnimate()
-                    .into(iconImage)
+                  iconImage.visibility = View.VISIBLE
+                  iconText.visibility = View.GONE
+                  iconImage.clearColorFilter()
+                  val roundBg = GradientDrawable()
+                  roundBg.cornerRadius = 10f * context.resources.displayMetrics.density
+                  roundBg.setColor(Color.TRANSPARENT)
+                  iconWrap.background = roundBg
+                  iconWrap.clipToOutline = true
+                  Glide.with(iconImage)
+                      .load(android.net.Uri.parse(item.uri))
+                      .override(80, 80)
+                      .centerCrop()
+                      .format(DecodeFormat.PREFER_RGB_565)
+                      .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                      .dontAnimate()
+                      .into(iconImage)
             } else {
-              iconImage.visibility = View.VISIBLE
-              iconText.visibility = View.GONE
-              iconImage.clearColorFilter()
-              val (bgColor, iconRes) = getFileStyle(item)
-              val baseColor = Color.parseColor(bgColor)
-              // Solid colored background (no transparency) — icon is white on top
-              val bg = GradientDrawable()
-              bg.cornerRadius = 10f * context.resources.displayMetrics.density
-              bg.setColor(baseColor)
-              iconWrap.background = bg
-              iconImage.setImageResource(iconRes)
-              // No color filter — icon lines stay white as defined in XML
-          }
+                iconImage.visibility = View.GONE
+                iconText.visibility = View.VISIBLE
+                val (bgColor, label) = getFileStyle(item)
+                val baseColor = Color.parseColor(bgColor)
+                val drawable = GradientDrawable()
+                drawable.cornerRadius = 10f * context.resources.displayMetrics.density
+                drawable.setColor(Color.argb(34, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)))
+                iconWrap.background = drawable
+                iconText.text = label
+                iconText.setTextColor(baseColor)
+            }
         }
 
         fun recycle() {
@@ -414,19 +410,19 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
     }
 
-    private fun getFileStyle(item: FileItem): Pair<String, Int> {
-      return when (item.name.substringAfterLast('.', "").lowercase()) {
-          "pdf" -> Pair("#D2342B", R.drawable.ic_file_document)
-          "doc", "docx" -> Pair("#2B579A", R.drawable.ic_file_document)
-          "xls", "xlsx", "csv" -> Pair("#217346", R.drawable.ic_file_document)
-          "ppt", "pptx" -> Pair("#C43E1C", R.drawable.ic_file_document)
-          "txt", "md" -> Pair("#5F5E5A", R.drawable.ic_file_document)
-          "mp3", "wav", "aac", "flac", "m4a", "ogg" -> Pair("#854F0B", R.drawable.ic_file_audio)
-          "zip", "rar", "7z", "tar", "gz" -> Pair("#3B6D11", R.drawable.ic_file_archive)
-          "apk" -> Pair("#2E7D32", R.drawable.ic_file_android)
-          else -> Pair("#5F5E5A", R.drawable.ic_file_document)
-      }
-  }
+    private fun getFileStyle(item: FileItem): Pair<String, String> {
+        return when (item.name.substringAfterLast('.', "").lowercase()) {
+            "pdf" -> Pair("#D2342B", "PDF")
+            "doc", "docx" -> Pair("#2B579A", "DOC")
+            "xls", "xlsx", "csv" -> Pair("#217346", "XLS")
+            "ppt", "pptx" -> Pair("#C43E1C", "PPT")
+            "txt", "md" -> Pair("#5F5E5A", "TXT")
+            "mp3", "wav", "aac", "flac", "m4a", "ogg" -> Pair("#854F0B", "MP3")
+            "zip", "rar", "7z", "tar", "gz" -> Pair("#3B6D11", "ZIP")
+            "apk" -> Pair("#2E7D32", "APK")
+            else -> Pair("#5F5E5A", item.name.substringAfterLast('.', "?").uppercase().take(3))
+        }
+    }
 
     companion object {
         private const val PAYLOAD_SELECTION = "selection"

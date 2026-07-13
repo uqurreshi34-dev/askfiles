@@ -28,10 +28,9 @@
 
         <ImageView
             android:id="@+id/iconImage"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:scaleType="fitCenter"
-            android:layout_gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
             android:visibility="gone" />
 
         <TextView
