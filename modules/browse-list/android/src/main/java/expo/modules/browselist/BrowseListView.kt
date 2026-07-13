@@ -343,7 +343,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                       .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                       .dontAnimate()
                       .into(iconImage)
-            } else {
+           } else {
                 iconImage.visibility = View.GONE
                 iconText.visibility = View.VISIBLE
                 val (bgColor, label) = getFileStyle(item)
