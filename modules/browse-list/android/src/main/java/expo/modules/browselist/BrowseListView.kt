@@ -414,7 +414,8 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         return when (item.name.substringAfterLast('.', "").lowercase()) {
             "pdf" -> Pair("#D2342B", "PDF")
             "doc", "docx" -> Pair("#2B579A", "DOC")
-            "xls", "xlsx", "csv" -> Pair("#217346", "XLS")
+            "xls", "xlsx" -> Pair("#217346", "XLS")
+            "csv" -> Pair("#217346", "CSV")
             "ppt", "pptx" -> Pair("#C43E1C", "PPT")
             "txt", "md" -> Pair("#5F5E5A", "TXT")
             "mp3", "wav", "aac", "flac", "m4a", "ogg" -> Pair("#854F0B", "MP3")
