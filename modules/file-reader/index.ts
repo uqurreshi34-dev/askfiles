@@ -100,3 +100,7 @@ export function getMostUsedEnabled(): boolean {
 export function setMostUsedEnabled(value: boolean): void {
   FileReader.setMostUsedEnabled(value);
 }
+
+export async function readTextPreview(path: string): Promise<string | null> {
+  return FileReader.readTextPreview(path);
+}

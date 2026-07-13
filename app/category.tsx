@@ -1,4 +1,4 @@
-import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates } from 'file-reader';
+import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates, readTextPreview } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -186,6 +186,7 @@ export default function CategoryScreen() {
   const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
   const [detailsName, setDetailsName] = useState('');
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [txtPreview, setTxtPreview] = useState<string | null>(null);
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -441,6 +442,11 @@ async function handleSsInfo() {
         if (file.size && file.size > 0) { setFileSize(formatSize(file.size)); return; }
       } catch {}
       setFileSize('Unknown');
+    }
+    if (item.name.toLowerCase().endsWith('.txt')) {
+      readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
+    } else {
+      setTxtPreview(null);
     }
   }
 
@@ -1541,6 +1547,13 @@ async function handleSsInfo() {
                 </View>
               </View>
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+              {txtPreview && selectedItem?.name.toLowerCase().endsWith('.txt') && (
+                <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
+                    {txtPreview}
+                  </Text>
+                </View>
+              )}
             {isVideoFile(selectedItem?.name ?? '') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleVideoSummary}>
                   <Ionicons name="film-outline" size={20} color={colors.textPrimary} />
@@ -2456,4 +2469,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  txtPreviewCard: { borderRadius: 8, borderWidth: 0.5, padding: 10, marginBottom: 8 },
+  txtPreviewText: { fontSize: 12, lineHeight: 18, fontFamily: 'monospace' },
 });

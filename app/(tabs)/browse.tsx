@@ -24,7 +24,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates } from 'file-reader';
+import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates, readTextPreview } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes, getPinnedFolders, setPinnedFolders, getPendingBrowsePath } from '@/modules/storage-stats';
@@ -171,6 +171,7 @@ export default function BrowseScreen() {
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B6D11');
   const [newTagIcon, setNewTagIcon] = useState('pricetag-outline');
+  const [txtPreview, setTxtPreview] = useState<string | null>(null);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -231,6 +232,11 @@ export default function BrowseScreen() {
         setFileSize(formatSize(file.size ?? 0));
       } catch {
         setFileSize('Unknown');
+      }
+      if (item.name.toLowerCase().endsWith('.txt')) {
+        readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
+      } else {
+        setTxtPreview(null);
       }
     }
   }
@@ -1733,6 +1739,13 @@ export default function BrowseScreen() {
                 </View>
 
                 <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+                {txtPreview && selectedItem?.name.toLowerCase().endsWith('.txt') && (
+                  <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
+                      {txtPreview}
+                    </Text>
+                  </View>
+                )}
 
                 {showRename ? (
                   <View style={styles.renameWrap}>
@@ -2887,4 +2900,6 @@ const styles = StyleSheet.create({
   qrTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4, letterSpacing: -0.3 },
   qrSub: { fontSize: 12, textAlign: 'center', marginBottom: 4 },
   qrOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  txtPreviewCard: { borderRadius: 8, borderWidth: 0.5, padding: 10, marginBottom: 8 },
+  txtPreviewText: { fontSize: 12, lineHeight: 18, fontFamily: 'monospace' },
 });

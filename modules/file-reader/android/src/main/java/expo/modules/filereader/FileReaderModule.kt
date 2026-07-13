@@ -46,6 +46,26 @@ class FileReaderModule : Module() {
       dir.listFiles()?.count { includeHidden || !it.name.startsWith('.') } ?: 0
     }
 
+    AsyncFunction("readTextPreview") { path: String ->
+      try {
+        val file = File(path)
+        if (!file.exists() || !file.isFile) return@AsyncFunction null
+        val buffer = ByteArray(500)
+        val bytesRead = FileInputStream(file).use { it.read(buffer) }
+        if (bytesRead <= 0) return@AsyncFunction null
+        val raw = String(buffer, 0, bytesRead, Charsets.UTF_8)
+        // Take first 3 non-empty lines, max 300 chars total
+        val lines = raw.lines()
+          .map { it.trim() }
+          .filter { it.isNotEmpty() }
+          .take(3)
+          .joinToString("\n")
+        lines.take(300)
+      } catch (e: Exception) {
+        null
+      }
+    }
+
     Function("getShowHidden") {
       val prefs = appContext.reactContext
           ?.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
