@@ -1,0 +1,9 @@
+{
+    "name": "browse-list",
+    "version": "1.0.0",
+    "description": "Native RecyclerView file browser for AskFiles",
+    "main": "index.ts",
+    "android": {
+      "package": "expo.modules.browselist"
+    }
+  }

@@ -47,6 +47,7 @@ import { addTag } from '@/hooks/useTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
+import { BrowseListView } from 'browse-list';
 
 interface FileItem {
   name: string;
@@ -216,6 +217,20 @@ export default function BrowseScreen() {
     loadDirectory(currentPath, next);
   }
 
+  function updateFolderCount(folder: FileItem, hidden: boolean) {
+    const folderPath = toPath(folder.uri);
+    if (folderPath.includes('/Android/data')) return;
+    countFolder(folderPath, hidden)
+      .then(count => {
+        folderCountsStore[folder.uri] = count;
+        setFolderCounts(prev => {
+          const next = { ...prev, [folder.uri]: count };
+          return next;
+        });
+      })
+      .catch(() => {});
+  }
+
   async function openSheet(item: FileItem) {
     setSelectedItem(item);
     setFileSize(null);
@@ -249,19 +264,7 @@ export default function BrowseScreen() {
       readDirectory(toPath(path), hidden).then(fileItems => {
         dirCacheStore[path] = fileItems;
         setItems(fileItems);
-        fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
-          const folderPath = toPath(folder.uri);
-          if (folderPath.includes('/Android/data')) return;
-          countFolder(folderPath, hidden)
-            .then(count => {
-              setFolderCounts(prev => {
-                const updated = { ...prev, [folder.uri]: count };
-                Object.assign(folderCountsStore, updated);
-                return updated;
-              });
-            })
-            .catch(() => {});
-        });
+        fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => updateFolderCount(folder, hidden));
       }).catch(() => {});
       return;
     }
@@ -271,20 +274,7 @@ export default function BrowseScreen() {
       const fileItems = await readDirectory(toPath(path), hidden);
       dirCacheStore[path] = fileItems;
       setItems(fileItems);
-  
-      fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
-        const folderPath = toPath(folder.uri);
-        if (folderPath.includes('/Android/data')) return;
-        countFolder(folderPath, hidden)
-          .then(count => {
-            setFolderCounts(prev => {
-              const updated = { ...prev, [folder.uri]: count };
-              Object.assign(folderCountsStore, updated);
-              return updated;
-            });
-          })
-          .catch(() => {});
-      });
+      fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => updateFolderCount(folder, hidden));
   
     } catch {
       setItems([]);
@@ -1343,103 +1333,6 @@ export default function BrowseScreen() {
     }
   }
 
-  function renderItem({ item }: { item: FileItem }) {
-    if (item.isDirectory && folderCounts[item.uri] === undefined) {
-      const folderPath = toPath(item.uri);
-      if (!folderPath.includes('/Android/data')) {
-        countFolder(folderPath)
-          .then(count => {
-            setFolderCounts(prev => {
-              const updated = { ...prev, [item.uri]: count };
-              Object.assign(folderCountsStore, updated);
-              return updated;
-            });
-          })
-          .catch(() => {});
-      }
-    }
-    const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
-    const isSelected = selectedUris.has(item.uri);
-    return (
-      <TouchableOpacity
-        style={[styles.row, { borderBottomColor: colors.border, backgroundColor: isSelected ? colors.blueTint : 'transparent' }]}
-        onPress={() => {
-          if (multiPasting || deleting) return;
-          if (selectMode) {
-            const newSet = new Set(selectedUris);
-            const newMap = new Map(selectedItemsMap);
-            if (isSelected) { newSet.delete(item.uri); newMap.delete(item.uri); }
-            else { newSet.add(item.uri); newMap.set(item.uri, item); }
-            setSelectedUris(newSet);
-            setSelectedItemsMap(newMap);
-          } else {
-            navigateTo(item);
-          }
-        }}
-        onLongPress={() => {Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openSheet(item)}}
-        delayLongPress={400}
-        activeOpacity={0.6}
-      >
-        {selectMode && (
-          <View style={{ marginRight: 12 }}>
-            <Ionicons name={isSelected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSelected ? colors.blue : colors.textMuted} />
-          </View>
-        )}
-        <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>
-          {item.isDirectory ? (
-            <Ionicons name="folder" size={22} color={color} />
-          ) : isImageFile(item.name) ? (
-            <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
-          ) : isVideoFile(item.name) ? (
-            <VideoThumb uri={item.uri} style={styles.thumbnail} />
-          ) : (
-            <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
-          )}
-        </View>
-        <View style={styles.fileInfo}>
-          <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
-            {item.isDirectory
-              ? folderCounts[item.uri] === undefined ? 'Folder'
-                : folderCounts[item.uri] === -1 ? 'Folder'
-                : folderCounts[item.uri] === 0 ? 'Empty'
-                : `${folderCounts[item.uri]} item${folderCounts[item.uri] !== 1 ? 's' : ''}`
-              : `${formatSize(item.size)} · ${formatDate(item.date)}`}
-          </Text>
-        </View>
-        {!selectMode && (
-          item.isDirectory ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  if (isBookmarkedSync(item.uri)) removeBookmark(item.uri);
-                  else addBookmark({ name: item.name, path: item.uri });
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={{ padding: 2 }}
-              >
-                <Ionicons
-                  name={isBookmarkedSync(item.uri) ? 'bookmark' : 'bookmark-outline'}
-                  size={15}
-                  color={isBookmarkedSync(item.uri) ? colors.blue : colors.textDisabled}
-                />
-              </TouchableOpacity>
-              <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
-            </View>
-          ) : movingUri === item.uri ? (
-            <ActivityIndicator size="small" color={colors.blue} style={styles.dotsBtn} />
-          ) : openingUri === item.uri ? (
-            <ActivityIndicator size="small" color={colors.blue} style={styles.dotsBtn} />
-          ) : (
-            <TouchableOpacity style={styles.dotsBtn} onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-          )
-        )}
-      </TouchableOpacity>
-    );
-  }
-
   const sortedItems = items.slice().sort((a, b) => {
     switch (sortKey) {
       case 'name_asc': return a.name.localeCompare(b.name);
@@ -1543,7 +1436,7 @@ export default function BrowseScreen() {
             <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }} disabled={multiPasting || deleting}>
               <Text style={{ fontSize: 13, color: (multiPasting || deleting) ? colors.textDisabled : colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} file{selectedUris.size !== 1 ? 's' : ''} selected</Text>
+            <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} item{selectedUris.size !== 1 ? 's' : ''} selected</Text>
             <TouchableOpacity
               onPress={() => {
                 const allFiles = items;
@@ -1693,13 +1586,56 @@ export default function BrowseScreen() {
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>This folder is empty</Text>
         </View>
       ) : (
-        <FlatList
-          data={displayItems}
-          keyExtractor={item => item.uri}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <BrowseListView
+          style={{ flex: 1 }}
+          items={displayItems}
+          folderCounts={folderCounts}
+          selectedUris={Array.from(selectedUris)}
+          bookmarkedUris={bookmarks.map(b => b.path)}
+          selectMode={selectMode}
+          openingUri={openingUri ?? ''}
+          movingUri={movingUri ?? ''}
+          colors={{
+            textPrimary: colors.textPrimary,
+            textMuted: colors.textMuted,
+            border: colors.border,
+            blue: colors.blue,
+            blueTint: colors.blueTint,
+            yellow: colors.yellow,
+            surface: colors.surface,
+            deleteRed: colors.deleteRed,
+          }}
+          onItemTap={(e: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => {
+            const item = { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
+            if (multiPasting || deleting) return;
+            if (selectMode) {
+              const existing = displayItems.find(i => i.uri === e.nativeEvent.uri);
+              const fullItem = existing ?? item;
+              const newSet = new Set(selectedUris);
+              const newMap = new Map(selectedItemsMap);
+              if (newSet.has(item.uri)) { newSet.delete(item.uri); newMap.delete(item.uri); }
+              else { newSet.add(item.uri); newMap.set(item.uri, fullItem); }
+              setSelectedUris(newSet);
+              setSelectedItemsMap(newMap);
+            } else {
+              navigateTo(item);
+            }
+          }}
+          onItemLongPress={(e: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => {
+            const item = displayItems.find(i => i.uri === e.nativeEvent.uri) 
+              ?? { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            openSheet(item);
+          }}
+          onItemDotsPress={(e: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => {
+            const item = displayItems.find(i => i.uri === e.nativeEvent.uri)
+              ?? { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
+            openSheet(item);
+          }}
+          onBookmarkPress={(e: { nativeEvent: { uri: string; name: string } }) => {
+            if (isBookmarkedSync(e.nativeEvent.uri)) removeBookmark(e.nativeEvent.uri);
+            else addBookmark({ name: e.nativeEvent.name, path: e.nativeEvent.uri });
+          }}
         />
       )}
 
