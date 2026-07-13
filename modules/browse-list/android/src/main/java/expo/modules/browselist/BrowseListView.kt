@@ -131,7 +131,6 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     fun setFolderCounts(counts: Map<String, Int>) {
       folderCounts = counts
-      android.util.Log.d("BrowseList", "setFolderCounts: ${counts.size} counts")
       adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_META)
       requestLayout()
   }
@@ -331,6 +330,13 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 iconImage.visibility = View.VISIBLE
                 iconText.visibility = View.GONE
                 iconImage.clearColorFilter()
+                iconWrap.background = null
+                val params = iconImage.layoutParams as FrameLayout.LayoutParams
+                params.width = (20f * context.resources.displayMetrics.density).toInt()
+                params.height = (20f * context.resources.displayMetrics.density).toInt()
+                params.gravity = android.view.Gravity.CENTER
+                iconImage.layoutParams = params
+                iconImage.scaleType = ImageView.ScaleType.FIT_CENTER
                 Glide.with(iconImage)
                     .load(android.net.Uri.parse(item.uri))
                     .override(80, 80)
@@ -340,17 +346,19 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                     .dontAnimate()
                     .into(iconImage)
             } else {
-                iconImage.visibility = View.GONE
-                iconText.visibility = View.VISIBLE
-                val (bgColor, label) = getFileStyle(item)
-                val drawable = GradientDrawable()
-                drawable.cornerRadius = 10f * context.resources.displayMetrics.density
-                val baseColor = Color.parseColor(bgColor)
-                drawable.setColor(Color.argb(51, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)))
-                iconWrap.background = drawable
-                iconText.text = label
-                iconText.setTextColor(Color.parseColor(bgColor))
-            }
+              iconImage.visibility = View.VISIBLE
+              iconText.visibility = View.GONE
+              iconImage.clearColorFilter()
+              val (bgColor, iconRes) = getFileStyle(item)
+              val baseColor = Color.parseColor(bgColor)
+              // Solid colored background (no transparency) — icon is white on top
+              val bg = GradientDrawable()
+              bg.cornerRadius = 10f * context.resources.displayMetrics.density
+              bg.setColor(baseColor)
+              iconWrap.background = bg
+              iconImage.setImageResource(iconRes)
+              // No color filter — icon lines stay white as defined in XML
+          }
         }
 
         fun recycle() {
@@ -406,19 +414,19 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
     }
 
-    private fun getFileStyle(item: FileItem): Pair<String, String> {
-        return when (item.name.substringAfterLast('.', "").lowercase()) {
-            "pdf" -> Pair("#E24B4A", "PDF")
-            "doc", "docx" -> Pair("#185FA5", "DOC")
-            "xls", "xlsx" -> Pair("#2E7D32", "XLS")
-            "ppt", "pptx" -> Pair("#E65100", "PPT")
-            "txt", "md" -> Pair("#607D8B", "TXT")
-            "zip", "rar", "7z" -> Pair("#795548", "ZIP")
-            "mp3", "wav", "flac", "aac", "m4a", "ogg" -> Pair("#8B32A8", "MP3")
-            "apk" -> Pair("#2E7D32", "APK")
-            else -> Pair("#607D8B", item.name.substringAfterLast('.', "?").uppercase().take(3))
-        }
-    }
+    private fun getFileStyle(item: FileItem): Pair<String, Int> {
+      return when (item.name.substringAfterLast('.', "").lowercase()) {
+          "pdf" -> Pair("#D2342B", R.drawable.ic_file_document)
+          "doc", "docx" -> Pair("#2B579A", R.drawable.ic_file_document)
+          "xls", "xlsx", "csv" -> Pair("#217346", R.drawable.ic_file_document)
+          "ppt", "pptx" -> Pair("#C43E1C", R.drawable.ic_file_document)
+          "txt", "md" -> Pair("#5F5E5A", R.drawable.ic_file_document)
+          "mp3", "wav", "aac", "flac", "m4a", "ogg" -> Pair("#854F0B", R.drawable.ic_file_audio)
+          "zip", "rar", "7z", "tar", "gz" -> Pair("#3B6D11", R.drawable.ic_file_archive)
+          "apk" -> Pair("#2E7D32", R.drawable.ic_file_android)
+          else -> Pair("#5F5E5A", R.drawable.ic_file_document)
+      }
+  }
 
     companion object {
         private const val PAYLOAD_SELECTION = "selection"

@@ -127,7 +127,7 @@ export default function BrowseScreen() {
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [movingUri, setMovingUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
-  const [folderCounts, setFolderCounts] = useState<Record<string, number>>(folderCountsStore);
+  const [folderCounts, setFolderCounts] = useState<Record<string, number>>({});
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
