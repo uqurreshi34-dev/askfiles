@@ -8,6 +8,7 @@ int drawable ic_file_audio 0x0
 int drawable ic_file_document 0x0
 int drawable ic_folder 0x0
 int drawable ic_icon_bg 0x0
+int drawable ic_trash 0x0
 int id bookmarkBtn 0x0
 int id checkIcon 0x0
 int id chevron 0x0

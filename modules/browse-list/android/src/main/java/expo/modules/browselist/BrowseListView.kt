@@ -12,6 +12,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -27,6 +28,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val onItemLongPress by EventDispatcher()
     private val onItemDotsPress by EventDispatcher()
     private val onBookmarkPress by EventDispatcher()
+    private val onItemSwipeDelete by EventDispatcher()  
 
     private val recyclerView = RecyclerView(context)
     private val adapter = FileAdapter()
@@ -85,6 +87,80 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         recyclerView.setHasFixedSize(false)
         recyclerView.itemAnimator = null
         addView(recyclerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        setupSwipeToDelete()
+    }
+
+    private fun setupSwipeToDelete() {
+        val dp = context.resources.displayMetrics.density
+        val paint = android.graphics.Paint()
+        paint.color = colorSet.deleteRed
+        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+
+            override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder) = false
+
+            override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder) = 0.4f
+
+            override fun getSwipeEscapeVelocity(defaultValue: Float) = defaultValue * 0.8f
+
+            override fun getSwipeDirs(rv: RecyclerView, vh: RecyclerView.ViewHolder): Int {
+                if (selectMode) return 0
+                val pos = vh.adapterPosition
+                if (pos != RecyclerView.NO_ID.toInt() && items[pos].isDirectory) return 0
+                return super.getSwipeDirs(rv, vh)
+            }
+
+            override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
+                val pos = vh.adapterPosition
+                if (pos == RecyclerView.NO_ID.toInt()) return
+                val item = items[pos]
+                onItemSwipeDelete(mapOf(
+                    "uri" to item.uri,
+                    "name" to item.name,
+                    "isDirectory" to item.isDirectory
+                ))
+                adapter.notifyItemChanged(pos)
+            }
+
+            override fun getAnimationDuration(recyclerView: RecyclerView, animationType: Int, animateDx: Float, animateDy: Float): Long {
+                return if (animationType == ItemTouchHelper.ANIMATION_TYPE_SWIPE_CANCEL) 200L
+                else super.getAnimationDuration(recyclerView, animationType, animateDx, animateDy)
+            }
+
+            override fun onChildDraw(
+                c: android.graphics.Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float, dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                val background = android.graphics.RectF(
+                    itemView.right + dX,
+                    itemView.top.toFloat(),
+                    itemView.right.toFloat(),
+                    itemView.bottom.toFloat()
+                )
+                c.drawRoundRect(background, 12f * dp, 12f * dp, paint)
+
+                // Trash icon
+                val icon = androidx.core.content.ContextCompat.getDrawable(
+                    context, R.drawable.ic_trash
+                )
+                icon?.let {
+                    it.setTint(Color.WHITE)
+                    val iconSize = (24 * dp).toInt()
+                    val iconMargin = (16 * dp).toInt()
+                    val iconTop = itemView.top + (itemView.height - iconSize) / 2
+                    val iconLeft = itemView.right - iconMargin - iconSize
+                    it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                    if (dX < -iconMargin) it.draw(c)
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+        ItemTouchHelper(callback).attachToRecyclerView(recyclerView)
     }
 
     // ── Lifecycle — mirrors MediaGridView exactly ──────────────────────────────

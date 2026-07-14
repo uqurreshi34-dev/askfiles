@@ -635,67 +635,66 @@ export default function BrowseScreen() {
     }
   }
 
-  async function handleDelete() {
-    if (!selectedItem) return;
-    if (selectedItem.isDirectory) {
-      const count = await countFolder(toPath(selectedItem.uri));
+  async function handleDelete(swipeItem?: FileItem) {
+    const item = swipeItem ?? selectedItem;
+    const fromSwipe = !!swipeItem;
+    if (!item) return;
+    if (item.isDirectory) {
+      const count = await countFolder(toPath(item.uri));
       if (count > 0) {
         Alert.alert(
           'Folder not empty',
-          `"${selectedItem.name}" contains ${count} item${count !== 1 ? 's' : ''}. Delete or move all files first, then delete the empty folder.`
+          `"${item.name}" contains ${count} item${count !== 1 ? 's' : ''}. Delete or move all files first, then delete the empty folder.`
         );
         return;
       }
-      Alert.alert(
-        'Delete Folder',
-        `Delete "${selectedItem.name}"? This cannot be undone.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete', style: 'destructive',
-            onPress: async () => {
-              try {
-                closeSheet();
-                setDeleting(true);
-                setDeletingFolder(true);
-                await new Promise(resolve => setTimeout(resolve, 100));
-                await deleteDirectory(toPath(selectedItem.uri));
-                setDeleting(false);
-                setDeletingFolder(false);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                await loadDirectory(currentPath);
-              } catch {
-                Alert.alert('Permission needed', 'AskFiles needs full storage access to delete folders.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Open Settings', onPress: requestManagePermission },
-                ]);
-                setDeleting(false);
-                setDeletingFolder(false);
-              }
-            },
-          },
-        ]
-      );
-    } else {
-      Alert.alert('Move to Trash', `"${selectedItem.name}" will be moved to Trash and deleted after 30 days.`, [
+      Alert.alert('Delete Folder', `Delete "${item.name}"? This cannot be undone.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Move to Trash', style: 'destructive', onPress: async () => {
-          closeSheet();
-          setDeleting(true);
-          setDeletingCount(1);
-          const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
-          if (ok) {
-            await removeFavourite(selectedItem.uri);
-            DocIndexer.removeFromIndex(selectedItem.uri);
-            await loadDirectory(currentPath);
+        { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            closeSheet();
+            setDeleting(true);
+            setDeletingFolder(true);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await deleteDirectory(toPath(item.uri));
+            setDeleting(false);
+            setDeletingFolder(false);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          } else {
-            Alert.alert('Error', 'Could not move file to Trash.');
+            await loadDirectory(currentPath);
+          } catch {
+            Alert.alert('Permission needed', 'AskFiles needs full storage access to delete folders.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: requestManagePermission },
+            ]);
+            setDeleting(false);
+            setDeletingFolder(false);
           }
-          setDeleting(false);
-          setDeletingCount(0);
         }},
       ]);
+    } else {
+      if (!fromSwipe) {
+        closeSheet();
+        const confirmed = await new Promise<boolean>(resolve =>
+          Alert.alert('Move to Trash', `"${item.name}" will be moved to Trash and deleted after 30 days.`, [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Move to Trash', style: 'destructive', onPress: () => resolve(true) },
+          ])
+        );
+        if (!confirmed) return;
+      }
+      setDeleting(true);
+      setDeletingCount(1);
+      const ok = await moveToTrash(item.uri, item.name);
+      if (ok) {
+        await removeFavourite(item.uri);
+        DocIndexer.removeFromIndex(item.uri);
+        await loadDirectory(currentPath);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert('Error', 'Could not move file to Trash.');
+      }
+      setDeleting(false);
+      setDeletingCount(0);
     }
   }
 
@@ -1605,6 +1604,11 @@ export default function BrowseScreen() {
             surface: colors.surface,
             deleteRed: colors.deleteRed,
           }}
+          onItemSwipeDelete={(e: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => {
+            const item = displayItems.find(i => i.uri === e.nativeEvent.uri)
+                ?? { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
+            handleDelete(item);
+        }}
           onItemTap={(e: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => {
             const item = { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
             if (multiPasting || deleting) return;
@@ -1851,7 +1855,7 @@ export default function BrowseScreen() {
                       <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
                       <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
+                    <TouchableOpacity style={styles.sheetAction} onPress={() => handleDelete()}>
                       <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
                       <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
                     </TouchableOpacity>

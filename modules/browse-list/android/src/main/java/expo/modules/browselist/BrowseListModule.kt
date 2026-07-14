@@ -12,7 +12,8 @@ class BrowseListModule : Module() {
                 "onItemTap",
                 "onItemLongPress",
                 "onItemDotsPress",
-                "onBookmarkPress"
+                "onBookmarkPress",
+                "onItemSwipeDelete"
             )
 
             Prop("items") { view: BrowseListView, items: List<Map<String, Any?>> ->
