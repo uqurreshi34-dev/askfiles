@@ -13,7 +13,8 @@ class BrowseListModule : Module() {
                 "onItemLongPress",
                 "onItemDotsPress",
                 "onBookmarkPress",
-                "onItemSwipeDelete"
+                "onItemSwipeDelete",
+                "onItemSwipeBookmark"
             )
 
             Prop("items") { view: BrowseListView, items: List<Map<String, Any?>> ->

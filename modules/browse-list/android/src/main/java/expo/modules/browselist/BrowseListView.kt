@@ -3,8 +3,6 @@ package expo.modules.browselist
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,12 +26,10 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val onItemLongPress by EventDispatcher()
     private val onItemDotsPress by EventDispatcher()
     private val onBookmarkPress by EventDispatcher()
-    private val onItemSwipeDelete by EventDispatcher()  
-
+    private val onItemSwipeDelete by EventDispatcher() 
+    private val onItemSwipeBookmark by EventDispatcher() 
     private val recyclerView = RecyclerView(context)
     private val adapter = FileAdapter()
-    private val mainHandler = Handler(Looper.getMainLooper())
-
     private var items: List<FileItem> = emptyList()
     private var folderCounts: Map<String, Int> = emptyMap()
     private var selectedUris: Set<String> = emptySet()
@@ -94,7 +90,9 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         val dp = context.resources.displayMetrics.density
         val paint = android.graphics.Paint()
         paint.color = colorSet.deleteRed
-        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+        val bookmarkIcon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_bookmark_filled)?.mutate()?.apply { setTint(Color.WHITE) }
+        val trashIcon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_trash)?.mutate()?.apply { setTint(Color.WHITE) }
+        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
 
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder) = false
 
@@ -105,20 +103,26 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             override fun getSwipeDirs(rv: RecyclerView, vh: RecyclerView.ViewHolder): Int {
                 if (selectMode) return 0
                 val pos = vh.adapterPosition
-                if (pos != RecyclerView.NO_ID.toInt() && items[pos].isDirectory) return 0
-                return super.getSwipeDirs(rv, vh)
+                if (pos == RecyclerView.NO_ID.toInt()) return 0
+                val item = items[pos]
+                if (item.isDirectory) return ItemTouchHelper.RIGHT
+                return ItemTouchHelper.LEFT
             }
 
             override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
                 val pos = vh.adapterPosition
                 if (pos == RecyclerView.NO_ID.toInt()) return
                 val item = items[pos]
-                onItemSwipeDelete(mapOf(
-                    "uri" to item.uri,
-                    "name" to item.name,
-                    "isDirectory" to item.isDirectory
-                ))
-                adapter.notifyItemChanged(pos)
+                if (direction == ItemTouchHelper.LEFT) {
+                    onItemSwipeDelete(mapOf(
+                        "uri" to item.uri,
+                        "name" to item.name,
+                        "isDirectory" to false
+                    ))
+                } else {
+                    onItemSwipeBookmark(mapOf("uri" to item.uri, "name" to item.name))
+                    adapter.notifyItemChanged(pos)
+                }
             }
 
             override fun getAnimationDuration(recyclerView: RecyclerView, animationType: Int, animateDx: Float, animateDy: Float): Long {
@@ -135,26 +139,40 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 isCurrentlyActive: Boolean
             ) {
                 val itemView = viewHolder.itemView
-                val background = android.graphics.RectF(
-                    itemView.right + dX,
-                    itemView.top.toFloat(),
-                    itemView.right.toFloat(),
-                    itemView.bottom.toFloat()
-                )
-                c.drawRoundRect(background, 12f * dp, 12f * dp, paint)
+                val iconMargin = (16 * dp).toInt()
+                val iconSize = (24 * dp).toInt()
+                val iconTop = itemView.top + (itemView.height - iconSize) / 2
 
-                // Trash icon
-                val icon = androidx.core.content.ContextCompat.getDrawable(
-                    context, R.drawable.ic_trash
-                )
-                icon?.let {
-                    it.setTint(Color.WHITE)
-                    val iconSize = (24 * dp).toInt()
-                    val iconMargin = (16 * dp).toInt()
-                    val iconTop = itemView.top + (itemView.height - iconSize) / 2
-                    val iconLeft = itemView.right - iconMargin - iconSize
-                    it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-                    if (dX < -iconMargin) it.draw(c)
+                if (dX > 0) {
+                    // Blue bookmark background (right swipe)
+                    paint.color = colorSet.blue
+                    val background = android.graphics.RectF(
+                        itemView.left.toFloat(),
+                        itemView.top.toFloat(),
+                        itemView.left + dX,
+                        itemView.bottom.toFloat()
+                    )
+                    c.drawRoundRect(background, 12f * dp, 12f * dp, paint)
+                    bookmarkIcon?.let {
+                        val iconLeft = itemView.left + iconMargin
+                        it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                        if (dX > iconMargin) it.draw(c)
+                    }
+                } else if (dX < 0) {
+                    // Red delete background (left swipe)
+                    paint.color = colorSet.deleteRed
+                    val background = android.graphics.RectF(
+                        itemView.right + dX,
+                        itemView.top.toFloat(),
+                        itemView.right.toFloat(),
+                        itemView.bottom.toFloat()
+                    )
+                    c.drawRoundRect(background, 12f * dp, 12f * dp, paint)
+                    trashIcon?.let {
+                        val iconLeft = itemView.right - iconMargin - iconSize
+                        it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                        if (dX < -iconMargin) it.draw(c)
+                    }
                 }
 
                 super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
@@ -177,7 +195,6 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
             )
         } catch (e: Exception) {}
-        mainHandler.removeCallbacksAndMessages(null)
     }
 
     // ── Props ──────────────────────────────────────────────────────────────────
@@ -218,7 +235,9 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     fun setBookmarkedUris(uris: List<String>) {
         bookmarkedUris = uris.toHashSet()
-        adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_BOOKMARK)
+        recyclerView.post {
+            adapter.notifyDataSetChanged()
+        }
     }
 
     fun setSelectMode(enabled: Boolean) {
@@ -371,7 +390,11 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
 
         fun bindBookmark(item: FileItem) {
-            if (!item.isDirectory) return
+            if (!item.isDirectory) {
+                bookmarkBtn.visibility = View.GONE
+                return
+            }
+            bookmarkBtn.visibility = View.VISIBLE
             val isBookmarked = bookmarkedUris.contains(item.uri)
             bookmarkBtn.setImageResource(
                 if (isBookmarked) R.drawable.ic_bookmark_filled

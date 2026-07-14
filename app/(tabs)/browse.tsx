@@ -1609,6 +1609,10 @@ export default function BrowseScreen() {
                 ?? { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
             handleDelete(item);
         }}
+          onItemSwipeBookmark={(e: { nativeEvent: { uri: string; name: string } }) => {
+            if (isBookmarkedSync(e.nativeEvent.uri)) removeBookmark(e.nativeEvent.uri);
+            else addBookmark({ name: e.nativeEvent.name, path: e.nativeEvent.uri });
+        }}
           onItemTap={(e: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => {
             const item = { uri: e.nativeEvent.uri, name: e.nativeEvent.name, isDirectory: e.nativeEvent.isDirectory, size: 0, date: 0 };
             if (multiPasting || deleting) return;
