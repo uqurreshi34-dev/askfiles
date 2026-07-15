@@ -37,6 +37,8 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private var selectMode: Boolean = false
     private var openingUri: String = ""
     private var movingUri: String = ""
+    private val alphabetIndex = AlphabetIndexView(context) 
+    private val letterPositions = mutableMapOf<Char, Int>()
 
     data class ColorSet(
         val textPrimary: Int = Color.BLACK,
@@ -83,7 +85,31 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         recyclerView.setHasFixedSize(false)
         recyclerView.itemAnimator = null
         addView(recyclerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        val indexWidth = (28 * context.resources.displayMetrics.density).toInt()
+        addView(alphabetIndex, FrameLayout.LayoutParams(indexWidth, FrameLayout.LayoutParams.MATCH_PARENT).apply {
+            gravity = android.view.Gravity.END
+        })
+        alphabetIndex.visibility = View.GONE
+        alphabetIndex.onLetterSelected = { letter ->
+            letterPositions[letter]?.let { pos ->
+                (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(pos, 0)
+            }
+        }
         setupSwipeToDelete()
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        val parentWidth = r - l
+        val parentHeight = b - t
+        val indexWidth = alphabetIndex.measuredWidth.takeIf { it > 0 }
+            ?: (28 * context.resources.displayMetrics.density).toInt()
+        alphabetIndex.layout(
+            parentWidth - indexWidth,
+            0,
+            parentWidth,
+            parentHeight
+        )
     }
 
     private fun setupSwipeToDelete() {
@@ -220,6 +246,22 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             adapter.notifyDataSetChanged()
             recyclerView.scrollToPosition(0)
         }
+        updateLetterPositions()
+    }
+
+    private fun updateLetterPositions() {
+        letterPositions.clear()
+        items.forEachIndexed { i, item ->
+            val c = item.name.firstOrNull()?.uppercaseChar()
+            val key = if (c != null && c in 'A'..'Z') c else '#'
+            if (!letterPositions.containsKey(key)) letterPositions[key] = i
+        }
+        alphabetIndex.availableLetters = letterPositions.keys
+        alphabetIndex.invalidate()
+    }
+
+    fun setShowFastScroll(enabled: Boolean) {
+        alphabetIndex.visibility = if (enabled) View.VISIBLE else View.GONE
     }
 
     fun setFolderCounts(counts: Map<String, Int>) {

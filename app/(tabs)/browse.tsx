@@ -1592,6 +1592,7 @@ export default function BrowseScreen() {
           selectedUris={Array.from(selectedUris)}
           bookmarkedUris={bookmarks.map(b => b.path)}
           selectMode={selectMode}
+          showFastScroll={sortKey === 'name_asc' || sortKey === 'name_desc'}
           openingUri={openingUri ?? ''}
           movingUri={movingUri ?? ''}
           colors={{

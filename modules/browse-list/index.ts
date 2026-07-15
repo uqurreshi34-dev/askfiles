@@ -25,6 +25,7 @@ export interface BrowseListProps {
     surface: string;
     deleteRed: string;
   };
+  showFastScroll?: boolean;
   onItemTap?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;
   onItemLongPress?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;
   onItemDotsPress?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;
