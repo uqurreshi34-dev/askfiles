@@ -37,8 +37,12 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private var selectMode: Boolean = false
     private var openingUri: String = ""
     private var movingUri: String = ""
-    private val alphabetIndex = AlphabetIndexView(context) 
+    private val alphabetIndex = AlphabetIndexView(context)
     private val letterPositions = mutableMapOf<Char, Int>()
+    private var sectionMode: String = "none"
+    private val headerDecoration = StickyHeaderDecoration(
+        context.resources.displayMetrics.density
+    ) { position -> getSectionLabel(position) }
 
     data class ColorSet(
         val textPrimary: Int = Color.BLACK,
@@ -84,6 +88,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         recyclerView.adapter = adapter
         recyclerView.setHasFixedSize(false)
         recyclerView.itemAnimator = null
+        recyclerView.addItemDecoration(headerDecoration)
         addView(recyclerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         val indexWidth = (28 * context.resources.displayMetrics.density).toInt()
         addView(alphabetIndex, FrameLayout.LayoutParams(indexWidth, FrameLayout.LayoutParams.MATCH_PARENT).apply {
@@ -247,6 +252,39 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             recyclerView.scrollToPosition(0)
         }
         updateLetterPositions()
+        recyclerView.invalidateItemDecorations()
+    }
+
+    fun setSectionMode(mode: String) {
+        sectionMode = mode
+        recyclerView.invalidateItemDecorations()
+    }
+
+    private fun getSectionLabel(position: Int): String? {
+        if (position !in items.indices) return null
+        val item = items[position]
+        return when (sectionMode) {
+            "alpha" -> {
+                val c = item.name.firstOrNull()?.uppercaseChar()
+                if (c != null && c in 'A'..'Z') c.toString() else "#"
+            }
+            "date" -> dateBucket(item.date)
+            else -> null
+        }
+    }
+
+    private fun dateBucket(ms: Long): String {
+        if (ms == 0L) return "Older"
+        val msActual = if (ms < 10_000_000_000L) ms * 1000L else ms
+        val now = System.currentTimeMillis()
+        val days = (now - msActual) / 86_400_000
+        return when {
+            days < 1 -> "Today"
+            days < 2 -> "Yesterday"
+            days < 7 -> "Last 7 Days"
+            days < 30 -> "Last 30 Days"
+            else -> "Older"
+        }
     }
 
     private fun updateLetterPositions() {

@@ -1593,6 +1593,11 @@ export default function BrowseScreen() {
           bookmarkedUris={bookmarks.map(b => b.path)}
           selectMode={selectMode}
           showFastScroll={sortKey === 'name_asc' || sortKey === 'name_desc'}
+          sectionMode={
+            sortKey === 'name_asc' || sortKey === 'name_desc' ? 'alpha' :
+            sortKey === 'date_asc' || sortKey === 'date_desc' ? 'date' :
+            'none'
+          }
           openingUri={openingUri ?? ''}
           movingUri={movingUri ?? ''}
           colors={{

@@ -53,6 +53,10 @@ class BrowseListModule : Module() {
             Prop("showFastScroll") { view: BrowseListView, enabled: Boolean ->
                 view.setShowFastScroll(enabled)
             }
+
+            Prop("sectionMode") { view: BrowseListView, mode: String ->
+                view.setSectionMode(mode)
+            }
         }
     }
 }
