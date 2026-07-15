@@ -24,10 +24,15 @@ class StickyHeaderDecoration(
         textPaint.color = text
     }
 
+    private val labelCache = HashMap<Int, String?>()
+
+    private fun cachedLabel(position: Int): String? =
+        labelCache.getOrPut(position) { getSectionLabel(position) }
+
     private fun isSectionStart(position: Int): Boolean {
-        if (position == 0) return getSectionLabel(0) != null
-        val current = getSectionLabel(position) ?: return false
-        val previous = getSectionLabel(position - 1)
+        if (position == 0) return cachedLabel(0) != null
+        val current = cachedLabel(position) ?: return false
+        val previous = cachedLabel(position - 1)
         return current != previous
     }
 
@@ -38,6 +43,7 @@ class StickyHeaderDecoration(
     }
 
     override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
+        labelCache.clear()
         if (parent.childCount == 0) return
         val topChild = parent.getChildAt(0)
         val topPosition = parent.getChildAdapterPosition(topChild)
