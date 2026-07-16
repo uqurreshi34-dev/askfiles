@@ -111,6 +111,7 @@ export default function BrowseScreen() {
   const [deleting, setDeleting] = useState(false);
   const [deletingFolder, setDeletingFolder] = useState(false);
   const [deletingCount, setDeletingCount] = useState(0);
+  const [deletingTotal, setDeletingTotal] = useState(0);
   const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
   const pendingMultiItems = useRef<FileItem[]>([]);
@@ -846,14 +847,16 @@ export default function BrowseScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: folderCount > 0 && fileCount === 0 ? 'Delete' : 'Move to Trash', style: 'destructive', onPress: async () => {
         setDeleting(true);
-        setDeletingCount(files.filter(f => !f.isDirectory).length);
         const fileItems = files.filter(f => !f.isDirectory);
         const folderItems = files.filter(f => f.isDirectory);
-        
+        setDeletingTotal(fileItems.length);
+        setDeletingCount(0);
+
         for (const file of fileItems) {
           await moveToTrash(file.uri, file.name, false);
           removeFavourite(file.uri);
           DocIndexer.removeFromIndex(file.uri);
+          setDeletingCount(prev => prev + 1);
         }
         const skippedFolders: string[] = [];
         for (const folder of folderItems) {
@@ -1564,9 +1567,11 @@ export default function BrowseScreen() {
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="small" color={colors.deleteRed} />
             <Text style={[styles.busyText, { color: colors.textSecondary }]}>
-              {deletingFolder
-                ? 'Deleting folder...'
-                : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}
+            {deletingFolder
+              ? 'Deleting folder...'
+              : deletingTotal > 1
+              ? `Moving ${deletingCount} of ${deletingTotal} files to Trash...`
+              : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}
             </Text>
           </View>
         )}

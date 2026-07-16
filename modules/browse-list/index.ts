@@ -27,6 +27,7 @@ export interface BrowseListProps {
   };
   showFastScroll?: boolean;
   sectionMode?: 'alpha' | 'date' | 'none';
+  scrollToPosition?: number;
   onItemTap?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;
   onItemLongPress?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;
   onItemDotsPress?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;

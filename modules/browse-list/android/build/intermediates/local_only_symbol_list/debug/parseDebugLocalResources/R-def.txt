@@ -14,7 +14,9 @@ drawable ic_trash
 id bookmarkBtn
 id checkIcon
 id chevron
+id childrenContainer
 id dotsBtn
+id expandToggle
 id iconImage
 id iconText
 id iconWrap

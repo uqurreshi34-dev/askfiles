@@ -115,6 +115,7 @@ export default function CategoryScreen() {
   const suppressWatcherRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
   const [deletingCount, setDeletingCount] = useState(0);
+  const [deletingTotal, setDeletingTotal] = useState(0);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -919,12 +920,14 @@ async function handleSsInfo() {
       { text: 'Move to Trash', style: 'destructive', onPress: async () => {
         suppressWatcherRef.current = true;
         setDeleting(true);
-        setDeletingCount(files.length);
+        setDeletingTotal(files.length);
+        setDeletingCount(0);
         try {
           for (const file of files) {
             await moveToTrash(file.uri, file.name, false);
             removeFavourite(file.uri);
             DocIndexer.removeFromIndex(file.uri);
+            setDeletingCount(prev => prev + 1);
           }
           setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
           setSelectMode(false);
@@ -933,6 +936,7 @@ async function handleSsInfo() {
         } finally {
           setDeleting(false);
           setDeletingCount(0);
+          setDeletingTotal(0);
           suppressWatcherRef.current = false;
         }
       }},
@@ -1831,7 +1835,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.deleteRed} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            Moving {deletingCount} file{deletingCount !== 1 ? 's' : ''} to Trash...
+            {deletingTotal > 1 ? `Moving ${deletingCount} of ${deletingTotal} files to Trash...` : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}           
           </Text>
         </View>
       )}

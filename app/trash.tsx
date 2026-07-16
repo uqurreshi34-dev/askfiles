@@ -29,6 +29,8 @@ export default function TrashScreen() {
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const [selectedFilesMap, setSelectedFilesMap] = useState<Map<string, TrashFile>>(new Map());
   const [multiRestoring, setMultiRestoring] = useState(false);
+  const [restoringCount, setRestoringCount] = useState(0);
+  const [restoringTotal, setRestoringTotal] = useState(0);
   const sheetAnim = useRef(new Animated.Value(400)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -134,11 +136,14 @@ export default function TrashScreen() {
     setSelectedUris(new Set());
     setSelectedFilesMap(new Map());
     setMultiRestoring(true);
+    setRestoringTotal(filesToRestore.length);
+    setRestoringCount(0);
     try {
       let downloadsCount = 0;
       for (const file of filesToRestore) {
         const result = await restoreFile(file, false);
         if (result === 'downloads') downloadsCount++;
+        setRestoringCount(prev => prev + 1);
       }
       await loadFiles();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -151,6 +156,8 @@ export default function TrashScreen() {
       }
     } finally {
       setMultiRestoring(false);
+      setRestoringCount(0);
+      setRestoringTotal(0);
     }
   }
 
@@ -194,7 +201,9 @@ export default function TrashScreen() {
       {(restoring || multiRestoring) && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Restoring...</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            {multiRestoring && restoringTotal > 1 ? `Restoring ${restoringCount} of ${restoringTotal}...` : 'Restoring...'}
+          </Text>
         </View>
       )}
       {loading ? (
