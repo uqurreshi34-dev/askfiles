@@ -27,7 +27,8 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val onItemDotsPress by EventDispatcher()
     private val onBookmarkPress by EventDispatcher()
     private val onItemSwipeDelete by EventDispatcher() 
-    private val onItemSwipeBookmark by EventDispatcher() 
+    private val onItemSwipeBookmark by EventDispatcher()
+    private val onDragSelectEnd by EventDispatcher()
     private val recyclerView = RecyclerView(context)
     private val adapter = FileAdapter()
     private var items: List<FileItem> = emptyList()
@@ -101,6 +102,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             }
         }
         setupSwipeToDelete()
+        setupDragToSelect()
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
@@ -115,6 +117,63 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             parentWidth,
             parentHeight
         )
+    }
+
+    private var dragSelecting = false
+    private val dragSelectedUris = mutableSetOf<String>()
+
+    private fun setupDragToSelect() {
+        recyclerView.addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: android.view.MotionEvent): Boolean {
+                if (!selectMode || !dragSelecting) return false
+                return when (e.action) {
+                    android.view.MotionEvent.ACTION_MOVE,
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> true
+                    else -> false
+                }
+            }
+
+            override fun onTouchEvent(rv: RecyclerView, e: android.view.MotionEvent) {
+                if (!selectMode || !dragSelecting) return
+                when (e.action) {
+                    android.view.MotionEvent.ACTION_MOVE -> {
+                        val child = rv.findChildViewUnder(e.x, e.y) ?: return
+                        val position = rv.getChildAdapterPosition(child)
+                        if (position == RecyclerView.NO_POSITION) return
+                        val item = items.getOrNull(position) ?: return
+                        if (dragSelectedUris.add(item.uri)) {
+                            adapter.notifyItemChanged(position, PAYLOAD_SELECTION_PREVIEW)
+                        }
+                    }
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                        endDragSelect()
+                    }
+                }
+            }
+
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+                if (disallowIntercept) endDragSelect()
+            }
+        })
+    }
+
+    private fun endDragSelect() {
+        if (!dragSelecting) return
+        dragSelecting = false
+        if (dragSelectedUris.isNotEmpty()) {
+            onDragSelectEnd(mapOf("uris" to dragSelectedUris.toList()))
+        }
+    }
+
+    fun startDragSelect(uri: String) {
+        if (!selectMode) return
+        dragSelecting = true
+        dragSelectedUris.clear()
+        dragSelectedUris.add(uri)
+        val position = items.indexOfFirst { it.uri == uri }
+        if (position != -1) adapter.notifyItemChanged(position, PAYLOAD_SELECTION_PREVIEW)
     }
 
     private fun setupSwipeToDelete() {
@@ -310,6 +369,9 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     fun setSelectedUris(uris: List<String>) {
         selectedUris = uris.toHashSet()
+        if (dragSelectedUris.isNotEmpty()) {
+            dragSelectedUris.removeAll(selectedUris)
+        }
         adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_SELECTION)
     }
 
@@ -364,6 +426,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             payloads.forEach { payload ->
                 when (payload) {
                     PAYLOAD_SELECTION -> holder.bindSelection(item)
+                    PAYLOAD_SELECTION_PREVIEW -> holder.bindSelection(item)
                     PAYLOAD_META -> holder.bindMeta(item)
                     PAYLOAD_BOOKMARK -> holder.bindBookmark(item)
                     PAYLOAD_OPENING -> holder.bindOpening(item)
@@ -410,11 +473,15 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 ))
             }
             itemView.setOnLongClickListener {
-                onItemLongPress(mapOf(
-                    "uri" to item.uri,
-                    "name" to item.name,
-                    "isDirectory" to item.isDirectory
-                ))
+                if (selectMode) {
+                    startDragSelect(item.uri)
+                } else {
+                    onItemLongPress(mapOf(
+                        "uri" to item.uri,
+                        "name" to item.name,
+                        "isDirectory" to item.isDirectory
+                    ))
+                }
                 true
             }
             dotsBtn.setOnClickListener {
@@ -453,7 +520,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
 
         fun bindSelection(item: FileItem) {
-            val isSelected = selectedUris.contains(item.uri)
+            val isSelected = selectedUris.contains(item.uri) || dragSelectedUris.contains(item.uri)
             itemView.setBackgroundColor(
                 if (isSelected) colorSet.blueTint else Color.TRANSPARENT
             )
@@ -609,6 +676,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         private const val PAYLOAD_META = "meta"
         private const val PAYLOAD_BOOKMARK = "bookmark"
         private const val PAYLOAD_OPENING = "opening"
+        private const val PAYLOAD_SELECTION_PREVIEW = "selection_preview"
 
         private val IMAGE_EXTS = setOf(
             "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp"

@@ -1598,6 +1598,17 @@ export default function BrowseScreen() {
             sortKey === 'date_asc' || sortKey === 'date_desc' ? 'date' :
             'none'
           }
+          onDragSelectEnd={(e: { nativeEvent: { uris: string[] } }) => {
+            const newSet = new Set(selectedUris);
+            const newMap = new Map(selectedItemsMap);
+            e.nativeEvent.uris.forEach(uri => {
+                newSet.add(uri);
+                const item = displayItems.find(i => i.uri === uri);
+                if (item) newMap.set(uri, item);
+            });
+            setSelectedUris(newSet);
+            setSelectedItemsMap(newMap);
+        }}
           openingUri={openingUri ?? ''}
           movingUri={movingUri ?? ''}
           colors={{

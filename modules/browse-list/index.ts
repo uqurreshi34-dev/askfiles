@@ -33,6 +33,7 @@ export interface BrowseListProps {
   onBookmarkPress?: (event: { nativeEvent: { uri: string; name: string } }) => void;
   onItemSwipeDelete?: (event: { nativeEvent: { uri: string; name: string; isDirectory: boolean } }) => void;
   onItemSwipeBookmark?: (event: { nativeEvent: { uri: string; name: string } }) => void;
+  onDragSelectEnd?: (event: { nativeEvent: { uris: string[] } }) => void;
 }
 
 export const BrowseListView = requireNativeViewManager('BrowseList') as any;

@@ -14,7 +14,8 @@ class BrowseListModule : Module() {
                 "onItemDotsPress",
                 "onBookmarkPress",
                 "onItemSwipeDelete",
-                "onItemSwipeBookmark"
+                "onItemSwipeBookmark",
+                "onDragSelectEnd"
             )
 
             Prop("items") { view: BrowseListView, items: List<Map<String, Any?>> ->
