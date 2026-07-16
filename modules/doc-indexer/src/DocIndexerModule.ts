@@ -14,6 +14,7 @@ declare class DocIndexerModule extends NativeModule {
   getIndexCount(): Promise<number>;
   removeFromIndex(uri: string): Promise<void>;
   clearIndex(): Promise<void>;
+  getPdfPreview(path: string): Promise<string>;
 }
 
 export default requireNativeModule<DocIndexerModule>('DocIndexer');

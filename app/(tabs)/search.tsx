@@ -32,7 +32,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative, shareFiles } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
-import { copyFileStream, moveFileStream, addCopyProgressListener } from 'file-reader';
+import { copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
@@ -151,6 +151,7 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [showSheet, setShowSheet] = useState(false);
+  const [txtPreview, setTxtPreview] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<string | null>(null);
   const [showRename, setShowRename] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -215,6 +216,7 @@ export default function SearchScreen() {
   }
 
   async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
+    setTxtPreview(null);
     setSelectedItem(item);
     setFileSize(null);
     setShowSheet(true);
@@ -226,6 +228,12 @@ export default function SearchScreen() {
       const file = new FileSystem.File(item.uri);
       setFileSize(formatSize(file.size ?? 0));
     } catch { setFileSize('Unknown'); }
+    const lowerName = item.name.toLowerCase();
+    if (lowerName.endsWith('.txt')) {
+      readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
+    } else if (lowerName.endsWith('.pdf')) {
+      DocIndexer.getPdfPreview(toPath(item.uri)).then(text => setTxtPreview(text || null)).catch(() => setTxtPreview(null));
+    }
   }
 
   const ROOT_PATH = 'file:///storage/emulated/0/';
@@ -1001,8 +1009,15 @@ export default function SearchScreen() {
                     <Text style={[styles.sheetFileName, { color: colors.textPrimary }]} numberOfLines={2}>{selectedItem?.name}</Text>
                     {fileSize && <Text style={[styles.sheetFileMeta, { color: colors.textMuted }]}>{fileSize}</Text>}
                   </View>
-                </View>
+                  </View>
                 <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
+                {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
+                  <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
+                      {txtPreview}
+                    </Text>
+                  </View>
+                )}
                 <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                   <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
                   <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
@@ -1297,4 +1312,6 @@ const styles = StyleSheet.create({
   smartRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 0.5 },
   smartSnippet: { fontSize: 12, lineHeight: 18, marginTop: 2 },
   smartHighlight: { borderRadius: 2, paddingHorizontal: 1 },
+  txtPreviewCard: { borderRadius: 8, borderWidth: 0.5, padding: 10, marginBottom: 8 },
+  txtPreviewText: { fontSize: 12, lineHeight: 18, fontFamily: 'monospace' },
 });

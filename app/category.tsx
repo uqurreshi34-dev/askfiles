@@ -429,6 +429,7 @@ async function handleSsInfo() {
   }, []);
 
   async function openSheet(item: FileItem) {
+    setTxtPreview(null);
     setSelectedItem(item);
     setFileSize(null);
     setIsFav(await isFavourite(item.uri));
@@ -444,10 +445,11 @@ async function handleSsInfo() {
       } catch {}
       setFileSize('Unknown');
     }
-    if (item.name.toLowerCase().endsWith('.txt')) {
+    const lowerName = item.name.toLowerCase();
+    if (lowerName.endsWith('.txt')) {
       readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
-    } else {
-      setTxtPreview(null);
+    } else if (lowerName.endsWith('.pdf')) {
+      DocIndexer.getPdfPreview(toPath(item.uri)).then(text => setTxtPreview(text || null)).catch(() => setTxtPreview(null));
     }
   }
 
@@ -1551,7 +1553,7 @@ async function handleSsInfo() {
                 </View>
               </View>
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-              {txtPreview && selectedItem?.name.toLowerCase().endsWith('.txt') && (
+              {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
                 <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
                     {txtPreview}

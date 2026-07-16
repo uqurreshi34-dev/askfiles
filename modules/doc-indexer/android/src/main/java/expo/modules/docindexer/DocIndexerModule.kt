@@ -205,6 +205,33 @@ class DocIndexerModule : Module() {
       db.writableDatabase.delete("doc_fts", null, null)
       db.writableDatabase.delete("doc_meta", null, null)
     }
+
+      // Lightweight preview — first page only, first 3 non-blank lines.
+      // Deliberately cheaper than extractText: 2MB read cap (vs 10MB for
+      // full indexing), single page only (vs up to 3), tiny output.
+      AsyncFunction("getPdfPreview") { path: String ->
+        try {
+          val file = File(path)
+          if (!file.exists() || !file.canRead()) return@AsyncFunction ""
+          val maxBytes = 2 * 1024 * 1024
+          val bytes = file.inputStream().use { stream ->
+            if (file.length() > maxBytes) stream.readNBytes(maxBytes) else stream.readBytes()
+          }
+          PDDocument.load(java.io.ByteArrayInputStream(bytes)).use { doc ->
+            val stripper = PDFTextStripper()
+            stripper.startPage = 1
+            stripper.endPage = 1
+            val text = stripper.getText(doc)
+            text.lines()
+              .map { it.trim() }
+              .filter { it.isNotBlank() }
+              .take(3)
+              .joinToString("\n")
+          }
+        } catch (e: Exception) {
+          ""
+        }
+      }
   }
 
   // ── Text extraction ──────────────────────────────────────────────────────────
