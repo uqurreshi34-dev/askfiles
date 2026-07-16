@@ -1585,10 +1585,6 @@ export default function BrowseScreen() {
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />
         </View>
-      ) : items.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={[styles.emptyText, { color: colors.textMuted }]}>This folder is empty</Text>
-        </View>
       ) : (
         <BrowseListView
           style={{ flex: 1 }}

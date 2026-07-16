@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -38,6 +39,10 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private var selectMode: Boolean = false
     private var openingUri: String = ""
     private var movingUri: String = ""
+    private var showFastScrollEnabled: Boolean = false
+    private lateinit var emptyView: LinearLayout
+    private lateinit var emptyIcon: ImageView
+    private lateinit var emptyText: TextView
     private val alphabetIndex = AlphabetIndexView(context)
     private val letterPositions = mutableMapOf<Char, Int>()
     private var sectionMode: String = "none"
@@ -70,6 +75,10 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             deleteRed = parseColor(raw["deleteRed"], Color.parseColor("#E24B4A"))
         )
         adapter.notifyItemRangeChanged(0, items.size)
+        if (::emptyIcon.isInitialized) {
+            emptyIcon.setColorFilter(colorSet.textMuted)
+            emptyText.setTextColor(colorSet.textMuted)
+        }
     }
 
     private fun parseColor(hex: String?, fallback: Int): Int {
@@ -101,6 +110,30 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(pos, 0)
             }
         }
+
+        val dp = context.resources.displayMetrics.density
+        emptyIcon = ImageView(context).apply {
+            setImageResource(R.drawable.ic_folder)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams((48 * dp).toInt(), (48 * dp).toInt())
+        }
+        emptyText = TextView(context).apply {
+            text = "This folder is empty"
+            textSize = 14f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (8 * dp).toInt() }
+        }
+        emptyView = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            addView(emptyIcon)
+            addView(emptyText)
+            visibility = View.GONE
+        }
+        addView(emptyView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
         setupSwipeToDelete()
         setupDragToSelect()
     }
@@ -312,6 +345,14 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
         updateLetterPositions()
         recyclerView.invalidateItemDecorations()
+        updateEmptyState()
+    }
+
+    private fun updateEmptyState() {
+        val isEmpty = items.isEmpty()
+        emptyView.visibility = if (isEmpty) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        alphabetIndex.visibility = if (!isEmpty && showFastScrollEnabled) View.VISIBLE else View.GONE
     }
 
     fun setSectionMode(mode: String) {
@@ -358,7 +399,8 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     }
 
     fun setShowFastScroll(enabled: Boolean) {
-        alphabetIndex.visibility = if (enabled) View.VISIBLE else View.GONE
+        showFastScrollEnabled = enabled
+        alphabetIndex.visibility = if (enabled && items.isNotEmpty()) View.VISIBLE else View.GONE
     }
 
     fun setFolderCounts(counts: Map<String, Int>) {

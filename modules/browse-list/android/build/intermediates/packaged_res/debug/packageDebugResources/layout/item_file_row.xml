@@ -3,16 +3,11 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingVertical="10dp"
-        android:paddingHorizontal="16dp"
-        android:background="?android:attr/selectableItemBackground">
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="10dp"
+    android:paddingHorizontal="16dp"
+    android:background="?android:attr/selectableItemBackground">
 
     <!-- Select mode checkbox -->
     <ImageView
@@ -111,27 +106,6 @@
         android:padding="8dp"
         android:src="@drawable/ic_dots_vertical"
         android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:visibility="gone" />
-
-</LinearLayout>
-
-    <TextView
-        android:id="@+id/expandToggle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingVertical="4dp"
-        android:gravity="center"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:background="?android:attr/selectableItemBackground"
-        android:visibility="gone"
-        android:text="+" />
-
-    <LinearLayout
-        android:id="@+id/childrenContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:visibility="gone" />
 
 </LinearLayout>
