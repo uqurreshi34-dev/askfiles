@@ -1,3 +1,6 @@
 export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }) {
-    return '/(tabs)';
+  if (path.includes('callback')) {
+    return path;
   }
+  return '/(tabs)';
+}

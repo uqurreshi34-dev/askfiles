@@ -128,7 +128,6 @@ export default function RootLayout() {
         <Stack.Screen name="pdf-viewer" options={{ animation: 'none' }}/>
         <Stack.Screen name="text-editor" options={{ animation: 'none' }} />
         <Stack.Screen name="image-duplicates" options={{ animation: 'none' }} />
-        <Stack.Screen name="callback" options={{ animation: 'none', freezeOnBlur: false }} />
       </Stack>
       </View>
     </GestureHandlerRootView>

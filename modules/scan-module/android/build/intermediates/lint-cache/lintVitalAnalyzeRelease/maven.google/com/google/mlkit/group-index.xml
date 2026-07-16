@@ -10,11 +10,13 @@
   <entity-extraction versions="16.0.0-beta1,16.0.0-beta2,16.0.0-beta3,16.0.0-beta4,16.0.0-beta5,16.0.0-beta6"/>
   <face-detection versions="16.0.0,16.0.1,16.0.2,16.0.3,16.0.4,16.0.5,16.0.6,16.0.7,16.1.0,16.1.1,16.1.2,16.1.3,16.1.4,16.1.5,16.1.6,16.1.7"/>
   <face-mesh-detection versions="16.0.0-beta1,16.0.0-beta2,16.0.0-beta3"/>
-  <genai-common versions="1.0.0-beta1,1.0.0-beta2,1.0.0-beta3"/>
+  <genai-common versions="1.0.0-beta1,1.0.0-beta2,1.0.0-beta3,1.0.0-beta4"/>
   <genai-image-description versions="1.0.0-beta1"/>
-  <genai-prompt versions="1.0.0-alpha1,1.0.0-beta1,1.0.0-beta2"/>
+  <genai-prompt versions="1.0.0-alpha1,1.0.0-beta1,1.0.0-beta2,1.0.0-beta3"/>
   <genai-proofreading versions="1.0.0-beta1"/>
   <genai-rewriting versions="1.0.0-beta1"/>
+  <genai-schema versions="1.0.0-alpha1"/>
+  <genai-schema-compiler versions="1.0.0-alpha1"/>
   <genai-speech-recognition versions="1.0.0-alpha1"/>
   <genai-summarization versions="1.0.0-beta1"/>
   <image-labeling versions="16.0.0,16.1.0,16.2.0,17.0.0,17.0.1,17.0.2,17.0.3,17.0.4,17.0.5,17.0.6,17.0.7,17.0.8,17.0.9"/>
