@@ -344,7 +344,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             recyclerView.scrollToPosition(0)
         }
         updateLetterPositions()
-        recyclerView.invalidateItemDecorations()
+        recyclerView.post { recyclerView.invalidateItemDecorations() }
         updateEmptyState()
     }
 

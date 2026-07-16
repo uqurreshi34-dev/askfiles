@@ -28,6 +28,43 @@ class ImageHashModule : Module() {
 
     // ── pHash ────────────────────────────────────────────────────────────────
 
+    private fun computeAvgColor(path: String): IntArray? {
+        val opts = BitmapFactory.Options().apply {
+            inSampleSize = 8
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        val bmp = try {
+            BitmapFactory.decodeFile(path, opts) ?: return null
+        } catch (oom: OutOfMemoryError) {
+            return null
+        }
+        var r = 0L; var g = 0L; var b = 0L
+        val w = bmp.width; val h = bmp.height
+        if (w == 0 || h == 0) { bmp.recycle(); return null }
+        val stepX = maxOf(1, w / 16)
+        val stepY = maxOf(1, h / 16)
+        var count = 0
+        var y = 0
+        while (y < h) {
+            var x = 0
+            while (x < w) {
+                val c = bmp.getPixel(x, y)
+                r += Color.red(c); g += Color.green(c); b += Color.blue(c)
+                count++
+                x += stepX
+            }
+            y += stepY
+        }
+        bmp.recycle()
+        if (count == 0) return null
+        return intArrayOf((r / count).toInt(), (g / count).toInt(), (b / count).toInt())
+    }
+
+    private fun colorDistance(a: IntArray, b: IntArray): Int {
+        val dr = a[0] - b[0]; val dg = a[1] - b[1]; val db = a[2] - b[2]
+        return sqrt((dr * dr + dg * dg + db * db).toDouble()).toInt()
+    }
+
     private fun computePhash(path: String): LongArray? {
         val opts = BitmapFactory.Options().apply {
             inSampleSize = 4          // pre-scale before full decode
@@ -168,12 +205,13 @@ class ImageHashModule : Module() {
         if (images.isEmpty()) return emptyList()
 
         // Compute hashes — skip on OOM, null = skip
-        data class Hashed(val entry: ImgEntry, val hash: LongArray)
+        data class Hashed(val entry: ImgEntry, val hash: LongArray, val color: IntArray)
         val total = images.size
         val hashed = mutableListOf<Hashed>()
         for ((index, img) in images.withIndex()) {
             val h = try { computePhash(img.path) } catch (e: Exception) { null }
-            if (h != null) hashed.add(Hashed(img, h))
+            val c = try { computeAvgColor(img.path) } catch (e: Exception) { null }
+            if (h != null && c != null) hashed.add(Hashed(img, h, c))
             if (index % 50 == 0) {
                 sendEvent("onScanProgress", mapOf(
                     "scanned" to index + 1,
@@ -208,11 +246,18 @@ class ImageHashModule : Module() {
                 lshBuckets[band][key]?.forEach { j -> if (j > i) candidates.add(j) }
             }
 
+            val groupIndices = mutableListOf(i)
             val group = mutableListOf(hashed[i].entry)
             for (j in candidates) {
                 if (used[j]) continue
-                if (hammingDistance(hashed[i].hash, hashed[j].hash) <= THRESHOLD) {
+                val COLOR_THRESHOLD = 40
+                val matchesAll = groupIndices.all { member ->
+                    hammingDistance(hashed[member].hash, hashed[j].hash) <= THRESHOLD &&
+                    colorDistance(hashed[member].color, hashed[j].color) <= COLOR_THRESHOLD
+                }
+                if (matchesAll) {
                     group.add(hashed[j].entry)
+                    groupIndices.add(j)
                     used[j] = true
                 }
             }

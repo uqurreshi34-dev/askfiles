@@ -11,3 +11,22 @@ if (Test-Path $gradleProps) {
 } else {
     Write-Host "ERROR: android/gradle.properties not found." -ForegroundColor Red
 }
+
+# Restore R8 full mode + optimised resource shrinking flags
+if (Test-Path $gradleProps) {
+    $content = Get-Content $gradleProps -Raw
+    if ($content -notmatch 'android\.enableR8\.fullMode=true') {
+        Add-Content $gradleProps "`nandroid.enableR8.fullMode=true"
+        Write-Host "Added android.enableR8.fullMode=true" -ForegroundColor Green
+    } else {
+        Write-Host "android.enableR8.fullMode already present" -ForegroundColor Yellow
+    }
+    if ($content -notmatch 'android\.enableNewResourceShrinker=true') {
+        Add-Content $gradleProps "`nandroid.enableNewResourceShrinker=true"
+        Write-Host "Added android.enableNewResourceShrinker=true" -ForegroundColor Green
+    } else {
+        Write-Host "android.enableNewResourceShrinker already present" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "ERROR: android/gradle.properties not found for R8 flags." -ForegroundColor Red
+}
