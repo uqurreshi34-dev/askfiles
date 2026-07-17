@@ -36,7 +36,7 @@ class FileReaderModule : Module() {
             "date" to file.lastModified()
           )
         }
-        ?.sortedWith(compareBy({ if (it["isDirectory"] as Boolean) 0 else 1 }, { it["name"] as String }))
+        ?.sortedWith(compareBy({ if (it["isDirectory"] as Boolean) 0 else 1 }, { (it["name"] as String).lowercase() }))
         ?: emptyList()
     }
 

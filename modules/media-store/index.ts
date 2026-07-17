@@ -44,16 +44,16 @@ export interface FolderGroup {
   uris: string[];
 }
 
-export async function queryImageFolders(): Promise<FolderGroup[]> {
-  return MediaStore.queryImageFolders();
+export async function queryImageFolders(sortKey: string = 'name_asc'): Promise<FolderGroup[]> {
+  return MediaStore.queryImageFolders(sortKey);
 }
 
-export async function queryVideoFolders(): Promise<FolderGroup[]> {
-  return MediaStore.queryVideoFolders();
+export async function queryVideoFolders(sortKey: string = 'name_asc'): Promise<FolderGroup[]> {
+  return MediaStore.queryVideoFolders(sortKey);
 }
 
-export async function queryDocumentFolders(mimeTypes: string[] = []): Promise<FolderGroup[]> {
-  return MediaStore.queryDocumentFolders(mimeTypes);
+export async function queryDocumentFolders(mimeTypes: string[] = [], sortKey: string = 'name_asc'): Promise<FolderGroup[]> {
+  return MediaStore.queryDocumentFolders(mimeTypes, sortKey);
 }
 
 export async function queryDocuments(sortKey: string = 'name_asc'): Promise<MediaFile[]> {
@@ -116,4 +116,8 @@ export const queryVideos = async (sortKey: string = 'date_desc'): Promise<{ name
 
 export async function getMediaInfo(filePath: string): Promise<MediaInfo> {
   return MediaStore.getMediaInfo(filePath);
+}
+
+export async function removeMediaStoreEntry(path: string): Promise<boolean> {
+  return MediaStore.removeMediaStoreEntry(path);
 }

@@ -49,17 +49,17 @@ class MediaStoreModule : Module() {
     )
 
     private fun sortOrder(sortKey: String): String = when (sortKey) {
-    "name_desc" -> "${MediaStore.Files.FileColumns.DISPLAY_NAME} DESC"
+    "name_desc" -> "${MediaStore.Files.FileColumns.DISPLAY_NAME} COLLATE NOCASE DESC"
     "size_desc" -> "${MediaStore.Files.FileColumns.SIZE} DESC"
     "size_asc"  -> "${MediaStore.Files.FileColumns.SIZE} ASC"
     "date_desc" -> "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
     "date_asc"  -> "${MediaStore.Files.FileColumns.DATE_MODIFIED} ASC"
-    else        -> "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC" // name_asc default
+    else        -> "${MediaStore.Files.FileColumns.DISPLAY_NAME} COLLATE NOCASE ASC" // name_asc default
   }
 
   private fun imageSortOrder(sortKey: String): String = when (sortKey) {
-    "name_asc"  -> "${MediaStore.Images.Media.DISPLAY_NAME} ASC"
-    "name_desc" -> "${MediaStore.Images.Media.DISPLAY_NAME} DESC"
+    "name_asc"  -> "${MediaStore.Images.Media.DISPLAY_NAME} COLLATE NOCASE ASC"
+    "name_desc" -> "${MediaStore.Images.Media.DISPLAY_NAME} COLLATE NOCASE DESC"
     "size_desc" -> "${MediaStore.Images.Media.SIZE} DESC"
     "size_asc"  -> "${MediaStore.Images.Media.SIZE} ASC"
     "date_desc" -> "${MediaStore.Images.Media.DATE_ADDED} DESC"
@@ -68,8 +68,8 @@ class MediaStoreModule : Module() {
   }
 
   private fun videoSortOrder(sortKey: String): String = when (sortKey) {
-    "name_asc"  -> "${MediaStore.Video.Media.DISPLAY_NAME} ASC"
-    "name_desc" -> "${MediaStore.Video.Media.DISPLAY_NAME} DESC"
+    "name_asc"  -> "${MediaStore.Video.Media.DISPLAY_NAME} COLLATE NOCASE ASC"
+    "name_desc" -> "${MediaStore.Video.Media.DISPLAY_NAME} COLLATE NOCASE DESC"
     "size_desc" -> "${MediaStore.Video.Media.SIZE} DESC"
     "size_asc"  -> "${MediaStore.Video.Media.SIZE} ASC"
     "date_desc" -> "${MediaStore.Video.Media.DATE_ADDED} DESC"
@@ -406,6 +406,24 @@ class MediaStoreModule : Module() {
       results
     }
 
+    // Removes a single MediaStore row by its exact file path — one indexed
+    // DELETE query, not a scan. Used after moving a file to trash so
+    // MediaStore-backed queries (image/video folder listings, category grids)
+    // don't keep returning a ghost entry for a file that's no longer there.
+    AsyncFunction("removeMediaStoreEntry") { path: String ->
+      try {
+        val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction false
+        val deleted = resolver.delete(
+          MediaStore.Files.getContentUri("external"),
+          "${MediaStore.Files.FileColumns.DATA} = ?",
+          arrayOf(path)
+        )
+        deleted > 0
+      } catch (e: Exception) {
+        false
+      }
+    }
+
     AsyncFunction("queryImages") { sortKey: String ->
       val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
@@ -522,7 +540,7 @@ class MediaStoreModule : Module() {
         result
     }
 
-    AsyncFunction("queryImageFolders") {
+    AsyncFunction("queryImageFolders") { sortKey: String ->
       val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
       val projection = arrayOf(
@@ -531,7 +549,7 @@ class MediaStoreModule : Module() {
         MediaStore.Images.Media.DATE_ADDED,
         MediaStore.Images.Media.SIZE,
       )
-      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC")
+      val cursor = resolver.query(uri, projection, null, null, imageSortOrder(sortKey))
         ?: return@AsyncFunction emptyList<Map<String, Any>>()
 
       // folderPath -> { name, previewUri, uris, count }
@@ -563,7 +581,7 @@ class MediaStoreModule : Module() {
       folderMap.values.sortedByDescending { it["count"] as Int }
     }
 
-    AsyncFunction("queryVideoFolders") {
+    AsyncFunction("queryVideoFolders") { sortKey: String ->
       val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
       val projection = arrayOf(
@@ -572,7 +590,7 @@ class MediaStoreModule : Module() {
         MediaStore.Video.Media.DATE_ADDED,
         MediaStore.Video.Media.SIZE,
       )
-      val cursor = resolver.query(uri, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC")
+      val cursor = resolver.query(uri, projection, null, null, videoSortOrder(sortKey))
         ?: return@AsyncFunction emptyList<Map<String, Any>>()
 
       val folderMap = linkedMapOf<String, MutableMap<String, Any>>()
@@ -651,7 +669,7 @@ class MediaStoreModule : Module() {
       )
     }
 
-    AsyncFunction("queryDocumentFolders") { filterMimes: List<String> ->
+    AsyncFunction("queryDocumentFolders") { filterMimes: List<String>, sortKey: String ->
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val mimeTypes = if (filterMimes.isEmpty()) DOCUMENT_MIME_TYPES else filterMimes
       val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
@@ -665,7 +683,7 @@ class MediaStoreModule : Module() {
       val cursor = context.contentResolver.query(
         MediaStore.Files.getContentUri("external"),
         projection, selection, selectionArgs,
-        "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
+        sortOrder(sortKey)
       ) ?: return@AsyncFunction emptyList<Map<String, Any>>()
 
       val folderMap = linkedMapOf<String, MutableMap<String, Any>>()
