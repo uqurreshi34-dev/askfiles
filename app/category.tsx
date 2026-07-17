@@ -410,17 +410,37 @@ async function handleSsInfo() {
   }
 
   const sortKeyRef = useRef<SortKey>('name_asc');
-
+  const folderViewRef = useRef(false);
+  const selectedFolderRef = useRef<FolderGroup | null>(null);
+  const activeTabRef = useRef('All');
+  
   useEffect(() => {
-    sortKeyRef.current = sortKey;
-  }, [sortKey]);
+      sortKeyRef.current = sortKey;
+    }, [sortKey]);
+  useEffect(() => { folderViewRef.current = folderView; }, [folderView]);
+  useEffect(() => { selectedFolderRef.current = selectedFolder; }, [selectedFolder]);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
 
   useEffect(() => {
     setSearchQuery('');
     loadCategory();
-    const subscription = addMediaStoreChangeListener(() => {
+    const subscription = addMediaStoreChangeListener(async () => {
       if (suppressWatcherRef.current) return;
       loadCategoryWithSort(sortKeyRef.current);
+      if (folderViewRef.current) {
+        const tab = activeTabRef.current;
+        const sk = sortKeyRef.current;
+        const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
+        const refreshed = category === 'images' ? await queryImageFolders(sk)
+          : category === 'videos' ? await queryVideoFolders(sk)
+          : await queryDocumentFolders(mimes, sk);
+        setFolderGroups(refreshed);
+        const current = selectedFolderRef.current;
+        if (current) {
+          const stillThere = refreshed.find(g => g.folderPath === current.folderPath);
+          setSelectedFolder(stillThere ?? null);
+        }
+      }
     });
     return () => subscription.remove();
   }, [category]);

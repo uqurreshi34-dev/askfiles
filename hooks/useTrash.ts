@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system';
 import RNFS from 'react-native-fs';
 import { scanFile } from '@/modules/share-module';
-import { removeMediaStoreEntry } from 'media-store';
 
 const TRASH_DIR = FileSystem.Paths.document.uri.endsWith('/')
   ? FileSystem.Paths.document.uri + 'trash/'
@@ -116,12 +115,6 @@ export function useTrash() {
         srcPath,
         decodeURIComponent(destUri.replace('file://', ''))
       );
-      // Purge stale MediaStore entry for the original path — a single
-      // indexed DELETE by exact path, not an asset scan. Without this,
-      // MediaStore keeps a ghost row pointing at the now-moved file, and any
-      // MediaStore-backed query (image/video folder listings, category
-      // grids) would keep returning it as if it still exists there.
-      removeMediaStoreEntry(srcPath).catch(() => {});
       // Update metadata
       const meta = await readMeta();
       meta[destName] = { originalUri: sourceUri, deletedAt: Date.now() };

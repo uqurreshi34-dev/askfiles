@@ -406,24 +406,6 @@ class MediaStoreModule : Module() {
       results
     }
 
-    // Removes a single MediaStore row by its exact file path — one indexed
-    // DELETE query, not a scan. Used after moving a file to trash so
-    // MediaStore-backed queries (image/video folder listings, category grids)
-    // don't keep returning a ghost entry for a file that's no longer there.
-    AsyncFunction("removeMediaStoreEntry") { path: String ->
-      try {
-        val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction false
-        val deleted = resolver.delete(
-          MediaStore.Files.getContentUri("external"),
-          "${MediaStore.Files.FileColumns.DATA} = ?",
-          arrayOf(path)
-        )
-        deleted > 0
-      } catch (e: Exception) {
-        false
-      }
-    }
-
     AsyncFunction("queryImages") { sortKey: String ->
       val resolver = appContext.reactContext?.contentResolver ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
