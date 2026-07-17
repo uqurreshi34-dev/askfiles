@@ -7,6 +7,8 @@ int drawable ic_file_archive 0x0
 int drawable ic_file_audio 0x0
 int drawable ic_file_document 0x0
 int drawable ic_folder 0x0
+int drawable ic_heart_filled 0x0
+int drawable ic_heart_outline 0x0
 int drawable ic_icon_bg 0x0
 int drawable ic_trash 0x0
 int id bookmarkBtn 0x0

@@ -95,7 +95,6 @@ export default function CategoryScreen() {
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All');
-  const [visibleCount, setVisibleCount] = useState(100);
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [fileSize, setFileSize] = useState<string | null>(null);
@@ -1204,7 +1203,6 @@ async function handleSsInfo() {
               style={[styles.tab, { backgroundColor: colors.surface }, activeTab === tab && { backgroundColor: colors.textPrimary }]}
               onPress={async () => {
                 setActiveTab(tab);
-                setVisibleCount(100);
                 setSelectedFolder(null);
                 setLoading(true);
                 const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
