@@ -225,7 +225,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
             override fun getSwipeDirs(rv: RecyclerView, vh: RecyclerView.ViewHolder): Int {
                 if (selectMode) return 0
-                val pos = vh.adapterPosition
+                val pos = vh.bindingAdapterPosition
                 if (pos == RecyclerView.NO_ID.toInt()) return 0
                 val item = items[pos]
                 if (item.isDirectory) return ItemTouchHelper.RIGHT
@@ -233,7 +233,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             }
 
             override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
-                val pos = vh.adapterPosition
+                val pos = vh.bindingAdapterPosition
                 if (pos == RecyclerView.NO_ID.toInt()) return
                 val item = items[pos]
                 if (direction == ItemTouchHelper.LEFT) {
