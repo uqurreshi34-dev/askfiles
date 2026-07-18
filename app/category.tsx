@@ -409,17 +409,37 @@ async function handleSsInfo() {
   }
 
   const sortKeyRef = useRef<SortKey>('name_asc');
+  const folderViewRef = useRef(false);
+  const selectedFolderRef = useRef<FolderGroup | null>(null);
+  const activeTabRef = useRef('All');
 
   useEffect(() => {
-    sortKeyRef.current = sortKey;
-  }, [sortKey]);
+      sortKeyRef.current = sortKey;
+    }, [sortKey]);
+  useEffect(() => { folderViewRef.current = folderView; }, [folderView]);
+  useEffect(() => { selectedFolderRef.current = selectedFolder; }, [selectedFolder]);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
 
   useEffect(() => {
     setSearchQuery('');
     loadCategory();
-    const subscription = addMediaStoreChangeListener(() => {
+    const subscription = addMediaStoreChangeListener(async () => {
       if (suppressWatcherRef.current) return;
       loadCategoryWithSort(sortKeyRef.current);
+      if (folderViewRef.current) {
+        const tab = activeTabRef.current;
+        const sk = sortKeyRef.current;
+        const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
+        const refreshed = category === 'images' ? await queryImageFolders(sk)
+          : category === 'videos' ? await queryVideoFolders(sk)
+          : await queryDocumentFolders(mimes, sk);
+        setFolderGroups(refreshed);
+        const current = selectedFolderRef.current;
+        if (current) {
+          const stillThere = refreshed.find(g => g.folderPath === current.folderPath);
+          setSelectedFolder(stillThere ?? null);
+        }
+      }
     });
     return () => subscription.remove();
   }, [category]);
@@ -453,28 +473,34 @@ async function handleSsInfo() {
     }
   }
 
-  async function handleDelete(swipeItem?: FileItem) {
-    const item = swipeItem ?? selectedItem;
-    const fromSwipe = !!swipeItem;
+  async function handleDelete() {
+    const item = selectedItem;
     if (!item) return;
 
     const doDelete = async () => {
-      if (!fromSwipe) closeSheet();
+      closeSheet();
       const ok = await moveToTrash(item.uri, item.name);
       if (ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await removeFavourite(item.uri);
         DocIndexer.removeFromIndex(item.uri);
         setItems(prev => prev.filter(f => f.uri !== item.uri));
+        if (selectedFolder) {
+          setSelectedFolder(prev => prev ? {
+            ...prev,
+            count: prev.count - 1,
+            uris: prev.uris.filter(u => u !== item.uri),
+          } : prev);
+          setFolderGroups(prev => prev.map(g =>
+            g.folderPath === selectedFolder.folderPath
+              ? { ...g, count: g.count - 1, uris: g.uris.filter(u => u !== item.uri) }
+              : g
+          ));
+        }
       } else {
         Alert.alert('Error', 'Could not move file to Trash.');
       }
     };
-
-    if (fromSwipe) {
-      doDelete();
-      return;
-    }
 
     Alert.alert('Move to Trash', `"${item.name}" will be moved to Trash and deleted after 30 days.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -1277,7 +1303,9 @@ async function handleSsInfo() {
           >
             <Ionicons name="arrow-back" size={18} color={colors.blue} />
             <Text style={{ fontSize: 13, color: colors.blue, fontWeight: '500' }}>{selectedFolder?.folderName}</Text>
-            <Text style={{ fontSize: 13, color: colors.textMuted }}>· {selectedFolder?.count} files</Text>
+            <Text style={{ fontSize: 13, color: colors.textMuted }}>
+              · {selectedFolder?.count} file{selectedFolder?.count !== 1 ? 's' : ''}
+            </Text>
           </TouchableOpacity>
           {(category === 'images' || category === 'videos') && gridView ? (
             <MediaGridView
@@ -1659,7 +1687,7 @@ async function handleSsInfo() {
                 <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetAction} onPress={() => handleDelete()}>
+              <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
                 <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
                 <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
               </TouchableOpacity>
