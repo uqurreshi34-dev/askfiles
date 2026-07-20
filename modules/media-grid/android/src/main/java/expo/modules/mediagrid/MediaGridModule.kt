@@ -91,7 +91,7 @@ class MediaGridModule : Module() {
         view.setSelectedUrisFromJS(uris)
       }
 
-      Events("onItemPress", "onItemLongPress", "onSelectionChange")
+      Events("onItemPress", "onItemLongPress", "onSelectionChange", "onDragSelectEnd", "onDragSelectProgress")
     }
   }
 }

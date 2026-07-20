@@ -10,5 +10,7 @@ export type MediaGridProps = {
   onItemPress: (event: { nativeEvent: { uri: string; index: number } }) => void;
   onItemLongPress: (event: { nativeEvent: { uri: string; index: number } }) => void;
   onSelectionChange: (event: { nativeEvent: { selectedUris: string[] } }) => void;
+  onDragSelectEnd?: (event: { nativeEvent: { uris: string[] } }) => void;
+  onDragSelectProgress?: (event: { nativeEvent: { count: number } }) => void;
   style?: StyleProp<ViewStyle>;
 };

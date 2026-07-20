@@ -3,6 +3,7 @@ package expo.modules.mediagrid
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
@@ -13,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -34,6 +36,8 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private val onItemPress by EventDispatcher()
     private val onItemLongPress by EventDispatcher()
     private val onSelectionChange by EventDispatcher()
+    private val onDragSelectEnd by EventDispatcher()
+    private val onDragSelectProgress by EventDispatcher()
 
     private val uris = mutableStateListOf<String>()
     private val selectedUris = mutableStateListOf<String>()
@@ -80,13 +84,67 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             val currentCategory = category.value
             val currentOpeningUri = openingUri.value
 
+            val gridState = rememberLazyGridState()
+
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val thumbDp: Dp = 110.dp
                 val cols = maxOf(2, (maxWidth / thumbDp).toInt())
 
+                // Maps a pointer position (relative to the grid) to the uri of the
+                // tile under it, using the live layout info of visible items.
+                // Returns null if the finger is over a gap or outside any tile.
+                fun uriAtOffset(offset: Offset): String? {
+                    val info = gridState.layoutInfo
+                    val item = info.visibleItemsInfo.firstOrNull { itemInfo ->
+                        val x = offset.x
+                        val y = offset.y
+                        x >= itemInfo.offset.x &&
+                        x <= itemInfo.offset.x + itemInfo.size.width &&
+                        y >= itemInfo.offset.y &&
+                        y <= itemInfo.offset.y + itemInfo.size.height
+                    } ?: return null
+                    return currentUris.getOrNull(item.index)
+                }
+
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Fixed(cols),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        // Drag-select gesture lives on the grid container so it can
+                        // hit-test across ALL visible tiles (Compose equivalent of
+                        // RecyclerView.findChildViewUnder). Only active in select mode;
+                        // additive-only (never deselects); visible tiles only (no
+                        // auto-scroll) — matches Browse exactly.
+                        .pointerInput(currentSelectMode) {
+                            if (!currentSelectMode) return@pointerInput
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { startOffset ->
+                                    uriAtOffset(startOffset)?.let { uri ->
+                                        if (!selectedUris.contains(uri)) {
+                                            selectedUris.add(uri)
+                                            // Outbound-only count for the JS header. Deliberately
+                                            // NOT onSelectionChange — that round-trips through
+                                            // setSelectedUrisFromJS and would clear the list
+                                            // mid-drag. This event carries only a number and the
+                                            // JS side must never write it back into selectedUris.
+                                            onDragSelectProgress(mapOf("count" to selectedUris.size.toDouble()))
+                                        }
+                                    }
+                                },
+                                onDrag = { change, _ ->
+                                    uriAtOffset(change.position)?.let { uri ->
+                                        if (!selectedUris.contains(uri)) {
+                                            selectedUris.add(uri)
+                                            onDragSelectProgress(mapOf("count" to selectedUris.size.toDouble()))
+                                        }
+                                    }
+                                },
+                                onDragEnd = {
+                                    onDragSelectEnd(mapOf("uris" to selectedUris.toList()))
+                                }
+                            )
+                        },
                     contentPadding = PaddingValues(2.dp),
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -121,8 +179,13 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                             }
                                             onItemPress(mapOf("uri" to uri, "index" to index))
                                         },
-                                        onLongPress = {
-                                            onItemLongPress(mapOf("uri" to uri, "index" to index))
+                                        // Only watch long-press when NOT in select mode. In select
+                                        // mode the grid-level detectDragGesturesAfterLongPress owns
+                                        // the long-press; registering it here too makes both detectors
+                                        // compete for the same pointer, which kills the drag after
+                                        // onDragStart (no onDrag/onDragEnd ever arrive).
+                                        onLongPress = if (currentSelectMode) null else {
+                                            { onItemLongPress(mapOf("uri" to uri, "index" to index)) }
                                         }
                                     )
                                 }

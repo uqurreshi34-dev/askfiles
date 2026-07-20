@@ -188,6 +188,7 @@ export default function CategoryScreen() {
   const [detailsName, setDetailsName] = useState('');
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [txtPreview, setTxtPreview] = useState<string | null>(null);
+  const [dragCount, setDragCount] = useState<number | null>(null);
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -1088,7 +1089,7 @@ async function handleSsInfo() {
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {selectedUris.size} {selectedUris.size === 1
+              {(dragCount ?? selectedUris.size)} {(dragCount ?? selectedUris.size) === 1
                 ? config.title.slice(0, -1).toLowerCase()
                 : config.title.toLowerCase()} selected
             </Text>
@@ -1329,6 +1330,22 @@ async function handleSsInfo() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 openSheet(item);
               }}
+              onDragSelectEnd={(e: { nativeEvent: { uris: string[] } }) => {
+                const newSet = new Set(selectedUris);
+                const newMap = new Map(selectedItemsMap);
+                e.nativeEvent.uris.forEach(uri => {
+                  newSet.add(uri);
+                  const item = filteredItems.find(i => i.uri === uri);
+                  if (item) newMap.set(uri, item);
+                });
+                setSelectedUris(newSet);
+                setSelectedItemsMap(newMap);
+                setDragCount(null); 
+              }}
+              // Expo event payload numbers should use Double for reliable JS bridge conversion.
+              onDragSelectProgress={(e: { nativeEvent: { count: number } }) => {
+                setDragCount(e.nativeEvent.count);
+              }}
               onSelectionChange={(e) => {
                 const uris: string[] = e.nativeEvent.selectedUris;
                 const newSet = new Set(uris);
@@ -1470,6 +1487,22 @@ async function handleSsInfo() {
               if (!item || selectMode) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               openSheet(item);
+            }}
+            onDragSelectEnd={(e: { nativeEvent: { uris: string[] } }) => {
+              const newSet = new Set(selectedUris);
+              const newMap = new Map(selectedItemsMap);
+              e.nativeEvent.uris.forEach(uri => {
+                newSet.add(uri);
+                const item = filteredItems.find(i => i.uri === uri);
+                if (item) newMap.set(uri, item);
+              });
+              setSelectedUris(newSet);
+              setSelectedItemsMap(newMap);
+              setDragCount(null); 
+            }}
+            // Expo event payload numbers should use Double for reliable JS bridge conversion.
+            onDragSelectProgress={(e: { nativeEvent: { count: number } }) => {
+              setDragCount(e.nativeEvent.count);
             }}
             onSelectionChange={(e) => {
               const uris: string[] = e.nativeEvent.selectedUris;
