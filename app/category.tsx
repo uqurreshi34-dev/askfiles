@@ -1470,7 +1470,7 @@ async function handleSsInfo() {
           <MediaGridView
             selectedUris={Array.from(selectedUris)}
             style={{ flex: 1 }}
-            key={`grid-${sortKey}-${searchQuery}-${selectMode}`}
+            key={`grid-${sortKey}-${searchQuery}`}
             uris={gridUris}
             selectMode={selectMode && !multiPasting && !deleting}
             category={(category === 'videos' ? 'videos' : 'images')}

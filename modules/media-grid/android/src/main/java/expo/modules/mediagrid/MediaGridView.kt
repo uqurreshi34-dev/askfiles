@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -95,7 +97,19 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val thumbDp: Dp = 110.dp
-                val cols = maxOf(2, (maxWidth / thumbDp).toInt())
+                // Width-based default column count (the value before any pinch).
+                val defaultCols = maxOf(2, (maxWidth / thumbDp).toInt())
+
+                // Pinch-controlled column override. null = use the width-based default.
+                // Ephemeral by design: not persisted, resets when the view is recreated
+                // (leaving/returning to the category). Range clamped to 2..6.
+                var pinchCols by remember { mutableStateOf<Int?>(null) }
+                val cols = (pinchCols ?: defaultCols).coerceIn(2, 6)
+
+                // Running scale factor for the pinch. 1.0 == the default column count.
+                // Spreading fingers (zoom>1) drives this DOWN toward fewer columns
+                // (bigger tiles); pinching (zoom<1) drives it UP toward more columns.
+                var pinchScale by remember { mutableStateOf(1f) }
 
                 // Maps a pointer position (relative to the grid) to the uri of the
                 // tile under it, using the live layout info of visible items.
@@ -118,6 +132,52 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                     columns = GridCells.Fixed(cols),
                     modifier = Modifier
                         .fillMaxSize()
+                        // Pinch-to-zoom column density. Active ONLY in normal mode —
+                        // disabled in select mode so it can never compete with the
+                        // drag-select gesture (they are mutually exclusive by mode,
+                        // exactly like tap vs long-press-drag). Two-finger gesture, so
+                        // it also separates cleanly from one-finger tap/long-press.
+                        .pointerInput(currentSelectMode) {
+                            if (currentSelectMode) return@pointerInput
+                            awaitEachGesture {
+                                // Wait for the first finger down (don't consume — one finger
+                                // must still scroll normally).
+                                awaitFirstDown(requireUnconsumed = false)
+                                var previousSpacing = 0f
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val pressed = event.changes.filter { it.pressed }
+                                    if (pressed.size >= 2) {
+                                        // TWO fingers: this is a zoom. Consume every change so
+                                        // the LazyVerticalGrid's scroll never sees these events
+                                        // and cannot fight the pinch.
+                                        val p0 = pressed[0].position
+                                        val p1 = pressed[1].position
+                                        val spacing = kotlin.math.hypot(
+                                            (p0.x - p1.x), (p0.y - p1.y)
+                                        )
+                                        if (previousSpacing > 0f && spacing > 0f) {
+                                            // Fingers spreading (spacing grows) -> fewer columns.
+                                            val ratio = spacing / previousSpacing
+                                            pinchScale = (pinchScale / ratio).coerceIn(0.45f, 2.75f)
+                                            val target = (defaultCols * pinchScale)
+                                                .toInt()
+                                                .coerceIn(2, 6)
+                                            if (target != (pinchCols ?: defaultCols)) {
+                                                pinchCols = target
+                                            }
+                                        }
+                                        previousSpacing = spacing
+                                        // Consume so scroll is suppressed while 2 fingers are down.
+                                        event.changes.forEach { it.consume() }
+                                    } else {
+                                        // Fewer than 2 fingers: reset spacing baseline and DON'T
+                                        // consume — one-finger scroll works untouched.
+                                        previousSpacing = 0f
+                                    }
+                                } while (event.changes.any { it.pressed })
+                            }
+                        }
                         // Drag-select gesture lives on the grid container so it can
                         // hit-test across ALL visible tiles (Compose equivalent of
                         // RecyclerView.findChildViewUnder). Only active in select mode;
