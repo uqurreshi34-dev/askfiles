@@ -31,6 +31,29 @@ import kotlinx.coroutines.launch
 
 class ScanModule : Module() {
 
+    private fun decodeScaledBitmap(path: String, maxDimension: Int = 2048): Bitmap? {
+        val bounds = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+
+        BitmapFactory.decodeFile(path, bounds)
+
+        var sample = 1
+        while (
+            bounds.outWidth / sample > maxDimension ||
+            bounds.outHeight / sample > maxDimension
+        ) {
+            sample *= 2
+        }
+
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+
+        return BitmapFactory.decodeFile(path, options)
+    }
+
     companion object {
         var scanLauncher: ActivityResultLauncher<IntentSenderRequest>? = null
         var pendingPromise: Promise? = null
@@ -124,6 +147,7 @@ class ScanModule : Module() {
         }
 
         AsyncFunction("saveScanAsPdf") { uris: List<String>, folderPath: String ->
+
             val scansDir = File(folderPath)
             scansDir.mkdirs()
 
@@ -131,19 +155,56 @@ class ScanModule : Module() {
             val destFile = File(scansDir, "Scan_${timestamp}.pdf")
 
             val pdf = PdfDocument()
+
             try {
                 uris.forEachIndexed { index, uriString ->
+
                     val uri = Uri.parse(uriString)
-                    val bitmap = BitmapFactory.decodeStream(
-                        appContext.reactContext?.contentResolver?.openInputStream(uri)
-                    ) ?: return@forEachIndexed
+
+                    val options = BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
+
+                    appContext.reactContext?.contentResolver
+                        ?.openInputStream(uri)
+                        ?.use { input ->
+                            BitmapFactory.decodeStream(input, null, options)
+                        }
+
+                    var sample = 1
+
+                    while (
+                        options.outWidth / sample > 1600 ||
+                        options.outHeight / sample > 1600
+                    ) {
+                        sample *= 2
+                    }
+
+                    val decodeOptions = BitmapFactory.Options().apply {
+                        inSampleSize = sample
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
+                    }
+
+                    val bitmap = appContext.reactContext?.contentResolver
+                        ?.openInputStream(uri)
+                        ?.use { input ->
+                            BitmapFactory.decodeStream(input, null, decodeOptions)
+                        }
+                        ?: return@forEachIndexed
+
 
                     val pageInfo = PdfDocument.PageInfo.Builder(
-                        bitmap.width, bitmap.height, index + 1
+                        bitmap.width,
+                        bitmap.height,
+                        index + 1
                     ).create()
+
                     val page = pdf.startPage(pageInfo)
+
                     page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+
                     pdf.finishPage(page)
+
                     bitmap.recycle()
                 }
 
@@ -154,8 +215,10 @@ class ScanModule : Module() {
                 android.media.MediaScannerConnection.scanFile(
                     appContext.reactContext,
                     arrayOf(destFile.absolutePath),
-                    null, null
+                    null,
+                    null
                 )
+
             } finally {
                 pdf.close()
             }
@@ -175,7 +238,7 @@ class ScanModule : Module() {
                         val file = File(path)
                         if (!file.exists()) continue
 
-                        val bitmap = BitmapFactory.decodeFile(path) ?: continue
+                        val bitmap = decodeScaledBitmap(path) ?: continue
                         val image = InputImage.fromBitmap(bitmap, 0)
 
                         val text = suspendCoroutine<String> { cont ->
@@ -214,7 +277,7 @@ class ScanModule : Module() {
                         return@launch
                     }
 
-                    val bitmap = BitmapFactory.decodeFile(path)
+                    val bitmap = decodeScaledBitmap(path)
                     if (bitmap == null) {
                         promise.reject("DECODE_FAILED", "Could not decode image", null)
                         return@launch
@@ -293,7 +356,7 @@ class ScanModule : Module() {
         AsyncFunction("labelImage") { imagePath: String, promise: Promise ->
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val bitmap = BitmapFactory.decodeFile(imagePath)
+                    val bitmap = decodeScaledBitmap(imagePath)
                         ?: throw Exception("Could not decode image")
                     val image = InputImage.fromBitmap(bitmap, 0)
                     val options = ImageLabelerOptions.Builder()
