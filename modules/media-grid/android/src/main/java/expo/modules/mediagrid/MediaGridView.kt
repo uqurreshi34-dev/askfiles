@@ -4,13 +4,16 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,9 +23,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.findViewTreeLifecycleOwner
+import kotlinx.coroutines.launch
 import com.bumptech.glide.integration.compose.CrossFade
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
@@ -249,6 +255,83 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                // ---- Fast-scroll scrubber (position-only) ----
+                // Additive overlay on the right edge. Reads gridState for position,
+                // calls scrollToItem to jump. Does NOT touch the grid's gesture or
+                // Glide code. Auto-hides when idle; appears while scrolling or dragging.
+                val totalItems = currentUris.size
+                val coroutineScope = rememberCoroutineScope()
+                var isDraggingScrubber by remember { mutableStateOf(false) }
+
+                // Only show the scrubber when there's enough content to be worth it
+                // and the grid is actually scrollable.
+                val scrubberWorthShowing = totalItems > 30
+
+                // Show while the user is actively scrolling OR dragging the scrubber.
+                val isScrolling = gridState.isScrollInProgress
+                val scrubberVisible = scrubberWorthShowing && (isScrolling || isDraggingScrubber)
+
+                if (scrubberWorthShowing) {
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val trackHeightPx = with(density) { maxHeight.toPx() }
+
+                    // Progress 0f..1f based on first visible item index over total.
+                    val firstVisible = gridState.firstVisibleItemIndex
+                    val progress = if (totalItems <= 1) 0f
+                        else (firstVisible.toFloat() / (totalItems - 1).toFloat()).coerceIn(0f, 1f)
+
+                    val thumbHeightDp: Dp = 48.dp
+                    val thumbHeightPx = with(density) { thumbHeightDp.toPx() }
+                    // Vertical offset of the thumb within the track.
+                    val maxThumbTravel = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
+                    val thumbTopPx = progress * maxThumbTravel
+
+                    if (scrubberVisible) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset { androidx.compose.ui.unit.IntOffset(0, thumbTopPx.toInt()) }
+                                .padding(end = 4.dp)
+                                .size(width = 40.dp, height = thumbHeightDp)
+                                .background(
+                                    color = Color(0xCC185FA5),
+                                    shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
+                                )
+                                .pointerInput(totalItems, maxThumbTravel) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { isDraggingScrubber = true },
+                                        onDragEnd = { isDraggingScrubber = false },
+                                        onDragCancel = { isDraggingScrubber = false },
+                                        onVerticalDrag = { change, _ ->
+                                            // Map the finger's absolute Y within the track to a
+                                            // target index. Using change.position.y (relative to
+                                            // this thumb) plus the thumb's current top gives the
+                                            // absolute track position.
+                                            val absoluteY = (thumbTopPx + change.position.y)
+                                                .coerceIn(0f, trackHeightPx)
+                                            val frac = (absoluteY / trackHeightPx).coerceIn(0f, 1f)
+                                            val target = (frac * (totalItems - 1)).toInt()
+                                                .coerceIn(0, totalItems - 1)
+                                            coroutineScope.launch {
+                                                gridState.scrollToItem(target)
+                                            }
+                                        }
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Position bubble: "current / total"
+                            val currentPos = (firstVisible + 1).coerceIn(1, totalItems)
+                            Text(
+                                text = "$currentPos",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
