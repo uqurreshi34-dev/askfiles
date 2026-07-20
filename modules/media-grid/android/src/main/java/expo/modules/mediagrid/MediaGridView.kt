@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.findViewTreeLifecycleOwner
+import com.bumptech.glide.integration.compose.CrossFade
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.bumptech.glide.load.DecodeFormat
@@ -194,10 +195,16 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                 model = parsedUri,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                // Fade the thumbnail in as it loads instead of a hard pop.
+                                // NOTE: .dontAnimate() was removed from the builder below —
+                                // it suppressed all transitions, so leaving it in would
+                                // silently cancel this crossfade. Cached tiles (already in
+                                // Glide's memory/disk cache) still appear effectively
+                                // instantly; the fade is only perceptible on a genuine decode.
+                                transition = CrossFade,
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 it.override(128, 128)
-                                  .dontAnimate()
                                   .centerCrop()
                                   .format(DecodeFormat.PREFER_RGB_565)
                                   .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
