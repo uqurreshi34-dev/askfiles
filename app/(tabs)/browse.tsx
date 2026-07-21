@@ -21,7 +21,7 @@ import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourite
 import RNFS from 'react-native-fs';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
-import { shareFiles, openFile as openFileNative, printImage, printPdf } from '@/modules/share-module';
+import { shareFiles, openFile as openFileNative, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates, readTextPreview } from 'file-reader';
@@ -484,6 +484,18 @@ export default function BrowseScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
       Alert.alert('Error', 'Could not start WiFi server');
+    }
+  }
+
+  async function handleCopyImage() {
+    if (!selectedItem) return;
+    try {
+      await copyImageToClipboard(toPath(selectedItem.uri), 'image/*');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Copied', 'Image copied to clipboard.');
+      closeSheet();
+    } catch {
+      Alert.alert('Error', 'Could not copy image to clipboard.');
     }
   }
 
@@ -1749,6 +1761,12 @@ export default function BrowseScreen() {
                       <TouchableOpacity style={styles.sheetAction} onPress={handleShareViaQr}>
                         <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
+                      </TouchableOpacity>
+                    )}
+                    {!selectedItem?.isDirectory && isImageFile(selectedItem?.name ?? '') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={handleCopyImage}>
+                        <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
                       </TouchableOpacity>
                     )}
                     {!selectedItem?.isDirectory && (isImageFile(selectedItem?.name ?? '') || (selectedItem?.name.toLowerCase().endsWith('.pdf'))) && (

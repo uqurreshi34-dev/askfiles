@@ -29,10 +29,10 @@ import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrash } from '@/hooks/useTrash';
-import { openFile as openFileNative, shareFiles } from '@/modules/share-module';
+import { openFile as openFileNative, shareFiles, copyImageToClipboard } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
-import { copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview } from 'file-reader';
+import { startWifiServer, copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
@@ -40,6 +40,8 @@ import { getTagsForFile } from '@/hooks/useFileTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
+import * as Haptics from 'expo-haptics';
+import QRCode from 'react-native-qrcode-svg';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -172,6 +174,8 @@ export default function SearchScreen() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsData, setDetailsData] = useState<{ label: string; value: string }[]>([]);
   const [detailsName, setDetailsName] = useState('');
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrUrl, setQrUrl] = useState('');
   const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
     setShowSheet(false);
     setSelectedItem(null);
@@ -352,6 +356,40 @@ export default function SearchScreen() {
     try {
       await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
     } catch (e) {}
+  }
+
+  async function handleShareViaQr() {
+    if (!selectedItem) return;
+    closeSheet();
+    try {
+      let url: string;
+      try {
+        url = await startWifiServer('/storage/emulated/0/');
+      } catch {
+        await new Promise(res => setTimeout(res, 500));
+        url = await startWifiServer('/storage/emulated/0/');
+      }
+      const ip = url.replace('http://', '').replace(':8080', '');
+      const encodedPath = encodeURIComponent(selectedItem.uri.replace('file://', ''));
+      const fileUrl = `http://${ip}:8080/file?path=${encodedPath}`;
+      setQrUrl(fileUrl);
+      setQrModalVisible(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (e: any) {
+      Alert.alert('Error', 'Could not start WiFi server');
+    }
+  }
+
+  async function handleCopyImage() {
+    if (!selectedItem) return;
+    try {
+      await copyImageToClipboard(toPath(selectedItem.uri), 'image/*');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Copied', 'Image copied to clipboard.');
+      closeSheet();
+    } catch {
+      Alert.alert('Error', 'Could not copy image to clipboard.');
+    }
   }
 
   async function handleMoveToVault() {
@@ -1022,6 +1060,16 @@ export default function SearchScreen() {
                   <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
                   <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetAction} onPress={handleShareViaQr}>
+                  <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
+                </TouchableOpacity>
+                {isImageFile(selectedItem?.name ?? '') && (
+                  <TouchableOpacity style={styles.sheetAction} onPress={handleCopyImage}>
+                    <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                   () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
                     { text: 'Not now', style: 'cancel' },
@@ -1240,6 +1288,34 @@ export default function SearchScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+      <Modal
+        visible={qrModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQrModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.qrOverlay}
+          activeOpacity={1}
+          onPress={() => setQrModalVisible(false)}
+        >
+          <View style={[styles.qrCard, { backgroundColor: colors.modalCard }]} onStartShouldSetResponder={() => true}>
+            <TouchableOpacity
+              onPress={() => setQrModalVisible(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Share via QR</Text>
+            <Text style={[styles.qrSub, { color: colors.textMuted }]}>{selectedItem?.name}</Text>
+            <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>Scan with any device on the same WiFi</Text>
+            <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' }}>
+              <QRCode value={qrUrl || 'http://localhost:8080'} size={200} />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
       <VideoPlayerModal uri={playerUri} onClose={() => setPlayerUri(null)} />
     </SafeAreaView>
   );
@@ -1314,4 +1390,8 @@ const styles = StyleSheet.create({
   smartHighlight: { borderRadius: 2, paddingHorizontal: 1 },
   txtPreviewCard: { borderRadius: 8, borderWidth: 0.5, padding: 10, marginBottom: 8 },
   txtPreviewText: { fontSize: 12, lineHeight: 18, fontFamily: 'monospace' },
+  qrOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  qrCard: { borderRadius: 16, padding: 16, paddingBottom: 24, alignItems: 'center', margin: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, overflow: 'hidden' },
+  qrTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4, letterSpacing: -0.3 },
+  qrSub: { fontSize: 12, textAlign: 'center', marginBottom: 4 },
 });
