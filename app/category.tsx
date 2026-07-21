@@ -17,7 +17,7 @@ import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { shareFiles, openFile, printImage, printPdf } from '@/modules/share-module';
+import { shareFiles, openFile, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { addMediaStoreChangeListener } from '@/modules/file-watcher';
 import QRCode from 'react-native-qrcode-svg';
 import { useTrash } from '@/hooks/useTrash';
@@ -836,6 +836,18 @@ async function handleSsInfo() {
     try {
       await Sharing.shareAsync(selectedItem.uri, { mimeType: getMimeType(selectedItem.name), dialogTitle: selectedItem.name });
     } catch (e) {}
+  }
+
+  async function handleCopyImage() {
+    if (!selectedItem) return;
+    try {
+      await copyImageToClipboard(toPath(selectedItem.uri), 'image/*');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Copied', 'Image copied to clipboard.');
+      closeSheet();
+    } catch {
+      Alert.alert('Error', 'Could not copy image to clipboard.');
+    }
   }
 
   async function handleShareViaQr() {
@@ -1659,6 +1671,12 @@ async function handleSsInfo() {
                 <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
               </TouchableOpacity>
+              {isImageFile(selectedItem?.name ?? '') && (
+                <TouchableOpacity style={styles.sheetAction} onPress={handleCopyImage}>
+                  <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
+                </TouchableOpacity>
+              )}
               {(isImageFile(selectedItem?.name ?? '') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
                   <Ionicons name="print-outline" size={20} color={colors.textPrimary} />

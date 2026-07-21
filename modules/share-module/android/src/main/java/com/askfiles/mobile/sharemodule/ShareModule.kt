@@ -95,6 +95,30 @@ class ShareModule : Module() {
       activity.startActivity(intent)
     }
 
+    AsyncFunction("copyImageToClipboard") { filePath: String, mimeType: String ->
+      val context = appContext.reactContext!!
+
+      // Same URI strategy as openFile: MediaStore content:// if the image is
+      // indexed (instant, no copy), else a FileProvider content:// URI. Either
+      // way the receiving app reads the image from the URI — we never load the
+      // bitmap into memory, so this is allocation-free regardless of image size.
+      val mediaStoreUri = getMediaStoreUri(context, filePath)
+      val uri: Uri = mediaStoreUri ?: FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        File(filePath)
+      )
+
+      val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
+        as android.content.ClipboardManager
+
+      // newUri sets the correct MIME type on the clip so receiving apps recognise
+      // it as an image. The clip carries the read-permission grant for the
+      // content:// URI to whichever app pastes it.
+      val clip = android.content.ClipData.newUri(context.contentResolver, "Image", uri)
+      clipboard.setPrimaryClip(clip)
+    }
+
     AsyncFunction("scanFile") { filePath: String ->
       val context = appContext.reactContext!!
       android.media.MediaScannerConnection.scanFile(

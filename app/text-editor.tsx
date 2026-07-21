@@ -13,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import { getFriendlyPath } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { TextEditorView } from 'text-editor';
 
 export default function TextEditorScreen() {
   const { colors } = useTheme();
@@ -181,26 +182,13 @@ export default function TextEditorScreen() {
           <ActivityIndicator size="large" color={colors.blue} />
         </View>
       ) : filePath ? (
-        <TextInput
-          style={{
-            flex: 1,
-            paddingHorizontal: 16,
-            paddingTop: 8,
-            paddingBottom: 16,
-            fontSize: 14,
-            lineHeight: 22,
-            color: colors.textPrimary,
-            backgroundColor: colors.background,
-            textAlignVertical: 'top',
-            fontFamily: 'monospace',
-          }}
+        <TextEditorView
+          style={{ flex: 1, backgroundColor: colors.background }}
           value={content}
-          onChangeText={(t) => { setContent(t); setIsDirty(true); }}
-          multiline
-          scrollEnabled
-          autoCorrect={false}
-          autoCapitalize="none"
-          spellCheck={false}
+          onTextChange={(e) => { setContent(e.nativeEvent.value); setIsDirty(true); }}
+          color={colors.textPrimary}
+          placeholder=""
+          placeholderColor={colors.textMuted}
         />
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 24 }}>

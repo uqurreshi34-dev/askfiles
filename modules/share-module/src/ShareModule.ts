@@ -6,6 +6,7 @@ declare class ShareModuleType {
   scanFile(filePath: string): Promise<void>;
   printImage(filePath: string): Promise<void>;
   printPdf(filePath: string): Promise<void>;
+  copyImageToClipboard(filePath: string, mimeType: string): Promise<void>;
 }
 
 const ShareModule = requireNativeModule<ShareModuleType>('ShareModule');
@@ -28,4 +29,8 @@ export async function printImage(filePath: string): Promise<void> {
 
 export async function printPdf(filePath: string): Promise<void> {
   return ShareModule.printPdf(filePath);
+}
+
+export async function copyImageToClipboard(filePath: string, mimeType: string = 'image/*'): Promise<void> {
+  return ShareModule.copyImageToClipboard(filePath, mimeType);
 }

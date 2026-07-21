@@ -7,6 +7,7 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
+import android.graphics.Color
 
 class TextEditorModule : Module() {
     override fun definition() = ModuleDefinition {
@@ -76,6 +77,26 @@ class TextEditorModule : Module() {
                 output.flush()
             }
             true
+        }
+
+        View(TextEditorView::class) {
+            Events("onTextChange")
+
+            Prop("value") { view: TextEditorView, value: String ->
+                view.setText(value)
+            }
+
+            Prop("placeholder") { view: TextEditorView, value: String ->
+                view.setPlaceholder(value)
+            }
+
+            Prop("color") { view: TextEditorView, value: String ->
+                view.setTextColor(Color.parseColor(value))
+            }
+
+            Prop("placeholderColor") { view: TextEditorView, value: String ->
+                view.setPlaceholderColor(Color.parseColor(value))
+            }
         }
     }
 }

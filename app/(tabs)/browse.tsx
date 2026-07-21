@@ -48,6 +48,7 @@ import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
 import { BrowseListView } from 'browse-list';
+import { TextEditorView } from 'text-editor';
 
 interface FileItem {
   name: string;
@@ -2471,16 +2472,13 @@ export default function BrowseScreen() {
               }
             </TouchableOpacity>
           </View>
-        <TextInput
-            style={{ flex: 1, padding: 16, fontSize: 15, color: colors.textPrimary, textAlignVertical: 'top', lineHeight: 22 }}
+          <TextEditorView
+            style={{ flex: 1 }}
             value={textFileContent}
-            onChangeText={setTextFileContent}
+            onTextChange={(e) => setTextFileContent(e.nativeEvent.value)}
             placeholder="Start typing..."
-            placeholderTextColor={colors.textMuted}
-            multiline
-            autoFocus={!!editingFile}
-            returnKeyType="default"
-            autoCorrect={true}
+            color={colors.textPrimary}
+            placeholderColor={colors.textMuted}
           />
         </SafeAreaView>
       </Modal>
