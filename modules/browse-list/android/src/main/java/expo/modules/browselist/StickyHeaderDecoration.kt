@@ -26,6 +26,16 @@ class StickyHeaderDecoration(
 
     private val labelCache = HashMap<Int, String?>()
 
+    // Invalidate the label cache when the underlying data changes (new folder,
+    // re-sort, filter). Called from BrowseListView.setItems — NOT every frame.
+    // Previously onDrawOver cleared this every draw pass, which rebuilt the whole
+    // cache on every scroll frame and defeated the cache's purpose. Positions map
+    // to the same labels until the data set itself changes, so persisting the
+    // cache between frames is correct and much cheaper.
+    fun invalidateLabels() {
+        labelCache.clear()
+    }
+
     private fun cachedLabel(position: Int): String? =
         labelCache.getOrPut(position) { getSectionLabel(position) }
 
@@ -43,19 +53,18 @@ class StickyHeaderDecoration(
     }
 
     override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
-        labelCache.clear()
         if (parent.childCount == 0) return
         val topChild = parent.getChildAt(0)
         val topPosition = parent.getChildAdapterPosition(topChild)
         if (topPosition == RecyclerView.NO_POSITION) return
-        val currentLabel = getSectionLabel(topPosition) ?: return
+        val currentLabel = cachedLabel(topPosition) ?: return
 
         // Draw inline headers for each visible section start
         for (i in 0 until parent.childCount) {
             val child = parent.getChildAt(i)
             val position = parent.getChildAdapterPosition(child)
             if (position != RecyclerView.NO_POSITION && isSectionStart(position) && position != topPosition) {
-                val label = getSectionLabel(position) ?: continue
+                val label = cachedLabel(position) ?: continue
                 drawHeader(c, parent, label, (child.top - headerHeight).toFloat())
             }
         }

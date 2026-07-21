@@ -344,6 +344,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             recyclerView.scrollToPosition(0)
         }
         updateLetterPositions()
+        headerDecoration.invalidateLabels()
         recyclerView.post { recyclerView.invalidateItemDecorations() }
         updateEmptyState()
     }
@@ -357,6 +358,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     fun setSectionMode(mode: String) {
         sectionMode = mode
+        headerDecoration.invalidateLabels()
         recyclerView.invalidateItemDecorations()
     }
 
