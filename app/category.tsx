@@ -1314,6 +1314,7 @@ async function handleSsInfo() {
               style={{ flex: 1 }}
               key={`folder-${selectedFolder?.folderPath}`}
               uris={selectedFolder?.uris ?? []}
+              placeholderColor={colors.surface}
               selectMode={selectMode}
               category={(category === 'videos' ? 'videos' : 'images')}
               openingUri={openingUri ?? ''}
@@ -1472,6 +1473,7 @@ async function handleSsInfo() {
             style={{ flex: 1 }}
             key={`grid-${sortKey}-${searchQuery}`}
             uris={gridUris}
+            placeholderColor={colors.surface}
             selectMode={selectMode && !multiPasting && !deleting}
             category={(category === 'videos' ? 'videos' : 'images')}
             openingUri={openingUri ?? ''}

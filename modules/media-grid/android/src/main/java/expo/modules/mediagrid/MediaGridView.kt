@@ -53,6 +53,9 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private val selectMode = mutableStateOf(false)
     private val category = mutableStateOf("images")
     private val openingUri = mutableStateOf("")
+    // Theme surface color (hex) for the tile placeholder background, passed from JS
+    // so decoding tiles match the user's selected theme instead of a fixed grey.
+    private val placeholderColor = mutableStateOf("#1E1E1E")
 
     // Tracks whether this view has ever been attached to a window.
     // Guards against Fabric measuring ComposeView before it has a window
@@ -77,6 +80,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
     fun setCategory(newCategory: String) { category.value = newCategory }
     fun setOpeningUri(newOpeningUri: String) { openingUri.value = newOpeningUri }
+    fun setPlaceholderColor(hex: String) { placeholderColor.value = hex }
 
     private val composeView = object : AbstractComposeView(context) {
         init {
@@ -92,6 +96,15 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             val currentSelectMode = selectMode.value
             val currentCategory = category.value
             val currentOpeningUri = openingUri.value
+            // Parse the theme placeholder hex once; fall back to a neutral dark grey
+            // if the string is ever malformed, so a bad value can never crash the grid.
+            val placeholderBg = remember(placeholderColor.value) {
+                try {
+                    Color(android.graphics.Color.parseColor(placeholderColor.value))
+                } catch (e: Exception) {
+                    Color(0xFF1E1E1E)
+                }
+            }
 
             val gridState = rememberLazyGridState()
 
@@ -230,6 +243,12 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                         Box(
                             modifier = Modifier
                                 .aspectRatio(1f)
+                                // Placeholder background: shows instantly while the thumbnail
+                                // decodes, so rapid scrolling never reveals empty gaps — the
+                                // image paints over this and crossfades in from it (Samsung-
+                                // style). Uses the user's theme surface color (passed from JS)
+                                // so it matches whichever of the 8 palettes is active.
+                                .background(placeholderBg)
                                 .then(
                                     if (isSelected) Modifier
                                         .padding(3.dp)

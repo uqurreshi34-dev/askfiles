@@ -91,6 +91,10 @@ class MediaGridModule : Module() {
         view.setSelectedUrisFromJS(uris)
       }
 
+      Prop("placeholderColor") { view: MediaGridView, hex: String ->
+        view.setPlaceholderColor(hex)
+      }
+
       Events("onItemPress", "onItemLongPress", "onSelectionChange", "onDragSelectEnd", "onDragSelectProgress")
     }
   }
