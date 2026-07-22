@@ -82,7 +82,9 @@ export default function SetPinScreen() {
           ))}
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        <View style={styles.errorSlot}>
+          {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
 
         <GestureDetector gesture={gesture}>
           <View style={styles.keypad}>
@@ -115,11 +117,12 @@ const styles = StyleSheet.create({
   iconWrap: { width: 80, height: 80, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   prompt: { fontSize: 20, fontWeight: '600', letterSpacing: -0.3, marginBottom: 8 },
   sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 36 },
-  dots: { flexDirection: 'row', gap: 16, marginBottom: 48 },
+  dots: { flexDirection: 'row', gap: 16, marginBottom: 12 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#D3D1C7', backgroundColor: 'transparent' },
   dotFilled: { backgroundColor: '#185FA5', borderColor: '#185FA5' },
   dotError: { borderColor: '#E24B4A' },
-  errorText: { fontSize: 13, color: '#E24B4A', marginBottom: 24 },
+  errorSlot: { height: 20, justifyContent: 'center', marginBottom: 24 },
+  errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
   keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 },
   key: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   keyEmpty: { width: 80, height: 80 },

@@ -76,14 +76,15 @@ export default function LockScreen() {
         </View>
         <Text style={[styles.title, { color: colors.textPrimary }]}>AskFiles is locked</Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>Enter your PIN to continue</Text>
-
         <View style={styles.dots}>
           {[0, 1, 2, 3].map(i => (
             <View key={i} style={[styles.dot, i < entry.length && styles.dotFilled, !!error && styles.dotError]} />
           ))}
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        <View style={styles.errorSlot}>
+          {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
 
         <GestureDetector gesture={gesture}>
           <View style={styles.keypad}>
@@ -125,7 +126,8 @@ const styles = StyleSheet.create({
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#D3D1C7', backgroundColor: 'transparent' },
   dotFilled: { backgroundColor: '#185FA5', borderColor: '#185FA5' },
   dotError: { borderColor: '#E24B4A' },
-  errorText: { fontSize: 13, color: '#E24B4A', marginBottom: 24 },
+  errorSlot: { height: 20, justifyContent: 'center', marginBottom: 24 },
+  errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
   keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16, marginTop: 24 },
   key: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   keyText: { fontSize: 24, fontWeight: '500' },

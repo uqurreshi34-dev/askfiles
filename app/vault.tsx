@@ -29,6 +29,7 @@ import FileDetailsModal from '@/components/FileDetailsModal';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
+import { usePinPad } from '@/hooks/usePinPad';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
@@ -67,6 +68,13 @@ export default function VaultScreen() {
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
+
+  const { keyProps, gesture, GestureDetector } = usePinPad({
+    value: pinInput,
+    setValue: setPinInput,
+    onComplete: handleVaultPinVerify,
+    onEdit: () => setPinError(null),
+  });
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
@@ -276,20 +284,6 @@ export default function VaultScreen() {
     }
   }
 
-  function handleVaultPinDigit(digit: string) {
-    if (pinInput.length < 4) {
-      const newPin = pinInput + digit;
-      setPinInput(newPin);
-      setPinError(null);
-      if (newPin.length === 4) handleVaultPinVerify(newPin);
-    }
-  }
-
-  function handleVaultPinDelete() {
-    setPinInput(prev => prev.slice(0, -1));
-    setPinError(null);
-  }
-
   async function handleVaultPinVerify(entered: string) {
     const correct = await verifyPin(entered);
     if (correct) {
@@ -415,32 +409,36 @@ export default function VaultScreen() {
               <Ionicons name="keypad-outline" size={40} color={colors.blue} />
             </View>
             <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Enter PIN</Text>
-            <Text style={[styles.lockSub, { color: colors.textMuted }]}>Enter your AskFiles PIN to access the vault</Text>
-            <View style={{ flexDirection: 'row', gap: 16, marginVertical: 24 }}>
+            
+            <View style={{ flexDirection: 'row', gap: 16, marginTop: 24, marginBottom: 12 }}>
               {[0, 1, 2, 3].map(i => (
                 <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
               ))}
             </View>
-            {pinError && <Text style={styles.errorText}>{pinError}</Text>}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 }}>
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
-                if (key === 'bio') return (
-                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => tryVaultBiometric()} activeOpacity={0.6}>
-                    <Ionicons name="finger-print-outline" size={24} color={colors.blue} />
-                  </TouchableOpacity>
-                );
-                if (key === 'del') return (
-                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={handleVaultPinDelete} activeOpacity={0.6}>
-                    <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                );
-                return (
-                  <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => handleVaultPinDigit(key)} activeOpacity={0.6}>
-                    <Text style={[styles.pinKeyText, { color: colors.textPrimary }]}>{key}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.errorSlot}>
+              {pinError && <Text style={styles.errorText}>{pinError}</Text>}
             </View>
+            <GestureDetector gesture={gesture}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 }}>
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
+                  if (key === 'bio') return (
+                    <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => tryVaultBiometric()} activeOpacity={0.6}>
+                      <Ionicons name="finger-print-outline" size={24} color={colors.blue} />
+                    </TouchableOpacity>
+                  );
+                  if (key === 'del') return (
+                    <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={keyProps.onDelete} activeOpacity={0.6}>
+                      <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  );
+                  return (
+                    <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => keyProps.onTap(key)} onLayout={(e) => keyProps.onMeasure(key, e)} activeOpacity={0.6}>
+                      <Text style={[styles.pinKeyText, { color: colors.textPrimary }]}>{key}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </GestureDetector>
             <TouchableOpacity onPress={handleForgotPin} style={{ marginTop: 16, paddingVertical: 8 }}>
               <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
             </TouchableOpacity>
@@ -802,6 +800,7 @@ const styles = StyleSheet.create({
   lockTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
   lockSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
+  errorSlot: { height: 20, justifyContent: 'center', marginBottom: 8 },
   authBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#185FA5', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, marginTop: 8 },
   authBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
   busyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
