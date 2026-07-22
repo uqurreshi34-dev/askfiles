@@ -268,7 +268,14 @@ export default function BrowseScreen() {
       readDirectory(toPath(path), hidden).then(fileItems => {
         dirCacheStore[path] = fileItems;
         setItems(fileItems);
-        fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => updateFolderCount(folder, hidden));
+        const dirs = fileItems.filter(f => f.isDirectory);
+        let i = 0;
+        const pump = () => {
+          dirs.slice(i, i + 8).forEach(folder => updateFolderCount(folder, hidden));
+          i += 8;
+          if (i < dirs.length) setTimeout(pump, 50);
+        };
+        pump();
       }).catch(() => {});
       return;
     }
@@ -278,8 +285,14 @@ export default function BrowseScreen() {
       const fileItems = await readDirectory(toPath(path), hidden);
       dirCacheStore[path] = fileItems;
       setItems(fileItems);
-      fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => updateFolderCount(folder, hidden));
-  
+      const dirs = fileItems.filter(f => f.isDirectory);
+      let i = 0;
+      const pump = () => {
+        dirs.slice(i, i + 8).forEach(folder => updateFolderCount(folder, hidden));
+        i += 8;
+        if (i < dirs.length) setTimeout(pump, 50);
+      };
+      pump();
     } catch {
       setItems([]);
     } finally {
