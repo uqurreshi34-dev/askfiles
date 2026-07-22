@@ -8,11 +8,12 @@ const MOVE_THRESHOLD = 12;
 type Params = {
   value: string;
   setValue: (updater: (prev: string) => string) => void;
-  onComplete: (code: string) => void;
+  onComplete: (code: string) => boolean | void | Promise<boolean | void>;
   onEdit?: () => void;
 };
 
 export function usePinPad({ value, setValue, onComplete, onEdit }: Params) {
+  const [outcome, setOutcome] = useState<null | 'success' | 'fail'>(null);
   const frames = useRef(new Map<string, { x: number; y: number; w: number; h: number }>()).current;
   const g = useRef({
     lastKey: null as string | null,
@@ -43,15 +44,25 @@ export function usePinPad({ value, setValue, onComplete, onEdit }: Params) {
       if (c && pathPoints.length < 4) setPathPoints(prev => [...prev, c]);
     }
     if (next.length === 4) {
-      g.completed = true;                    // latch until finger lifts
-      setTimeout(() => onComplete(next), 0);
+      g.completed = true; // latch until finger lifts
+      setTimeout(async () => {
+        const result = await onComplete(next);
+        if (result === true) {
+          setOutcome('success');
+        } else if (result === false) {
+          setOutcome('fail');
+          // clear the fail flash after it's seen
+          setTimeout(() => setOutcome(null), 600);
+        }
+        // success: the screen navigates away, so no need to clear
+      }, 0);
     }
   }
 
   function reset() {
     g.lastKey = null; g.committed = null; g.enterTime = 0;
-    g.prevDX = 0; g.prevDY = 0; g.moved = false;
-    g.completed = false;
+    g.prevDX = 0; g.prevDY = 0; g.moved = false; g.completed = false;
+    setOutcome(null);
   }
 
   const [pathPoints, setPathPoints] = useState<{ x: number; y: number }[]>([]);
@@ -131,5 +142,5 @@ export function usePinPad({ value, setValue, onComplete, onEdit }: Params) {
   ? pathPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
   : '';
 
-  return { keyProps, gesture, GestureDetector, pathPoints, isSwiping, pathD };
+  return { keyProps, gesture, GestureDetector, pathPoints, isSwiping, pathD, outcome };
 }

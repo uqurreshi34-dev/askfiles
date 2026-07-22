@@ -27,17 +27,18 @@ export default function SetPinScreen() {
   // Called every time a 4-digit code is completed (by tap or swipe)
   function onComplete(code: string) {
     if (firstPin === null) {
-      // Stage 1 done — remember it, move to confirm
       setFirstPin(code);
       setEntry('');
+      return;                  // ← stage 1: neutral (blue), NOT green
     } else {
-      // Stage 2 — compare against the first entry
       if (code === firstPin) {
         void save(code);
+        return true;           // stage 2 match → green
       } else {
         setError("PINs don't match. Try again.");
         setFirstPin(null);
         setEntry('');
+        return false;          // mismatch → red
       }
     }
   }
@@ -54,7 +55,7 @@ export default function SetPinScreen() {
     ]);
   }
 
-  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping } = usePinPad({
+  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping, outcome } = usePinPad({
     value: entry,
     setValue: setEntry,
     onComplete,
@@ -112,10 +113,16 @@ export default function SetPinScreen() {
                 </TouchableOpacity>
               );
             })}
-            {isSwiping && padSize.w > 0 && (
-              <PinTrail pathD={pathD} points={pathPoints} color={colors.blue} width={padSize.w} height={padSize.h} />
+            {(isSwiping || outcome === 'fail') && padSize.w > 0 && (
+              <PinTrail
+                pathD={pathD}
+                points={pathPoints}
+                color={outcome === 'success' ? '#22C55E' : outcome === 'fail' ? '#E24B4A' : colors.blue}
+                width={padSize.w}
+                height={padSize.h}
+              />
             )}
-          </View>
+                      </View>
         </GestureDetector>
       </View>
     </SafeAreaView>

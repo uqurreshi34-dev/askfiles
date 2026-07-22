@@ -71,7 +71,7 @@ export default function VaultScreen() {
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
 
-  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping } = usePinPad({
+  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping, outcome } = usePinPad({
     value: pinInput,
     setValue: setPinInput,
     onComplete: handleVaultPinVerify,
@@ -298,9 +298,11 @@ export default function VaultScreen() {
     if (correct) {
       await unlockVault();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return true;
     } else {
       setPinError('Incorrect PIN. Try again.');
       setPinInput('');
+      return false;
     }
   }
 
@@ -449,8 +451,14 @@ export default function VaultScreen() {
                       </TouchableOpacity>
                     );
                   })}
-                  {isSwiping && padSize.w > 0 && (
-                    <PinTrail pathD={pathD} points={pathPoints} color={colors.blue} width={padSize.w} height={padSize.h} />
+                  {(isSwiping || outcome === 'fail') && padSize.w > 0 && (
+                    <PinTrail
+                      pathD={pathD}
+                      points={pathPoints}
+                      color={outcome === 'success' ? '#22C55E' : outcome === 'fail' ? '#E24B4A' : colors.blue}
+                      width={padSize.w}
+                      height={padSize.h}
+                    />
                   )}
                 </View>
               </GestureDetector>

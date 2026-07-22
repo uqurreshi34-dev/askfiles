@@ -30,13 +30,15 @@ export default function LockScreen() {
     const correct = await verifyPin(code);
     if (correct) {
       router.replace(destination as any);
+      return true;
     } else {
       setError('Incorrect PIN. Try again.');
       setEntry('');
+      return false;
     }
   }
 
-  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping }  = usePinPad({
+  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping, outcome } = usePinPad({
     value: entry,
     setValue: setEntry,
     onComplete,
@@ -114,8 +116,14 @@ export default function LockScreen() {
                 </TouchableOpacity>
               );
             })}
-            {isSwiping && padSize.w > 0 && (
-              <PinTrail pathD={pathD} points={pathPoints} color={colors.blue} width={padSize.w} height={padSize.h} />
+            {(isSwiping || outcome === 'fail') && padSize.w > 0 && (
+              <PinTrail
+                pathD={pathD}
+                points={pathPoints}
+                color={outcome === 'success' ? '#22C55E' : outcome === 'fail' ? '#E24B4A' : colors.blue}
+                width={padSize.w}
+                height={padSize.h}
+              />
             )}
           </View>
         </GestureDetector>
