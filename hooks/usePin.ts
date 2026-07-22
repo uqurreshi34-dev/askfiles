@@ -1,14 +1,18 @@
 import * as SecureStore from 'expo-secure-store';
 import { isAppLockEnabledSync, setAppLockEnabledSync } from '@/modules/storage-stats';
+import * as Crypto from 'expo-crypto';
 
 const PIN_KEY = 'askfiles-pin';
 
-export async function savePin(pin: string): Promise<void> {
-  await SecureStore.setItemAsync(PIN_KEY, pin);
+async function hashPin(pin: string, salt: string): Promise<string> {
+  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, salt + pin);
 }
 
-export async function getPin(): Promise<string | null> {
-  return await SecureStore.getItemAsync(PIN_KEY);
+export async function savePin(pin: string): Promise<void> {
+  const saltBytes = await Crypto.getRandomBytesAsync(16);
+  const salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hash = await hashPin(pin, salt);
+  await SecureStore.setItemAsync(PIN_KEY, `v2:${salt}:${hash}`);
 }
 
 export async function verifyPin(input: string): Promise<boolean> {
