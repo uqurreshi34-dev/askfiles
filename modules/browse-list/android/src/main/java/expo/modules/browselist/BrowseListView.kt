@@ -261,6 +261,10 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 actionState: Int,
                 isCurrentlyActive: Boolean
             ) {
+                if (viewHolder.bindingAdapterPosition == RecyclerView.NO_POSITION) {
+                    super.onChildDraw(c, recyclerView, viewHolder, 0f, dY, actionState, isCurrentlyActive)
+                    return
+                }
                 val itemView = viewHolder.itemView
                 val iconMargin = (16 * dp).toInt()
                 val iconSize = (24 * dp).toInt()
@@ -299,6 +303,12 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 }
 
                 super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+            
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                viewHolder.itemView.translationX = 0f
+                viewHolder.itemView.alpha = 1f
             }
         }
         ItemTouchHelper(callback).attachToRecyclerView(recyclerView)
