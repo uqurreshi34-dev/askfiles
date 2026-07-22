@@ -4,6 +4,7 @@ import android.database.Cursor
 import android.provider.MediaStore
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.io.File
 
 class MediaStoreModule : Module() {
 
@@ -118,6 +119,7 @@ class MediaStoreModule : Module() {
             val path = it.getString(dataCol) ?: continue
             if (name.startsWith('.')) continue
             if (path.contains("/.")) continue
+            if (!File(path).isFile) continue
             results.add(mapOf(
               "name" to name,
               "uri" to "file://$path",
@@ -164,6 +166,7 @@ class MediaStoreModule : Module() {
             val date = it.getLong(dateCol)
             val path = it.getString(dataCol) ?: continue
             if (path.contains("/.")) continue
+            if (!File(path).isFile) continue   // drop directory rows + stale rows for deleted files
             results.add(mapOf(
               "name" to name,
               "uri" to "file://$path",
