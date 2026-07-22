@@ -30,6 +30,8 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { usePinPad } from '@/hooks/usePinPad';
+import PinTrail from '@/components/PinTrail';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function VaultScreen() {
   const { colors } = useTheme();
@@ -63,18 +65,25 @@ export default function VaultScreen() {
     setShowSheet(false);
     setSelectedFile(null);
   });
-
+  const [padSize, setPadSize] = useState({ w: 0, h: 0 });
   const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
 
-  const { keyProps, gesture, GestureDetector } = usePinPad({
+  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping } = usePinPad({
     value: pinInput,
     setValue: setPinInput,
     onComplete: handleVaultPinVerify,
     onEdit: () => setPinError(null),
   });
+
+  useEffect(() => {
+    if (!authenticated) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      return () => { ScreenOrientation.unlockAsync(); };
+    }
+  }, [authenticated]);
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
@@ -404,45 +413,53 @@ export default function VaultScreen() {
             </TouchableOpacity>
           </ScrollView>
         ) : (
-          <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
-            <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
-              <Ionicons name="keypad-outline" size={40} color={colors.blue} />
-            </View>
-            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Enter PIN</Text>
-            
-            <View style={{ flexDirection: 'row', gap: 16, marginTop: 24, marginBottom: 12 }}>
-              {[0, 1, 2, 3].map(i => (
-                <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
-              ))}
-            </View>
-            <View style={styles.errorSlot}>
-              {pinError && <Text style={styles.errorText}>{pinError}</Text>}
-            </View>
-            <GestureDetector gesture={gesture}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 }}>
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
-                  if (key === 'bio') return (
-                    <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => tryVaultBiometric()} activeOpacity={0.6}>
-                      <Ionicons name="finger-print-outline" size={24} color={colors.blue} />
-                    </TouchableOpacity>
-                  );
-                  if (key === 'del') return (
-                    <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={keyProps.onDelete} activeOpacity={0.6}>
-                      <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  );
-                  return (
-                    <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => keyProps.onTap(key)} onLayout={(e) => keyProps.onMeasure(key, e)} activeOpacity={0.6}>
-                      <Text style={[styles.pinKeyText, { color: colors.textPrimary }]}>{key}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+          <>
+            <View style={styles.pinScreen}>
+              <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
+                <Ionicons name="keypad-outline" size={40} color={colors.blue} />
               </View>
-            </GestureDetector>
-            <TouchableOpacity onPress={handleForgotPin} style={{ marginTop: 16, paddingVertical: 8 }}>
+              <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Enter PIN</Text>
+              <View style={{ flexDirection: 'row', gap: 16, marginTop: 24, marginBottom: 12 }}>
+                {[0, 1, 2, 3].map(i => (
+                  <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
+                ))}
+              </View>
+              <View style={styles.errorSlot}>
+                {pinError && <Text style={styles.errorText}>{pinError}</Text>}
+              </View>
+              <GestureDetector gesture={gesture}>
+                <View
+                  style={{ flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16, position: 'relative' }}
+                  onLayout={(e) => setPadSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+                >
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
+                    if (key === 'bio') return (
+                      <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => tryVaultBiometric()} activeOpacity={0.6}>
+                        <Ionicons name="finger-print-outline" size={24} color={colors.blue} />
+                      </TouchableOpacity>
+                    );
+                    if (key === 'del') return (
+                      <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={keyProps.onDelete} activeOpacity={0.6}>
+                        <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    );
+                    return (
+                      <TouchableOpacity key={i} style={[styles.pinKey, { backgroundColor: colors.surface }]} onPress={() => keyProps.onTap(key)} onLayout={(e) => keyProps.onMeasure(key, e)} activeOpacity={0.6}>
+                        <Text style={[styles.pinKeyText, { color: colors.textPrimary }]}>{key}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {isSwiping && padSize.w > 0 && (
+                    <PinTrail pathD={pathD} points={pathPoints} color={colors.blue} width={padSize.w} height={padSize.h} />
+                  )}
+                </View>
+              </GestureDetector>
+               {/* pinned, always visible */}
+            <TouchableOpacity onPress={handleForgotPin} style={styles.forgotPin}>
               <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
             </TouchableOpacity>
-          </ScrollView>
+            </View>
+          </>
         )}
         </SafeAreaView>
       );
@@ -795,7 +812,9 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 },
-  lockScreen: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12, paddingVertical: 40 },
+  forgotPin: { paddingVertical: 10, alignItems: 'center' },
+  pinScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
+  lockScreen: { alignItems: 'center', paddingHorizontal: 32, gap: 12, paddingTop: 24, paddingBottom: 44 },
   lockIcon: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   lockTitle: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
   lockSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },

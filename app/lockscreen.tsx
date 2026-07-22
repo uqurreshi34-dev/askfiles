@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -8,6 +8,9 @@ import { verifyPin } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { showBiometricPrompt } from '@/modules/storage-stats';
 import { usePinPad } from '@/hooks/usePinPad';
+import PinTrail from '@/components/PinTrail';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useEffect } from 'react';
 
 export default function LockScreen() {
   const { colors } = useTheme();
@@ -16,6 +19,12 @@ export default function LockScreen() {
   const destination = next ? decodeURIComponent(next) : '/(tabs)';
   const [entry, setEntry] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [padSize, setPadSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    return () => { ScreenOrientation.unlockAsync(); };
+  }, []);
 
   async function onComplete(code: string) {
     const correct = await verifyPin(code);
@@ -27,7 +36,7 @@ export default function LockScreen() {
     }
   }
 
-  const { keyProps, gesture, GestureDetector } = usePinPad({
+  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping }  = usePinPad({
     value: entry,
     setValue: setEntry,
     onComplete,
@@ -70,7 +79,7 @@ export default function LockScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <View style={styles.body}>
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="lock-closed" size={36} color={colors.blue} />
         </View>
@@ -87,7 +96,7 @@ export default function LockScreen() {
         </View>
 
         <GestureDetector gesture={gesture}>
-          <View style={styles.keypad}>
+        <View style={styles.keypad} onLayout={(e) => setPadSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
             {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
               if (key === 'bio') return (
                 <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={tryBiometric} activeOpacity={0.6}>
@@ -105,21 +114,25 @@ export default function LockScreen() {
                 </TouchableOpacity>
               );
             })}
+            {isSwiping && padSize.w > 0 && (
+              <PinTrail pathD={pathD} points={pathPoints} color={colors.blue} width={padSize.w} height={padSize.h} />
+            )}
           </View>
         </GestureDetector>
-
-        <TouchableOpacity onPress={handleForgotPin} style={{ marginTop: 16, paddingVertical: 8 }}>
-          <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      </View>
+       {/* pinned, always visible */}
+      <TouchableOpacity onPress={handleForgotPin} style={styles.forgotPin}>
+        <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  body: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 24, paddingBottom: 32 },
-  iconWrap: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  iconWrap: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  forgotPin: { paddingVertical: 10, alignItems: 'center' },
   title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.4 },
   sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
   dots: { flexDirection: 'row', gap: 16, marginTop: 32, marginBottom: 12 },
@@ -128,7 +141,7 @@ const styles = StyleSheet.create({
   dotError: { borderColor: '#E24B4A' },
   errorSlot: { height: 20, justifyContent: 'center', marginBottom: 24 },
   errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
-  keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16, marginTop: 24 },
+  keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16, marginTop: 24, position: 'relative' },
   key: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   keyText: { fontSize: 24, fontWeight: '500' },
 });

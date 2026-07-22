@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,8 @@ import { savePin, enableAppLock, deletePin, disableAppLock } from '@/hooks/usePi
 import { useTheme } from '@/hooks/useTheme';
 import { useLocalSearchParams } from 'expo-router';
 import { usePinPad } from '@/hooks/usePinPad';
+import PinTrail from '@/components/PinTrail'
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function SetPinScreen() {
   const { colors } = useTheme();
@@ -15,6 +17,12 @@ export default function SetPinScreen() {
   const [firstPin, setFirstPin] = useState<string | null>(null);
   const [entry, setEntry] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [padSize, setPadSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    return () => { ScreenOrientation.unlockAsync(); };
+  }, []);
 
   // Called every time a 4-digit code is completed (by tap or swipe)
   function onComplete(code: string) {
@@ -46,7 +54,7 @@ export default function SetPinScreen() {
     ]);
   }
 
-  const { keyProps, gesture, GestureDetector } = usePinPad({
+  const { keyProps, gesture, GestureDetector, pathD, pathPoints, isSwiping } = usePinPad({
     value: entry,
     setValue: setEntry,
     onComplete,
@@ -65,7 +73,7 @@ export default function SetPinScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <View style= {styles.body}>
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="keypad-outline" size={36} color={colors.blue} />
         </View>
@@ -87,7 +95,10 @@ export default function SetPinScreen() {
         </View>
 
         <GestureDetector gesture={gesture}>
-          <View style={styles.keypad}>
+          <View
+            style={styles.keypad}
+            onLayout={(e) => setPadSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+          >
             {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key, i) => {
               if (key === '') return <View key={i} style={styles.keyEmpty} />;
               if (key === 'del') return (
@@ -101,9 +112,12 @@ export default function SetPinScreen() {
                 </TouchableOpacity>
               );
             })}
+            {isSwiping && padSize.w > 0 && (
+              <PinTrail pathD={pathD} points={pathPoints} color={colors.blue} width={padSize.w} height={padSize.h} />
+            )}
           </View>
         </GestureDetector>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -113,7 +127,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5 },
-  body: { alignItems: 'center', paddingTop: 32, paddingHorizontal: 24, paddingBottom: 32 },
+  body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   iconWrap: { width: 80, height: 80, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   prompt: { fontSize: 20, fontWeight: '600', letterSpacing: -0.3, marginBottom: 8 },
   sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 36 },
@@ -123,7 +137,7 @@ const styles = StyleSheet.create({
   dotError: { borderColor: '#E24B4A' },
   errorSlot: { height: 20, justifyContent: 'center', marginBottom: 24 },
   errorText: { fontSize: 13, color: '#E24B4A', textAlign: 'center' },
-  keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 },
+  keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16, position: 'relative' },
   key: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   keyEmpty: { width: 80, height: 80 },
   keyText: { fontSize: 24, fontWeight: '500' },

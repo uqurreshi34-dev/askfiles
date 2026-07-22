@@ -127,5 +127,9 @@ export function usePinPad({ value, setValue, onComplete, onEdit }: Params) {
     },
   };
 
-  return { keyProps, gesture, GestureDetector, pathPoints, isSwiping };
+  const pathD = pathPoints.length > 0
+  ? pathPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  : '';
+
+  return { keyProps, gesture, GestureDetector, pathPoints, isSwiping, pathD };
 }
