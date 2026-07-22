@@ -6,51 +6,54 @@ import { useRouter } from 'expo-router';
 import { savePin, enableAppLock, deletePin, disableAppLock } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { useLocalSearchParams } from 'expo-router';
+import { usePinPad } from '@/hooks/usePinPad';
 
 export default function SetPinScreen() {
   const { colors } = useTheme();
   const { fromForgotPin } = useLocalSearchParams<{ fromForgotPin?: string }>();
   const router = useRouter();
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [stage, setStage] = useState<'set' | 'confirm'>('set');
+  const [firstPin, setFirstPin] = useState<string | null>(null);
+  const [entry, setEntry] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  function handleDigit(digit: string) {
-    if (stage === 'set') {
-      if (pin.length < 4) {
-        const newPin = pin + digit;
-        setPin(newPin);
-        if (newPin.length === 4) { setStage('confirm'); }
-      }
+  // Called every time a 4-digit code is completed (by tap or swipe)
+  function onComplete(code: string) {
+    if (firstPin === null) {
+      // Stage 1 done — remember it, move to confirm
+      setFirstPin(code);
+      setEntry('');
     } else {
-      if (confirmPin.length < 4) {
-        const newConfirm = confirmPin + digit;
-        setConfirmPin(newConfirm);
-        if (newConfirm.length === 4) { handleConfirm(newConfirm); }
+      // Stage 2 — compare against the first entry
+      if (code === firstPin) {
+        void save(code);
+      } else {
+        setError("PINs don't match. Try again.");
+        setFirstPin(null);
+        setEntry('');
       }
     }
   }
 
-  function handleDelete() {
-    if (stage === 'set') { setPin(prev => prev.slice(0, -1)); }
-    else { setConfirmPin(prev => prev.slice(0, -1)); }
-  }
-
-  async function handleConfirm(entered: string) {
-    if (entered === pin) {
-      if (fromForgotPin === '1') {
-        await deletePin();
-        await disableAppLock();
-      }
-      await savePin(pin);
-      await enableAppLock();
-      Alert.alert('PIN Set', 'Your PIN has been set successfully. App lock is now enabled.', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/' as any) },
-      ]);
+  async function save(code: string) {
+    if (fromForgotPin === '1') {
+      await deletePin();
+      await disableAppLock();
     }
+    await savePin(code);
+    await enableAppLock();
+    Alert.alert('PIN Set', 'Your PIN has been set. App lock is now enabled.', [
+      { text: 'OK', onPress: () => router.replace('/(tabs)/' as any) },
+    ]);
   }
 
-  const currentPin = stage === 'set' ? pin : confirmPin;
+  const { keyProps, gesture, GestureDetector } = usePinPad({
+    value: entry,
+    setValue: setEntry,
+    onComplete,
+    onEdit: () => setError(null),
+  });
+
+  const stageIsConfirm = firstPin !== null;
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -67,37 +70,39 @@ export default function SetPinScreen() {
           <Ionicons name="keypad-outline" size={36} color={colors.blue} />
         </View>
         <Text style={[styles.prompt, { color: colors.textPrimary }]}>
-          {stage === 'set' ? 'Enter a 4-digit PIN' : 'Confirm your PIN'}
+          {stageIsConfirm ? 'Confirm your PIN' : 'Enter a 4-digit PIN'}
         </Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>
-          {stage === 'set'
-            ? 'This PIN will be used to unlock the app and vault'
-            : 'Enter the same PIN again to confirm'}
+          {stageIsConfirm ? 'Enter the same PIN again to confirm' : 'This PIN will unlock the app and vault'}
         </Text>
 
         <View style={styles.dots}>
           {[0, 1, 2, 3].map(i => (
-            <View key={i} style={[styles.dot, i < currentPin.length && styles.dotFilled]} />
+            <View key={i} style={[styles.dot, i < entry.length && styles.dotFilled, !!error && styles.dotError]} />
           ))}
         </View>
 
-        <View style={styles.keypad}>
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key, i) => {
-            if (key === '') return <View key={i} style={styles.keyEmpty} />;
-            if (key === 'del') return (
-              <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={handleDelete} activeOpacity={0.6}>
-                <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            );
-            return (
-              <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={() => handleDigit(key)} activeOpacity={0.6}>
-                <Text style={[styles.keyText, { color: colors.textPrimary }]}>{key}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        </ScrollView>
-      </SafeAreaView>
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        <GestureDetector gesture={gesture}>
+          <View style={styles.keypad}>
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key, i) => {
+              if (key === '') return <View key={i} style={styles.keyEmpty} />;
+              if (key === 'del') return (
+                <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={keyProps.onDelete} activeOpacity={0.6}>
+                  <Ionicons name="backspace-outline" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              );
+              return (
+                <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={() => keyProps.onTap(key)} onLayout={(e) => keyProps.onMeasure(key, e)} activeOpacity={0.6}>
+                  <Text style={[styles.keyText, { color: colors.textPrimary }]}>{key}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </GestureDetector>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -113,6 +118,8 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 16, marginBottom: 48 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#D3D1C7', backgroundColor: 'transparent' },
   dotFilled: { backgroundColor: '#185FA5', borderColor: '#185FA5' },
+  dotError: { borderColor: '#E24B4A' },
+  errorText: { fontSize: 13, color: '#E24B4A', marginBottom: 24 },
   keypad: { flexDirection: 'row', flexWrap: 'wrap', width: 280, gap: 16 },
   key: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   keyEmpty: { width: 80, height: 80 },

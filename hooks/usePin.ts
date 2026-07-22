@@ -17,7 +17,20 @@ export async function savePin(pin: string): Promise<void> {
 
 export async function verifyPin(input: string): Promise<boolean> {
   const stored = await SecureStore.getItemAsync(PIN_KEY);
-  return stored === input;
+  if (!stored) return false;
+
+  if (stored.startsWith('v2:')) {
+    const [, salt, hash] = stored.split(':');
+    const inputHash = await hashPin(input, salt);
+    return inputHash === hash;
+  }
+
+  // Legacy plaintext PIN — verify directly, then upgrade to hashed on success
+  if (stored === input) {
+    await savePin(input);
+    return true;
+  }
+  return false;
 }
 
 export async function deletePin(): Promise<void> {
