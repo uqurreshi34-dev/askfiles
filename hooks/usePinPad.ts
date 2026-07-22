@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 
 const DWELL_MS = 110;
 const PIVOT_DOT = 0.3;
@@ -34,10 +35,11 @@ export function usePinPad({ value, setValue, onComplete, onEdit }: Params) {
   // Single commit path for BOTH tap and swipe — the value passed to
   // onComplete is always the freshly-built 4-char string, never state.
   function push(digit: string, fromSwipe = false) {
-    if (g.completed) return;                 // one attempt per finger-down
+    if (g.completed) return;  // one attempt per finger-down
     onEdit?.();
     if (value.length >= 4) return;
     const next = value + digit;
+    Haptics.selectionAsync(); 
     setValue(() => next);
     if (fromSwipe) {
       const c = keyCenter(digit);
