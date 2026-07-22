@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { verifyPin } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { showBiometricPrompt } from '@/modules/storage-stats';
 import { useLocalSearchParams } from 'expo-router';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 export default function LockScreen() {
   const { colors } = useTheme();
@@ -16,10 +17,99 @@ export default function LockScreen() {
   const destination = next ? decodeURIComponent(next) : '/(tabs)';
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const keyFrames = useState(() => new Map<string, { x: number; y: number; w: number; h: number }>())[0];
+  const DWELL_MS = 110;      // pause this long on a key → commit it
+  const PIVOT_DOT = 0.3;     // direction change sharper than this → commit
 
-  useEffect(() => {
-    tryBiometric();
-  }, []);
+  const gestureState = useRef({
+    lastKey: null as string | null,      // key under finger last frame
+    committedKey: null as string | null, // last key we committed (same-key guard)
+    enterTime: 0,                          // when finger entered lastKey (dwell)
+    enterX: 0, enterY: 0,                  // finger pos when it entered (pivot)
+    prevDX: 0, prevDY: 0,                  // travel direction last frame (pivot)
+  }).current;
+  
+  function commitDigit(digit: string) {
+    setPin(prev => {
+      if (prev.length >= 4) return prev;
+      const next = prev + digit;
+      console.log('COMMIT', digit, '→', next);
+      if (next.length === 4) handleVerify(next);
+      return next;
+    });
+  }
+  
+  function resetGesture() {
+    gestureState.lastKey = null;
+    gestureState.committedKey = null;
+    gestureState.enterTime = 0;
+    gestureState.prevDX = 0;
+    gestureState.prevDY = 0;
+  }
+  
+  const panGesture = Gesture.Pan()
+    .runOnJS(true)
+    .onBegin((e) => {
+      setPin(''); // fresh entry each gesture
+      resetGesture();
+      const digit = keyAt(e.x, e.y);
+      if (digit) {
+        commitDigit(digit);  // rule 1: first touch commits
+        gestureState.committedKey = digit;
+        gestureState.lastKey = digit;
+        gestureState.enterTime = Date.now();
+        gestureState.enterX = e.x;
+        gestureState.enterY = e.y;
+      }
+    })
+    .onUpdate((e) => {
+      const digit = keyAt(e.x, e.y);
+      const now = Date.now();
+  
+      // direction of travel this frame
+      const dx = e.x - gestureState.enterX;
+      const dy = e.y - gestureState.enterY;
+  
+      if (digit !== gestureState.lastKey) {
+        // finger moved to a new key (or off all keys)
+        gestureState.lastKey = digit;
+        gestureState.enterTime = now;
+        gestureState.enterX = e.x;
+        gestureState.enterY = e.y;
+        // leaving a key clears the same-key guard once we're truly off it
+        if (digit !== gestureState.committedKey) {
+          // pivot check: did we sharply change direction arriving here?
+          const len1 = Math.hypot(gestureState.prevDX, gestureState.prevDY);
+          const len2 = Math.hypot(dx, dy);
+          if (digit && len1 > 4 && len2 > 4) {
+            const dot = (gestureState.prevDX * dx + gestureState.prevDY * dy) / (len1 * len2);
+            if (dot < PIVOT_DOT) {
+              commitDigit(digit);
+              gestureState.committedKey = digit;
+            }
+          }
+        }
+        gestureState.prevDX = dx;
+        gestureState.prevDY = dy;
+      } else if (digit && digit !== gestureState.committedKey) {
+        // same key as last frame — check dwell
+        if (now - gestureState.enterTime >= DWELL_MS) {
+          commitDigit(digit);
+          gestureState.committedKey = digit;
+        }
+      }
+  
+      // reset same-key guard when finger genuinely leaves the committed key
+      if (digit !== gestureState.committedKey && digit !== null) {
+        // allow re-commit of a different key; committedKey updated on commit
+      }
+      if (digit === null) {
+        gestureState.committedKey = null; // off the pad entirely → allow next
+      }
+    })
+    .onFinalize(() => {
+      resetGesture();
+    });
 
   async function tryBiometric() {
     try {
@@ -37,6 +127,18 @@ export default function LockScreen() {
       setError(null);
       if (newPin.length === 4) handleVerify(newPin);
     }
+  }
+
+  function measureKey(digit: string, e: any) {
+    const { x, y, width, height } = e.nativeEvent.layout;
+    keyFrames.set(digit, { x, y, w: width, h: height });
+  }
+
+  function keyAt(x: number, y: number): string | null {
+    for (const [digit, f] of keyFrames) {
+      if (x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) return digit;
+    }
+    return null;
   }
 
   function handleDelete() {
@@ -95,7 +197,7 @@ export default function LockScreen() {
         </View>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
-
+      <GestureDetector gesture={panGesture}>
         <View style={styles.keypad}>
           {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'].map((key, i) => {
             if (key === 'bio') return (
@@ -109,12 +211,13 @@ export default function LockScreen() {
               </TouchableOpacity>
             );
             return (
-              <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={() => handleDigit(key)} activeOpacity={0.6}>
+              <TouchableOpacity key={i} style={[styles.key, { backgroundColor: colors.surface }]} onPress={() => handleDigit(key)} activeOpacity={0.6} onLayout={(e) => measureKey(key, e)}>
                 <Text style={[styles.keyText, { color: colors.textPrimary }]}>{key}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
+      </GestureDetector>
         <TouchableOpacity onPress={handleForgotPin} style={{ marginTop: 16, paddingVertical: 8 }}>
           <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
         </TouchableOpacity>
