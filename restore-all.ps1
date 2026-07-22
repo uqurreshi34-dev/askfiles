@@ -25,3 +25,17 @@ if (Test-Path $gradleProps) {
 } else {
     Write-Host "ERROR: android/gradle.properties not found for R8 flags." -ForegroundColor Red
 }
+
+# Restore SDK 36 override (Play API-level policy)
+if (Test-Path $gradleProps) {
+    $content = Get-Content $gradleProps -Raw
+
+    if ($content -notmatch 'android\.targetSdkVersion=36') {
+        Add-Content $gradleProps "`nandroid.compileSdkVersion=36`nandroid.targetSdkVersion=36"
+        Write-Host "Added SDK 36 override (compileSdk + targetSdk)" -ForegroundColor Green
+    } else {
+        Write-Host "SDK 36 override already present" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "ERROR: android/gradle.properties not found for SDK override." -ForegroundColor Red
+}
