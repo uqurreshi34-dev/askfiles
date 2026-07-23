@@ -42,6 +42,8 @@ import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
 import * as Haptics from 'expo-haptics';
 import QRCode from 'react-native-qrcode-svg';
+import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches, RecentSearch } from 'recent-searches';
+import { getDateGroup } from '@/hooks/useRecents';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -132,9 +134,12 @@ export default function SearchScreen() {
   const smartTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [indexCount, setIndexCount] = useState(0);
   const [copyProgress, setCopyProgress] = useState<number | null>(null);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [historyHidden, setHistoryHidden] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
+      setRecentSearches(getRecentSearches());
       if (autofocus === '1') {
         const t = setTimeout(() => searchInputRef.current?.focus(), 400);
         return () => clearTimeout(t);
@@ -454,6 +459,10 @@ export default function SearchScreen() {
   const [folderLoading, setFolderLoading] = useState(false);
 
   async function openFolder(item: { name: string; uri: string }) {
+    if (query.trim().length >= 2) {
+      addRecentSearch(query.trim());
+      setRecentSearches(getRecentSearches());
+    }
     setFolderLoading(true);
     try {
       const dir = new FileSystem.Directory(item.uri);
@@ -487,8 +496,19 @@ export default function SearchScreen() {
 
   function handleSearchChange(text: string) {
     setQuery(text);
+    if (text.length === 0) {  // only when fully cleared
+      setRecentSearches(getRecentSearches());
+    }
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => search(text), 300);
+  }
+
+  function handleSearchSubmit() {
+    const q = query.trim();
+    if (q.length >= 2) {
+      addRecentSearch(q);
+      setRecentSearches(getRecentSearches());   // refresh chips immediately
+    }
   }
 
   async function handleAsk(question?: string) {
@@ -500,6 +520,10 @@ export default function SearchScreen() {
   }
 
   async function openFile(name: string, uri: string) {
+    if (query.trim().length >= 2) {
+      addRecentSearch(query.trim());
+      setRecentSearches(getRecentSearches());
+    }
     await addRecent({ name, uri, openedAt: Date.now() });
     recordOpen(uri);
     if (isImageFile(name)) {
@@ -658,9 +682,11 @@ export default function SearchScreen() {
               onChangeText={handleSearchChange}
               autoCorrect={false}
               autoCapitalize="none"
+              onSubmitEditing={handleSearchSubmit}
+              returnKeyType="search"
             />
             {query.length > 0 && (
-              <TouchableOpacity onPress={() => { setQuery(''); search(''); }}>
+              <TouchableOpacity onPress={() => { setQuery(''); search(''); setRecentSearches(getRecentSearches()); }}>
                 <Ionicons name="close-circle" size={16} color={colors.textMuted} />
               </TouchableOpacity>
             )}
@@ -672,10 +698,79 @@ export default function SearchScreen() {
               <Text style={[styles.hint, { color: colors.textMuted }]}>Searching...</Text>
             </View>
           ) : query.length < 2 ? (
-            <View style={styles.centered}>
-              <Ionicons name="search-outline" size={40} color={colors.textDisabled} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>Type at least 2 characters</Text>
-            </View>
+            recentSearches.length === 0 || historyHidden ? (
+              <View style={styles.centered}>
+                <Ionicons name="search-outline" size={40} color={colors.textDisabled} />
+                <Text style={[styles.hint, { color: colors.textMuted }]}>
+                  {historyHidden ? 'Search history hidden' : 'Type at least 2 characters'}
+                </Text>
+                {historyHidden && recentSearches.length > 0 && (
+                  <TouchableOpacity onPress={() => setHistoryHidden(false)} style={{ marginTop: 8 }}>
+                    <Text style={[styles.hint, { color: colors.blue }]}>Show history</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <FlatList
+                data={recentSearches}
+                keyExtractor={item => item.query}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                ListHeaderComponent={
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={[styles.resultCount, { color: colors.textMuted }]}>Recent searches</Text>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <TouchableOpacity onPress={() => setHistoryHidden(true)}>
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>Hide</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => {
+                        clearRecentSearches();
+                        setRecentSearches([]);
+                      }}>
+                        <Text style={{ fontSize: 12, color: colors.blue }}>Clear</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                }
+                renderItem={({ item, index }) => {
+                  const group = getDateGroup(item.searchedAt);
+                  const prevGroup = index > 0 ? getDateGroup(recentSearches[index - 1].searchedAt) : null;
+                  const showHeader = group !== prevGroup;
+                  return (
+                    <View key={item.query}>
+                      {showHeader && (
+                        <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: index === 0 ? 0 : 12 }]}>
+                          {group}
+                        </Text>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.row, { borderBottomColor: colors.border }]}
+                        onPress={() => {
+                          setQuery(item.query);
+                          search(item.query);
+                          addRecentSearch(item.query); // bump to top
+                          setRecentSearches(getRecentSearches());
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="time-outline" size={18} color={colors.textMuted} style={{ marginRight: 12 }} />
+                        <Text style={[styles.fileName, { flex: 1, color: colors.textPrimary }]} numberOfLines={1}>{item.query}</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            removeRecentSearch(item.query);
+                            setRecentSearches(getRecentSearches());
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={16} color={colors.textMuted} />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }}
+              />
+            )
           ) : results.length === 0 ? (
             <View style={styles.centered}>
               <Ionicons name="document-outline" size={40} color={colors.textDisabled} />

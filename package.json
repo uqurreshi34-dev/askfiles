@@ -72,6 +72,7 @@
     "pdf-viewer": "file:modules/pdf-viewer",
     "image-hash": "file:modules/image-hash",
     "browse-list": "file:modules/browse-list",
+    "recent-searches": "file:modules/recent-searches",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-device-info": "^15.0.2",

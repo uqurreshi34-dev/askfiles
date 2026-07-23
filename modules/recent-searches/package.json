@@ -1,0 +1,9 @@
+  {
+    "name": "recent-searches",
+    "version": "1.0.0",
+    "description": "Native SharedPreferences store for recent search queries",
+    "main": "index.ts",
+    "android": {
+      "package": "expo.modules.recentsearches"
+    }
+  }
