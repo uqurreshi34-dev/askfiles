@@ -136,6 +136,7 @@ export default function SearchScreen() {
   const [copyProgress, setCopyProgress] = useState<number | null>(null);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [historyHidden, setHistoryHidden] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'' | 'image' | 'video' | 'audio' | 'doc' | 'other'>('');
 
   useFocusEffect(
     useCallback(() => {
@@ -496,11 +497,9 @@ export default function SearchScreen() {
 
   function handleSearchChange(text: string) {
     setQuery(text);
-    if (text.length === 0) {  // only when fully cleared
-      setRecentSearches(getRecentSearches());
-    }
+    if (text.length === 0) setRecentSearches(getRecentSearches());
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => search(text), 300);
+    searchTimeout.current = setTimeout(() => search(text, typeFilter), 300);
   }
 
   function handleSearchSubmit() {
@@ -686,12 +685,35 @@ export default function SearchScreen() {
               returnKeyType="search"
             />
             {query.length > 0 && (
-              <TouchableOpacity onPress={() => { setQuery(''); search(''); setRecentSearches(getRecentSearches()); }}>
+              <TouchableOpacity onPress={() => { setQuery(''); search(''); setTypeFilter(''); setRecentSearches(getRecentSearches()); }}>
                 <Ionicons name="close-circle" size={16} color={colors.textMuted} />
               </TouchableOpacity>
             )}
           </View>
-
+          {query.length >= 2 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ flexGrow: 0, flexShrink: 0, height: 40 }}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {([['', 'All'], ['image', 'Images'], ['video', 'Videos'], ['audio', 'Audio'], ['doc', 'Docs'], ['other', 'Other']] as const)
+                  .map(([key, label]) => {
+                    const active = typeFilter === key;
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => { setTypeFilter(key); search(query, key); }}
+                        style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, flexShrink: 0, backgroundColor: active ? colors.blue : colors.surface }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '500', color: active ? '#fff' : colors.textSecondary }} numberOfLines={1}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </ScrollView>
+            )}
           {searching ? (
             <View style={styles.centered}>
               <ActivityIndicator color={colors.blue} />
@@ -748,8 +770,9 @@ export default function SearchScreen() {
                         style={[styles.row, { borderBottomColor: colors.border }]}
                         onPress={() => {
                           setQuery(item.query);
-                          search(item.query);
-                          addRecentSearch(item.query); // bump to top
+                          setTypeFilter('');
+                          search(item.query, '');
+                          addRecentSearch(item.query);
                           setRecentSearches(getRecentSearches());
                         }}
                         activeOpacity={0.7}

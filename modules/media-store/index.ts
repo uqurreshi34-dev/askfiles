@@ -99,13 +99,13 @@ export async function queryAllFiles(): Promise<FileEntry[]> {
   return MediaStore.queryAllFiles();
 }
 
-export async function searchFiles(query: string): Promise<{
+export async function searchFiles(query: string, category: string = ''): Promise<{
   name: string;
   uri: string;
   isDirectory: boolean;
   mimeType: string;
 }[]> {
-  return MediaStore.searchFiles(query);
+  return MediaStore.searchFiles(query, category);
 }
 
 export const queryImages = async (sortKey: string = 'date_desc'): Promise<{ name: string; uri: string; date: number; size: number }[]> =>

@@ -24,7 +24,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { MediaGridView } from 'media-grid';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { queryDocuments, queryDownloads, queryDocumentsByMimeWithFolders, queryImages, queryVideos, getMediaInfo, queryImageFolders, queryVideoFolders, queryDocumentFolders, FolderGroup } from 'media-store';
+import { queryDocuments, queryDownloads, queryDocumentsByMimeWithFolders, queryImages, queryVideos, getMediaInfo, queryImageFolders, queryVideoFolders, queryDocumentFolders, FolderGroup } from '@/modules/media-store';
 import { scanFile } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';

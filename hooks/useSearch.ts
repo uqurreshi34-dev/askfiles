@@ -12,14 +12,14 @@ export function useSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const search = useCallback(async (query: string) => {
+  const search = useCallback(async (query: string, category: string = '') => {
     if (query.trim().length < 2) {
       setResults([]);
       return;
     }
     setSearching(true);
     try {
-      const found = await searchFiles(query.trim());
+      const found = await searchFiles(query.trim(), category);
       setResults(found);
     } catch {
       setResults([]);

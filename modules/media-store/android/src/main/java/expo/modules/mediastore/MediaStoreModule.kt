@@ -368,7 +368,7 @@ class MediaStoreModule : Module() {
       results
     }
 
-    AsyncFunction("searchFiles") { query: String ->
+    AsyncFunction("searchFiles") { query: String, category: String ->
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
       try {
@@ -378,11 +378,54 @@ class MediaStoreModule : Module() {
           MediaStore.Files.FileColumns.DATA,
           MediaStore.Files.FileColumns.MIME_TYPE,
         )
-        val mimeClause = ALL_FILE_MIME_TYPES.joinToString(" OR ") {
-          "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
+
+        // Mime sets for the non-prefix categories
+        val docMimes = listOf(
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/plain",
+          "text/csv",
+        )
+        val otherMimes = listOf(
+          "application/zip",
+          "application/x-rar-compressed",
+          "application/vnd.android.package-archive",
+        )
+
+        val nameLike = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+
+        val selection: String
+        val selectionArgs: Array<String>
+
+        when (category) {
+          "image", "video", "audio" -> {
+            // prefix match, e.g. MIME_TYPE LIKE 'image/%'
+            selection = "$nameLike AND ${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ?"
+            selectionArgs = arrayOf("%$query%", "$category/%")
+          }
+          "doc" -> {
+            val docExts = listOf("%.pdf", "%.doc", "%.docx", "%.xls", "%.xlsx", "%.txt", "%.csv")
+            val clause = docExts.joinToString(" OR ") { "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?" }
+            selection = "$nameLike AND ($clause)"
+            selectionArgs = (listOf("%$query%") + docExts).toTypedArray()
+          }
+          "other" -> {
+            val otherExts = listOf("%.zip", "%.rar", "%.apk", "%.7z")
+            val clause = otherExts.joinToString(" OR ") { "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?" }
+            selection = "$nameLike AND ($clause)"
+            selectionArgs = (listOf("%$query%") + otherExts).toTypedArray()
+          }
+          else -> {
+            // "All" — match any file by name, no mime restriction.
+            // Specific chips still filter; only "All" is unrestricted.
+            selection = nameLike
+            selectionArgs = arrayOf("%$query%")
+          }
         }
-        val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? AND ($mimeClause)"
-        val selectionArgs = (listOf("%$query%") + ALL_FILE_MIME_TYPES).toTypedArray()
+
         val cursor = context.contentResolver.query(
           uri, projection, selection, selectionArgs,
           "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
@@ -395,7 +438,9 @@ class MediaStoreModule : Module() {
             val name = it.getString(nameCol) ?: continue
             if (name.startsWith('.')) continue
             val path = it.getString(dataCol) ?: continue
-            if (path.contains("/.")) continue
+            if (path.contains("/.")) continue                       // hidden dirs in path
+            if (!java.io.File(path).isFile) continue                // ← kills directory ghosts (moona folder)
+            if (path.contains("/Android/")) continue
             val mime = it.getString(mimeCol) ?: ""
             results.add(mapOf(
               "name" to name,
