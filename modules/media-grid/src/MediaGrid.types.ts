@@ -8,6 +8,8 @@ export type MediaGridProps = {
   openingUri: string;
   selectedUris?: string[];
   placeholderColor?: string;
+  itemDates?: number[];
+  sortMode?: string;
   onItemPress: (event: { nativeEvent: { uri: string; index: number } }) => void;
   onItemLongPress: (event: { nativeEvent: { uri: string; index: number } }) => void;
   onSelectionChange: (event: { nativeEvent: { selectedUris: string[] } }) => void;

@@ -95,6 +95,14 @@ class MediaGridModule : Module() {
         view.setPlaceholderColor(hex)
       }
 
+      Prop("itemDates") { view: MediaGridView, dates: List<Double> ->
+        view.setItemDates(dates)
+      }
+      
+      Prop("sortMode") { view: MediaGridView, mode: String ->
+        view.setSortMode(mode)
+      }
+
       Events("onItemPress", "onItemLongPress", "onSelectionChange", "onDragSelectEnd", "onDragSelectProgress")
     }
   }

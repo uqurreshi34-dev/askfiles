@@ -53,6 +53,8 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     private val selectMode = mutableStateOf(false)
     private val category = mutableStateOf("images")
     private val openingUri = mutableStateOf("")
+    private val itemDates = mutableStateListOf<Long>()
+    private val sortMode = mutableStateOf("")
     // Theme surface color (hex) for the tile placeholder background, passed from JS
     // so decoding tiles match the user's selected theme instead of a fixed grey.
     private val placeholderColor = mutableStateOf("#1E1E1E")
@@ -82,6 +84,12 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
     fun setOpeningUri(newOpeningUri: String) { openingUri.value = newOpeningUri }
     fun setPlaceholderColor(hex: String) { placeholderColor.value = hex }
 
+    fun setItemDates(dates: List<Double>) {
+        itemDates.clear()
+        itemDates.addAll(dates.map { it.toLong() })
+    }
+    fun setSortMode(mode: String) { sortMode.value = mode }
+
     private val composeView = object : AbstractComposeView(context) {
         init {
             // Safe default — upgraded to lifecycle-aware in outer onAttachedToWindow
@@ -96,6 +104,8 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
             val currentSelectMode = selectMode.value
             val currentCategory = category.value
             val currentOpeningUri = openingUri.value
+            val currentDates = itemDates.toList()
+            val currentSortMode = sortMode.value
             // Parse the theme placeholder hex once; fall back to a neutral dark grey
             // if the string is ever malformed, so a bad value can never crash the grid.
             val placeholderBg = remember(placeholderColor.value) {
@@ -417,6 +427,31 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
+                        }
+                    }
+                }
+
+                // ---- Date bubble ----
+                // Centered-top overlay. Month+year of the top-visible item, shown only
+                // while scrolling AND only when sorted by date. Native-driven: reads
+                // gridState + dates passed once from JS. No JS work during scroll.
+                val isDateSort = currentSortMode == "date_desc" || currentSortMode == "date_asc"
+                if (isDateSort && currentDates.isNotEmpty() && gridState.isScrollInProgress) {
+                    val topIndex = gridState.firstVisibleItemIndex
+                    val epoch = currentDates.getOrNull(topIndex)
+                    if (epoch != null && epoch > 0L) {
+                        val label = remember(epoch) {
+                            java.text.SimpleDateFormat("MMM yyyy", java.util.Locale.getDefault())
+                                .format(java.util.Date(epoch))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 8.dp)
+                                .background(Color(0xCC185FA5), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

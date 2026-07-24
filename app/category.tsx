@@ -1072,6 +1072,7 @@ async function handleSsInfo() {
   }, [items, activeTab, searchQuery, category]);
 
   const gridUris = useMemo(() => filteredItems.map(i => i.uri), [filteredItems]);
+  const gridDates = useMemo(() => filteredItems.map(i => i.date ?? 0), [filteredItems]);
 
   const selectedHasImages = useMemo(() =>
     Array.from(selectedItemsMap.values()).some(f => isImageFile(f.name)),
@@ -1485,6 +1486,8 @@ async function handleSsInfo() {
             style={{ flex: 1 }}
             key={`grid-${sortKey}-${searchQuery}`}
             uris={gridUris}
+            itemDates={gridDates}
+            sortMode={sortKey}
             placeholderColor={colors.surface}
             selectMode={selectMode && !multiPasting && !deleting}
             category={(category === 'videos' ? 'videos' : 'images')}
