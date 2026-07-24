@@ -240,9 +240,7 @@ export default function CategoryScreen() {
   
 
   function openSlideshow() {
-    const sourceItems = (folderView && selectedFolder)
-      ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
-      : filteredItems;
+    const sourceItems = folderSourceItems;
     const seen = new Set<string>();
     const deduped = sourceItems.filter(it => {
     if (seen.has(it.name)) return false;
@@ -748,9 +746,7 @@ async function handleSsInfo() {
     await addRecent({ name: item.name, uri: item.uri, openedAt: Date.now() });
     recordOpen(item.uri);
     if (isImageFile(item.name)) {
-      const sourceItems = (folderView && selectedFolder)
-        ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
-        : filteredItems;
+      const sourceItems = folderSourceItems;
       const imgs = sourceItems.filter(i => isImageFile(i.name));
       const idx = imgs.findIndex(i => i.uri === item.uri);
       setViewerImages(imgs);
@@ -1073,6 +1069,24 @@ async function handleSsInfo() {
 
   const gridUris = useMemo(() => filteredItems.map(i => i.uri), [filteredItems]);
   const gridDates = useMemo(() => filteredItems.map(i => i.date ?? 0), [filteredItems]);
+  const itemsByUri = useMemo(
+    () => new Map(filteredItems.map(i => [i.uri, i])),
+    [filteredItems]
+  );
+
+  const folderSourceItems = useMemo<FileItem[]>(
+    () => (folderView && selectedFolder)
+      ? selectedFolder.uris.map(uri => itemsByUri.get(uri)).filter((x): x is FileItem => x !== undefined)
+      : filteredItems,
+    [folderView, selectedFolder, itemsByUri, filteredItems]
+  );
+
+  const folderListData = useMemo<FileItem[]>(
+    () => (selectedFolder?.uris ?? [])
+      .map(uri => itemsByUri.get(uri))
+      .filter((x): x is FileItem => x !== undefined),
+    [selectedFolder, itemsByUri]
+  );
 
   const selectedHasImages = useMemo(() =>
     Array.from(selectedItemsMap.values()).some(f => isImageFile(f.name)),
@@ -1108,9 +1122,7 @@ async function handleSsInfo() {
             </Text>
             <TouchableOpacity
               onPress={() => {
-                const allFiles = (folderView && selectedFolder)
-                  ? selectedFolder.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]
-                  : filteredItems;
+                const allFiles = folderSourceItems;
                 const newSet = new Set(allFiles.map(f => f.uri));
                 const newMap = new Map(allFiles.map(f => [f.uri, f]));
                 setSelectedUris(newSet);
@@ -1367,7 +1379,7 @@ async function handleSsInfo() {
                 setSelectedItemsMap(() => {
                   const newMap = new Map<string, FileItem>();
                   uris.forEach(uri => {
-                    const item = filteredItems.find(i => i.uri === uri);
+                    const item = itemsByUri.get(uri);
                     if (item) newMap.set(uri, item);
                   });
                   return newMap;
@@ -1376,7 +1388,7 @@ async function handleSsInfo() {
             />
           ) : (category === 'images' || category === 'videos') && !gridView ? (
             <FlatList
-              data={selectedFolder?.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]}
+              data={folderListData}
               keyExtractor={item => item.uri}
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
@@ -1423,7 +1435,7 @@ async function handleSsInfo() {
             />
           ) : (
             <FlatList
-              data={selectedFolder?.uris.map(uri => filteredItems.find(i => i.uri === uri)).filter(Boolean) as FileItem[]}
+              data={folderListData}
               keyExtractor={item => item.uri}
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
@@ -1528,7 +1540,7 @@ async function handleSsInfo() {
               setSelectedItemsMap(() => {
                 const newMap = new Map<string, FileItem>();
                 uris.forEach(uri => {
-                  const item = filteredItems.find(i => i.uri === uri);
+                  const item = itemsByUri.get(uri);
                   if (item) newMap.set(uri, item);
                 });
                 return newMap;
