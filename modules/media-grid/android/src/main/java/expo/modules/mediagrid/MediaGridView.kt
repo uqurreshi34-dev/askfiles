@@ -117,7 +117,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                 // Ephemeral by design: not persisted, resets when the view is recreated
                 // (leaving/returning to the category). Range clamped to 2..6.
                 var pinchCols by remember { mutableStateOf<Int?>(null) }
-                val cols = (pinchCols ?: defaultCols).coerceIn(2, 6)
+                val cols = (pinchCols ?: defaultCols).coerceIn(1, 6)
 
                 // Running scale factor for the pinch. 1.0 == the default column count.
                 // Spreading fingers (zoom>1) drives this DOWN toward fewer columns
@@ -175,7 +175,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                             pinchScale = (pinchScale / ratio).coerceIn(0.45f, 2.75f)
                                             val target = (defaultCols * pinchScale)
                                                 .toInt()
-                                                .coerceIn(2, 6)
+                                                .coerceIn(1, 6)
                                             if (target != (pinchCols ?: defaultCols)) {
                                                 pinchCols = target
                                             }
@@ -289,11 +289,17 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
                                 transition = CrossFade,
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                it.override(128, 128)
-                                  .centerCrop()
-                                  .format(DecodeFormat.PREFER_RGB_565)
-                                  .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                            }
+                                val decodePx = when {
+                                    cols <= 1 -> 512
+                                    cols == 2 -> 320
+                                    cols <= 4 -> 200
+                                    else -> 128
+                                }
+                                it.override(decodePx, decodePx)
+                                .centerCrop()
+                                .format(DecodeFormat.PREFER_RGB_565)
+                                .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                              }
 
                             if (isSelected) {
                                 Box(
