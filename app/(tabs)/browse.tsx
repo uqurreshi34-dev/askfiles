@@ -2367,11 +2367,11 @@ export default function BrowseScreen() {
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 0.5, borderTopColor: colors.border, marginTop: 4 }}
               onPress={toggleHidden}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 12 }}>
                 <Ionicons name={showHidden ? 'eye-outline' : 'eye-off-outline'} size={20} color={showHidden ? colors.blue : colors.textSecondary} />
-                <Text style={{ fontSize: 15, color: colors.textPrimary }}>Show hidden folders and files</Text>
+                <Text style={{ fontSize: 15, color: colors.textPrimary, flex: 1 }}>Show hidden folders and files</Text>
               </View>
-              <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: showHidden ? colors.blue : colors.border, justifyContent: 'center', paddingHorizontal: 3 }}>
+              <View style={{ width: 44, height: 26, borderRadius: 13, flexShrink: 0, backgroundColor: showHidden ? colors.blue : colors.border, justifyContent: 'center', paddingHorizontal: 3 }}>
                 <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: showHidden ? 'flex-end' : 'flex-start' }} />
               </View>
             </TouchableOpacity>

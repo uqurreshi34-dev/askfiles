@@ -716,7 +716,7 @@ export default function SearchScreen() {
                         style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, flexShrink: 0, backgroundColor: active ? colors.blue : colors.surface }}
                         activeOpacity={0.7}
                       >
-                        <Text style={{ fontSize: 12, fontWeight: '500', color: active ? '#fff' : colors.textSecondary }} numberOfLines={1}>{label}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '500', lineHeight: 16, color: active ? '#fff' : colors.textSecondary }} numberOfLines={1}>{label}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -732,7 +732,7 @@ export default function SearchScreen() {
               <View style={styles.centered}>
                 <Ionicons name="search-outline" size={40} color={colors.textDisabled} />
                 <Text style={[styles.hint, { color: colors.textMuted }]}>
-                  {historyHidden ? 'Search history hidden' : 'Type at least 2 characters'}
+                  {historyHidden ? 'Search history hidden' : 'Type 2+ characters'}
                 </Text>
                 {historyHidden && recentSearches.length > 0 && (
                   <TouchableOpacity onPress={() => setHistoryHidden(false)} style={{ marginTop: 8 }}>
@@ -748,9 +748,9 @@ export default function SearchScreen() {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 ListHeaderComponent={
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text style={[styles.resultCount, { color: colors.textMuted }]}>Recent searches</Text>
-                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 12 }}>
+                    <Text style={[styles.resultCount, { color: colors.textMuted, flex: 1 }]} numberOfLines={1}>Recent searches</Text>
+                    <View style={{ flexDirection: 'row', gap: 16, flexShrink: 0 }}>
                       <TouchableOpacity onPress={() => setHistoryHidden(true)}>
                         <Text style={{ fontSize: 12, color: colors.textMuted }}>Hide</Text>
                       </TouchableOpacity>
@@ -1467,7 +1467,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 14 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   centeredContent: { alignItems: 'center', paddingVertical: 32, gap: 8 },
-  hint: { fontSize: 13, textAlign: 'center', marginTop: 8 },
+  hint: { fontSize: 13, textAlign: 'center', marginTop: 8, paddingHorizontal: 24 },
   listContent: { paddingHorizontal: 16 },
   resultCount: { fontSize: 11, marginBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },

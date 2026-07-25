@@ -229,9 +229,12 @@ export default function ToolsGrid({
         <View style={{
           flexDirection: 'row', alignItems: 'center',
           justifyContent: 'space-between',
-          paddingHorizontal: 16, paddingBottom: 12,
+          paddingHorizontal: 16, paddingBottom: 12, gap: 12,
         }}>
-          <Text style={{ fontSize: 13, color: colors.textMuted }}>
+          <Text
+            style={{ fontSize: 13, color: colors.textMuted, flex: 1 }}
+            numberOfLines={2}
+          >
             Long press to drag · tap × to hide
           </Text>
           <TouchableOpacity
@@ -239,6 +242,7 @@ export default function ToolsGrid({
             style={{
               backgroundColor: colors.blue, borderRadius: 8,
               paddingHorizontal: 16, paddingVertical: 6,
+              flexShrink: 0,
             }}
           >
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Done</Text>
