@@ -13,9 +13,10 @@ interface Props {
     onClose: () => void;
     speedPills?: boolean;
     hidePill?: boolean;
+    hideShare?: boolean;
   }
 
-  export default function VideoPlayerModal({ uri, onClose, speedPills = false, hidePill = false }: Props) {
+  export default function VideoPlayerModal({ uri, onClose, speedPills = false, hidePill = false, hideShare = false }: Props) {
   const [paused, setPaused] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(false);
   const [speed, setSpeed] = useState(1.0);
@@ -161,9 +162,14 @@ useEffect(() => {
             <SafeAreaView edges={['bottom']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
               <View style={{ alignItems: 'center', paddingBottom: 24 }}>
                 <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
-                  <TouchableOpacity onPress={async () => { if (!uri) return; try { await shareFiles([toPath(uri)], 'video/*'); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
-                    <Ionicons name="share-outline" size={22} color="#222" />
-                  </TouchableOpacity>
+                {!hideShare && (
+                    <>
+                      <TouchableOpacity onPress={async () => { if (!uri) return; try { await shareFiles([toPath(uri)], 'video/*'); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                        <Ionicons name="share-outline" size={22} color="#222" />
+                      </TouchableOpacity>
+                      <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                    </>
+                  )}
                   <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
                   <TouchableOpacity onPress={async () => { if (!uri) return; setPaused(true); try { await openFileNative(toPath(uri), getMimeType(uri.split('/').pop() ?? '')); } catch {} }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
                     <Ionicons name="open-outline" size={22} color="#222" />

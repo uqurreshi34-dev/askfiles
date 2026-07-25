@@ -16,7 +16,7 @@ import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
-import { openFile as openFileNative, scanFile } from '@/modules/share-module';
+import { openFile as openFileNative, scanFile, shareFiles } from '@/modules/share-module';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
@@ -231,9 +231,7 @@ export default function VaultScreen() {
     setOpeningFile(true);
     const mime = getMimeType(file.name);
     try {
-      const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-      await RNFS.copyFile(toPath(file.uri), cachePath);
-      await openFileNative(cachePath, mime);
+      await openFileNative(toPath(file.uri), mime);
     } catch (e) {}
     finally { setOpeningFile(false); }
   }
@@ -241,9 +239,7 @@ export default function VaultScreen() {
   async function handleShare(file: VaultFile) {
     closeSheet();
     try {
-      const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
-      await copyFileStream(toPath(file.uri), cachePath);
-      await Sharing.shareAsync('file://' + cachePath, { mimeType: getMimeType(file.name), dialogTitle: file.name });
+      await shareFiles([toPath(file.uri)], getMimeType(file.name));
     } catch (e) {}
   }
 
@@ -809,7 +805,7 @@ export default function VaultScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-      <VideoPlayerModal uri={playerUri} onClose={() => setPlayerUri(null)} hidePill />
+      <VideoPlayerModal uri={playerUri} onClose={() => setPlayerUri(null)} hideShare />
     </SafeAreaView>
   );
 }
