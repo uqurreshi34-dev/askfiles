@@ -268,6 +268,23 @@ async function handleSsInfo() {
   Alert.alert(ssCurrent.name, lines.join('\n'));
 }
 
+// Given a desired filename and a set of already-claimed names, returns a
+  // unique name: "report.pdf" -> "report (1).pdf" -> "report (2).pdf" ...
+  function uniqueName(name: string, claimed: Set<string>): string {
+    if (!claimed.has(name)) { claimed.add(name); return name; }
+    const dot = name.lastIndexOf('.');
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : '';
+    let n = 1;
+    let candidate = `${base} (${n})${ext}`;
+    while (claimed.has(candidate)) {
+      n++;
+      candidate = `${base} (${n})${ext}`;
+    }
+    claimed.add(candidate);
+    return candidate;
+  }
+
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
     try {
@@ -533,8 +550,9 @@ async function handleSsInfo() {
     // Check all duplicates upfront
     const dstPaths = files.map(f => toPath(destDir + f.name));
     const existingPaths = await checkDuplicates(dstPaths);
+    const existingSet = new Set(existingPaths);
     const duplicates = files
-      .filter(f => existingPaths.includes(toPath(destDir + f.name)))
+      .filter(f => existingSet.has(toPath(destDir + f.name)))
       .map(f => f.name);
 
     // If duplicates exist, ask once before starting
@@ -558,9 +576,26 @@ async function handleSsInfo() {
       dupeAction.current = 'skip';
     }
 
-    const actualTotal = dupeAction.current === 'skip'
-      ? files.length - duplicates.length
-      : files.length;
+     // Resolve final destination names up-front so same-named files in the
+    // selection don't overwrite each other. Seed with what's already in the
+    // destination (unless replacing) so we don't clobber existing files either.
+    const claimed = new Set<string>();
+    if (dupeAction.current !== 'replace') {
+      existingPaths.forEach(p => claimed.add(p.substring(p.lastIndexOf('/') + 1)));
+    }
+    const finalNames = new Map<string, string>();   // file.uri -> final name
+    for (const f of files) {
+      const skipThis = existingSet.has(toPath(destDir + f.name)) && dupeAction.current === 'skip';
+      if (skipThis) continue;                        // skipped files need no name
+      if (dupeAction.current === 'replace' && existingSet.has(toPath(destDir + f.name))) {
+        finalNames.set(f.uri, f.name);               // deliberate overwrite of existing
+        claimed.add(f.name);
+      } else {
+        finalNames.set(f.uri, uniqueName(f.name, claimed));
+      }
+    }
+
+    const actualTotal = finalNames.size;
 
     if (actualTotal === 0) {
       Alert.alert('Nothing to do', 'All selected files already exist at the destination and were skipped.');
@@ -574,27 +609,28 @@ async function handleSsInfo() {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const dst = toPath(destDir + file.name);
+        const finalName = finalNames.get(file.uri);
+        if (!finalName) continue;                    // was skipped
+        const dst = toPath(destDir + finalName);
         const src = toPath(file.uri);
         if (i % 10 === 0 || i === files.length - 1) {
-          setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+          setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: finalName });
         }
-
-        if (existingPaths.includes(dst) && dupeAction.current === 'skip') continue;
 
         if (multiPasteMode === 'copy') {
           await copyFileStream(file.uri, dst);
           await scanFile(dst).catch(() => {});
         } else {
           await moveFileStream(src, dst);
-          await syncPathReferences(file.uri, destDir + file.name, file.name);
+          await syncPathReferences(file.uri, destDir + finalName, finalName);
           await scanFile(dst).catch(() => {});
         }
         copiedCount++;
       }
 
       if (multiPasteMode === 'move') {
-        setItems(prev => prev.filter(f => !files.some(mf => mf.uri === f.uri)));
+        const movedUris = new Set(finalNames.keys());   // only the ones actually moved
+        setItems(prev => prev.filter(f => !movedUris.has(f.uri)));
       }
       setSelectMode(false);
       setSelectedUris(new Set());
