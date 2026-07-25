@@ -1,6 +1,14 @@
 package expo.modules.mediagrid
 
 import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.compose.ui.platform.LocalContext
+import android.view.HapticFeedbackConstants
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -118,6 +126,44 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
             val gridState = rememberLazyGridState()
 
+            // ---- Scroll boundary haptics ----
+            // Light tick on arriving at the top or bottom of the grid.
+            // Edge-triggered: fires once on arrival, not repeatedly while parked
+            // at the edge. Seeded from the current state so it never fires on mount.
+            val ctx = LocalContext.current
+            val vibrator = remember(ctx) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                }
+            }
+
+            LaunchedEffect(gridState) {
+                fun tick() {
+                    val v = vibrator
+                    if (v == null || !v.hasVibrator()) return
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(40, 255))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        v.vibrate(40)
+                    }
+                }
+
+                var wasAtTop = !gridState.canScrollBackward
+                var wasAtBottom = !gridState.canScrollForward
+                snapshotFlow {
+                    Pair(!gridState.canScrollBackward, !gridState.canScrollForward)
+                }.collect { (atTop, atBottom) ->
+                    if (atTop && !wasAtTop) tick()
+                    if (atBottom && !wasAtBottom) tick()
+                    wasAtTop = atTop
+                    wasAtBottom = atBottom
+                }
+            }
+
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val thumbDp: Dp = 110.dp
                 // Width-based default column count (the value before any pinch).
@@ -125,7 +171,7 @@ class MediaGridView(context: Context, appContext: AppContext) : ExpoView(context
 
                 // Pinch-controlled column override. null = use the width-based default.
                 // Ephemeral by design: not persisted, resets when the view is recreated
-                // (leaving/returning to the category). Range clamped to 2..6.
+                // (leaving/returning to the category). Range clamped to 1..6.
                 var pinchCols by remember { mutableStateOf<Int?>(null) }
                 val cols = (pinchCols ?: defaultCols).coerceIn(1, 6)
 

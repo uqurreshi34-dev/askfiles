@@ -419,6 +419,7 @@ export default function SearchScreen() {
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             DocIndexer.removeFromIndex(uri);
             if (inFolder) { removeFolderItem(uri); }
             else { removeResult(uri); }
