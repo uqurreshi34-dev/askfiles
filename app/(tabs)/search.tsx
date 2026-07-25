@@ -288,6 +288,7 @@ export default function SearchScreen() {
     const exists = await RNFS.exists(dst);
     if (exists) {
       Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
     setShowPicker(false);
@@ -299,6 +300,7 @@ export default function SearchScreen() {
         await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
         Alert.alert('Success', `"${item.name}" copied successfully.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
         await syncPathReferences(item.uri, destUri, item.name);
@@ -306,9 +308,11 @@ export default function SearchScreen() {
         if (item.inFolder) { removeFolderItem(item.uri); }
         else { removeResult(item.uri); }
         Alert.alert('Success', `"${item.name}" moved successfully.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch {
       Alert.alert('Error', `Could not ${pickerMode} file.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
       setCopyProgress(null);
@@ -351,6 +355,7 @@ export default function SearchScreen() {
         setResults(prev => prev.map(f => f.uri === selectedItem.uri ? { ...f, name: renameValue.trim(), uri: newUri } : f));
       }
       closeSheet();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Rename failed', 'Could not rename this file.');
     }
@@ -432,6 +437,7 @@ export default function SearchScreen() {
         closeSheet();
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           await removeFavourite(selectedItem.uri);
           DocIndexer.removeFromIndex(selectedItem.uri);
           if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
@@ -452,6 +458,7 @@ export default function SearchScreen() {
     } else {
       await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
       setIsFav(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert('Added to Favourites', `"${selectedItem.name}" added.`);
     }
   }
@@ -818,7 +825,11 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     style={[styles.row, { borderBottomColor: colors.border }]}
                     onPress={() => item.isDirectory ? openFolder(item) : openFile(item.name, item.uri)}
-                    onLongPress={() => !item.isDirectory && openSheet(item)}
+                    onLongPress={() => {
+                      if (item.isDirectory) return;
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      openSheet(item);
+                    }}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.fileIcon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
@@ -1044,7 +1055,10 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     style={[styles.smartRow, { borderBottomColor: colors.border }]}
                     onPress={() => openFile(item.name, item.uri)}
-                    onLongPress={() => openSheet(item)}
+                    onLongPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      openSheet(item);
+                    }}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.fileIcon, { backgroundColor: color + '22' }]}>

@@ -27,6 +27,7 @@ import FileDetailsModal from '@/components/FileDetailsModal';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
+import * as Haptics from 'expo-haptics';
 
 // Minimal shape every list this component renders must satisfy.
 // FavouriteItem and FileTagEntry both already match this.
@@ -194,7 +195,10 @@ export default function FileListViewer<T extends ViewableFile>({
       <TouchableOpacity
         style={[styles.row, { borderBottomColor: colors.border }]}
         onPress={() => openItem(item)}
-        onLongPress={() => openSheet(item)}
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          openSheet(item);
+        }}
         activeOpacity={0.7}
       >
         <View style={[styles.icon, { backgroundColor: color + '22', overflow: 'hidden' }]}>
