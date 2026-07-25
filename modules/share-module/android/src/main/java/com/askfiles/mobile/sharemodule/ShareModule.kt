@@ -28,21 +28,30 @@ class ShareModule : Module() {
     AsyncFunction("shareFiles") { paths: List<String>, mimeType: String ->
       val activity = appContext.activityProvider?.currentActivity
         ?: throw Exception("No activity available")
+      val context = appContext.reactContext!!
 
       val contentUris = ArrayList<Uri>()
       for (path in paths) {
-        val file = File(path)
-        val uri = FileProvider.getUriForFile(
-          appContext.reactContext!!,
-          "${appContext.reactContext!!.packageName}.provider",
-          file
+        // Prefer a MediaStore URI when indexed — the share sheet can resolve a
+        // thumbnail from it, where a FileProvider URI usually can't.
+        val uri = getMediaStoreUri(context, path) ?: FileProvider.getUriForFile(
+          context,
+          "${context.packageName}.provider",
+          File(path)
         )
         contentUris.add(uri)
       }
 
       val intent = if (contentUris.size == 1) {
+        // Resolve a concrete type if the caller passed a wildcard — a preview
+        // can't be rendered from "image/*".
+        val resolved = if (mimeType.contains('*')) {
+          val ext = paths[0].substringAfterLast('.', "").lowercase()
+          android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: mimeType
+        } else mimeType
+
         Intent(Intent.ACTION_SEND).apply {
-          type = mimeType
+          type = resolved
           putExtra(Intent.EXTRA_STREAM, contentUris[0])
           addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
