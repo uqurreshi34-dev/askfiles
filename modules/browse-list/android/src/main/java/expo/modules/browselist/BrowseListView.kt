@@ -30,6 +30,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val onItemSwipeDelete by EventDispatcher() 
     private val onItemSwipeBookmark by EventDispatcher()
     private val onDragSelectEnd by EventDispatcher()
+    private val onDragSelectProgress by EventDispatcher()
     private val recyclerView = RecyclerView(context)
     private val adapter = FileAdapter()
     private var items: List<FileItem> = emptyList()
@@ -178,6 +179,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                         val item = items.getOrNull(position) ?: return
                         if (dragSelectedUris.add(item.uri)) {
                             adapter.notifyItemChanged(position, PAYLOAD_SELECTION_PREVIEW)
+                            onDragSelectProgress(mapOf("count" to (selectedUris + dragSelectedUris).size))
                         }
                     }
                     android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {

@@ -1125,6 +1125,8 @@ async function handleSsInfo() {
     try { return decodeURIComponent(display); } catch { return display; }
   }, [pickerPath, volumes]);
 
+  const shownCount = dragCount ?? selectedUris.size;
+
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
@@ -1135,7 +1137,7 @@ async function handleSsInfo() {
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {(dragCount ?? selectedUris.size)} {(dragCount ?? selectedUris.size) === 1
+              {shownCount} {shownCount === 1
                 ? config.title.slice(0, -1).toLowerCase()
                 : config.title.toLowerCase()} selected
             </Text>

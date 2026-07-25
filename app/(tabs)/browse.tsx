@@ -175,6 +175,7 @@ export default function BrowseScreen() {
   const [newTagColor, setNewTagColor] = useState('#3B6D11');
   const [newTagIcon, setNewTagIcon] = useState('pricetag-outline');
   const [txtPreview, setTxtPreview] = useState<string | null>(null);
+  const [dragCount, setDragCount] = useState(0);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -1393,6 +1394,8 @@ export default function BrowseScreen() {
     ? sortedItems.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : sortedItems;
 
+  const shownCount = dragCount || selectedUris.size;
+
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
@@ -1480,7 +1483,7 @@ export default function BrowseScreen() {
             <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }} disabled={multiPasting || deleting}>
               <Text style={{ fontSize: 13, color: (multiPasting || deleting) ? colors.textDisabled : colors.textSecondary }}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{selectedUris.size} item{selectedUris.size !== 1 ? 's' : ''} selected</Text>
+              <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{shownCount} item{shownCount !== 1 ? 's' : ''} selected</Text>
             <TouchableOpacity
               onPress={() => {
                 const allFiles = items;
@@ -1652,6 +1655,10 @@ export default function BrowseScreen() {
             });
             setSelectedUris(newSet);
             setSelectedItemsMap(newMap);
+            setDragCount(0);
+        }}
+        onDragSelectProgress={(e: { nativeEvent: { count: number } }) => {
+          setDragCount(e.nativeEvent.count);
         }}
           openingUri={openingUri ?? ''}
           movingUri={movingUri ?? ''}
