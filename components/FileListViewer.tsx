@@ -129,6 +129,7 @@ export default function FileListViewer<T extends ViewableFile>({
   }
 
   async function handleShare() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!selectedItem) return;
     closeSheet();
     try {

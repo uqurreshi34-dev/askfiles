@@ -362,6 +362,7 @@ export default function SearchScreen() {
   }
 
   async function handleShare() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!selectedItem) return;
     closeSheet();
     try {
