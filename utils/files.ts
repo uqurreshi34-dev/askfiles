@@ -104,3 +104,21 @@ export function getMimeType(name: string): string {
   export function decodeName(name: string): string {
     try { return decodeURIComponent(name); } catch { return name; }
   }
+
+  // Returns a unique filename against a set of already-claimed names.
+// "report.pdf" -> "report (1).pdf" -> "report (2).pdf"
+// Dotfiles and extensionless names are handled: ".gitignore" -> ".gitignore (1)"
+export function uniqueName(name: string, claimed: Set<string>): string {
+  if (!claimed.has(name)) { claimed.add(name); return name; }
+  const dot = name.lastIndexOf('.');
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  let n = 1;
+  let candidate = `${base} (${n})${ext}`;
+  while (claimed.has(candidate)) {
+    n++;
+    candidate = `${base} (${n})${ext}`;
+  }
+  claimed.add(candidate);
+  return candidate;
+}

@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -1253,8 +1253,9 @@ export default function BrowseScreen() {
 
     const dstPaths = files.map(f => toPath(destDir + f.name));
     const existingPaths = await checkDuplicates(dstPaths);
+    const existingSet = new Set(existingPaths);
     const duplicates = files
-      .filter(f => existingPaths.includes(toPath(destDir + f.name)))
+      .filter(f => existingSet.has(toPath(destDir + f.name)))
       .map(f => f.name);
 
     if (duplicates.length > 0) {
@@ -1277,9 +1278,23 @@ export default function BrowseScreen() {
       dupeAction.current = 'skip';
     }
 
-    const actualTotal = dupeAction.current === 'skip'
-      ? files.length - duplicates.length
-      : files.length;
+    const claimed = new Set<string>();
+    if (dupeAction.current !== 'replace') {
+      existingPaths.forEach(p => claimed.add(p.substring(p.lastIndexOf('/') + 1)));
+    }
+    const finalNames = new Map<string, string>();
+    for (const f of files) {
+      const skipThis = existingSet.has(toPath(destDir + f.name)) && dupeAction.current === 'skip';
+      if (skipThis) continue;
+      if (dupeAction.current === 'replace' && existingSet.has(toPath(destDir + f.name))) {
+        finalNames.set(f.uri, f.name);
+        claimed.add(f.name);
+      } else {
+        finalNames.set(f.uri, uniqueName(f.name, claimed));
+      }
+    }
+
+    const actualTotal = finalNames.size;
 
     if (actualTotal === 0) {
       Alert.alert('Nothing to do', 'All selected files already exist at the destination and were skipped.');
@@ -1292,14 +1307,13 @@ export default function BrowseScreen() {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const dst = toPath(destDir + file.name);
+        const finalName = finalNames.get(file.uri);
+        if (!finalName) continue;                    // skipped
+        const dst = toPath(destDir + finalName);
         const src = toPath(file.uri);
 
-        const exists = await RNFS.exists(dst);
-        if (exists && dupeAction.current === 'skip') continue;
-
         if (i % 10 === 0 || i === files.length - 1) {
-          setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: file.name });
+          setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: finalName });
         }
 
         if (multiPasteMode === 'copy') {
@@ -1314,7 +1328,7 @@ export default function BrowseScreen() {
             await moveFolderRecursive(src, dst);
           } else {
             await moveFileStream(src, dst);
-            await syncPathReferences(file.uri, destDir + file.name, file.name);
+            await syncPathReferences(file.uri, destDir + finalName, finalName);
           }
           await scanFile(dst).catch(() => {});
         }
@@ -1628,11 +1642,12 @@ export default function BrowseScreen() {
             'none'
           }
           onDragSelectEnd={(e: { nativeEvent: { uris: string[] } }) => {
+            const byUri = new Map(displayItems.map(i => [i.uri, i]));
             const newSet = new Set(selectedUris);
             const newMap = new Map(selectedItemsMap);
             e.nativeEvent.uris.forEach(uri => {
                 newSet.add(uri);
-                const item = displayItems.find(i => i.uri === uri);
+                const item = byUri.get(uri);
                 if (item) newMap.set(uri, item);
             });
             setSelectedUris(newSet);

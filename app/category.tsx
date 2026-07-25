@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -267,23 +267,6 @@ async function handleSsInfo() {
   } catch {}
   Alert.alert(ssCurrent.name, lines.join('\n'));
 }
-
-// Given a desired filename and a set of already-claimed names, returns a
-  // unique name: "report.pdf" -> "report (1).pdf" -> "report (2).pdf" ...
-  function uniqueName(name: string, claimed: Set<string>): string {
-    if (!claimed.has(name)) { claimed.add(name); return name; }
-    const dot = name.lastIndexOf('.');
-    const base = dot > 0 ? name.slice(0, dot) : name;
-    const ext = dot > 0 ? name.slice(dot) : '';
-    let n = 1;
-    let candidate = `${base} (${n})${ext}`;
-    while (claimed.has(candidate)) {
-      n++;
-      candidate = `${base} (${n})${ext}`;
-    }
-    claimed.add(candidate);
-    return candidate;
-  }
 
   async function loadPickerDir(path: string) {
     setPickerLoading(true);
