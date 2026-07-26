@@ -34,6 +34,14 @@ export interface MediaInfo {
   durationMs?: number;
   mimeType?: string;
   size: number;
+  dateTaken?: string;
+  camera?: string;
+  iso?: string;
+  aperture?: string;
+  shutter?: string;
+  latitude?: number;
+  longitude?: number;
+  videoDate?: string
 }
 
 export interface FolderGroup {

@@ -122,3 +122,49 @@ export function uniqueName(name: string, claimed: Set<string>): string {
   claimed.add(candidate);
   return candidate;
 }
+
+export function exifLines(info: {
+  dateTaken?: string; camera?: string; iso?: string;
+  aperture?: string; shutter?: string;
+  latitude?: number; longitude?: number;
+  videoDate?: string;
+}): { label: string; value: string }[] {
+  const lines: { label: string; value: string }[] = [];
+
+  // EXIF dates are "yyyy:MM:dd HH:mm:ss" — colons in the date, not parseable directly
+  if (info.dateTaken) {
+    const m = info.dateTaken.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+    if (m) {
+      const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
+      if (!isNaN(t)) lines.push({ label: 'Date taken', value: formatDate(t) });
+    }
+  }
+  // Video recording date — MediaMetadataRetriever returns "yyyyMMdd'T'HHmmss.SSS'Z'"
+  if (info.videoDate) {
+    const m = info.videoDate.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
+    if (m) {
+      const year = +m[1];
+      // MP4 stores creation time from a 1904 epoch; a missing value renders as
+      // 1904 (or thereabouts). Reject anything implausible rather than show it.
+      if (year > 1990 && year <= new Date().getFullYear() + 1) {
+        const t = Date.UTC(year, +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+        if (!isNaN(t)) lines.push({ label: 'Recorded', value: formatDate(t) });
+      }
+    }
+  }
+  if (info.camera) lines.push({ label: 'Camera', value: info.camera });
+  if (info.iso) lines.push({ label: 'ISO', value: info.iso });
+  if (info.aperture) lines.push({ label: 'Aperture', value: `f/${info.aperture}` });
+  if (info.shutter) {
+    const sec = parseFloat(info.shutter);
+    if (!isNaN(sec)) lines.push({
+      label: 'Shutter',
+      value: sec < 1 ? `1/${Math.round(1 / sec)}s` : `${sec}s`,
+    });
+  }
+  if (info.latitude !== undefined && info.longitude !== undefined) {
+    lines.push({ label: 'GPS', value: `${info.latitude.toFixed(5)}, ${info.longitude.toFixed(5)}` });
+  }
+
+  return lines;
+}

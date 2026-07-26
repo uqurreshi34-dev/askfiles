@@ -2,6 +2,7 @@ package expo.modules.mediastore
 
 import android.database.Cursor
 import android.provider.MediaStore
+import androidx.exifinterface.media.ExifInterface
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
@@ -534,6 +535,10 @@ class MediaStoreModule : Module() {
             val durationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
             val mimeType = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_MIMETYPE) ?: ""
 
+            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DATE)?.let {
+                result["videoDate"] = it
+            }
+
             if (width != null && width > 0) result["width"] = width
             if (height != null && height > 0) result["height"] = height
             if (mimeType.isNotEmpty()) result["mimeType"] = mimeType
@@ -565,6 +570,29 @@ class MediaStoreModule : Module() {
                 if (options.outMimeType != null) result["mimeType"] = options.outMimeType
             } catch (e: Exception) {}
         }
+
+         // EXIF lives in images only — skip the file open entirely for
+        // documents, archives and anything else.
+        val ext = filePath.substringAfterLast('.', "").lowercase()
+        val isImage = ext in listOf("jpg", "jpeg", "png", "webp", "heic", "heif", "dng", "arw", "cr2", "nef", "tiff", "tif")
+        if (isImage) {
+          try {
+              val exif = ExifInterface(filePath)
+              exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)?.let { result["dateTaken"] = it }
+              val make = exif.getAttribute(ExifInterface.TAG_MAKE)?.trim()
+              val model = exif.getAttribute(ExifInterface.TAG_MODEL)?.trim()
+              if (!make.isNullOrBlank() || !model.isNullOrBlank()) {
+                  result["camera"] = listOfNotNull(make, model).joinToString(" ")
+              }
+              exif.getAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY)?.let { result["iso"] = it }
+              exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { result["aperture"] = it }
+              exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { result["shutter"] = it }
+              exif.latLong?.let { (lat, lon) ->
+                  result["latitude"] = lat
+                  result["longitude"] = lon
+              }
+          } catch (e: Exception) {}
+      }
 
         result["size"] = file.length()
         result
