@@ -13,6 +13,10 @@ AI-powered Android file manager - file management made easy
 - Groq LLM (AI search)
 - RevenueCat (in-app purchases)
 
+> **Note:** the `media-grid` module (the native photo grid — pinch-to-zoom,
+> drag-select, fast scrubber) is closed source and not included in this
+> repository. The rest of the app is open.
+
 ## Features
 - Native file browser with copy, move, rename, zip, extract
 - Password-protected ZIP and 7z extraction with AES-256 encryption
