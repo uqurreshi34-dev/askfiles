@@ -1,0 +1,14 @@
+[
+    {
+        "merged": "expo.modules.storagestats.storage-stats-release-8:/drawable-ldrtl-xhdpi-v17/abc_ic_menu_copy_mtrl_am_alpha.png",
+        "source": "expo.modules.storagestats.storage-stats-appcompat-1.2.0-1:/drawable-ldrtl-xhdpi-v17/abc_ic_menu_copy_mtrl_am_alpha.png"
+    },
+    {
+        "merged": "expo.modules.storagestats.storage-stats-release-8:/drawable-ldrtl-xhdpi-v17/abc_ic_menu_cut_mtrl_alpha.png",
+        "source": "expo.modules.storagestats.storage-stats-appcompat-1.2.0-1:/drawable-ldrtl-xhdpi-v17/abc_ic_menu_cut_mtrl_alpha.png"
+    },
+    {
+        "merged": "expo.modules.storagestats.storage-stats-release-8:/drawable-ldrtl-xhdpi-v17/abc_spinner_mtrl_am_alpha.9.png",
+        "source": "expo.modules.storagestats.storage-stats-appcompat-1.2.0-1:/drawable-ldrtl-xhdpi-v17/abc_spinner_mtrl_am_alpha.9.png"
+    }
+]
