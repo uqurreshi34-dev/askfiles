@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName, exifLines } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -1913,18 +1913,21 @@ export default function BrowseScreen() {
                             lines.push({ label: 'Times opened', value: `${stats.count}` });
                             lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
                           }
-                        try {
-                          const stat = await RNFS.stat(toPath(selectedItem.uri));
-                          if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                          if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
-                        } catch {}
-                        if (!selectedItem.isDirectory && (isImageFile(selectedItem.name) || isVideoFile(selectedItem.name))) {
+                          let exif: { label: string; value: string }[] = [];
+                          if (!selectedItem.isDirectory && (isImageFile(selectedItem.name) || isVideoFile(selectedItem.name))) {
+                            try {
+                              const info = await getMediaInfo(toPath(selectedItem.uri));
+                              if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                              if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                              exif = exifLines(info);
+                            } catch {}
+                          }
                           try {
-                            const info = await getMediaInfo(toPath(selectedItem.uri));
-                            if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                            if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                            const stat = await RNFS.stat(toPath(selectedItem.uri));
+                            if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
+                            if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
                           } catch {}
-                        }
+                          lines.push(...exif);
                         setDetailsName(selectedItem.name);
                         setDetailsData(lines);
                         setShowDetailsModal(true);

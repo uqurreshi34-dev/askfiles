@@ -12,7 +12,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate, exifLines } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
@@ -644,20 +644,24 @@ export default function VaultScreen() {
                 if (!selectedFile) return;
                 closeSheet();
                 const lines: { label: string; value: string }[] = [];
+                const isMedia = isImageFile(selectedFile.name) || isVideoFile(selectedFile.name);
+                let info: any = null;
+                if (isMedia) {
+                  try { info = await getMediaInfo(toPath(selectedFile.uri)); } catch {}
+                }
+                const exif = info ? exifLines(info) : [];
                 try {
                   const stat = await RNFS.stat(toPath(selectedFile.uri));
                   if (stat.size) lines.push({ label: 'Size', value: formatSize(stat.size) });
                   if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                  if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                  if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
                 } catch {}
                 lines.push({ label: 'Type', value: (selectedFile.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
-                if (isImageFile(selectedFile.name) || isVideoFile(selectedFile.name)) {
-                  try {
-                    const info = await getMediaInfo(toPath(selectedFile.uri));
-                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
-                  } catch {}
+                if (info) {
+                  if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                  if (info.duration) lines.push({ label: 'Duration', value: info.duration });
                 }
+                lines.push(...exif);
                 setDetailsName(selectedFile.name);
                 setDetailsData(lines);
                 setShowDetailsModal(true);

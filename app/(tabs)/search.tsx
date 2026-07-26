@@ -10,7 +10,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearch } from '@/hooks/useSearch';
 import { useAskAI } from '@/hooks/useAskAI';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate, exifLines } from '@/utils/files';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
@@ -1232,18 +1232,22 @@ export default function SearchScreen() {
                     lines.push({ label: 'Times opened', value: `${stats.count}` });
                     lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
                   }
+                  const isMedia = isImageFile(selectedItem.name) || isVideoFile(selectedItem.name);
+                  let info: any = null;
+                  if (isMedia) {
+                    try { info = await getMediaInfo(toPath(selectedItem.uri)); } catch {}
+                  }
+                  const exif = info ? exifLines(info) : [];
                   try {
                     const stat = await RNFS.stat(toPath(selectedItem.uri));
                     if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                    if (stat.ctime) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                    if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
                   } catch {}
-                  if (isImageFile(selectedItem.name) || isVideoFile(selectedItem.name)) {
-                    try {
-                      const info = await getMediaInfo(toPath(selectedItem.uri));
-                      if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                      if (info.duration) lines.push({ label: 'Duration', value: info.duration });
-                    } catch {}
+                  if (info) {
+                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
+                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
                   }
+                  lines.push(...exif);
                   setDetailsName(selectedItem.name);
                   setDetailsData(lines);
                   setShowDetailsModal(true);
