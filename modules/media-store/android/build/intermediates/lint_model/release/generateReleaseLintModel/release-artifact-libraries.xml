@@ -104,6 +104,19 @@
       jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains.kotlin\kotlin-stdlib-jdk7\2.1.20\72672df5e83231744c00550955b10acb71ed49d6\kotlin-stdlib-jdk7-2.1.20.jar"
       resolved="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20"/>
   <library
+      name="androidx.exifinterface:exifinterface:1.3.7@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a13f9d34893b104ff3f06bf91e3da11b\transformed\exifinterface-1.3.7\jars\classes.jar"
+      resolved="androidx.exifinterface:exifinterface:1.3.7"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a13f9d34893b104ff3f06bf91e3da11b\transformed\exifinterface-1.3.7"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
       name="org.jetbrains:annotations:23.0.0@jar"
       jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\23.0.0\8cc20c07506ec18e0834947b84a864bfc094484e\annotations-23.0.0.jar"
       resolved="org.jetbrains:annotations:23.0.0"/>
