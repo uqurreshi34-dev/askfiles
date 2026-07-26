@@ -39,7 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-modules/storage-stats/android/build/
+modules/media-grid/android/
 
 google-services.json
 
