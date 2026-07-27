@@ -60,14 +60,14 @@ export function useVault() {
     }
   }
 
-  async function addToVault(sourceUri: string, fileName: string): Promise<boolean> {
+  async function addToVault(sourceUri: string, fileName: string, refresh: boolean = true): Promise<boolean> {
     try {
       const destUri = VAULT_DIR + fileName;
       const src = new FileSystem.File(sourceUri);
       const dst = new FileSystem.File(destUri);
       src.move(dst);
       await removeFavourite(sourceUri);
-      await loadFiles();
+      if (refresh) await loadFiles();
       return true;
     } catch {
       return false;

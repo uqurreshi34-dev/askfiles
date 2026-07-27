@@ -139,6 +139,8 @@ export default function CategoryScreen() {
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
   const [sharing, setSharing] = useState(false);
   const [vaulting, setVaulting] = useState(false);
+  const [vaultingCount, setVaultingCount] = useState(0);
+  const [vaultingTotal, setVaultingTotal] = useState(0);
   const isMediaCategory = category === 'images' || category === 'videos';
   const [folderView, setFolderView] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FolderGroup | null>(null);
@@ -824,6 +826,7 @@ async function handleSsInfo() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setItems(prev => prev.filter(f => f.uri !== uri)); 
             DocIndexer.removeFromIndex(uri); 
+            Alert.alert('Moved to Vault', `"${name}" is now secured.`);
           }
           else Alert.alert('Error', 'Could not move file to Vault. Try again.');
         }},
@@ -968,13 +971,47 @@ async function handleSsInfo() {
     Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
+        suppressWatcherRef.current = true;
         setVaulting(true);
-        for (const file of files) { await addToVault(file.uri, file.name); }
-        setItems(prev => prev.filter(f => !selectedUris.has(f.uri)));
-        files.forEach(f => DocIndexer.removeFromIndex(f.uri));
-        setVaulting(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
+        setVaultingTotal(files.length);
+        setVaultingCount(0);
+        await new Promise(r => requestAnimationFrame(() => r(null)));
+        const moved: string[] = [];
+        let failed = 0;
+        try {
+          for (const file of files) {
+            const ok = await addToVault(file.uri, file.name, false);
+            if (ok) {
+              moved.push(file.uri);
+              DocIndexer.removeFromIndex(file.uri);
+            } else {
+              failed++;
+            }
+            setVaultingCount(prev => prev + 1);
+          }
+          const movedSet = new Set(moved);
+          setItems(prev => prev.filter(f => !movedSet.has(f.uri)));
+          setSelectMode(false);
+          setSelectedUris(new Set());
+          setSelectedItemsMap(new Map());
+          if (failed > 0) {
+            Alert.alert(
+              moved.length > 0 ? 'Partial success' : 'Error',
+              moved.length > 0
+                ? `${moved.length} file${moved.length !== 1 ? 's' : ''} moved to Vault. ${failed} could not be moved.`
+                : 'Could not move files to Vault.'
+            );
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          } else {
+            Alert.alert('Moved to Vault', `${moved.length} file${moved.length !== 1 ? 's' : ''} secured.`);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        } finally {
+          setVaulting(false);
+          setVaultingCount(0);
+          setVaultingTotal(0);
+          suppressWatcherRef.current = false;
+        }
       }},
     ]);
   }
@@ -1968,6 +2005,14 @@ async function handleSsInfo() {
           <ActivityIndicator size="small" color={colors.deleteRed} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
             {deletingTotal > 1 ? `Moving ${deletingCount} of ${deletingTotal} files to Trash...` : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}           
+          </Text>
+        </View>
+      )}
+      {vaulting && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            Moving {vaultingTotal} file{vaultingTotal !== 1 ? 's' : ''} to Vault...
           </Text>
         </View>
       )}
