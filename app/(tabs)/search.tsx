@@ -424,6 +424,7 @@ export default function SearchScreen() {
             DocIndexer.removeFromIndex(uri);
             if (inFolder) { removeFolderItem(uri); }
             else { removeResult(uri); }
+            Alert.alert('Moved to Vault', `"${name}" is now secured.`);
           } else {
             Alert.alert('Error', 'Could not move file to Vault. Try again.');
           }
