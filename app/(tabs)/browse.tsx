@@ -844,8 +844,20 @@ export default function BrowseScreen() {
       ]);
       return;
     }
-    const files = Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory);
-    Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
+    const selected = Array.from(selectedItemsMap.values());
+    const files = selected.filter(f => !f.isDirectory);
+    const folders = selected.filter(f => f.isDirectory);
+
+    if (files.length === 0) {
+      Alert.alert('Folders can\'t be vaulted', 'The Vault holds files only. Select at least one file.');
+      return;
+    }
+
+    const message = folders.length > 0
+      ? `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault? ${folders.length} folder${folders.length !== 1 ? 's' : ''} will be skipped — the Vault holds files only.`
+      : `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`;
+
+    Alert.alert('Move to Vault', message, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
         setVaulting(true);
