@@ -31,6 +31,7 @@ interface FolderPickerModalProps {
 }
 
 const ROOT = 'file:///storage/emulated/0/';
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 function toPath(uri: string): string {
   try { return decodeURIComponent(uri.replace('file://', '')); }
@@ -85,7 +86,7 @@ useEffect(() => {
             return { name, uri: item.uri, isDirectory: true };
           })
           .filter(f => !f.name.startsWith('.'))
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((a, b) => nameCollator.compare(a.name, b.name))
           .map(async f => {
             let count = 0;
             try { count = await countFolder(toPath(f.uri), false); } catch {}
@@ -102,7 +103,7 @@ useEffect(() => {
           count: 0,
         }))
         .filter(f => !f.name.startsWith('.'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => nameCollator.compare(a.name, b.name));
 
       setItems([...folders, ...files]);
       setCurrentPath(path);
