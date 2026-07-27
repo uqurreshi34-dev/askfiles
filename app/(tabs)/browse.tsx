@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BackHandler } from 'react-native';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { extractVideoFrames, labelImage } from '@/modules/scan-module';
@@ -61,6 +61,7 @@ interface FileItem {
 const dirCacheStore: Record<string, FileItem[]> = {};
 const folderCountsStore: Record<string, number> = {};
 const ROOT_PATH = 'file:///storage/emulated/0/';
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 export default function BrowseScreen() {
   const { colors } = useTheme();
@@ -1124,10 +1125,10 @@ export default function BrowseScreen() {
       const allItems = await readDirectory(toPath(path), hidden);
       const folders = allItems
         .filter(f => f.isDirectory && (hidden || !f.name.startsWith('.')))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => nameCollator.compare(a.name, b.name));
       const files = allItems
         .filter(f => !f.isDirectory && (hidden || !f.name.startsWith('.')))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => nameCollator.compare(a.name, b.name));
       setPickerItems(folders);
       setPickerFiles(files);
     } catch {}
@@ -1405,21 +1406,24 @@ export default function BrowseScreen() {
     }
   }
 
-  const sortedItems = items.slice().sort((a, b) => {
+  const sortedItems = useMemo(() => items.slice().sort((a, b) => {
     switch (sortKey) {
-      case 'name_asc': return a.name.localeCompare(b.name);
-      case 'name_desc': return b.name.localeCompare(a.name);
+      case 'name_asc': return nameCollator.compare(a.name, b.name);
+      case 'name_desc': return nameCollator.compare(b.name, a.name);
       case 'size_desc': return (b.size ?? 0) - (a.size ?? 0);
       case 'size_asc': return (a.size ?? 0) - (b.size ?? 0);
       case 'date_desc': return (b.date ?? 0) - (a.date ?? 0);
       case 'date_asc': return (a.date ?? 0) - (b.date ?? 0);
-      default: return a.name.localeCompare(b.name);
+      default: return nameCollator.compare(a.name, b.name);
     }
-  });
+  }), [items, sortKey]);
 
-  const displayItems = searchActive && searchQuery.length > 0
-    ? sortedItems.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : sortedItems;
+  const displayItems = useMemo(() =>
+    searchActive && searchQuery.length > 0
+      ? sortedItems.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : sortedItems,
+    [sortedItems, searchActive, searchQuery]
+  );
 
   const shownCount = dragCount || selectedUris.size;
 

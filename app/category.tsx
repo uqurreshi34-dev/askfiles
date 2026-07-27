@@ -84,6 +84,8 @@ const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: 
 
 const ROOT_PATH = 'file:///storage/emulated/0/';
 
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 type SortKey = 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc';
 
 export default function CategoryScreen() {
@@ -283,12 +285,12 @@ async function handleSsInfo() {
           isDirectory: true,
         }))
         .filter((f: any) => !f.name.startsWith('.'))
-        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        .sort((a: any, b: any) => nameCollator.compare(a.name, b.name));
       const files = contents
         .filter((item: any) => item instanceof FileSystem.File)
         .map((item: any) => ({ name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(), uri: item.uri, isDirectory: false }))
         .filter((f: any) => !f.name.startsWith('.'))
-        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        .sort((a: any, b: any) => nameCollator.compare(a.name, b.name));
       setPickerItems(folders);
       setPickerFiles(files);
     } catch { setPickerItems([]); setPickerFiles([]); }
@@ -1120,8 +1122,19 @@ async function handleSsInfo() {
     if (searchQuery.trim()) {
       result = result.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
+    if (sortKey === 'name_asc') {
+      result = result.slice().sort((a, b) => nameCollator.compare(a.name, b.name));
+    } else if (sortKey === 'name_desc') {
+      result = result.slice().sort((a, b) => nameCollator.compare(b.name, a.name));
+    }
     return result;
-  }, [items, activeTab, searchQuery, category]);
+  }, [items, activeTab, searchQuery, category, sortKey]);
+
+  const sortedFolderGroups = useMemo(() => {
+    if (sortKey === 'name_asc') return folderGroups.slice().sort((a, b) => nameCollator.compare(a.folderName, b.folderName));
+    if (sortKey === 'name_desc') return folderGroups.slice().sort((a, b) => nameCollator.compare(b.folderName, a.folderName));
+    return folderGroups;
+  }, [folderGroups, sortKey]);
 
   const gridUris = useMemo(() => filteredItems.map(i => i.uri), [filteredItems]);
   const gridDates = useMemo(() => filteredItems.map(i => i.date ?? 0), [filteredItems]);
@@ -1131,17 +1144,27 @@ async function handleSsInfo() {
   );
 
   const folderSourceItems = useMemo<FileItem[]>(
-    () => (folderView && selectedFolder)
-      ? selectedFolder.uris.map(uri => itemsByUri.get(uri)).filter((x): x is FileItem => x !== undefined)
-      : filteredItems,
-    [folderView, selectedFolder, itemsByUri, filteredItems]
+    () => {
+      const list = (folderView && selectedFolder)
+        ? selectedFolder.uris.map(uri => itemsByUri.get(uri)).filter((x): x is FileItem => x !== undefined)
+        : filteredItems;
+      if (sortKey === 'name_asc') return list.slice().sort((a, b) => nameCollator.compare(a.name, b.name));
+      if (sortKey === 'name_desc') return list.slice().sort((a, b) => nameCollator.compare(b.name, a.name));
+      return list;
+    },
+    [folderView, selectedFolder, itemsByUri, filteredItems, sortKey]
   );
 
   const folderListData = useMemo<FileItem[]>(
-    () => (selectedFolder?.uris ?? [])
-      .map(uri => itemsByUri.get(uri))
-      .filter((x): x is FileItem => x !== undefined),
-    [selectedFolder, itemsByUri]
+    () => {
+      const list = (selectedFolder?.uris ?? [])
+        .map(uri => itemsByUri.get(uri))
+        .filter((x): x is FileItem => x !== undefined);
+      if (sortKey === 'name_asc') return list.sort((a, b) => nameCollator.compare(a.name, b.name));
+      if (sortKey === 'name_desc') return list.sort((a, b) => nameCollator.compare(b.name, a.name));
+      return list;
+    },
+    [selectedFolder, itemsByUri, sortKey]
   );
 
   const selectedHasImages = useMemo(() =>
@@ -1372,7 +1395,7 @@ async function handleSsInfo() {
       ) : folderView && selectedFolder === null ? (
         // Folder list view
         <FlatList
-          data={folderGroups}
+          data={sortedFolderGroups}
           keyExtractor={item => item.folderPath}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
