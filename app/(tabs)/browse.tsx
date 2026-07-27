@@ -1653,6 +1653,38 @@ export default function BrowseScreen() {
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>Renaming files...</Text>
         </View>
       )}
+      {multiPasting && multiPasteProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            {multiPasteMode === 'copy' ? 'Copying' : 'Moving'} {multiPasteProgress.current} of {multiPasteProgress.total}: {multiPasteProgress.name}
+          </Text>
+        </View>
+      )}
+      {creatingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Creating PDF... {pdfProgress.current} of {pdfProgress.total}</Text>
+        </View>
+      )}
+      {extractingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Extracting page {pdfProgress.current} of {pdfProgress.total}...</Text>
+        </View>
+      )}
+      {mergingPdf && pdfProgress && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Merging PDF {pdfProgress.current} of {pdfProgress.total}...</Text>
+        </View>
+      )}
+      {extractingText && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.blue} />
@@ -2226,38 +2258,6 @@ export default function BrowseScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-      {multiPasting && multiPasteProgress && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {multiPasteMode === 'copy' ? 'Copying' : 'Moving'} {multiPasteProgress.current} of {multiPasteProgress.total}: {multiPasteProgress.name}
-          </Text>
-        </View>
-      )}
-      {creatingPdf && pdfProgress && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Creating PDF... {pdfProgress.current} of {pdfProgress.total}</Text>
-        </View>
-      )}
-      {extractingPdf && pdfProgress && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Extracting page {pdfProgress.current} of {pdfProgress.total}...</Text>
-        </View>
-      )}
-      {mergingPdf && pdfProgress && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Merging PDF {pdfProgress.current} of {pdfProgress.total}...</Text>
-        </View>
-      )}
-      {extractingText && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
-        </View>
-      )}
       {selectMode && selectedUris.size > 0 && (
         <>
           {sharing && (

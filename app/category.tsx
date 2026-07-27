@@ -1336,6 +1336,34 @@ async function handleSsInfo() {
           </Text>
         </View>
       )}
+      {deleting && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.deleteRed} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            {deletingTotal > 1 ? `Moving ${deletingCount} of ${deletingTotal} files to Trash...` : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}           
+          </Text>
+        </View>
+      )}
+      {vaulting && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+            Moving {vaultingTotal} file{vaultingTotal !== 1 ? 's' : ''} to Vault...
+          </Text>
+        </View>
+      )}
+      {multiRenaming && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Renaming files...</Text>
+        </View>
+      )}
+      {extractingText && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+          <ActivityIndicator size="small" color={colors.blue} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={config.color} />
@@ -2000,34 +2028,6 @@ async function handleSsInfo() {
           </View>
         </TouchableOpacity>
       </Modal>
-      {deleting && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.deleteRed} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {deletingTotal > 1 ? `Moving ${deletingCount} of ${deletingTotal} files to Trash...` : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}           
-          </Text>
-        </View>
-      )}
-      {vaulting && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            Moving {vaultingTotal} file{vaultingTotal !== 1 ? 's' : ''} to Vault...
-          </Text>
-        </View>
-      )}
-      {multiRenaming && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Renaming files...</Text>
-        </View>
-      )}
-      {extractingText && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
-          <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
-        </View>
-      )}
       {selectMode && selectedUris.size > 0 && (
         <>
           {sharing && (
