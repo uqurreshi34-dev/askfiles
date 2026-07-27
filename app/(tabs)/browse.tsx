@@ -645,6 +645,7 @@ export default function BrowseScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               DocIndexer.removeFromIndex(uri);
               await loadDirectory(currentPath);
+              Alert.alert('Moved to Vault', `"${name}" is now secured.`);
             } else {
               Alert.alert('Error', 'Could not move file to Vault. Try again.');
             }
@@ -848,12 +849,26 @@ export default function BrowseScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
         setVaulting(true);
-        for (const file of files) { await addToVault(file.uri, file.name); }
-        files.forEach(f => DocIndexer.removeFromIndex(f.uri));
+        await new Promise(r => requestAnimationFrame(() => r(null)));
+        let moved = 0, failed = 0;
+        for (const file of files) {
+          const ok = await addToVault(file.uri, file.name, false);
+          if (ok) { moved++; DocIndexer.removeFromIndex(file.uri); }
+          else failed++;
+        }
         setVaulting(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
+        if (failed > 0) {
+          Alert.alert(moved > 0 ? 'Partial success' : 'Error',
+            moved > 0
+              ? `${moved} file${moved !== 1 ? 's' : ''} moved to Vault. ${failed} could not be moved.`
+              : 'Could not move files to Vault.');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } else {
+          Alert.alert('Moved to Vault', `${moved} file${moved !== 1 ? 's' : ''} secured.`);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       }},
     ]);
   }
