@@ -114,6 +114,7 @@ export default function BrowseScreen() {
   const [deletingFolder, setDeletingFolder] = useState(false);
   const [deletingCount, setDeletingCount] = useState(0);
   const [deletingTotal, setDeletingTotal] = useState(0);
+  const [vaultingTotal, setVaultingTotal] = useState(0);
   const sharingRef = useRef(false);
   const pendingItem = useRef<FileItem | null>(null);
   const pendingMultiItems = useRef<FileItem[]>([]);
@@ -862,6 +863,7 @@ export default function BrowseScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
         setVaulting(true);
+        setVaultingTotal(files.length);
         await new Promise(r => requestAnimationFrame(() => r(null)));
         let moved = 0, failed = 0;
         for (const file of files) {
@@ -870,6 +872,7 @@ export default function BrowseScreen() {
           else failed++;
         }
         setVaulting(false);
+        setVaultingTotal(0);
         setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map());
         await loadDirectory(currentPath);
         if (failed > 0) {
@@ -1636,7 +1639,7 @@ export default function BrowseScreen() {
       {vaulting && (
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={[styles.busyText, { color: colors.blue }]}>Moving to Vault...</Text>
+          <Text style={[styles.busyText, { color: colors.blue }]}>Moving {vaultingTotal} file{vaultingTotal !== 1 ? 's' : ''} to Vault...</Text>
         </View>
       )}
       {deleting && (
