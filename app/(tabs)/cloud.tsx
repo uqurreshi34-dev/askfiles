@@ -149,7 +149,9 @@ export default function CloudScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Text style={styles.upgradeBtnText}>Lifetime — £2.99</Text>
+              <Text style={styles.upgradeBtnText}>
+                Lifetime — {packages.lifetime?.product.priceString ?? '—'}
+              </Text>
               <Text style={styles.upgradeBtnSub}>One-time payment, yours forever</Text>
             </>
           )}

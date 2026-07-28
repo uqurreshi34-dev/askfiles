@@ -41,7 +41,7 @@ const SLIDES = [
     icon: 'star-outline' as const,
     iconColor: '#854F0B',
     iconBg: '#FEF3E2',
-    title: 'Unlock Pro — £2.99 Forever',
+    title: 'Unlock Pro — Yours Forever',
     body: 'AI-powered file search. Smart Search — find words inside your documents. Secure Vault with biometrics. Cloud backup to Google Drive, OneDrive and Dropbox. Duplicate finder. One payment, no subscription.',
   },
   {
