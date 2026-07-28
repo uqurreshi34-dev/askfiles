@@ -14,6 +14,20 @@ const DAILY_NOTIFICATION_ID = 'askfiles-daily-reminder';
 const NOTIFICATION_HOUR = 18; // 6pm
 const NOTIFICATION_MINUTE = 0;
 
+// Pro users get specific duplicate/storage messages
+// Free users get a generic re-engagement message
+const proMessages = [
+  { title: '🗂️ AskFiles', body: 'You may have duplicate files taking up space. Tap to find and remove them.' },
+  { title: '💾 AskFiles', body: 'Your storage could use some attention. Check your duplicate files.' },
+  { title: '🧹 AskFiles', body: 'Time for a clean-up! Find your duplicate files and free up space.' },
+];
+
+const freeMessages = [
+  { title: '🗂️ AskFiles', body: 'Your storage could use some attention. Tap to check your files.' },
+  { title: '💾 AskFiles', body: 'Keep your phone organised. Open AskFiles to manage your storage.' },
+  { title: '📱 AskFiles', body: 'A tidy phone is a fast phone. Open AskFiles for a quick clean-up.' },
+];
+
 export async function registerForPushNotifications(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
 
@@ -34,20 +48,6 @@ export async function scheduleDailyReminder(isPro: boolean): Promise<void> {
 
     const granted = await registerForPushNotifications();
     if (!granted) return;
-
-    // Pro users get specific duplicate/storage messages
-    // Free users get a generic re-engagement message
-    const proMessages = [
-      { title: '🗂️ AskFiles', body: 'You may have duplicate files taking up space. Tap to find and remove them.' },
-      { title: '💾 AskFiles', body: 'Your storage could use some attention. Check your duplicate files.' },
-      { title: '🧹 AskFiles', body: 'Time for a clean-up! Find your duplicate files and free up space.' },
-    ];
-
-    const freeMessages = [
-      { title: '🗂️ AskFiles', body: 'Your storage could use some attention. Tap to check your files.' },
-      { title: '💾 AskFiles', body: 'Keep your phone organised. Open AskFiles to manage your storage.' },
-      { title: '📱 AskFiles', body: 'A tidy phone is a fast phone. Open AskFiles for a quick clean-up.' },
-    ];
 
     const messages = isPro ? proMessages : freeMessages;
     const msg = messages[Math.floor(Math.random() * messages.length)];
