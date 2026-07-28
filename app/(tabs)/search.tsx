@@ -47,6 +47,8 @@ import { getDateGroup } from '@/hooks/useRecents';
 
 type Mode = 'search' | 'ask' | 'smart';
 
+const ROOT_PATH = 'file:///storage/emulated/0/';
+
 const SUGGESTIONS = [
   'What images do I have?',
   'Find my downloaded files',
@@ -245,8 +247,6 @@ export default function SearchScreen() {
       DocIndexer.getPdfPreview(toPath(item.uri)).then(text => setTxtPreview(text || null)).catch(() => setTxtPreview(null));
     }
   }
-
-  const ROOT_PATH = 'file:///storage/emulated/0/';
 
   async function loadPickerDir(path: string) {
     setPickerLoading(true);

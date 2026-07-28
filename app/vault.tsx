@@ -33,6 +33,8 @@ import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
+const ROOT_PATH = 'file:///storage/emulated/0/';
+
 export default function VaultScreen() {
   const { colors } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
@@ -66,7 +68,6 @@ export default function VaultScreen() {
     setSelectedFile(null);
   });
   const [padSize, setPadSize] = useState({ w: 0, h: 0 });
-  const ROOT_PATH = 'file:///storage/emulated/0/';
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [playerUri, setPlayerUri] = useState<string | null>(null);
