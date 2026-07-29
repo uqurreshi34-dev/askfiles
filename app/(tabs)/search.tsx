@@ -48,6 +48,7 @@ import { getDateGroup } from '@/hooks/useRecents';
 type Mode = 'search' | 'ask' | 'smart';
 
 const ROOT_PATH = 'file:///storage/emulated/0/';
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 const SUGGESTIONS = [
   'What images do I have?',
@@ -257,12 +258,12 @@ export default function SearchScreen() {
         .filter((item: any) => item instanceof FileSystem.Directory)
         .map((item: any) => { const raw = item.uri.split('/').filter(Boolean).pop() ?? ''; let name = raw; try { name = decodeURIComponent(raw); } catch {} return { name, uri: item.uri, isDirectory: true }; })
         .filter((f: any) => !f.name.startsWith('.'))
-        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        .sort((a: any, b: any) => nameCollator.compare(a.name, b.name));
       const files = contents
         .filter((item: any) => item instanceof FileSystem.File)
         .map((item: any) => ({ name: (() => { try { return decodeURIComponent(item.name); } catch { return item.name; } })(), uri: item.uri, isDirectory: false }))
         .filter((f: any) => !f.name.startsWith('.'))
-        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        .sort((a: any, b: any) => nameCollator.compare(a.name, b.name));
       setPickerItems(folders);
       setPickerFiles(files);
     } catch { setPickerItems([]); setPickerFiles([]); }
@@ -488,7 +489,7 @@ export default function SearchScreen() {
         .sort((a, b) => {
           if (a.isDirectory && !b.isDirectory) return -1;
           if (!a.isDirectory && b.isDirectory) return 1;
-          return a.name.localeCompare(b.name);
+          return nameCollator.compare(a.name, b.name);
         });
       setFolderStack(prev => [...prev, { name: item.name, uri: item.uri, items }]);
     } catch (e) {}
