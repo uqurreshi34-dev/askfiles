@@ -8,6 +8,8 @@ export interface SearchResult {
   mimeType?: string;
 }
 
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 export function useSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -20,7 +22,7 @@ export function useSearch() {
     setSearching(true);
     try {
       const found = await searchFiles(query.trim(), category);
-      setResults(found);
+      setResults(found.sort((a, b) => nameCollator.compare(a.name, b.name)));
     } catch {
       setResults([]);
     } finally {
