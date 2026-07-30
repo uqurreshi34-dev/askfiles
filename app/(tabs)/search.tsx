@@ -22,7 +22,6 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { useVault } from '@/hooks/useVault';
 import * as FileSystem from 'expo-file-system/next';
-import * as MediaLibrary from 'expo-media-library';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -140,6 +139,7 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [historyHidden, setHistoryHidden] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'' | 'image' | 'video' | 'audio' | 'doc' | 'other'>('');
+  const [renaming, setRenaming] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -322,43 +322,46 @@ export default function SearchScreen() {
   }
 
   async function handleRename() {
-    if (!selectedItem || !renameValue.trim()) return;
+    if (!selectedItem || !renameValue.trim() || renaming) return;
+    setRenaming(true);
     const uri = selectedItem.uri.endsWith('/') ? selectedItem.uri.slice(0, -1) : selectedItem.uri;
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
+    const oldUri = selectedItem.uri;
+    const newName = renameValue.trim();
+    const wasInFolder = selectedItem.inFolder;
     try {
       const invalidChars = /[*\/\\:?"<>|]/;
-      if (invalidChars.test(renameValue.trim())) {
+      if (invalidChars.test(newName)) {
         Alert.alert('Invalid name', 'File names cannot contain: * / \\ : ? " < > |');
         return;
       }
       const destExists = await RNFS.exists(toPath(newUri));
       if (destExists) {
-        Alert.alert('Name already taken', `A file named "${renameValue.trim()}" already exists in this folder.`);
+        Alert.alert('Name already taken', `A file named "${newName}" already exists in this folder.`);
         return;
       }
-      await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
-      await syncPathReferences(selectedItem.uri, newUri, renameValue.trim());
+      await RNFS.moveFile(toPath(oldUri), toPath(newUri));
+      await syncPathReferences(oldUri, newUri, newName);
+      // Register the new path, then clear the old one — scanning a path that
+      // no longer exists makes MediaStore drop the stale row.
       await scanFile(toPath(newUri)).catch(() => {});
-      try {
-        const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
-        const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-        const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(selectedItem.uri));
-        if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-      } catch {}
-      if (selectedItem.inFolder) {
+      await scanFile(toPath(oldUri)).catch(() => {});
+      if (wasInFolder) {
         setFolderStack(prev => prev.map((f, i) =>
           i === prev.length - 1
-            ? { ...f, items: f.items.map(item => item.uri === selectedItem.uri ? { ...item, name: renameValue.trim(), uri: newUri } : item) }
+            ? { ...f, items: f.items.map(item => item.uri === oldUri ? { ...item, name: newName, uri: newUri } : item) }
             : f
         ));
       } else {
-        setResults(prev => prev.map(f => f.uri === selectedItem.uri ? { ...f, name: renameValue.trim(), uri: newUri } : f));
+        setResults(prev => prev.map(f => f.uri === oldUri ? { ...f, name: newName, uri: newUri } : f));
       }
       closeSheet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Rename failed', 'Could not rename this file.');
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -1279,8 +1282,11 @@ export default function SearchScreen() {
                       <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowRename(false); setRenameValue(''); }}>
                         <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.renameConfirmBtn} onPress={handleRename}>
-                        <Text style={styles.renameConfirmText}>Rename</Text>
+                      <TouchableOpacity style={[styles.renameConfirmBtn, renaming && { opacity: 0.6 }]} onPress={handleRename} disabled={renaming}>
+                        {renaming
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <Text style={styles.renameConfirmText}>Rename</Text>
+                        }
                       </TouchableOpacity>
                     </View>
                   </View>

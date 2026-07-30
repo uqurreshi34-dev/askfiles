@@ -1221,6 +1221,7 @@ export default function BrowseScreen() {
     const uri = selectedItem.uri.endsWith('/') ? selectedItem.uri.slice(0, -1) : selectedItem.uri;
     const parentPath = uri.substring(0, uri.lastIndexOf('/') + 1);
     const newUri = parentPath + renameValue.trim();
+    const oldUri = selectedItem.uri;
     try {
       const invalidChars = /[*\/\\:?"<>|]/;
       if (invalidChars.test(renameValue.trim())) {
@@ -1232,17 +1233,12 @@ export default function BrowseScreen() {
         Alert.alert('Name already taken', `A file named "${renameValue.trim()}" already exists in this folder.`);
         return;
       }
-      await RNFS.moveFile(toPath(selectedItem.uri), toPath(newUri));
-      await syncPathReferences(selectedItem.uri, newUri, renameValue.trim());
+      await RNFS.moveFile(toPath(oldUri), toPath(newUri));
+      await syncPathReferences(oldUri, newUri, renameValue.trim());
+      // Register the new path, then clear the old one — scanning a path that
+      // no longer exists makes MediaStore drop the stale row.
       await scanFile(toPath(newUri)).catch(() => {});
-      try {
-        if (!selectedItem.isDirectory) {
-          const sourceFilename = decodeURIComponent(selectedItem.uri.split('/').pop() ?? '');
-          const allAssets = await MediaLibrary.getAssetsAsync({ first: 500, mediaType: ['photo', 'video'] });
-          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename);
-          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-        }
-      } catch (e) {}
+      await scanFile(toPath(oldUri)).catch(() => {});
       closeSheet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await loadDirectory(currentPath);
