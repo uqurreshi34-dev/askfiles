@@ -207,14 +207,33 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     }
   }
 
+  const loadGen = useRef(0);
+
   function loadFolderCounts(fileItems: FileItem[]) {
-    fileItems.filter(f => f.isDirectory).slice(0, 30).forEach(folder => {
-      const folderPath = toPath(folder.uri);
-      if (folderPath.includes('/Android/data')) return;
-      countFolder(folderPath, getShowHidden())
-        .then(count => setFolderCounts(prev => ({ ...prev, [folder.uri]: count })))
-        .catch(() => {});
-    });
+    const gen = ++loadGen.current;
+    const folders = fileItems.filter(f => f.isDirectory && !toPath(f.uri).includes('/Android/data'));
+    const BATCH = 8;
+    for (let w = 0; w * BATCH < folders.length; w++) {
+      const wave = folders.slice(w * BATCH, (w + 1) * BATCH);
+      setTimeout(async () => {
+        if (gen !== loadGen.current) return;   // navigated away — abandon
+        const results = await Promise.all(
+          wave.map(f =>
+            countFolder(toPath(f.uri), getShowHidden())
+              .then(c => [f.uri, c] as const)
+              .catch(() => null)
+          )
+        );
+        if (gen !== loadGen.current) return;
+        const valid = results.filter(Boolean) as (readonly [string, number])[];
+        if (!valid.length) return;
+        setFolderCounts(prev => {
+          const next = { ...prev };
+          valid.forEach(([uri, c]) => { next[uri] = c; });
+          return next;
+        });
+      }, w * 50);
+    }
   }
 
   function navigateTo(item: FileItem) {
