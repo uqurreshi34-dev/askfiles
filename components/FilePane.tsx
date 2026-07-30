@@ -43,6 +43,15 @@ interface FilePaneProps {
 
 const ROOT_PATH = 'file:///storage/emulated/0/';
 const dirCache: Record<string, FileItem[]> = {};
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+function sortItems(items: FileItem[]): FileItem[] {
+  return items.slice().sort((a, b) => {
+    if (a.isDirectory && !b.isDirectory) return -1;
+    if (!a.isDirectory && b.isDirectory) return 1;
+    return nameCollator.compare(a.name, b.name);
+  });
+}
 
 interface PaneRowProps {
   item: FileItem;
@@ -187,7 +196,8 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     if (dirCache[path]) {
       setItems(dirCache[path]);
       setLoading(false);
-      readDirectory(toPath(path), getShowHidden()).then(fileItems => {
+      readDirectory(toPath(path), getShowHidden()).then(raw => {
+        const fileItems = sortItems(raw);
         dirCache[path] = fileItems;
         setItems(fileItems);
         loadFolderCounts(fileItems);
@@ -196,7 +206,8 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     }
     setLoading(true);
     try {
-      const fileItems = await readDirectory(toPath(path), getShowHidden());
+      const raw = await readDirectory(toPath(path), getShowHidden());
+      const fileItems = sortItems(raw);
       dirCache[path] = fileItems;
       setItems(fileItems);
       loadFolderCounts(fileItems);
