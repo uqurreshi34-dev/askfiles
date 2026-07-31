@@ -7,6 +7,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType, toPath, formatDuration } from '@/utils/files';
 import { useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Props {
     uri: string | null;
@@ -103,12 +104,12 @@ useEffect(() => {
             >
               <Ionicons name={paused ? 'play' : 'pause'} size={32} color="#fff" />
             </TouchableOpacity>
-            {seekFlash && (
-              <View pointerEvents="none" style={{ position: 'absolute', top: '40%', left: seekFlash === 'back' ? '10%' : undefined, right: seekFlash === 'forward' ? '10%' : undefined, alignItems: 'center', gap: 4 }}>
-                <Ionicons name={seekFlash === 'back' ? 'play-back' : 'play-forward'} size={40} color="rgba(255,255,255,0.85)" />
-                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' }}>10s</Text>
-              </View>
-            )}
+            <LinearGradient
+              pointerEvents="none"
+              colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.85)']}
+              locations={[0, 0.35, 0.6, 1]}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            />
             <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8 }}>
                 {speedPills && (
@@ -147,13 +148,13 @@ useEffect(() => {
                       if (wasPlayingBeforeDrag.current) setPaused(false);
                     }}
                   >
-                    <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2 }}>
+                    <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }}>
                       <View style={{ height: 3, backgroundColor: '#fff', borderRadius: 2, width: `${Math.min((position / duration) * 100, 100)}%` }} />
                     </View>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(position)}</Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>{formatDuration(duration)}</Text>
+                  <Text style={{ color: '#fff', fontSize: 10 }}>{formatDuration(position)}</Text>
+                  <Text style={{ color: '#fff', fontSize: 10 }}>{formatDuration(duration)}</Text>
                   </View>
                 </View>
               )}
@@ -180,6 +181,23 @@ useEffect(() => {
         )}
           </>
         )}
+        {seekFlash && (
+              <View pointerEvents="none" style={{
+                position: 'absolute',
+                top: '40%',
+                left: seekFlash === 'back' ? '10%' : undefined,
+                right: seekFlash === 'forward' ? '10%' : undefined,
+                alignItems: 'center',
+                gap: 2,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderRadius: 40,
+              }}>
+                <Ionicons name={seekFlash === 'back' ? 'play-back' : 'play-forward'} size={40} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>10s</Text>
+              </View>
+            )}
       </View>
     </Modal>
   );

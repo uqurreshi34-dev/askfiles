@@ -80,6 +80,31 @@
       externalAnnotations="annotations.zip"
       proguardRules="proguard.txt"/>
   <library
+      name="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar"
+      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains.kotlin\kotlin-stdlib\2.1.20\aa8ca79cd50578314f6d1180c47cbe14c0fee567\kotlin-stdlib-2.1.20.jar"
+      resolved="org.jetbrains.kotlin:kotlin-stdlib:2.1.20"/>
+  <library
+      name="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar"
+      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains.kotlin\kotlin-stdlib-jdk7\2.1.20\72672df5e83231744c00550955b10acb71ed49d6\kotlin-stdlib-jdk7-2.1.20.jar"
+      resolved="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20"/>
+  <library
+      name="androidx.exifinterface:exifinterface:1.3.7@aar"
+      jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a13f9d34893b104ff3f06bf91e3da11b\transformed\exifinterface-1.3.7\jars\classes.jar"
+      resolved="androidx.exifinterface:exifinterface:1.3.7"
+      folder="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a13f9d34893b104ff3f06bf91e3da11b\transformed\exifinterface-1.3.7"
+      manifest="AndroidManifest.xml"
+      resFolder="res"
+      assetsFolder="assets"
+      lintJar="lint.jar"
+      publicResources="public.txt"
+      symbolFile="R.txt"
+      externalAnnotations="annotations.zip"
+      proguardRules="proguard.txt"/>
+  <library
+      name="org.jetbrains:annotations:13.0@jar"
+      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\13.0\919f0dfe192fb4e063e7dacadee7f8bb9a2672a9\annotations-13.0.jar"
+      resolved="org.jetbrains:annotations:13.0"/>
+  <library
       name="androidx.versionedparcelable:versionedparcelable:1.1.1@aar"
       jars="C:\Users\uqurr\.gradle\caches\8.14.3\transforms\a04e1cca8ff0ce4d8c526ff7f31cbc64\transformed\versionedparcelable-1.1.1\jars\classes.jar"
       resolved="androidx.versionedparcelable:versionedparcelable:1.1.1"
@@ -104,20 +129,7 @@
       resolved="androidx.collection:collection:1.0.0"
       provided="true"/>
   <library
-      name="androidx.annotation:annotation-jvm:1.6.0@jar"
-      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\androidx.annotation\annotation-jvm\1.6.0\a7257339a052df0f91433cf9651231bbb802b502\annotation-jvm-1.6.0.jar"
-      resolved="androidx.annotation:annotation-jvm:1.6.0"
-      provided="true"/>
-  <library
-      name="org.jetbrains.kotlin:kotlin-stdlib:2.1.20@jar"
-      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains.kotlin\kotlin-stdlib\2.1.20\aa8ca79cd50578314f6d1180c47cbe14c0fee567\kotlin-stdlib-2.1.20.jar"
-      resolved="org.jetbrains.kotlin:kotlin-stdlib:2.1.20"/>
-  <library
-      name="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20@jar"
-      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains.kotlin\kotlin-stdlib-jdk7\2.1.20\72672df5e83231744c00550955b10acb71ed49d6\kotlin-stdlib-jdk7-2.1.20.jar"
-      resolved="org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20"/>
-  <library
-      name="org.jetbrains:annotations:13.0@jar"
-      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\13.0\919f0dfe192fb4e063e7dacadee7f8bb9a2672a9\annotations-13.0.jar"
-      resolved="org.jetbrains:annotations:13.0"/>
+      name="androidx.annotation:annotation:1.2.0@jar"
+      jars="C:\Users\uqurr\.gradle\caches\modules-2\files-2.1\androidx.annotation\annotation\1.2.0\57136ff68ee784c6e19db34ed4a175338fadfde1\annotation-1.2.0.jar"
+      resolved="androidx.annotation:annotation:1.2.0"/>
 </libraries>
