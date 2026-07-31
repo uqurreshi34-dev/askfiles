@@ -1866,6 +1866,17 @@ export default function BrowseScreen() {
                         <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
                       </TouchableOpacity>
                     )}
+                    {!selectedItem?.isDirectory && isImageFile(selectedItem?.name ?? '') && (
+                      <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                        if (!selectedItem) return;
+                        const u = selectedItem.uri, n = selectedItem.name;
+                        closeSheet();
+                        router.push({ pathname: '/image-editor', params: { uri: u, name: n } });
+                      }}>
+                        <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
+                        <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Edit image</Text>
+                      </TouchableOpacity>
+                    )}
                     {!selectedItem?.isDirectory && (isImageFile(selectedItem?.name ?? '') || (selectedItem?.name.toLowerCase().endsWith('.pdf'))) && (
                       <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
                         <Ionicons name="print-outline" size={20} color={colors.textPrimary} />

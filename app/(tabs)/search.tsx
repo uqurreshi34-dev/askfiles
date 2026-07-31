@@ -1209,6 +1209,17 @@ export default function SearchScreen() {
                     <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
                   </TouchableOpacity>
                 )}
+                {isImageFile(selectedItem?.name ?? '') && (
+                  <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                    if (!selectedItem) return;
+                    const u = selectedItem.uri, n = selectedItem.name;
+                    closeSheet();
+                    router.push({ pathname: '/image-editor', params: { uri: u, name: n } });
+                  }}>
+                    <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Edit image</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
                   () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
                     { text: 'Not now', style: 'cancel' },
