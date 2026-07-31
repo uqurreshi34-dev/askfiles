@@ -26,3 +26,11 @@ export function convertImage(
 export function getSupportedInputFormats(): string[] {
   return FileConverter.getSupportedInputFormats();
 }
+
+export async function annotateImage(
+  inputPath: string,
+  outputPath: string,
+  annotations: { text: string; x: number; y: number; sizeRatio: number; color?: string }[]
+): Promise<{ width: number; height: number; downsampled: boolean }> {
+  return FileConverter.annotateImage(inputPath, outputPath, annotations);
+}

@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, FlatList,
   ActivityIndicator, StyleSheet, TextInput, Alert,
-  KeyboardAvoidingView, useWindowDimensions, Keyboard, Pressable
+  KeyboardAvoidingView, useWindowDimensions, Keyboard, Pressable, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/next';
 import { countFolder, createDirectory } from 'file-reader';
 import { useTheme } from '@/hooks/useTheme';
-import { getFileColor, getFileIcon } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
+import { getFileColor, getFileIcon, isImageFile } from '@/utils/files';
+import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 
 interface FolderItem {
   name: string;
@@ -213,11 +214,15 @@ useEffect(() => {
                 <View style={[styles.icon, {
                   backgroundColor: item.isDirectory ? colors.amberTint : getFileColor(item.name) + '22'
                 }]}>
-                  <Ionicons
-                    name={item.isDirectory ? 'folder' : getFileIcon(item.name) as any}
-                    size={22}
-                    color={item.isDirectory ? colors.amber : getFileColor(item.name)}
-                  />
+                  {item.isDirectory ? (
+                    <Ionicons name="folder" size={20} color={colors.amber} />
+                  ) : isImageFile(item.name) ? (
+                    <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                  ) : isVideoFile(item.name) ? (
+                    <VideoThumb uri={item.uri} style={styles.thumb} />
+                  ) : (
+                    <Ionicons name={getFileIcon(item.name) as any} size={20} color={getFileColor(item.name)} />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -372,4 +377,5 @@ const styles = StyleSheet.create({
   saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   newFolderBtn: { width: 52, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  thumb: { width: '100%', height: '100%', borderRadius: 8 },
 });

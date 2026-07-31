@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -140,9 +140,10 @@ export default function CategoryScreen() {
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, FileItem>>(new Map());
   const [sharing, setSharing] = useState(false);
   const [vaulting, setVaulting] = useState(false);
-  const [vaultingCount, setVaultingCount] = useState(0);
   const [vaultingTotal, setVaultingTotal] = useState(0);
   const isMediaCategory = category === 'images' || category === 'videos';
+  const isMediaFile = (item: FileItem | null) =>
+    !!item && (isImageFile(item.name) || isVideoFile(item.name));
   const [folderView, setFolderView] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FolderGroup | null>(null);
   const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
@@ -424,30 +425,42 @@ async function handleSsInfo() {
   useEffect(() => { folderViewRef.current = folderView; }, [folderView]);
   useEffect(() => { selectedFolderRef.current = selectedFolder; }, [selectedFolder]);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  async function refreshAll() {
+    loadCategoryWithSort(sortKeyRef.current);
+    if (folderViewRef.current) {
+      const tab = activeTabRef.current;
+      const sk = sortKeyRef.current;
+      const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
+      const refreshed = category === 'images' ? await queryImageFolders(sk)
+        : category === 'videos' ? await queryVideoFolders(sk)
+        : await queryDocumentFolders(mimes, sk);
+      setFolderGroups(refreshed);
+      const current = selectedFolderRef.current;
+      if (current) {
+        const stillThere = refreshed.find(g => g.folderPath === current.folderPath);
+        setSelectedFolder(stillThere ?? null);
+      }
+    }
+  }
 
   useEffect(() => {
     setSearchQuery('');
     loadCategory();
-    const subscription = addMediaStoreChangeListener(async () => {
+    const subscription = addMediaStoreChangeListener(() => {
       if (suppressWatcherRef.current) return;
-      loadCategoryWithSort(sortKeyRef.current);
-      if (folderViewRef.current) {
-        const tab = activeTabRef.current;
-        const sk = sortKeyRef.current;
-        const mimes = tab === 'All' ? [] : (TAB_MIMES[tab] ?? []);
-        const refreshed = category === 'images' ? await queryImageFolders(sk)
-          : category === 'videos' ? await queryVideoFolders(sk)
-          : await queryDocumentFolders(mimes, sk);
-        setFolderGroups(refreshed);
-        const current = selectedFolderRef.current;
-        if (current) {
-          const stillThere = refreshed.find(g => g.folderPath === current.folderPath);
-          setSelectedFolder(stillThere ?? null);
-        }
-      }
+      refreshAll();
     });
     return () => subscription.remove();
   }, [category]);
+
+  const firstFocusRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      // The mount effect already loaded on first focus.
+      if (firstFocusRef.current) { firstFocusRef.current = false; return; }
+      refreshAll();
+    }, [category])
+  );
 
   useEffect(() => {
     getStorageVolumes().then(setVolumes);
@@ -978,7 +991,6 @@ async function handleSsInfo() {
         suppressWatcherRef.current = true;
         setVaulting(true);
         setVaultingTotal(files.length);
-        setVaultingCount(0);
         await new Promise(r => requestAnimationFrame(() => r(null)));
         const moved: string[] = [];
         let failed = 0;
@@ -991,7 +1003,6 @@ async function handleSsInfo() {
             } else {
               failed++;
             }
-            setVaultingCount(prev => prev + 1);
           }
           const movedSet = new Set(moved);
           setItems(prev => prev.filter(f => !movedSet.has(f.uri)));
@@ -1012,7 +1023,6 @@ async function handleSsInfo() {
           }
         } finally {
           setVaulting(false);
-          setVaultingCount(0);
           setVaultingTotal(0);
           suppressWatcherRef.current = false;
         }
@@ -1803,6 +1813,17 @@ async function handleSsInfo() {
                   <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
                 </TouchableOpacity>
               )}
+              {isImageFile(selectedItem?.name ?? '') && (
+              <TouchableOpacity style={styles.sheetAction} onPress={() => {
+                  if (!selectedItem) return;
+                  const u = selectedItem.uri, n = selectedItem.name;
+                  closeSheet();
+                  router.push({ pathname: '/image-editor', params: { uri: u, name: n } });
+                }}>
+                  <Ionicons name="create-outline" size={22} color={colors.textSecondary} />
+                  <Text style={styles.sheetActionText}>Edit image</Text>
+                </TouchableOpacity>
+              )}
               {(isImageFile(selectedItem?.name ?? '') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
                   <Ionicons name="print-outline" size={20} color={colors.textPrimary} />
@@ -1848,7 +1869,7 @@ async function handleSsInfo() {
                   lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
                 }
                 let exif: { label: string; value: string }[] = [];
-                if (isMediaCategory && selectedItem) {
+                if (isMediaFile(selectedItem)) {
                   try {
                     const info = await getMediaInfo(toPath(selectedItem.uri));
                     if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
