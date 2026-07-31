@@ -6,6 +6,7 @@ export interface CsvData {
   headers: string[];
   rows: string[][];
   delimiter: string;
+  truncated?: boolean;
 }
 
 export interface ColumnAnalysis {

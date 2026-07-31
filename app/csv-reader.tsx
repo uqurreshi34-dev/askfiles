@@ -138,6 +138,12 @@ export default function CsvReaderScreen() {
       setFileName(name);
       setFilePath(path);
       setProcessedRows(data.rows.map((row, i) => ({ row, originalIndex: i })));
+      if (data.truncated) {
+        Alert.alert(
+          'Large file',
+          `Showing the first ${data.rows.length.toLocaleString()} rows. This file has more data than AskFiles displays at once.`
+        );
+      }
     } catch (e: any) {
       Alert.alert('Parse failed', e?.message ?? 'Could not read this CSV.');
     } finally {
