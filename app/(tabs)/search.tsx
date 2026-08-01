@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
@@ -23,7 +23,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { useVault } from '@/hooks/useVault';
 import * as FileSystem from 'expo-file-system/next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
+import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useTheme } from '@/hooks/useTheme';
@@ -185,6 +185,8 @@ export default function SearchScreen() {
   const [detailsName, setDetailsName] = useState('');
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
+  const { favourites } = useFavourites();
+  const favSet = useMemo(() => new Set(favourites.map(f => f.uri)), [favourites]);
   const { sheetAnim, panResponder, animateOpen, closeSheet } = useBottomSheet(() => {
     setShowSheet(false);
     setSelectedItem(null);
@@ -854,6 +856,9 @@ export default function SearchScreen() {
                       <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+                        {favSet.has(item.uri) && (
+                          <Ionicons name="heart" size={12} color="#E24B4A" />
+                        )}
                         {(fileTagsMap[item.uri] ?? []).map(tagId => {
                           const tag = tags.find(t => t.id === tagId);
                           if (!tag) return null;

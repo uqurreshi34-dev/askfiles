@@ -9,7 +9,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName, exifLines } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
-import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
+import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
@@ -194,6 +194,8 @@ export default function CategoryScreen() {
   const [txtPreview, setTxtPreview] = useState<string | null>(null);
   const [dragCount, setDragCount] = useState<number | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const { favourites } = useFavourites();
+  const favSet = useMemo(() => new Set(favourites.map(f => f.uri)), [favourites]);
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -1543,11 +1545,16 @@ async function handleSsInfo() {
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <Text style={[styles.meta, { color: colors.textMuted }]}>
-                        {item.size ? formatSize(item.size) : ''}
-                        {item.size && item.date ? ' · ' : ''}
-                        {item.date ? formatDate(item.date) : ''}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.meta, { color: colors.textMuted }]}>
+                          {item.size ? formatSize(item.size) : ''}
+                          {item.size && item.date ? ' · ' : ''}
+                          {item.date ? formatDate(item.date) : ''}
+                        </Text>
+                        {favSet.has(item.uri) && (
+                          <Ionicons name="heart" size={12} color="#E24B4A" />
+                        )}
+                      </View>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                   </TouchableOpacity>
@@ -1591,11 +1598,16 @@ async function handleSsInfo() {
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <Text style={[styles.meta, { color: colors.textMuted }]}>
-                        {item.size ? formatSize(item.size) : ''}
-                        {item.size && item.date ? ' · ' : ''}
-                        {item.date ? formatDate(item.date) : ''}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.meta, { color: colors.textMuted }]}>
+                          {item.size ? formatSize(item.size) : ''}
+                          {item.size && item.date ? ' · ' : ''}
+                          {item.date ? formatDate(item.date) : ''}
+                        </Text>
+                        {favSet.has(item.uri) && (
+                          <Ionicons name="heart" size={12} color="#E24B4A" />
+                        )}
+                      </View>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
                   </TouchableOpacity>
@@ -1712,11 +1724,16 @@ async function handleSsInfo() {
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <Text style={[styles.meta, { color: colors.textMuted }]}>
-                        {item.size ? formatSize(item.size) : ''}
-                        {item.size && item.date ? ' · ' : ''}
-                        {item.date ? formatDate(item.date) : ''}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.meta, { color: colors.textMuted }]}>
+                          {item.size ? formatSize(item.size) : ''}
+                          {item.size && item.date ? ' · ' : ''}
+                          {item.date ? formatDate(item.date) : ''}
+                        </Text>
+                        {favSet.has(item.uri) && (
+                          <Ionicons name="heart" size={12} color="#E24B4A" />
+                        )}
+                      </View>
                     </View>
                     {!selectMode && (
                       movingUri === item.uri
