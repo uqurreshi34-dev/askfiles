@@ -59,6 +59,10 @@ class BrowseListModule : Module() {
             Prop("sectionMode") { view: BrowseListView, mode: String ->
                 view.setSectionMode(mode)
             }
+
+            Prop("favouriteUris") { view: BrowseListView, uris: List<String> ->
+                view.setFavouriteUris(uris)
+            }
         }
     }
 }

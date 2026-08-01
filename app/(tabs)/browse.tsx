@@ -17,7 +17,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
-import { addFavourite, removeFavourite, isFavourite } from '@/hooks/useFavourites';
+import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { useTheme } from '@/hooks/useTheme';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
@@ -178,6 +178,8 @@ export default function BrowseScreen() {
   const [newTagIcon, setNewTagIcon] = useState('pricetag-outline');
   const [txtPreview, setTxtPreview] = useState<string | null>(null);
   const [dragCount, setDragCount] = useState(0);
+  const { favourites } = useFavourites();
+  const favUriList = useMemo(() => favourites.map(f => f.uri), [favourites]);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -1694,6 +1696,7 @@ export default function BrowseScreen() {
         </View>
       ) : (
         <BrowseListView
+          favouriteUris={favUriList}
           style={{ flex: 1 }}
           items={displayItems}
           folderCounts={folderCounts}

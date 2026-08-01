@@ -35,6 +35,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val adapter = FileAdapter()
     private var items: List<FileItem> = emptyList()
     private var folderCounts: Map<String, Int> = emptyMap()
+    private var favouriteUris: Set<String> = emptySet()
     private var selectedUris: Set<String> = emptySet()
     private var bookmarkedUris: Set<String> = emptySet()
     private var selectMode: Boolean = false
@@ -84,6 +85,11 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     private fun parseColor(hex: String?, fallback: Int): Int {
         return try { Color.parseColor(hex ?: return fallback) } catch (e: Exception) { fallback }
+    }
+
+     fun setFavouriteUris(uris: List<String>) {
+        favouriteUris = uris.toHashSet()
+        adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_META)
     }
 
     data class FileItem(
@@ -556,23 +562,37 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
 
         fun bindMeta(item: FileItem) {
-            if (item.isDirectory) {
+            val base = if (item.isDirectory) {
                 val count = folderCounts[item.uri]
-                metaText.text = when {
+                bookmarkBtn.visibility = View.VISIBLE
+                chevron.visibility = View.VISIBLE
+                dotsBtn.visibility = View.GONE
+                when {
                     count == null -> "Folder"
                     count == 0 -> "Empty"
                     else -> "$count item${if (count != 1) "s" else ""}"
                 }
-                bookmarkBtn.visibility = View.VISIBLE
-                chevron.visibility = View.VISIBLE
-                dotsBtn.visibility = View.GONE
             } else {
-                metaText.text = "${formatSize(item.size)} · ${formatDate(item.date)}"
                 bookmarkBtn.visibility = View.GONE
                 chevron.visibility = View.GONE
                 dotsBtn.visibility = if (selectMode) View.GONE else View.VISIBLE
+                "${formatSize(item.size)} · ${formatDate(item.date)}"
             }
+
             metaText.setTextColor(colorSet.textMuted)
+
+            if (favouriteUris.contains(item.uri)) {
+                val heart = "  \u2764"
+                val sp = android.text.SpannableString(base + heart)
+                sp.setSpan(
+                    android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#E24B4A")),
+                    base.length, base.length + heart.length,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                metaText.text = sp
+            } else {
+                metaText.text = base
+            }
         }
 
         fun bindSelection(item: FileItem) {

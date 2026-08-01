@@ -16,4 +16,5 @@ export type BrowseListViewProps = {
   url: string;
   onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
   style?: StyleProp<ViewStyle>;
+  favouriteUris?: string[];
 };
