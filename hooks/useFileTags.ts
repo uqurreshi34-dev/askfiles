@@ -88,8 +88,6 @@ export async function updateFileTagsPath(oldUri: string, newUri: string, newName
 }
 
 export async function getTagsForFile(uri: string): Promise<string[]> {
-    // Always reload from native storage to avoid stale cache after writes
-    //cache = null;
     const items = load();
     return items.find(f => f.uri === uri)?.tagIds ?? [];
   }
@@ -118,7 +116,12 @@ export function useFileTags() {
 export async function cleanupBrokenFileTags(): Promise<void> {
   const items = load();
   if (items.length === 0) return;
-  const results = await Promise.all(items.map(f => RNFS.exists(toPath(f.uri))));
-  const alive = items.filter((_, i) => results[i]);
+  const alive: FileTagEntry[] = [];
+  const BATCH = 50;
+  for (let i = 0; i < items.length; i += BATCH) {
+    const slice = items.slice(i, i + BATCH);
+    const results = await Promise.all(slice.map(f => RNFS.exists(toPath(f.uri))));
+    slice.forEach((f, j) => { if (results[j]) alive.push(f); });
+  }
   if (alive.length !== items.length) save(alive);
 }
