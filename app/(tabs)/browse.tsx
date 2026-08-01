@@ -180,6 +180,7 @@ export default function BrowseScreen() {
   const [dragCount, setDragCount] = useState(0);
   const { favourites } = useFavourites();
   const favUriList = useMemo(() => favourites.map(f => f.uri), [favourites]);
+  const [creatingTag, setCreatingTag] = useState(false);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -2823,21 +2824,38 @@ export default function BrowseScreen() {
                       <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.renameConfirmBtn, !newTagName.trim() && { opacity: 0.4 }]}
-                      disabled={!newTagName.trim()}
+                      style={[styles.renameConfirmBtn, (!newTagName.trim() || creatingTag) && { opacity: 0.4 }]}
+                      disabled={!newTagName.trim() || creatingTag}
                       onPress={async () => {
-                        const newTag = await addTag({ name: newTagName.trim(), color: newTagColor, icon: newTagIcon });
-                        if (pendingItem.current) {
-                          await addTagToFile(pendingItem.current!.uri, pendingItem.current!.name, newTag.id);
-                          setFileTags(prev => [...prev, newTag.id]);
-                        }
+                        if (!newTagName.trim() || creatingTag) return;
+                        setCreatingTag(true);
+                        const name = newTagName.trim();
+                        const color = newTagColor;
+                        const icon = newTagIcon;
+                        const item = pendingItem.current;
+                        // Close and reset immediately — the writes are local and
+                        // effectively can't fail, so don't make the user wait.
                         setShowNewTag(false);
                         setNewTagName('');
                         setNewTagColor('#3B6D11');
                         setNewTagIcon('pricetag-outline');
+                        try {
+                          const newTag = await addTag({ name, color, icon });
+                          if (item) {
+                            setFileTags(prev => [...prev, newTag.id]);
+                            await addTagToFile(item.uri, item.name, newTag.id);
+                          }
+                        } catch {
+                          Alert.alert('Could not create tag', 'Please try again.');
+                        } finally {
+                          setCreatingTag(false);
+                        }
                       }}
                     >
-                      <Text style={styles.renameConfirmText}>Create & Apply</Text>
+                      {creatingTag
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={styles.renameConfirmText}>Create & Apply</Text>
+                      }
                     </TouchableOpacity>
                   </View>
                 </View>

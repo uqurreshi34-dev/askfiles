@@ -39,7 +39,7 @@ import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
 import { addTag } from '@/hooks/useTags';
-import { addTagToFile, getTagsForFile, removeTagFromFile } from '@/hooks/useFileTags';
+import { addTagToFile, getTagsForFile, removeTagFromFile, useFileTags } from '@/hooks/useFileTags';
 import { recordOpen, getStats } from 'file-stats';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
@@ -194,9 +194,16 @@ export default function CategoryScreen() {
   const [txtPreview, setTxtPreview] = useState<string | null>(null);
   const [dragCount, setDragCount] = useState<number | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const [creatingTag, setCreatingTag] = useState(false);
   const { favourites } = useFavourites();
   const favSet = useMemo(() => new Set(favourites.map(f => f.uri)), [favourites]);
   const favUriList = useMemo(() => favourites.map(f => f.uri), [favourites]);
+  const { fileTags: allFileTags } = useFileTags();
+  const fileTagsMap = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    allFileTags.forEach(f => { if (f.tagIds.length) m[f.uri] = f.tagIds; });
+    return m;
+  }, [allFileTags]);
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -474,7 +481,7 @@ async function handleSsInfo() {
     setSelectedItem(item);
     setFileSize(null);
     setIsFav(await isFavourite(item.uri));
-    setFileTags(await getTagsForFile(item.uri));
+    setFileTags(fileTagsMap[item.uri] ?? []);
     setShowRename(false);
     setRenameValue('');
     setShowSheet(true);
@@ -1547,7 +1554,7 @@ async function handleSsInfo() {
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.meta, { color: colors.textMuted }]}>
                           {item.size ? formatSize(item.size) : ''}
                           {item.size && item.date ? ' · ' : ''}
@@ -1556,6 +1563,16 @@ async function handleSsInfo() {
                         {favSet.has(item.uri) && (
                           <Ionicons name="heart" size={12} color="#E24B4A" />
                         )}
+                        {(fileTagsMap[item.uri] ?? []).map(tagId => {
+                          const tag = tags.find(t => t.id === tagId);
+                          if (!tag) return null;
+                          return (
+                            <View key={tagId} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: tag.color + '22' }}>
+                              <Ionicons name={tag.icon as any} size={10} color={tag.color} />
+                              <Text style={{ fontSize: 10, color: tag.color, fontWeight: '500' }}>{tag.name}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
@@ -1600,7 +1617,7 @@ async function handleSsInfo() {
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.meta, { color: colors.textMuted }]}>
                           {item.size ? formatSize(item.size) : ''}
                           {item.size && item.date ? ' · ' : ''}
@@ -1609,6 +1626,16 @@ async function handleSsInfo() {
                         {favSet.has(item.uri) && (
                           <Ionicons name="heart" size={12} color="#E24B4A" />
                         )}
+                        {(fileTagsMap[item.uri] ?? []).map(tagId => {
+                          const tag = tags.find(t => t.id === tagId);
+                          if (!tag) return null;
+                          return (
+                            <View key={tagId} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: tag.color + '22' }}>
+                              <Ionicons name={tag.icon as any} size={10} color={tag.color} />
+                              <Text style={{ fontSize: 10, color: tag.color, fontWeight: '500' }}>{tag.name}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
@@ -1727,7 +1754,7 @@ async function handleSsInfo() {
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.meta, { color: colors.textMuted }]}>
                           {item.size ? formatSize(item.size) : ''}
                           {item.size && item.date ? ' · ' : ''}
@@ -1736,6 +1763,16 @@ async function handleSsInfo() {
                         {favSet.has(item.uri) && (
                           <Ionicons name="heart" size={12} color="#E24B4A" />
                         )}
+                        {(fileTagsMap[item.uri] ?? []).map(tagId => {
+                          const tag = tags.find(t => t.id === tagId);
+                          if (!tag) return null;
+                          return (
+                            <View key={tagId} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: tag.color + '22' }}>
+                              <Ionicons name={tag.icon as any} size={10} color={tag.color} />
+                              <Text style={{ fontSize: 10, color: tag.color, fontWeight: '500' }}>{tag.name}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     </View>
                     {!selectMode && (
@@ -2616,18 +2653,33 @@ async function handleSsInfo() {
                       style={[styles.renameConfirmBtn, !newTagName.trim() && { opacity: 0.4 }]}
                       disabled={!newTagName.trim()}
                       onPress={async () => {
-                        const newTag = await addTag({ name: newTagName.trim(), color: newTagColor, icon: newTagIcon });
-                        if (pendingItem.current) {
-                          await addTagToFile(pendingItem.current!.uri, pendingItem.current!.name, newTag.id);
-                          setFileTags(prev => [...prev, newTag.id]);
-                        }
+                        if (!newTagName.trim() || creatingTag) return;
+                        setCreatingTag(true);
+                        const name = newTagName.trim();
+                        const color = newTagColor;
+                        const icon = newTagIcon;
+                        const item = pendingItem.current;
                         setShowNewTag(false);
                         setNewTagName('');
                         setNewTagColor('#3B6D11');
                         setNewTagIcon('pricetag-outline');
+                        try {
+                          const newTag = await addTag({ name, color, icon });
+                          if (item) {
+                            setFileTags(prev => [...prev, newTag.id]);
+                            await addTagToFile(item.uri, item.name, newTag.id);
+                          }
+                        } catch {
+                          Alert.alert('Could not create tag', 'Please try again.');
+                        } finally {
+                          setCreatingTag(false);
+                        }
                       }}
                     >
-                      <Text style={styles.renameConfirmText}>Create & Apply</Text>
+                       {creatingTag
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={styles.renameConfirmText}>Create & Apply</Text>
+                      }
                     </TouchableOpacity>
                   </View>
                 </View>

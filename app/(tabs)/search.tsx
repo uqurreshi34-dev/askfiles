@@ -35,7 +35,7 @@ import { startWifiServer, copyFileStream, moveFileStream, addCopyProgressListene
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
-import { getTagsForFile } from '@/hooks/useFileTags';
+import { getTagsForFile, useFileTags } from '@/hooks/useFileTags';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
@@ -175,7 +175,6 @@ export default function SearchScreen() {
   const [pasting, setPasting] = useState(false);
   const [isFav, setIsFav] = useState(false);
   const { tags } = useTags();
-  const [fileTagsMap, setFileTagsMap] = useState<Record<string, string[]>>({});
   const pendingItem = useRef<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [volumes, setVolumes] = useState<{ name: string; path: string; type: string }[]>([]);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
@@ -194,16 +193,12 @@ export default function SearchScreen() {
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
-  useEffect(() => {
-    if (!results.length) { setFileTagsMap({}); return; }
-    Promise.all(
-      results.map(async item => ({ uri: item.uri, tags: await getTagsForFile(item.uri) }))
-    ).then(entries => {
-      const map: Record<string, string[]> = {};
-      entries.forEach(e => { if (e.tags.length) map[e.uri] = e.tags; });
-      setFileTagsMap(map);
-    });
-  }, [results]);
+  const { fileTags } = useFileTags();
+  const fileTagsMap = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    fileTags.forEach(f => { if (f.tagIds.length) m[f.uri] = f.tagIds; });
+    return m;
+  }, [fileTags]);
 
   useSpeechRecognitionEvent('result', (e) => {
     if (!listening) return;

@@ -89,7 +89,7 @@ export async function updateFileTagsPath(oldUri: string, newUri: string, newName
 
 export async function getTagsForFile(uri: string): Promise<string[]> {
     // Always reload from native storage to avoid stale cache after writes
-    cache = null;
+    //cache = null;
     const items = load();
     return items.find(f => f.uri === uri)?.tagIds ?? [];
   }
