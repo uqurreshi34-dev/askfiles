@@ -196,6 +196,7 @@ export default function CategoryScreen() {
   const [renaming, setRenaming] = useState(false);
   const { favourites } = useFavourites();
   const favSet = useMemo(() => new Set(favourites.map(f => f.uri)), [favourites]);
+  const favUriList = useMemo(() => favourites.map(f => f.uri), [favourites]);
 
   function ssShuffledIndices(n: number): number[] {
     const arr = Array.from({ length: n }, (_, i) => i);
@@ -1462,6 +1463,7 @@ async function handleSsInfo() {
               style={{ flex: 1 }}
               key={`folder-${selectedFolder?.folderPath}`}
               uris={selectedFolder?.uris ?? []}
+              favouriteUris={favUriList}
               placeholderColor={colors.surface}
               selectMode={selectMode}
               category={(category === 'videos' ? 'videos' : 'images')}
@@ -1631,6 +1633,7 @@ async function handleSsInfo() {
             style={{ flex: 1 }}
             key={`grid-${sortKey}-${searchQuery}`}
             uris={gridUris}
+            favouriteUris={favUriList}
             itemDates={gridDates}
             sortMode={sortKey}
             placeholderColor={colors.surface}
