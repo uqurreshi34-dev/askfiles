@@ -46,6 +46,8 @@ import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
 import { BrowseListView } from 'browse-list';
 import { TextEditorView } from 'text-editor';
+import FolderPickerModal from '@/components/FolderPickerModal';
+import { MediaViewerView } from '@/modules/media-viewer';
 
 interface FileItem {
   name: string;
@@ -2714,6 +2716,46 @@ export default function BrowseScreen() {
         item={pendingItem.current}
         onClose={() => setShowTagPicker(false)}
       />
+      <FolderPickerModal
+        visible={multiRenamePickerVisible}
+        onClose={() => setMultiRenamePickerVisible(false)}
+        onSave={(folderPath) => handleMultiRename(folderPath)}
+        defaultPath="/storage/emulated/0/"
+        defaultLabel="Internal Storage"
+        defaultSubLabel="Root of internal storage"
+        title="Save renamed files"
+      />
+      <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {viewerUri && (
+            <MediaViewerView
+              uri={viewerUri}
+              onTap={() => setViewerUri(null)}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <SafeAreaView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
+            <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 0, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 30, overflow: 'hidden' }}>
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await shareFiles([toPath(viewerUri)], 'image/*'); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="share-outline" size={22} color="#222" />
+                </TouchableOpacity>
+                <View style={{ width: 0.5, backgroundColor: 'rgba(0,0,0,0.15)', marginVertical: 10 }} />
+                <TouchableOpacity onPress={async () => {
+                  if (!viewerUri) return;
+                  try { await openFileNative(toPath(viewerUri), getMimeType(viewerUri.split('/').pop() ?? '')); } catch {}
+                }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+                  <Ionicons name="open-outline" size={22} color="#222" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
       <VideoPlayerModal uri={playerUri} onClose={() => setPlayerUri(null)} />
     </SafeAreaView>
   );
