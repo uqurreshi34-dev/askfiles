@@ -32,7 +32,6 @@ import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
 import { batchRename } from 'file-reader';
-import FolderPickerModal from '@/components/FolderPickerModal';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
@@ -43,7 +42,6 @@ import { extract7z } from 'archive-extractor'
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useFileTags } from '@/hooks/useFileTags';
 import TagPickerModal from '@/components/TagPickerModal';
-import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
 import { BrowseListView } from 'browse-list';
