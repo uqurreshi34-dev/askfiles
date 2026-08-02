@@ -218,6 +218,7 @@ export default function BrowseScreen() {
     Object.keys(dirCacheStore).forEach(k => delete dirCacheStore[k]);
     loadDirectory(currentPath, next);
   }
+  
 
   function updateFolderCount(folder: FileItem, hidden: boolean) {
     const folderPath = toPath(folder.uri);
@@ -594,13 +595,10 @@ export default function BrowseScreen() {
         }
         await RNFS.moveFile(toPath(item.uri), toPath(newUri));
         await syncPathReferences(item.uri, newUri, newName);
+        // Register the new path, then clear the old one — scanning a path that
+        // no longer exists makes MediaStore drop the stale row.
         await scanFile(toPath(newUri)).catch(() => {});
-        try {
-          const sourceFilename = decodeURIComponent(item.uri.split('/').pop() ?? '');
-          const allAssets = await MediaLibrary.getAssetsAsync({ first: 5000, mediaType: ['photo', 'video', 'unknown'] });
-          const ghost = allAssets.assets.find((a: any) => a.filename === sourceFilename && toPath(a.uri) === toPath(item.uri));
-          if (ghost) await MediaLibrary.deleteAssetsAsync([ghost]);
-        } catch {}
+        await scanFile(toPath(item.uri)).catch(() => {});
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         delete dirCacheStore[currentPath];
         await loadDirectory(currentPath);
