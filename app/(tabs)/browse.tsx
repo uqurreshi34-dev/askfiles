@@ -587,6 +587,7 @@ export default function BrowseScreen() {
 
     const doRename = async () => {
       closeSheet();
+      setLoading(true);
       try {
         const destExists = await RNFS.exists(toPath(newUri));
         if (destExists) {
@@ -604,6 +605,8 @@ export default function BrowseScreen() {
         await loadDirectory(currentPath);
       } catch {
         Alert.alert('Error', `Could not ${isHidden ? 'unhide' : 'hide'} this file.`);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -1682,12 +1685,8 @@ export default function BrowseScreen() {
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
         </View>
       )}
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.blue} />
-        </View>
-      ) : (
-        <BrowseListView
+      <View style={{ flex: 1 }}>
+      <BrowseListView
           favouriteUris={favUriList}
           style={{ flex: 1 }}
           items={displayItems}
@@ -1769,8 +1768,18 @@ export default function BrowseScreen() {
             if (isBookmarkedSync(e.nativeEvent.uri)) removeBookmark(e.nativeEvent.uri);
             else addBookmark({ name: e.nativeEvent.name, path: e.nativeEvent.uri });
           }}
-        />
-      )}
+          />
+          {loading && (
+            <View style={{
+              ...StyleSheet.absoluteFillObject,
+              backgroundColor: colors.background + 'B3',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <ActivityIndicator size="large" color={colors.blue} />
+            </View>
+          )}
+        </View>
 
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH < SCREEN_HEIGHT ? 'height' : undefined}>
