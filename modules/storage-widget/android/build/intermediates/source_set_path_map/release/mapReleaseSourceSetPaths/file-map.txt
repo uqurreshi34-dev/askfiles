@@ -1,7 +1,0 @@
-expo.modules.storagewidget.storage-widget-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\build\generated\res\pngs\release
-expo.modules.storagewidget.storage-widget-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\build\generated\res\resValues\release
-expo.modules.storagewidget.storage-widget-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.storagewidget.storage-widget-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.storagewidget.storage-widget-release-4 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.storagewidget.storage-widget-main-5 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\src\main\res
-expo.modules.storagewidget.storage-widget-release-6 C:\Users\uqurr\Projects\askfiles\modules\storage-widget\android\src\release\res

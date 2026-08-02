@@ -1,7 +1,0 @@
-expo.modules.docindexer.doc-indexer-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\build\generated\res\pngs\release
-expo.modules.docindexer.doc-indexer-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\build\generated\res\resValues\release
-expo.modules.docindexer.doc-indexer-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.docindexer.doc-indexer-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.docindexer.doc-indexer-release-4 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.docindexer.doc-indexer-main-5 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\src\main\res
-expo.modules.docindexer.doc-indexer-release-6 C:\Users\uqurr\Projects\askfiles\modules\doc-indexer\android\src\release\res

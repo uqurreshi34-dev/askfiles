@@ -1,7 +1,0 @@
-expo.modules.pdfcreator.pdf-creator-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\build\generated\res\pngs\release
-expo.modules.pdfcreator.pdf-creator-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\build\generated\res\resValues\release
-expo.modules.pdfcreator.pdf-creator-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.pdfcreator.pdf-creator-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.pdfcreator.pdf-creator-release-4 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.pdfcreator.pdf-creator-main-5 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\src\main\res
-expo.modules.pdfcreator.pdf-creator-release-6 C:\Users\uqurr\Projects\askfiles\modules\pdf-creator\android\src\release\res

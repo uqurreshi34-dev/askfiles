@@ -1,7 +1,0 @@
-expo.modules.archiveextractor.archive-extractor-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\build\generated\res\pngs\release
-expo.modules.archiveextractor.archive-extractor-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\build\generated\res\resValues\release
-expo.modules.archiveextractor.archive-extractor-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.archiveextractor.archive-extractor-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.archiveextractor.archive-extractor-release-4 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.archiveextractor.archive-extractor-main-5 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\src\main\res
-expo.modules.archiveextractor.archive-extractor-release-6 C:\Users\uqurr\Projects\askfiles\modules\archive-extractor\android\src\release\res

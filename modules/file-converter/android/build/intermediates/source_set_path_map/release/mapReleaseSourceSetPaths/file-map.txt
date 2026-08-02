@@ -1,7 +1,0 @@
-expo.modules.fileconverter.file-converter-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\build\generated\res\pngs\release
-expo.modules.fileconverter.file-converter-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\build\generated\res\resValues\release
-expo.modules.fileconverter.file-converter-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.fileconverter.file-converter-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.fileconverter.file-converter-release-4 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.fileconverter.file-converter-main-5 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\src\main\res
-expo.modules.fileconverter.file-converter-release-6 C:\Users\uqurr\Projects\askfiles\modules\file-converter\android\src\release\res

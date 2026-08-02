@@ -1,7 +1,0 @@
-expo.modules.uploadmanager.upload-manager-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\build\generated\res\pngs\release
-expo.modules.uploadmanager.upload-manager-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\build\generated\res\resValues\release
-expo.modules.uploadmanager.upload-manager-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.uploadmanager.upload-manager-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.uploadmanager.upload-manager-release-4 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.uploadmanager.upload-manager-main-5 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\src\main\res
-expo.modules.uploadmanager.upload-manager-release-6 C:\Users\uqurr\Projects\askfiles\modules\upload-manager\android\src\release\res

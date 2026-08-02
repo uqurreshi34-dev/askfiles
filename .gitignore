@@ -44,3 +44,5 @@ modules/media-grid/android/
 google-services.json
 
 keystore.properties.master
+
+**/android/build/

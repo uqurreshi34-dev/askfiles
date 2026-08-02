@@ -1,7 +1,0 @@
-expo.modules.webdavclient.webdav-client-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\build\generated\res\pngs\release
-expo.modules.webdavclient.webdav-client-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\build\generated\res\resValues\release
-expo.modules.webdavclient.webdav-client-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.webdavclient.webdav-client-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.webdavclient.webdav-client-release-4 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.webdavclient.webdav-client-main-5 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\src\main\res
-expo.modules.webdavclient.webdav-client-release-6 C:\Users\uqurr\Projects\askfiles\modules\webdav-client\android\src\release\res

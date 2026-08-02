@@ -1,7 +1,0 @@
-com.askfiles.mobile.sharemodule.share-module-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\build\generated\res\pngs\release
-com.askfiles.mobile.sharemodule.share-module-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\build\generated\res\resValues\release
-com.askfiles.mobile.sharemodule.share-module-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-com.askfiles.mobile.sharemodule.share-module-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-com.askfiles.mobile.sharemodule.share-module-release-4 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\build\intermediates\merged_res\release\mergeReleaseResources
-com.askfiles.mobile.sharemodule.share-module-main-5 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\src\main\res
-com.askfiles.mobile.sharemodule.share-module-release-6 C:\Users\uqurr\Projects\askfiles\modules\share-module\android\src\release\res

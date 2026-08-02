@@ -1,7 +1,0 @@
-expo.modules.filereader.file-reader-pngs-0 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\build\generated\res\pngs\release
-expo.modules.filereader.file-reader-resValues-1 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\build\generated\res\resValues\release
-expo.modules.filereader.file-reader-mergeReleaseResources-2 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
-expo.modules.filereader.file-reader-mergeReleaseResources-3 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
-expo.modules.filereader.file-reader-release-4 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\build\intermediates\merged_res\release\mergeReleaseResources
-expo.modules.filereader.file-reader-main-5 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\src\main\res
-expo.modules.filereader.file-reader-release-6 C:\Users\uqurr\Projects\askfiles\modules\file-reader\android\src\release\res
