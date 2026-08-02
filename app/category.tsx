@@ -1402,12 +1402,8 @@ async function handleSsInfo() {
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
         </View>
       )}
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={config.color} />
-          <Text style={[styles.empty, { color: colors.textMuted, marginTop: 8 }]}>Loading...</Text>
-        </View>
-      ) : folderView && selectedFolder === null ? (
+      <View style={{ flex: 1 }}>
+      {folderView && selectedFolder === null ? (
         // Folder list view
         <FlatList
           data={sortedFolderGroups}
@@ -1788,6 +1784,17 @@ async function handleSsInfo() {
           }
         />
       )}
+      {loading && (
+        <View style={{
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: colors.background + 'B3',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <ActivityIndicator size="large" color={config.color} />
+        </View>
+      )}
+    </View>
       <Modal visible={showSheet} transparent animationType="none" onRequestClose={closeSheet}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={SCREEN_WIDTH > SCREEN_HEIGHT ? undefined : Platform.OS === 'android' ? 'height' : 'padding'}>
         <Pressable style={styles.overlay} onPress={closeSheet}>
