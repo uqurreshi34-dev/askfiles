@@ -661,6 +661,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                       .load(android.net.Uri.parse(item.uri))
                       .override(80, 80)
                       .centerCrop()
+                      .error(android.R.drawable.ic_menu_report_image)
                       .format(DecodeFormat.PREFER_RGB_565)
                       .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                       .dontAnimate()
