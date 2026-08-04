@@ -1634,7 +1634,7 @@ async function handleSsInfo() {
             />
           )}
         </>
-      ) : filteredItems.length === 0 ? (
+      ) : filteredItems.length === 0 && !loading ? (
         <View style={styles.centered}>
           <Ionicons name={config.icon as any} size={40} color={colors.textDisabled} />
           <Text style={[styles.empty, { color: colors.textMuted }]}>No {activeTab === 'All' ? config.title.toLowerCase() : activeTab + ' files'} found</Text>
