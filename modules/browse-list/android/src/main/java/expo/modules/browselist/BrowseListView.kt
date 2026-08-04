@@ -42,6 +42,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private var openingUri: String = ""
     private var movingUri: String = ""
     private var showFastScrollEnabled: Boolean = false
+    private var isLoading: Boolean = false
     private lateinit var emptyView: LinearLayout
     private lateinit var emptyIcon: ImageView
     private lateinit var emptyText: TextView
@@ -83,8 +84,13 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
     }
 
-    private fun parseColor(hex: String?, fallback: Int): Int {
+     private fun parseColor(hex: String?, fallback: Int): Int {
         return try { Color.parseColor(hex ?: return fallback) } catch (e: Exception) { fallback }
+    }
+
+     fun setLoading(value: Boolean) {
+        isLoading = value
+        updateEmptyState()
     }
 
      fun setFavouriteUris(uris: List<String>) {
@@ -368,10 +374,12 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     }
 
     private fun updateEmptyState() {
-        val isEmpty = items.isEmpty()
+        // Only claim the folder is empty once loading has finished — during a
+        // load, items is legitimately empty and the message would be wrong.
+        val isEmpty = items.isEmpty() && !isLoading
         emptyView.visibility = if (isEmpty) View.VISIBLE else View.GONE
-        recyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
-        alphabetIndex.visibility = if (!isEmpty && showFastScrollEnabled) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+        alphabetIndex.visibility = if (items.isNotEmpty() && showFastScrollEnabled) View.VISIBLE else View.GONE
     }
 
     fun setSectionMode(mode: String) {

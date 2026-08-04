@@ -63,6 +63,10 @@ class BrowseListModule : Module() {
             Prop("favouriteUris") { view: BrowseListView, uris: List<String> ->
                 view.setFavouriteUris(uris)
             }
+
+            Prop("loading") { view: BrowseListView, value: Boolean ->
+                view.setLoading(value)
+            }
         }
     }
 }

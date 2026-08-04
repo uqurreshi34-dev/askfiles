@@ -1687,6 +1687,7 @@ export default function BrowseScreen() {
       )}
       <View style={{ flex: 1 }}>
       <BrowseListView
+          loading={loading}
           favouriteUris={favUriList}
           style={{ flex: 1 }}
           items={displayItems}
