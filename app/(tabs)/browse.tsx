@@ -945,10 +945,26 @@ export default function BrowseScreen() {
   async function handleMultiInfo() {
     const files = Array.from(selectedItemsMap.values());
     const fileItems = files.filter(f => !f.isDirectory);
+    const folderCount = files.length - fileItems.length;
+    const title = `${files.length} item${files.length !== 1 ? 's' : ''} selected`;
+
+    if (folderCount > 0) {
+      // Selection includes folders — folders have no size in AskFiles (you size a
+      // folder by going inside and selecting its contents), so don't report a total
+      // that silently ignores them. Show the breakdown instead.
+      const fileCount = fileItems.length;
+      const parts: string[] = [];
+      if (fileCount > 0) parts.push(`${fileCount} file${fileCount !== 1 ? 's' : ''}`);
+      parts.push(`${folderCount} folder${folderCount !== 1 ? 's' : ''}`);
+      Alert.alert(title, parts.join(', '));
+      return;
+    }
+
+    // All files — safe to sum and show a real total.
     const paths = fileItems.map(f => toPath(f.uri));
     const sizes = await statFiles(paths);
     const totalSize = sizes.reduce((sum, s) => sum + s, 0);
-    Alert.alert(`${files.length} item${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
+    Alert.alert(title, `Total size: ${formatSize(totalSize)}`);
   }
 
   async function handleMultiRename(folderPath: string) {
