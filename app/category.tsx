@@ -1,6 +1,6 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates, readTextPreview } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, ScrollView, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, InteractionManager, useWindowDimensions, ScrollView, StatusBar, BackHandler } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -239,13 +239,24 @@ export default function CategoryScreen() {
     if (ssCurrent) isFavourite(ssCurrent.uri).then(setSsIsFav);
   }, [ssCurrent?.uri]);
 
-  useEffect(() => {
-    if (selectedFolder) {
-      const handler = () => { setSelectedFolder(null); return true; };
-      const sub = require('react-native').BackHandler.addEventListener('hardwareBackPress', handler);
+  // Hardware back must only intercept while THIS screen is focused. As a plain useEffect it
+  // stayed registered while the image editor was open and stole its back press: press 1
+  // silently cleared the folder in the background, press 2 popped the editor to a now-
+  // folderless screen (the folder list). Focus-scoping removes it on blur, so the editor
+  // owns its own back and we return to the folder's grid with selectedFolder intact.
+  useFocusEffect(
+    useCallback(() => {
+      const onBack = () => {
+        if (selectedFolder) {
+          setSelectedFolder(null);
+          return true;   // handled — stay in-screen, drop to folder list
+        }
+        return false;    // not in a folder — let normal back run
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
       return () => sub.remove();
-    }
-  }, [selectedFolder]);
+    }, [selectedFolder])
+  );
   
 
   function openSlideshow() {
@@ -458,11 +469,18 @@ async function handleSsInfo() {
   }, [category]);
 
   const firstFocusRef = useRef(true);
+  const [gridRemountKey, setGridRemountKey] = useState(0);
+  const pendingGridRemountRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      // The mount effect already loaded on first focus.
       if (firstFocusRef.current) { firstFocusRef.current = false; return; }
       refreshAll();
+      let raf = 0;
+      if (pendingGridRemountRef.current) {
+        pendingGridRemountRef.current = false;
+        raf = requestAnimationFrame(() => setGridRemountKey(k => k + 1));
+      }
+      return () => { if (raf) cancelAnimationFrame(raf); };
     }, [category])
   );
 
@@ -1457,7 +1475,7 @@ async function handleSsInfo() {
             <MediaGridView
               selectedUris={Array.from(selectedUris)}
               style={{ flex: 1 }}
-              key={`folder-${selectedFolder?.folderPath}`}
+              key={`folder-${selectedFolder?.folderPath}-${gridRemountKey}`}
               uris={selectedFolder?.uris ?? []}
               favouriteUris={favUriList}
               placeholderColor={colors.surface}
@@ -1647,7 +1665,7 @@ async function handleSsInfo() {
           <MediaGridView
             selectedUris={Array.from(selectedUris)}
             style={{ flex: 1 }}
-            key={`grid-${sortKey}-${searchQuery}`}
+            key={`grid-${sortKey}-${searchQuery}-${gridRemountKey}`}
             uris={gridUris}
             favouriteUris={favUriList}
             itemDates={gridDates}
@@ -1875,6 +1893,7 @@ async function handleSsInfo() {
                   if (!selectedItem) return;
                   const u = selectedItem.uri, n = selectedItem.name;
                   closeSheet();
+                  pendingGridRemountRef.current = true;
                   router.push({ pathname: '/image-editor', params: { uri: u, name: n } });
                 }}>
                   <Ionicons name="create-outline" size={22} color={colors.textSecondary} />
