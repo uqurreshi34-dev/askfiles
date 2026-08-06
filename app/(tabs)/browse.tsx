@@ -175,6 +175,7 @@ export default function BrowseScreen() {
   const favUriList = useMemo(() => favourites.map(f => f.uri), [favourites]);
   const { fileTags: allFileTags } = useFileTags();
   const selectedTagCount = allFileTags.find(f => f.uri === selectedItem?.uri)?.tagIds.length ?? 0;
+  const [detailsTitle, setDetailsTitle] = useState('File Info');
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -2006,9 +2007,10 @@ export default function BrowseScreen() {
                             if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
                           } catch {}
                           lines.push(...exif);
-                        setDetailsName(selectedItem.name);
-                        setDetailsData(lines);
-                        setShowDetailsModal(true);
+                          setDetailsName(selectedItem.name);
+                          setDetailsData(lines);
+                          setDetailsTitle(selectedItem.isDirectory ? 'Folder Info' : 'File Info');
+                          setShowDetailsModal(true);
                       }}
                     >
                       <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
@@ -2635,7 +2637,7 @@ export default function BrowseScreen() {
         </View>
       </Modal>
       {/* File Details Modal */}
-      <FileDetailsModal visible={showDetailsModal} name={detailsName} data={detailsData} onClose={() => setShowDetailsModal(false)} />
+      <FileDetailsModal visible={showDetailsModal} name={detailsName} title={detailsTitle} data={detailsData} onClose={() => setShowDetailsModal(false)} />
       <Modal visible={showMultiRename} transparent animationType="fade" onRequestClose={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.2 : 24, paddingBottom: SCREEN_WIDTH > SCREEN_HEIGHT ? 0 : SCREEN_HEIGHT * 0.3 }}
