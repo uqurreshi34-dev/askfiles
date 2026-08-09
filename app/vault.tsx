@@ -8,11 +8,10 @@ import { MediaViewerView } from 'media-viewer';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate, exifLines } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate, exifLines, ROOT_PATH } from '@/utils/files';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
@@ -20,7 +19,6 @@ import { openFile as openFileNative, scanFile, shareFiles } from '@/modules/shar
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { usePro } from '@/hooks/usePro';
-import { copyFileStream } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
@@ -33,7 +31,6 @@ import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
-const ROOT_PATH = 'file:///storage/emulated/0/';
 
 export default function VaultScreen() {
   const { colors } = useTheme();

@@ -11,9 +11,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName, exifLines } from '@/utils/files';
+import { getMimeType, isImageFile, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName, exifLines, ROOT_PATH } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
-import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
@@ -59,7 +58,6 @@ interface FileItem {
 
 const dirCacheStore: Record<string, FileItem[]> = {};
 const folderCountsStore: Record<string, number> = {};
-const ROOT_PATH = 'file:///storage/emulated/0/';
 const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 export default function BrowseScreen() {

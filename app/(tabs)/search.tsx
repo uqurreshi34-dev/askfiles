@@ -10,7 +10,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearch } from '@/hooks/useSearch';
 import { useAskAI } from '@/hooks/useAskAI';
-import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate, exifLines } from '@/utils/files';
+import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, getFriendlyPath, formatDate, exifLines, ROOT_PATH } from '@/utils/files';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
@@ -48,7 +48,6 @@ import { getDateGroup } from '@/hooks/useRecents';
 
 type Mode = 'search' | 'ask' | 'smart';
 
-const ROOT_PATH = 'file:///storage/emulated/0/';
 const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 const SUGGESTIONS = [

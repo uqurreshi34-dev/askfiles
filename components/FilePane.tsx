@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { isImageFile, getFileColor, getFileIcon, formatSize, formatDate, toPath } from '@/utils/files';
+import { isImageFile, getFileColor, getFileIcon, formatSize, formatDate, toPath, ROOT_PATH } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { readDirectory, countFolder, createDirectory, getShowHidden } from 'file-reader';
 import { startWatching, stopWatching, addFileChangeListener } from '@/modules/file-watcher';
@@ -41,7 +41,6 @@ interface FilePaneProps {
     onPathChange?: (path: string) => void;
   }
 
-const ROOT_PATH = 'file:///storage/emulated/0/';
 const dirCache: Record<string, FileItem[]> = {};
 const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
