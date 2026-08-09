@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ROOT_PATH } from '@/utils/files';
+import { useBookmarks } from '@/hooks/useBookmarks';
 
 interface Props {
   count: number;
@@ -10,20 +11,22 @@ interface Props {
   insetRight: number;
   insetLeft: number;
   insetBottom: number;
+  screenHeight: number;
   colors: any;
-  onBrowse: (mode: 'move' | 'copy') => void;
   onMove: (destPath: string, mode: 'move' | 'copy') => void;
 }
 
-const TRAY_DESTS = [
-  { key: 'dcim', label: 'DCIM', icon: 'camera-outline', path: ROOT_PATH + 'DCIM' },
-  { key: 'docs', label: 'Docs', icon: 'document-outline', path: ROOT_PATH + 'Documents' },
-  { key: 'downloads', label: 'Downloads', icon: 'download-outline', path: ROOT_PATH + 'Download' },
+// Common destinations — always present so the tray is never empty.
+const COMMON_DESTS = [
+  { label: 'DCIM', icon: 'camera-outline', path: ROOT_PATH + 'DCIM' },
+  { label: 'Docs', icon: 'document-outline', path: ROOT_PATH + 'Documents' },
+  { label: 'Downloads', icon: 'download-outline', path: ROOT_PATH + 'Download' },
 ];
 
-export default function MovePill({ count, busy, toolbarHeight, insetRight, insetLeft, insetBottom, colors, onBrowse, onMove }: Props) {
+export default function MovePill({ count, busy, toolbarHeight, insetRight, insetLeft, insetBottom, screenHeight, colors, onMove }: Props) {
   const [trayOpen, setTrayOpen] = useState(false);
   const [mode, setMode] = useState<'move' | 'copy'>('move');
+  const { bookmarks } = useBookmarks();
 
   const openTray = () => {
     if (count === 0) return;
@@ -38,6 +41,19 @@ export default function MovePill({ count, busy, toolbarHeight, insetRight, inset
 
   if (count === 0 || busy) return null;
 
+  // Common destinations first, then bookmarks — de-duplicated so a bookmarked
+  // common folder doesn't appear twice. O(bookmarks), computed once per open.
+  const commonPaths = new Set(COMMON_DESTS.map(d => d.path.replace(/\/$/, '')));
+  const bookmarkChips = bookmarks
+    .filter(bm => !commonPaths.has(bm.path.replace(/\/$/, '')))
+    .map(bm => ({ label: bm.name, icon: 'bookmark' as const, path: bm.path, isBookmark: true }));
+  const chips = [
+    ...COMMON_DESTS.map(d => ({ ...d, isBookmark: false })),
+    ...bookmarkChips,
+  ];
+
+  const maxChipAreaHeight = Math.max(120, screenHeight * 0.35);
+
   return (
     <>
       {trayOpen && (
@@ -47,10 +63,6 @@ export default function MovePill({ count, busy, toolbarHeight, insetRight, inset
             onPress={() => setTrayOpen(false)}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 25 }}
           />
-          {/* Floating card: bounded by safe-area inset + a base 16px margin so it
-              never touches the screen edge (insets can be 0 even in landscape) and
-              never runs under a cutout. Anchored flush above the measured toolbar,
-              so it sits cleanly in both orientations. */}
           <View style={{ position: 'absolute', left: insetLeft + 16, right: insetRight + 16, bottom: toolbarHeight + insetBottom, zIndex: 26, backgroundColor: colors.background, borderRadius: 16, borderWidth: 0.5, borderColor: colors.border, padding: 16, marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
@@ -73,31 +85,31 @@ export default function MovePill({ count, busy, toolbarHeight, insetRight, inset
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {TRAY_DESTS.map(d => (
-                <TouchableOpacity
-                  key={d.key}
-                  onPress={() => moveInto(d.path)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 }}
-                >
-                  <Ionicons name={d.icon as any} size={16} color={colors.textPrimary} />
-                  <Text style={{ fontSize: 13, color: colors.textPrimary }}>{d.label}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                onPress={() => { setTrayOpen(false); onBrowse(mode); }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 }}
-              >
-                <Ionicons name="folder-outline" size={16} color={colors.blue} />
-                <Text style={{ fontSize: 13, color: colors.blue }}>Browse…</Text>
-              </TouchableOpacity>
-            </View>
+
+            <ScrollView
+              style={{ maxHeight: maxChipAreaHeight }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {chips.map(c => (
+                  <TouchableOpacity
+                    key={c.path}
+                    onPress={() => moveInto(c.path)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, maxWidth: '100%' }}
+                  >
+                    <Ionicons name={c.icon as any} size={14} color={c.isBookmark ? colors.blue : colors.textPrimary} />
+                    <Text style={{ fontSize: 13, color: colors.textPrimary }} numberOfLines={1}>{c.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </>
       )}
 
       {!trayOpen && (
-        <View style={{ position: 'absolute', bottom: toolbarHeight + 60, right: insetRight + 16, zIndex: 30 }}>
+        <View style={{ position: 'absolute', bottom: toolbarHeight + insetBottom, right: insetRight + 16, zIndex: 30 }}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={openTray}

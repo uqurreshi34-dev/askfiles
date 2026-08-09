@@ -72,9 +72,9 @@ function getDlTab(name: string): string {
 
 const TAB_MIMES: Record<string, string[]> = {
   'PDF': ['application/pdf'],
-  'Word': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/rtf', 'application/vnd.oasis.opendocument.text'],
+  'Word': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/rtf', 'application/vnd.oasis.opendocument.text'],
   'Excel': ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/vnd.oasis.opendocument.spreadsheet'],
-  'Other': ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.oasis.opendocument.presentation'],
+  'Other': ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.oasis.opendocument.presentation', 'text/plain'],
   'APK': ['application/vnd.android.package-archive'],
   'Docs': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain', 'text/csv'],
 };
@@ -2178,16 +2178,10 @@ async function handleSsInfo() {
           insetLeft={insets.left}
           insetBottom={insets.bottom}
           colors={colors}
+          screenHeight={SCREEN_HEIGHT}
           onMove={(dest, mode) => {
             pendingMultiItems.current = Array.from(selectedItemsMap.values());
             handleMultiPaste(dest, mode);
-          }}
-          onBrowse={(mode) => {
-            pendingMultiItems.current = Array.from(selectedItemsMap.values());
-            setMultiPasteMode(mode);
-            setPickerPath(ROOT_PATH);
-            loadPickerDir(ROOT_PATH);
-            setShowPicker(true);
           }}
         />
           {sharing && (
