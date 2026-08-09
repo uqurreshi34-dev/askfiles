@@ -1,3 +1,5 @@
+export const ROOT_PATH = 'file:///storage/emulated/0/';
+
 export function getMimeType(name: string): string {
     const ext = name.split('.').pop()?.toLowerCase();
     const mimeMap: Record<string, string> = {

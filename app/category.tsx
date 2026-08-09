@@ -7,7 +7,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName, exifLines } from '@/utils/files';
+import { isImageFile, getMimeType, formatSize, getFileColor, formatDate, getFileIcon, toPath, getFriendlyPath, uniqueName, exifLines, ROOT_PATH } from '@/utils/files';
 import { addRecent } from '@/hooks/useRecents';
 import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
@@ -41,6 +41,7 @@ import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
 import { recordOpen, getStats } from 'file-stats';
+import MovePill from '@/components/MovePill';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -80,8 +81,6 @@ const TAB_MIMES: Record<string, string[]> = {
 
 const SS_SPEEDS = [2000, 4000, 7000, 10000];
 const SS_SPEED_LABELS: Record<number, string> = { 2000: '2s', 4000: '4s', 7000: '7s', 10000: '10s' };
-
-const ROOT_PATH = 'file:///storage/emulated/0/';
 
 const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -192,6 +191,7 @@ export default function CategoryScreen() {
   const { favourites } = useFavourites();
   const favSet = useMemo(() => new Set(favourites.map(f => f.uri)), [favourites]);
   const favUriList = useMemo(() => favourites.map(f => f.uri), [favourites]);
+  const [toolbarHeight, setToolbarHeight] = useState(0);
   const { fileTags: allFileTags } = useFileTags();
   const fileTagsMap = useMemo(() => {
     const m: Record<string, string[]> = {};
@@ -563,12 +563,17 @@ async function handleSsInfo() {
     setShowPicker(true);
   }
 
-  async function handleMultiPaste() {
+  async function handleMultiPaste(destOverride?: string, modeOverride?: 'copy' | 'move') {
     const files = pendingMultiItems.current;
     if (!files.length) return;
     setShowPicker(false);
 
-    const destDir = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
+    // Destination + mode come from the tray when passed, else from the picker's state
+    // (so the existing picker path is unchanged). destBase is the folder path used
+    // everywhere below in place of the raw pickerPath.
+    const destBase = destOverride ?? pickerPath;
+    const mode = modeOverride ?? multiPasteMode;
+    const destDir = destBase.endsWith('/') ? destBase : destBase + '/';
 
     // Check all duplicates upfront
     const dstPaths = files.map(f => toPath(destDir + f.name));
@@ -630,43 +635,51 @@ async function handleSsInfo() {
     let copiedCount = 0;
     const sub = addCopyProgressListener(() => {});
     try {
+      let failedCount = 0;
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const finalName = finalNames.get(file.uri);
-        if (!finalName) continue;                    // was skipped
+        if (!finalName) continue;
         const dst = toPath(destDir + finalName);
         const src = toPath(file.uri);
         if (i % 10 === 0 || i === files.length - 1) {
           setMultiPasteProgress({ current: copiedCount + 1, total: actualTotal, name: finalName });
         }
 
-        if (multiPasteMode === 'copy') {
-          await copyFileStream(file.uri, dst);
-          await scanFile(dst).catch(() => {});
-        } else {
-          await moveFileStream(src, dst);
-          await syncPathReferences(file.uri, destDir + finalName, finalName);
-          await scanFile(dst).catch(() => {});
+        try {
+          if (mode === 'copy') {
+            await copyFileStream(file.uri, dst);
+            await scanFile(dst).catch(() => {});
+          } else {
+            await moveFileStream(src, dst);
+            await syncPathReferences(file.uri, destDir + finalName, finalName);
+            await scanFile(dst).catch(() => {});
+          }
+          copiedCount++;
+        } catch {
+          failedCount++;
         }
-        copiedCount++;
       }
 
-      if (multiPasteMode === 'move') {
+      if (mode === 'move') {
         const movedUris = new Set(finalNames.keys());   // only the ones actually moved
         setItems(prev => prev.filter(f => !movedUris.has(f.uri)));
       }
       setSelectMode(false);
       setSelectedUris(new Set());
       setSelectedItemsMap(new Map());
-      Alert.alert(
-        'Success',
-        copiedCount < actualTotal
-          ? `${copiedCount} item${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully. ${actualTotal - copiedCount} skipped (duplicate names).`
-          : `${copiedCount} item${copiedCount !== 1 ? 's' : ''} ${multiPasteMode === 'copy' ? 'copied' : 'moved'} successfully.`
+      const verb = mode === 'copy' ? 'copied' : 'moved';
+      const parts: string[] = [];
+      if (copiedCount > 0) parts.push(`${copiedCount} item${copiedCount !== 1 ? 's' : ''} ${verb}`);
+      const skippedDupes = actualTotal - copiedCount - failedCount;
+      if (skippedDupes > 0) parts.push(`${skippedDupes} skipped (duplicate names)`);
+      if (failedCount > 0) parts.push(`${failedCount} failed (unreadable or corrupted)`);
+      Alert.alert(failedCount > 0 ? 'Partly done' : 'Success', parts.join('. ') + '.');
+      Haptics.notificationAsync(
+        failedCount > 0 ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success
       );
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Error', `Could not ${multiPasteMode} files.`);
+      Alert.alert('Error', `Could not ${mode} files.`);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -2105,7 +2118,7 @@ async function handleSsInfo() {
             <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
               <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.pickerPasteBtn} onPress={pendingMultiItems.current.length > 0 ? handleMultiPaste : handlePaste}>
+            <TouchableOpacity style={styles.pickerPasteBtn} onPress={() => (pendingMultiItems.current.length > 0 ? handleMultiPaste() : handlePaste())}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.pickerPasteText}>
                 {pendingMultiItems.current.length > 0
@@ -2157,13 +2170,33 @@ async function handleSsInfo() {
       </Modal>
       {selectMode && selectedUris.size > 0 && (
         <>
+        <MovePill
+          count={selectedUris.size}
+          busy={multiPasting || deleting || vaulting || sharing}
+          toolbarHeight={toolbarHeight}
+          insetRight={insets.right}
+          insetLeft={insets.left}
+          insetBottom={insets.bottom}
+          colors={colors}
+          onMove={(dest, mode) => {
+            pendingMultiItems.current = Array.from(selectedItemsMap.values());
+            handleMultiPaste(dest, mode);
+          }}
+          onBrowse={(mode) => {
+            pendingMultiItems.current = Array.from(selectedItemsMap.values());
+            setMultiPasteMode(mode);
+            setPickerPath(ROOT_PATH);
+            loadPickerDir(ROOT_PATH);
+            setShowPicker(true);
+          }}
+        />
           {sharing && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.blue} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>Preparing files for sharing...</Text>
             </View>
           )}
-        <View style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: insets.bottom + 12 }}>
+        <View onLayout={(e) => setToolbarHeight(e.nativeEvent.layout.height)} style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: 12 }}>
         <TouchableOpacity
           onPress={handleMultiCopy}
           disabled={sharing || vaulting || deleting || multiPasting}
