@@ -1453,7 +1453,7 @@ export default function BrowseScreen() {
       const chips = (fileTagsMap[uri] ?? [])
         .map(id => tagById.get(id))
         .filter((t): t is NonNullable<typeof t> => !!t)
-        .map(t => ({ name: t.name, color: t.color }));
+        .map(t => ({ name: t.name, color: t.color, icon: t.icon }));
       if (chips.length) out[uri] = chips;
     }
     return out;

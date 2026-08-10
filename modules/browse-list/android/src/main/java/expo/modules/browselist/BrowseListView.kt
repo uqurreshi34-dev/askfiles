@@ -53,6 +53,16 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val headerDecoration = StickyHeaderDecoration(
         context.resources.displayMetrics.density
     ) { position -> getSectionLabel(position) }
+    private val tagIconMap = mapOf(
+        "pricetag-outline" to R.drawable.ic_tag_pricetag,
+        "folder-outline" to R.drawable.ic_tag_folder,
+        "star-outline" to R.drawable.ic_tag_star,
+        "briefcase-outline" to R.drawable.ic_tag_briefcase,
+        "home-outline" to R.drawable.ic_tag_home,
+        "heart-outline" to R.drawable.ic_tag_heart,
+        "shield-outline" to R.drawable.ic_tag_shield,
+        "camera-outline" to R.drawable.ic_tag_camera,
+    )
 
     data class ColorSet(
         val textPrimary: Int = Color.BLACK,
@@ -101,12 +111,16 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     fun setFileTags(raw: Map<String, List<Map<String, Any?>>>) {
         tagsByUri = raw.mapValues { (_, list) ->
-            list.map { TagChip(it["name"] as? String ?: "", it["color"] as? String ?: "#888888") }
+            list.map { TagChip(
+                it["name"] as? String ?: "",
+                it["color"] as? String ?: "#888888",
+                it["icon"] as? String ?: ""
+            ) }
         }
         adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_TAGS)
     }
 
-    data class TagChip(val name: String, val color: String)
+    data class TagChip(val name: String, val color: String, val icon: String)
 
     data class FileItem(
         val name: String,
@@ -726,6 +740,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             while (tagRow.childCount < tags.size) {
                 val chip = TextView(ctx).apply {
                     textSize = 10f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD) 
                     setPadding(dp(6), dp(2), dp(6), dp(2))
                     background = GradientDrawable().apply { cornerRadius = dp(10).toFloat() }
                     val lp = com.google.android.flexbox.FlexboxLayout.LayoutParams(
@@ -747,6 +762,21 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 val color = try { Color.parseColor(tags[i].color) } catch (e: Exception) { Color.GRAY }
                 chip.setTextColor(color)
                 (chip.background as GradientDrawable).setColor((color and 0x00FFFFFF) or 0x22000000)
+
+                // Icon as a compound drawable (start of the text), tinted to the tag colour.
+                val iconRes = tagIconMap[tags[i].icon]
+                if (iconRes != null) {
+                    val d = androidx.core.content.ContextCompat.getDrawable(ctx, iconRes)?.mutate()
+                    if (d != null) {
+                        val size = dp(12)
+                        d.setBounds(0, 0, size, size)
+                        d.setTint(color)
+                        chip.setCompoundDrawables(d, null, null, null)
+                        chip.compoundDrawablePadding = dp(3)
+                    }
+                } else {
+                    chip.setCompoundDrawables(null, null, null, null)  // no icon for this tag
+                }
             }
         }
 
