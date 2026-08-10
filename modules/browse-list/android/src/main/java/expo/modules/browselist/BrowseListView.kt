@@ -36,6 +36,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private var items: List<FileItem> = emptyList()
     private var folderCounts: Map<String, Int> = emptyMap()
     private var favouriteUris: Set<String> = emptySet()
+    private var tagsByUri: Map<String, List<TagChip>> = emptyMap()
     private var selectedUris: Set<String> = emptySet()
     private var bookmarkedUris: Set<String> = emptySet()
     private var selectMode: Boolean = false
@@ -97,6 +98,15 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         favouriteUris = uris.toHashSet()
         adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_META)
     }
+
+    fun setFileTags(raw: Map<String, List<Map<String, Any?>>>) {
+        tagsByUri = raw.mapValues { (_, list) ->
+            list.map { TagChip(it["name"] as? String ?: "", it["color"] as? String ?: "#888888") }
+        }
+        adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_TAGS)
+    }
+
+    data class TagChip(val name: String, val color: String)
 
     data class FileItem(
         val name: String,
@@ -507,6 +517,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                     PAYLOAD_SELECTION -> holder.bindSelection(item)
                     PAYLOAD_SELECTION_PREVIEW -> holder.bindSelection(item)
                     PAYLOAD_META -> holder.bindMeta(item)
+                    PAYLOAD_TAGS -> holder.bindTags(item)
                     PAYLOAD_BOOKMARK -> holder.bindBookmark(item)
                     PAYLOAD_OPENING -> holder.bindOpening(item)
                 }
@@ -533,6 +544,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         private val chevron: ImageView = itemView.findViewById(R.id.chevron)
         private val checkIcon: ImageView = itemView.findViewById(R.id.checkIcon)
         private val loadingIndicator: View = itemView.findViewById(R.id.loadingIndicator)
+        private val tagRow: com.google.android.flexbox.FlexboxLayout = itemView.findViewById(R.id.tagRow)
 
         fun bind(item: FileItem) {
             nameText.text = item.name
@@ -543,6 +555,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             bindBookmark(item)
             bindOpening(item)
             bindIcon(item)
+            bindTags(item)
 
             itemView.setOnClickListener {
                 onItemTap(mapOf(
@@ -697,6 +710,46 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             }
         }
 
+        fun bindTags(item: FileItem) {
+            val tags = tagsByUri[item.uri].orEmpty()
+            if (tags.isEmpty()) {
+                if (tagRow.childCount > 0) tagRow.removeAllViews()
+                tagRow.visibility = View.GONE
+                return
+            }
+            tagRow.visibility = View.VISIBLE
+            val ctx = tagRow.context
+            val density = ctx.resources.displayMetrics.density
+            fun dp(v: Int) = (v * density).toInt()
+
+            // Reuse existing chip views; only inflate more if this row needs more.
+            while (tagRow.childCount < tags.size) {
+                val chip = TextView(ctx).apply {
+                    textSize = 10f
+                    setPadding(dp(6), dp(2), dp(6), dp(2))
+                    background = GradientDrawable().apply { cornerRadius = dp(10).toFloat() }
+                    val lp = com.google.android.flexbox.FlexboxLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                    ).apply { setMargins(0, 0, dp(4), dp(4)) }
+                    layoutParams = lp
+                }
+                tagRow.addView(chip)
+            }
+            // Hide any surplus chips from a previous, longer binding.
+            for (i in tags.size until tagRow.childCount) {
+                tagRow.getChildAt(i).visibility = View.GONE
+            }
+            // Fill the chips we need.
+            for (i in tags.indices) {
+                val chip = tagRow.getChildAt(i) as TextView
+                chip.visibility = View.VISIBLE
+                chip.text = tags[i].name
+                val color = try { Color.parseColor(tags[i].color) } catch (e: Exception) { Color.GRAY }
+                chip.setTextColor(color)
+                (chip.background as GradientDrawable).setColor((color and 0x00FFFFFF) or 0x22000000)
+            }
+        }
+
         fun recycle() {
             Glide.with(iconImage.context).clear(iconImage)
             iconImage.setImageDrawable(null)
@@ -768,6 +821,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     companion object {
         private const val PAYLOAD_SELECTION = "selection"
         private const val PAYLOAD_META = "meta"
+        private const val PAYLOAD_TAGS = "PAYLOAD_TAGS"
         private const val PAYLOAD_BOOKMARK = "bookmark"
         private const val PAYLOAD_OPENING = "opening"
         private const val PAYLOAD_SELECTION_PREVIEW = "selection_preview"

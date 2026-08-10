@@ -67,6 +67,11 @@ class BrowseListModule : Module() {
             Prop("loading") { view: BrowseListView, value: Boolean ->
                 view.setLoading(value)
             }
+
+            Prop("fileTags") { view: BrowseListView, tags: Map<String, Any?> ->
+                @Suppress("UNCHECKED_CAST")
+                view.setFileTags(tags as Map<String, List<Map<String, Any?>>>)
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import { StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Image, Modal, TextInput, Alert,
   Animated, Pressable, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions, StatusBar
 } from 'react-native';
+import { useTags } from '@/hooks/useTags';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -174,6 +175,12 @@ export default function BrowseScreen() {
   const { fileTags: allFileTags } = useFileTags();
   const selectedTagCount = allFileTags.find(f => f.uri === selectedItem?.uri)?.tagIds.length ?? 0;
   const [detailsTitle, setDetailsTitle] = useState('File Info');
+  const { tags } = useTags();
+  const fileTagsMap = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    allFileTags.forEach(f => { if (f.tagIds.length) m[f.uri] = f.tagIds; });
+    return m;
+  }, [allFileTags]);
 
   useEffect(() => {
     getStorageVolumes().then((volumes: any) => setVolumes(volumes));
@@ -1438,6 +1445,20 @@ export default function BrowseScreen() {
 
   const shownCount = dragCount || selectedUris.size;
 
+  const fileTagsForNative = useMemo(() => {
+    // Build an id → tag lookup once, so we don't scan the tags array per id.
+    const tagById = new Map(tags.map(t => [t.id, t]));
+    const out: Record<string, { name: string; color: string }[]> = {};
+    for (const uri in fileTagsMap) {
+      const chips = (fileTagsMap[uri] ?? [])
+        .map(id => tagById.get(id))
+        .filter((t): t is NonNullable<typeof t> => !!t)
+        .map(t => ({ name: t.name, color: t.color }));
+      if (chips.length) out[uri] = chips;
+    }
+    return out;
+  }, [fileTagsMap, tags]);
+
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.background }]}>
@@ -1704,6 +1725,7 @@ export default function BrowseScreen() {
       <BrowseListView
           loading={loading}
           favouriteUris={favUriList}
+          fileTags={fileTagsForNative}
           style={{ flex: 1 }}
           items={displayItems}
           folderCounts={folderCounts}
