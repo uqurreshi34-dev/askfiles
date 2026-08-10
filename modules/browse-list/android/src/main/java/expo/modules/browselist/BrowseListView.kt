@@ -332,10 +332,19 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        if (recyclerView.adapter == null) {
+            recyclerView.adapter = adapter
+        }
         recyclerView.requestLayout()
     }
 
     override fun onDetachedFromWindow() {
+        // Halt scrolling and detach the adapter BEFORE super/teardown, so a fling
+        // that's still feeding recycles can't complete against a RecyclerView that's
+        // being destroyed (the recycleViewHolderInternal / IllegalArgumentException
+        // crash on scroll-then-fast-back). Order matters: stop, detach, then super.
+        recyclerView.stopScroll()
+        recyclerView.adapter = null
         super.onDetachedFromWindow()
         try {
             Glide.get(context).trimMemory(
