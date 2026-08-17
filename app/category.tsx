@@ -41,6 +41,7 @@ import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
 import { recordOpen, getStats } from 'file-stats';
 import MovePill from '@/components/MovePill';
+import Thumb from '@/components/Thumb';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -1456,7 +1457,7 @@ async function handleSsInfo() {
               <View style={[styles.icon, { backgroundColor: colors.yellow + '22', overflow: 'hidden' }]}>
                 {(category === 'images' || category === 'videos') ? (
                   category === 'images' ? (
-                    <Image source={{ uri: group.previewUri }} style={styles.thumb} resizeMode="cover" />
+                    <Thumb uri={group.previewUri} style={styles.thumb} bg={colors.surface} iconColor={colors.textSecondary} />
                   ) : (
                     <VideoThumb uri={group.previewUri} style={styles.thumb} />
                   )
@@ -1571,7 +1572,7 @@ async function handleSsInfo() {
                       </View>
                     )}
                     <View style={[styles.icon, { backgroundColor: getFileColor(item.name) + '22', overflow: 'hidden' }]}>
-                      <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                      <Thumb uri={item.uri} style={styles.thumb} bg={colors.surface} iconColor={colors.textSecondary} />
                     </View>
                     <View style={styles.info}>
                       <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
@@ -1766,7 +1767,7 @@ async function handleSsInfo() {
                     )}
                     <View style={[styles.icon, { backgroundColor: getFileColor(item.name) + '22', overflow: 'hidden' }]}>
                       {isImg ? (
-                        <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                        <Thumb uri={item.uri} style={styles.thumb} bg={colors.surface} iconColor={colors.textSecondary} />
                       ) : isVideoFile(item.name) ? (
                         <VideoThumb uri={item.uri} style={styles.thumb} />
                       ) : (
@@ -2100,7 +2101,7 @@ async function handleSsInfo() {
                     {item.isDirectory ? (
                       <Ionicons name="folder" size={22} color={colors.yellow} />
                     ) : isImageFile(item.name) ? (
-                      <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
+                      <Thumb uri={item.uri} style={styles.thumb} bg={colors.surface} iconColor={colors.textSecondary} />
                     ) : isVideoFile(item.name) ? (
                       <VideoThumb uri={item.uri} style={styles.thumb} />
                     ) : (

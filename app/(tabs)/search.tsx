@@ -44,7 +44,7 @@ import * as Haptics from 'expo-haptics';
 import QRCode from 'react-native-qrcode-svg';
 import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches, RecentSearch } from 'recent-searches';
 import { getDateGroup } from '@/hooks/useRecents';
-
+import Thumb from '@/components/Thumb';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -843,7 +843,7 @@ export default function SearchScreen() {
                       {item.isDirectory ? (
                         <Ionicons name="folder" size={22} color={color} />
                       ) : isImageFile(item.name) ? (
-                        <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                        <Thumb uri={item.uri} style={styles.thumbnail} bg={colors.surface} iconColor={colors.textSecondary} />
                       ) : isVideoFile(item.name) ? (
                         <VideoThumb uri={item.uri} style={styles.thumbnail} />
                       ) : (
@@ -1132,7 +1132,7 @@ export default function SearchScreen() {
                             {item.isDirectory ? (
                               <Ionicons name="folder" size={22} color={color} />
                             ) : isImageFile(item.name) ? (
-                              <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
+                              <Thumb uri={item.uri} style={styles.thumbnail} bg={colors.surface} iconColor={colors.textSecondary} />
                             ) : isVideoFile(item.name) ? (
                               <VideoThumb uri={item.uri} style={styles.thumbnail} />
                             ) : (
