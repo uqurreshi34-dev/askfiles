@@ -781,7 +781,16 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         }
 
         fun recycle() {
-            Glide.with(iconImage.context).clear(iconImage)
+            // Bind Glide to the VIEW, not the activity context. Glide.with(View)
+            // no-ops gracefully if the host activity is already destroyed, whereas
+            // Glide.with(context) throws "cannot start a load for a destroyed
+            // activity" when recycle() runs during teardown (onDestroy → recycle).
+            try {
+                Glide.with(iconImage).clear(iconImage)
+            } catch (_: IllegalArgumentException) {
+                // Host already gone — nothing to clear; the request is being torn
+                // down with the activity anyway.
+            }
             iconImage.setImageDrawable(null)
         }
     }
