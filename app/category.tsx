@@ -1,4 +1,4 @@
-import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates, readTextPreview } from 'file-reader';
+import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates, batchRename, readTextPreview, readDocxPreview } from 'file-reader';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, InteractionManager, useWindowDimensions, ScrollView, StatusBar, BackHandler } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -34,7 +34,6 @@ import { extractTextFromImage, extractVideoFrames, labelImage } from '@/modules/
 import { MediaSlideshowView } from 'media-slideshow';
 import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
-import { batchRename } from 'file-reader';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
@@ -509,6 +508,8 @@ async function handleSsInfo() {
       readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
     } else if (lowerName.endsWith('.pdf')) {
       DocIndexer.getPdfPreview(toPath(item.uri)).then(text => setTxtPreview(text || null)).catch(() => setTxtPreview(null));
+    } else if (lowerName.endsWith('.docx')) {
+      readDocxPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
     }
   }
 
@@ -1862,7 +1863,7 @@ async function handleSsInfo() {
                 </View>
               </View>
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-              {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
+              {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf') || selectedItem?.name.toLowerCase().endsWith('.docx')) && (
                 <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
                     {txtPreview}

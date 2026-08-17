@@ -66,6 +66,74 @@ class FileReaderModule : Module() {
       }
     }
 
+    // Extracts the first lines of readable body text from a .docx (a zip). The
+    // visible text lives in <w:t> elements inside word/document.xml — pulling ONLY
+    // those avoids the table-property XML soup that broke naive tag-stripping before.
+    // Streams document.xml and STOPS once enough text is gathered, so a large doc is
+    // never fully loaded (no OOM). Every stream is .use{}-closed. Returns up to 3
+    // lines / 300 chars, or null if unreadable.
+    AsyncFunction("readDocxPreview") { path: String ->
+      try {
+        val file = File(path)
+        if (!file.exists() || !file.isFile) return@AsyncFunction null
+
+        java.util.zip.ZipFile(file).use { zip ->
+          val entry = zip.getEntry("word/document.xml") ?: return@AsyncFunction null
+
+          zip.getInputStream(entry).use { stream ->
+            val reader = stream.bufferedReader(Charsets.UTF_8)
+            val sb = StringBuilder()
+            val buffer = CharArray(4096)
+            // Read in chunks, stop early once we have plenty to work with (~2KB of
+            // raw XML comfortably contains the first few paragraphs of text).
+            var totalRead = 0
+            while (totalRead < 20000) { // hard cap: never read more than ~20KB of XML
+              val n = reader.read(buffer)
+              if (n == -1) break
+              sb.append(buffer, 0, n)
+              totalRead += n
+              // Once we have several <w:t> hits, we can stop early.
+              if (sb.count { it == '>' } > 40 && Regex("<w:t[ >]").findAll(sb).count() >= 6) break
+            }
+
+            val xml = sb.toString()
+
+            // Pull text from every <w:t ...>...</w:t>. Paragraphs are <w:p>; treat
+            // each as a line break so lines read naturally.
+            // First, mark paragraph boundaries, then extract w:t contents in order.
+            val text = StringBuilder()
+            val matcher = Regex("<w:p[ >]|<w:t[^>]*>([^<]*)</w:t>")
+            for (m in matcher.findAll(xml)) {
+              val captured = m.groupValues[1]
+              if (m.value.startsWith("<w:p")) {
+                if (text.isNotEmpty() && !text.endsWith("\n")) text.append("\n")
+              } else if (captured.isNotEmpty()) {
+                text.append(captured)
+              }
+            }
+
+            // Un-escape the handful of XML entities that appear in text.
+            val decoded = text.toString()
+              .replace("&amp;", "&")
+              .replace("&lt;", "<")
+              .replace("&gt;", ">")
+              .replace("&quot;", "\"")
+              .replace("&apos;", "'")
+
+            val lines = decoded.lines()
+              .map { it.trim() }
+              .filter { it.isNotEmpty() }
+              .take(3)
+              .joinToString("\n")
+
+            lines.take(300).ifEmpty { null }
+          }
+        }
+      } catch (e: Exception) {
+        null
+      }
+    }
+
     Function("getShowHidden") {
       val prefs = appContext.reactContext
           ?.getSharedPreferences("askfiles_prefs", android.content.Context.MODE_PRIVATE)
