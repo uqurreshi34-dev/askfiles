@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, View, TouchableOpacity, Text, StatusBar, StyleSheet } from 'react-native';
+import { Modal, View, TouchableOpacity, Text, StatusBar, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MediaPlayerView } from 'media-player';
@@ -93,6 +93,11 @@ useEffect(() => {
               if (e.nativeEvent.duration) setDuration(e.nativeEvent.duration);
             }}
             onComplete={() => setPaused(true)}
+            onError={() => {
+              Alert.alert('Cannot play video', 'This file could not be opened. It may have been moved or deleted.', [
+                { text: 'OK', onPress: onClose },
+              ]);
+            }}
             style={StyleSheet.absoluteFill}
           />
         )}

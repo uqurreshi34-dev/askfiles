@@ -5,6 +5,7 @@ export interface MediaPlayerProps {
   paused?: boolean;
   onTap?: (event: any) => void;
   onComplete?: (event: any) => void;
+  onError?: (event: { nativeEvent: { what: number; extra: number } }) => void;
   style?: ViewStyle;
   speed?: number;
   onPlayingStateChange?: (event: { nativeEvent: { isPlaying: boolean } }) => void;

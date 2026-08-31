@@ -23,6 +23,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
     private val onComplete by EventDispatcher()
     private val onError by EventDispatcher()
     private val onPlayingStateChange by EventDispatcher()
+    private var seeking = false
 
     private var currentUri: String? = null
     private var pendingPaused: Boolean = false
@@ -45,6 +46,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
             val viewWidth = textureView.width
             val seekMs = if (e.x < viewWidth / 2) -10000 else 10000
             val newPos = (mp.currentPosition + seekMs).coerceIn(0, mp.duration)
+            seeking = true
             mp.seekTo(newPos)
             onSeek(mapOf("position" to newPos, "duration" to mp.duration))
             return true
@@ -163,29 +165,40 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         }
 
         val mp = MediaPlayer()
-        val surface = Surface(surfaceTexture)
-        mp.setSurface(surface)
-        surface.release()
-        mp.setDataSource(context, Uri.parse("file://$decoded"))
-        mp.setOnPreparedListener { player ->
-            player.isLooping = false
-            videoWidth = player.videoWidth
-            videoHeight = player.videoHeight
-            textureView.requestLayout()
-            if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true, "duration" to player.duration)) }
-        }
-        mp.setOnCompletionListener {
+        try {
+            val surface = Surface(surfaceTexture)
+            mp.setSurface(surface)
+            surface.release()
+            mp.setDataSource(context, Uri.parse("file://$decoded"))
+            mp.setOnPreparedListener { player ->
+                player.isLooping = false
+                videoWidth = player.videoWidth
+                videoHeight = player.videoHeight
+                textureView.requestLayout()
+                if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true, "duration" to player.duration)) }
+            }
+            mp.setOnCompletionListener {
+                releaseAudioFocus()
+                onComplete(mapOf<String, Any>())
+            }
+            mp.setOnErrorListener { _, what, extra ->
+                releaseAudioFocus()
+                onError(mapOf("what" to what, "extra" to extra))
+                true
+            }
+            mp.setOnSeekCompleteListener { seeking = false }
+            mp.prepareAsync()
+            mediaPlayer = mp
+            startProgressTicker()
+        } catch (e: Exception) {
+            // setDataSource throws synchronously if the file is missing or
+            // unreadable — the error listener above can't catch that, and this
+            // runs inside the render path, so an uncaught exception kills the app.
+            try { mp.release() } catch (_: Exception) {}
+            mediaPlayer = null
             releaseAudioFocus()
-            onComplete(mapOf<String, Any>())
+            onError(mapOf("what" to -1, "extra" to -1))
         }
-        mp.setOnErrorListener { _, what, extra ->
-            releaseAudioFocus()
-            onError(mapOf("what" to what, "extra" to extra))
-            true
-        }
-        mp.prepareAsync()
-        mediaPlayer = mp
-        startProgressTicker()
     }
 
     fun setPaused(paused: Boolean) {
@@ -214,7 +227,9 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
                 val mp = mediaPlayer ?: return
                 try {
                     if (mp.isPlaying) {
-                        onProgress(mapOf("position" to mp.currentPosition, "duration" to mp.duration))
+                        if (!seeking) {
+                            onProgress(mapOf("position" to mp.currentPosition, "duration" to mp.duration))
+                        }
                     }
                 } catch (e: Exception) {}
                 progressHandler.postDelayed(this, 500)
@@ -232,6 +247,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
     fun seekTo(positionMs: Int) {
         val mp = mediaPlayer ?: return
         val clamped = positionMs.coerceIn(0, mp.duration)
+        seeking = true
         mp.seekTo(clamped)
         onSeek(mapOf("position" to clamped, "duration" to mp.duration))
     }
