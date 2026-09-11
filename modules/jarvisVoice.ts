@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { fetch } from 'expo/fetch';
 import { postFile } from './jarvis-network';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
@@ -34,27 +35,46 @@ export async function speakWithJarvis(text: string): Promise<void> {
   if (!message) return;
 
   const { baseUrl, token } = config();
+  let audioUri: string;
+  let audioFile: File | null = null;
 
-  const response = await fetch(`${baseUrl}/audio`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Jarvis-Token': token,
-    },
-    body: JSON.stringify({ text: message }),
-  });
+  if (Platform.OS === 'android') {
+    const dnsIp = (process.env.EXPO_PUBLIC_JARVIS_TAILSCALE_IP || '').trim();
 
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    const detail = payload && typeof payload.error === 'string'
-      ? payload.error
-      : `JARVIS voice returned HTTP ${response.status}.`;
-    throw new Error(detail);
+    if (!dnsIp) {
+      throw new Error('JARVIS Tailscale IP is not configured.');
+    }
+
+    audioUri = await postFile(
+      `${baseUrl}/audio`,
+      token,
+      JSON.stringify({ text: message }),
+      new URL(baseUrl).hostname,
+      dnsIp,
+    );
+  } else {
+    const response = await fetch(`${baseUrl}/audio`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Jarvis-Token': token,
+      },
+      body: JSON.stringify({ text: message }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null) as unknown;
+      const detail = payload && typeof payload === 'object' && typeof (payload as Record<string, unknown>).error === 'string'
+        ? (payload as Record<string, unknown>).error as string
+        : `JARVIS voice returned HTTP ${response.status}.`;
+      throw new Error(detail);
+    }
+
+    const bytes = await response.bytes();
+    audioFile = new File(Paths.cache, `jarvis-${Date.now()}.mp3`);
+    audioFile.write(bytes);
+    audioUri = audioFile.uri;
   }
-
-  const bytes = await response.bytes();
-  const file = new File(Paths.cache, `jarvis-${Date.now()}.mp3`);
-  file.write(bytes);
 
   await setAudioModeAsync({
     playsInSilentMode: true,
@@ -63,7 +83,7 @@ export async function speakWithJarvis(text: string): Promise<void> {
 
   stopJarvisVoice();
 
-  const player = createAudioPlayer(file.uri, {
+  const player = createAudioPlayer(audioUri, {
     updateInterval: 100,
     keepAudioSessionActive: false,
   });
@@ -72,6 +92,7 @@ export async function speakWithJarvis(text: string): Promise<void> {
 
   await new Promise<void>((resolve, reject) => {
     let settled = false;
+    const cleanupFile = audioFile ?? new File(audioUri);
 
     const finish = (error?: Error) => {
       if (settled) return;
@@ -89,7 +110,7 @@ export async function speakWithJarvis(text: string): Promise<void> {
       }
 
       try {
-        file.delete();
+        cleanupFile.delete();
       } catch {
         // Cache cleanup is best effort.
       }
