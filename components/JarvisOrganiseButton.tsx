@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as Speech from 'expo-speech';
+import { speakWithJarvis, stopJarvisVoice } from '@/modules/jarvisVoice';
 import RNFS from 'react-native-fs';
 import { createDirectory, moveFileStream } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
@@ -49,10 +49,9 @@ function buildSummary(plan: JarvisOrganisationPlan) {
 }
 
 function speak(text: string) {
-  const message = (text || '').trim();
-  if (!message) return;
-  void Speech.stop();
-  Speech.speak(message, { language: 'en-GB', rate: 0.95 });
+  void speakWithJarvis(text).catch(error => {
+    console.warn('[AskFiles] JARVIS voice failed:', error);
+  });
 }
 
 export default function JarvisOrganiseButton({
@@ -167,7 +166,7 @@ export default function JarvisOrganiseButton({
         'JARVIS organisation',
         message,
         [
-          { text: 'Cancel', style: 'cancel', onPress: () => Speech.stop() },
+          { text: 'Cancel', style: 'cancel', onPress: () => stopJarvisVoice() },
           { text: 'Organise', onPress: () => void executePlan(plan) },
         ],
       );
