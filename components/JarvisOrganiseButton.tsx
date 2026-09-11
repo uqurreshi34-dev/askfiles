@@ -27,6 +27,9 @@ type Props = {
   onComplete: () => void;
 };
 
+const MOVE_CONCURRENCY = 4;
+let pathSyncQueue = Promise.resolve();
+
 function basePath(path: string) {
   return toPath(path).replace(/\/$/, '');
 }
@@ -54,6 +57,41 @@ function speak(text: string) {
   });
 }
 
+function queuePathSync(oldPath: string, newPath: string, newName: string) {
+  const task = pathSyncQueue.then(() =>
+    syncPathReferences(oldPath, newPath, newName),
+  );
+
+  pathSyncQueue = task.catch(() => undefined);
+
+  return task;
+}
+
+async function runWithConcurrency<T>(
+  items: T[],
+  worker: (item: T) => Promise<void>,
+  concurrency = MOVE_CONCURRENCY,
+) {
+  if (items.length === 0) return;
+
+  let nextIndex = 0;
+  const workerCount = Math.min(concurrency, items.length);
+
+  async function consume() {
+    while (true) {
+      const index = nextIndex++;
+
+      if (index >= items.length) return;
+
+      await worker(items[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: workerCount }, () => consume()),
+  );
+}
+
 export default function JarvisOrganiseButton({
   currentPath,
   items,
@@ -65,27 +103,69 @@ export default function JarvisOrganiseButton({
 
   async function executePlan(plan: JarvisOrganisationPlan) {
     setWorking(true);
+
     let moved = 0;
     let skipped = 0;
     let failed = 0;
+    let failedFolders = 0;
+    const createdFolders = new Set<string>();
+    const sourceByName = new Map(items.map(item => [item.name, item]));
+    const existingFolders = new Set(
+      items
+        .filter(item => item.isDirectory)
+        .map(item => item.name),
+    );
+    const destinations = Array.from(
+      new Set(plan.moves.map(move => move.destination)),
+    );
+    const readyFolders = new Set<string>();
 
     try {
-      const sourceByName = new Map(items.map(item => [item.name, item]));
-      const destinations = new Set(plan.moves.map(move => move.destination));
+      await Promise.all(
+        destinations.map(async folder => {
+          if (existingFolders.has(folder)) {
+            readyFolders.add(folder);
+            return;
+          }
 
-      for (const folder of destinations) {
-        const folderPath = `${basePath(currentPath)}/${folder}`;
-        if (!(await RNFS.exists(folderPath))) {
-          await createDirectory(folderPath);
-        }
-      }
+          const folderPath = `${basePath(currentPath)}/${folder}`;
 
-      for (const move of plan.moves) {
+          try {
+            if (await RNFS.exists(folderPath)) {
+              readyFolders.add(folder);
+              return;
+            }
+
+            await createDirectory(folderPath);
+            createdFolders.add(folder);
+            readyFolders.add(folder);
+          } catch {
+            try {
+              if (await RNFS.exists(folderPath)) {
+                readyFolders.add(folder);
+                return;
+              }
+            } catch {
+              // Fall through to the failed-folder count.
+            }
+
+            failedFolders++;
+          }
+        }),
+      );
+
+      const moves = plan.moves.filter(move => {
+        if (readyFolders.has(move.destination)) return true;
+        failed++;
+        return false;
+      });
+
+      await runWithConcurrency(moves, async move => {
         const source = sourceByName.get(move.file);
 
-        if (!source || source.isDirectory) {
+        if (!source || source.isDirectory || !readyFolders.has(move.destination)) {
           failed++;
-          continue;
+          return;
         }
 
         const src = toPath(source.uri);
@@ -93,45 +173,63 @@ export default function JarvisOrganiseButton({
 
         if (src === dst) {
           skipped++;
-          continue;
-        }
-
-        if (await RNFS.exists(dst)) {
-          skipped++;
-          continue;
+          return;
         }
 
         try {
+          if (await RNFS.exists(dst)) {
+            skipped++;
+            return;
+          }
+
           await moveFileStream(source.uri, dst);
-          await syncPathReferences(source.uri, `file://${dst}`, source.name);
-          await scanFile(dst).catch(() => {});
-          moved++;
-        } catch {
+        } catch (error) {
+          console.warn('[AskFiles] JARVIS move failed:', error);
           failed++;
+          return;
         }
+
+        try {
+          await queuePathSync(source.uri, `file://${dst}`, source.name);
+        } catch (error) {
+          console.warn('[AskFiles] JARVIS path-sync failed:', error);
+        }
+
+        await scanFile(dst).catch(error => {
+          console.warn('[AskFiles] JARVIS media scan failed:', error);
+        });
+
+        moved++;
+      });
+
+      try {
+        await onComplete();
+      } catch (error) {
+        console.warn('[AskFiles] JARVIS refresh failed:', error);
       }
 
-      await onComplete();
       await Haptics.notificationAsync(
-        failed > 0
+        failed > 0 || failedFolders > 0
           ? Haptics.NotificationFeedbackType.Warning
           : Haptics.NotificationFeedbackType.Success,
-      );
-
-      const created = Array.from(destinations).filter(folder =>
-        !items.some(item => item.isDirectory && item.name === folder),
-      ).length;
+      ).catch(() => {});
 
       const details = [
         moved > 0 ? `Moved ${moved} item${moved !== 1 ? 's' : ''}.` : 'No items moved.',
-        created > 0 ? `Created ${created} folder${created !== 1 ? 's' : ''}.` : '',
+        createdFolders.size > 0
+          ? `Created ${createdFolders.size} folder${createdFolders.size !== 1 ? 's' : ''}.`
+          : '',
         skipped > 0 ? `Skipped ${skipped}.` : '',
+        failedFolders > 0
+          ? `Could not prepare ${failedFolders} destination folder${failedFolders !== 1 ? 's' : ''}.`
+          : '',
         failed > 0 ? `Failed ${failed}.` : '',
       ].filter(Boolean).join(' ');
 
       speak(details);
       Alert.alert('JARVIS', details);
     } catch (error: any) {
+      stopJarvisVoice();
       const message = error?.message || 'I could not finish organising this folder.';
       speak(message);
       Alert.alert('JARVIS', message);
@@ -152,6 +250,7 @@ export default function JarvisOrganiseButton({
         const message = plan.summary || 'This folder is already organised.';
         speak(message);
         Alert.alert('JARVIS', message);
+        setWorking(false);
         return;
       }
 
@@ -166,15 +265,25 @@ export default function JarvisOrganiseButton({
         'JARVIS organisation',
         message,
         [
-          { text: 'Cancel', style: 'cancel', onPress: () => stopJarvisVoice() },
-          { text: 'Organise', onPress: () => void executePlan(plan) },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              stopJarvisVoice();
+              setWorking(false);
+            },
+          },
+          {
+            text: 'Organise',
+            onPress: () => void executePlan(plan),
+          },
         ],
       );
     } catch (error: any) {
+      stopJarvisVoice();
       const message = error?.message || 'I could not organise this folder.';
       speak(message);
       Alert.alert('JARVIS', message);
-    } finally {
       setWorking(false);
     }
   }
