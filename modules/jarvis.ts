@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { fetch } from 'expo/fetch';
 import { postJson } from './jarvis-network';
 
 export type JarvisFolderItem = {
@@ -66,6 +67,13 @@ function validatePlan(value: unknown): JarvisOrganisationPlan {
   };
 }
 
+function errorFromPayload(value: unknown, fallback: string): string {
+  if (!value || typeof value !== 'object') return fallback;
+
+  const error = (value as Record<string, unknown>).error;
+  return typeof error === 'string' && error.trim() ? error : fallback;
+}
+
 export async function organiseFolderWithJarvis(
   currentPath: string,
   items: JarvisFolderItem[],
@@ -77,58 +85,57 @@ export async function organiseFolderWithJarvis(
     .map(item => item.name)
     .filter(Boolean);
 
-    const requestBody = JSON.stringify({
-      current_path: currentPath,
-      current_folder: currentPath.replace(/\/$/, '').split('/').pop() || 'Current folder',
-      existing_child_folders: existingChildFolders,
-      items: items.map(item => ({
-        name: item.name,
-        isDirectory: item.isDirectory,
-        size: item.size || 0,
-      })),
-    });
-    
-    let payload: unknown;
-    
-    if (Platform.OS === 'android') {
-      const dnsIp = (process.env.EXPO_PUBLIC_JARVIS_TAILSCALE_IP || '').trim();
-    
-      if (!dnsIp) {
-        throw new Error('JARVIS Tailscale IP is not configured.');
-      }
-    
-      const responseText = await postJson(
-        `${baseUrl}/askfiles/organise`,
-        token,
-        requestBody,
-        new URL(baseUrl).hostname,
-        dnsIp,
-      );
-    
-      try {
-        payload = JSON.parse(responseText);
-      } catch {
-        throw new Error('JARVIS returned an invalid organisation response.');
-      }
-    } else {
-      const response = await fetch(`${baseUrl}/askfiles/organise`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Jarvis-Token': token,
-        },
-        body: requestBody,
-      });
-    
-      payload = await response.json().catch(() => null);
-    
-      if (!response.ok) {
-        const message = payload && typeof payload.error === 'string'
-          ? payload.error
-          : `JARVIS bridge returned HTTP ${response.status}.`;
-        throw new Error(message);
-      }
+  const requestBody = JSON.stringify({
+    current_path: currentPath,
+    current_folder: currentPath.replace(/\/$/, '').split('/').pop() || 'Current folder',
+    existing_child_folders: existingChildFolders,
+    items: items.map(item => ({
+      name: item.name,
+      isDirectory: item.isDirectory,
+      size: item.size || 0,
+    })),
+  });
+
+  let payload: unknown;
+
+  if (Platform.OS === 'android') {
+    const dnsIp = (process.env.EXPO_PUBLIC_JARVIS_TAILSCALE_IP || '').trim();
+
+    if (!dnsIp) {
+      throw new Error('JARVIS Tailscale IP is not configured.');
     }
+
+    const responseText = await postJson(
+      `${baseUrl}/askfiles/organise`,
+      token,
+      requestBody,
+      new URL(baseUrl).hostname,
+      dnsIp,
+    );
+
+    try {
+      payload = JSON.parse(responseText) as unknown;
+    } catch {
+      throw new Error('JARVIS returned an invalid organisation response.');
+    }
+  } else {
+    const response = await fetch(`${baseUrl}/askfiles/organise`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Jarvis-Token': token,
+      },
+      body: requestBody,
+    });
+
+    payload = await response.json().catch(() => null) as unknown;
+
+    if (!response.ok) {
+      throw new Error(
+        errorFromPayload(payload, `JARVIS bridge returned HTTP ${response.status}.`),
+      );
+    }
+  }
 
   return validatePlan(payload);
 }
