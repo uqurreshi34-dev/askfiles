@@ -3,17 +3,22 @@ import { fetch } from 'expo/fetch';
 import { postFile } from './jarvis-network';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-function config() {
-  const baseUrl = (process.env.EXPO_PUBLIC_JARVIS_URL || '').trim().replace(/\/$/, '');
-  const token = (process.env.EXPO_PUBLIC_JARVIS_TOKEN || '').trim();
+const tokens = await GoogleSignin.getTokens();
 
-  if (!baseUrl || !token) {
-    throw new Error('JARVIS bridge is not configured.');
-  }
-
-  return { baseUrl, token };
+if (!tokens.idToken) {
+  throw new Error('Please sign in with Google to use JARVIS.');
 }
+
+const response = await fetch(`${baseUrl}/api/jarvis/audio/`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${tokens.idToken}`,
+  },
+  body: JSON.stringify({ text: message }),
+});
 
 let activePlayer: ReturnType<typeof createAudioPlayer> | null = null;
 

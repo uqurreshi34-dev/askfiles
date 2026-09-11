@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { fetch } from 'expo/fetch';
 import { postJson } from './jarvis-network';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export type JarvisFolderItem = {
   name: string;
@@ -19,17 +20,17 @@ export type JarvisOrganisationPlan = {
   create_folders: string[];
 };
 
-function config() {
-  const baseUrl = (process.env.EXPO_PUBLIC_JARVIS_URL || '').trim().replace(/\/$/, '');
-  const token = (process.env.EXPO_PUBLIC_JARVIS_TOKEN || '').trim();
+async function authHeaders(): Promise<Record<string, string>> {
+  const tokens = await GoogleSignin.getTokens();
 
-  if (!baseUrl || !token) {
-    throw new Error(
-      'JARVIS bridge is not configured. Set EXPO_PUBLIC_JARVIS_URL and EXPO_PUBLIC_JARVIS_TOKEN in the AskFiles debug environment.'
-    );
+  if (!tokens.idToken) {
+    throw new Error('Please sign in with Google to use JARVIS.');
   }
 
-  return { baseUrl, token };
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${tokens.idToken}`,
+  };
 }
 
 function validatePlan(value: unknown): JarvisOrganisationPlan {
