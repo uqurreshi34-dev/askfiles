@@ -82,7 +82,7 @@ export async function organiseFolderWithJarvis(
     },
     body: JSON.stringify({
       current_path: currentPath,
-      current_folder: currentPath.replace(/\\/$|\/$/g, '').split(/[\\/]/).pop() || 'Current folder',
+      current_folder: currentPath.replace(/\/$/, '').split('/').pop() || 'Current folder',
       existing_child_folders: existingChildFolders,
       items: items.map(item => ({
         name: item.name,

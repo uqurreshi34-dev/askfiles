@@ -48,6 +48,7 @@ import { BrowseListView } from 'browse-list';
 import { TextEditorView } from 'text-editor';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import { MediaViewerView } from '@/modules/media-viewer';
+import JarvisOrganiseButton from '@/components/JarvisOrganiseButton';
 
 interface FileItem {
   name: string;
@@ -1501,6 +1502,15 @@ export default function BrowseScreen() {
             >
               <Ionicons name={selectMode ? 'close-circle' : 'checkmark-circle-outline'} size={22} color={selectMode ? colors.blue : colors.textSecondary} />
             </TouchableOpacity>
+            <JarvisOrganiseButton
+              currentPath={currentPath}
+              items={items}
+              disabled={multiPasting || deleting || zipping || creatingPdf || extractingPdf || mergingPdf || extractingText}
+              onComplete={async () => {
+                delete dirCacheStore[currentPath];
+                await loadDirectory(currentPath);
+              }}
+            />
             <TouchableOpacity
               style={styles.backBtn}
               onPress={() => { setSearchActive(true); setTimeout(() => searchRef.current?.focus(), 100); }}
