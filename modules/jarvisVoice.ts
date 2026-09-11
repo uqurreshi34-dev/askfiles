@@ -120,8 +120,10 @@ export async function speakWithJarvis(text: string): Promise<void> {
     };
 
     const subscription = player.addListener('playbackStatusUpdate', status => {
-      if (status.error) {
-        finish(new Error(status.error));
+      const statusWithError = status as typeof status & { error?: string | null };
+
+      if (statusWithError.error) {
+        finish(new Error(statusWithError.error));
       } else if (status.didJustFinish) {
         finish();
       }
