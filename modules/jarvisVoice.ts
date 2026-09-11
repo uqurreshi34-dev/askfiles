@@ -1,4 +1,5 @@
-import { fetch } from 'expo/fetch';
+import { Platform } from 'react-native';
+import { postFile } from './jarvis-network';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 
