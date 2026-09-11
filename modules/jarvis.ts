@@ -29,46 +29,83 @@ GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
 });
 
-async function authHeaders(): Promise<Record<string, string>> {
+async function getGoogleIdToken(): Promise<string> {
   if (!GOOGLE_WEB_CLIENT_ID) {
-    throw new Error('Google authentication is not configured for JARVIS.');
+    throw new Error(
+      'Google authentication is not configured for JARVIS.',
+    );
   }
 
   try {
-    const currentUser = await GoogleSignin.getCurrentUser();
+    let currentUser = await GoogleSignin.getCurrentUser();
 
     if (!currentUser) {
-      throw new Error('Please sign in with Google to use JARVIS.');
+      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.signIn();
+      currentUser = await GoogleSignin.getCurrentUser();
+    }
+
+    if (!currentUser) {
+      throw new Error(
+        'Please sign in with Google to use JARVIS.',
+      );
     }
 
     const tokens = await GoogleSignin.getTokens();
 
     if (!tokens.idToken) {
-      throw new Error('Please sign in with Google to use JARVIS.');
+      throw new Error(
+        'Please sign in with Google to use JARVIS.',
+      );
     }
 
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${tokens.idToken}`,
-    };
+    return tokens.idToken;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('Please sign in')) {
+    if (
+      error instanceof Error &&
+      error.message.includes('Please sign in')
+    ) {
       throw error;
     }
 
-    throw new Error('Please sign in with Google to use JARVIS.');
+    throw new Error(
+      'Please sign in with Google to use JARVIS.',
+    );
   }
+}
+
+function errorFromPayload(
+  value: unknown,
+  fallback: string,
+): string {
+  if (!value || typeof value !== 'object') {
+    return fallback;
+  }
+
+  const error =
+    (value as Record<string, unknown>).error;
+
+  return typeof error === 'string' && error.trim()
+    ? error
+    : fallback;
 }
 
 function validatePlan(value: unknown): JarvisOrganisationPlan {
   if (!value || typeof value !== 'object') {
-    throw new Error('JARVIS returned an invalid organisation plan.');
+    throw new Error(
+      'JARVIS returned an invalid organisation plan.',
+    );
   }
 
   const plan = value as Record<string, unknown>;
 
-  if (!Array.isArray(plan.moves) || !Array.isArray(plan.create_folders)) {
-    throw new Error('JARVIS returned an incomplete organisation plan.');
+  if (
+    !Array.isArray(plan.moves) ||
+    !Array.isArray(plan.create_folders)
+  ) {
+    throw new Error(
+      'JARVIS returned an incomplete organisation plan.',
+    );
   }
 
   const moves: JarvisFolderMove[] = [];
@@ -88,7 +125,11 @@ function validatePlan(value: unknown): JarvisOrganisationPlan {
         ? move.destination.trim()
         : '';
 
-    if (!file || !destination || /[\\/]/.test(destination)) {
+    if (
+      !file ||
+      !destination ||
+      /[\\/]/.test(destination)
+    ) {
       continue;
     }
 
@@ -103,11 +144,11 @@ function validatePlan(value: unknown): JarvisOrganisationPlan {
       plan.create_folders
         .filter(
           (name): name is string =>
-            typeof name === 'string'
+            typeof name === 'string',
         )
         .map(name => name.trim())
         .filter(
-          name => !!name && !/[\\/]/.test(name)
+          name => !!name && !/[\\/]/.test(name),
         ),
     ),
   ];
@@ -120,22 +161,6 @@ function validatePlan(value: unknown): JarvisOrganisationPlan {
     moves,
     create_folders,
   };
-}
-
-function errorFromPayload(
-  value: unknown,
-  fallback: string,
-): string {
-  if (!value || typeof value !== 'object') {
-    return fallback;
-  }
-
-  const error =
-    (value as Record<string, unknown>).error;
-
-  return typeof error === 'string' && error.trim()
-    ? error
-    : fallback;
 }
 
 export async function organiseFolderWithJarvis(
@@ -169,11 +194,16 @@ export async function organiseFolderWithJarvis(
     })),
   });
 
+  const idToken = await getGoogleIdToken();
+
   const response = await fetch(
     `${BASE_URL}/api/jarvis/organise/`,
     {
       method: 'POST',
-      headers: await authHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
       body: requestBody,
     },
   );
