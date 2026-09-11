@@ -1,5 +1,9 @@
 package expo.modules.jarvisnetwork
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -11,8 +15,30 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.net.InetAddress
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class JarvisNetworkModule : Module() {
+
+  private fun tailscaleNetwork(): Network {
+    val context = appContext.reactContext
+      ?: throw Exception("AskFiles context is unavailable.")
+
+    val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+      ?: throw Exception("Android connectivity service is unavailable.")
+
+    val active = connectivity.activeNetwork
+    val activeCapabilities = active?.let(connectivity::getNetworkCapabilities)
+    if (active != null && activeCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
+      return active
+    }
+
+    connectivity.allNetworks.firstOrNull { network ->
+      connectivity.getNetworkCapabilities(network)
+        ?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+    }?.let { return it }
+
+    throw Exception("Tailscale VPN network is not available.")
+  }
 
   private fun client(dnsHost: String, dnsIp: String): OkHttpClient {
     val host = dnsHost.trim().lowercase()
@@ -44,9 +70,10 @@ class JarvisNetworkModule : Module() {
 
     return OkHttpClient.Builder()
       .dns(dns)
-      .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-      .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
-      .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+      .socketFactory(tailscaleNetwork().socketFactory)
+      .connectTimeout(15, TimeUnit.SECONDS)
+      .readTimeout(180, TimeUnit.SECONDS)
+      .writeTimeout(30, TimeUnit.SECONDS)
       .build()
   }
 
