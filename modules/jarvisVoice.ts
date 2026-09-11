@@ -1,5 +1,6 @@
-import { fetch } from 'expo/fetch';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import {
+  fetchWithJarvisAuth,
+} from './jarvis';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -10,55 +11,8 @@ const BASE_URL = (process.env.EXPO_PUBLIC_JARVIS_URL || '')
   .trim()
   .replace(/\/$/, '');
 
-const GOOGLE_WEB_CLIENT_ID =
-  (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim();
-
-GoogleSignin.configure({
-  webClientId: GOOGLE_WEB_CLIENT_ID,
-});
-
 let activePlayer:
   ReturnType<typeof createAudioPlayer> | null = null;
-
-async function getIdToken(): Promise<string> {
-  if (!GOOGLE_WEB_CLIENT_ID) {
-    throw new Error(
-      'Google authentication is not configured for JARVIS.',
-    );
-  }
-
-  try {
-    const currentUser =
-      await GoogleSignin.getCurrentUser();
-
-    if (!currentUser) {
-      throw new Error(
-        'Please sign in with Google to use JARVIS.',
-      );
-    }
-
-    const tokens = await GoogleSignin.getTokens();
-
-    if (!tokens.idToken) {
-      throw new Error(
-        'Please sign in with Google to use JARVIS.',
-      );
-    }
-
-    return tokens.idToken;
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes('Please sign in')
-    ) {
-      throw error;
-    }
-
-    throw new Error(
-      'Please sign in with Google to use JARVIS.',
-    );
-  }
-}
 
 function errorFromPayload(
   value: unknown,
@@ -101,15 +55,12 @@ export async function speakWithJarvis(
     );
   }
 
-  const idToken = await getIdToken();
-
-  const response = await fetch(
+  const response = await fetchWithJarvisAuth(
     `${BASE_URL}/api/jarvis/audio/`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${idToken}`,
       },
       body: JSON.stringify({
         text: message,

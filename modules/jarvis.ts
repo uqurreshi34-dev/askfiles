@@ -29,7 +29,10 @@ GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
 });
 
-async function getGoogleIdToken(): Promise<string> {
+async function getGoogleTokens(): Promise<{
+  idToken: string;
+  accessToken: string;
+}> {
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new Error(
       'Google authentication is not configured for JARVIS.',
@@ -37,12 +40,12 @@ async function getGoogleIdToken(): Promise<string> {
   }
 
   try {
-    let currentUser = await GoogleSignin.getCurrentUser();
+    let currentUser = GoogleSignin.getCurrentUser();
 
     if (!currentUser) {
       await GoogleSignin.hasPlayServices();
       await GoogleSignin.signIn();
-      currentUser = await GoogleSignin.getCurrentUser();
+      currentUser = GoogleSignin.getCurrentUser();
     }
 
     if (!currentUser) {
@@ -53,13 +56,16 @@ async function getGoogleIdToken(): Promise<string> {
 
     const tokens = await GoogleSignin.getTokens();
 
-    if (!tokens.idToken) {
+    if (!tokens.idToken || !tokens.accessToken) {
       throw new Error(
         'Please sign in with Google to use JARVIS.',
       );
     }
 
-    return tokens.idToken;
+    return {
+      idToken: tokens.idToken,
+      accessToken: tokens.accessToken,
+    };
   } catch (error) {
     if (
       error instanceof Error &&
@@ -72,6 +78,71 @@ async function getGoogleIdToken(): Promise<string> {
       'Please sign in with Google to use JARVIS.',
     );
   }
+}
+
+type JarvisRequestOptions = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+};
+
+export async function fetchWithJarvisAuth(
+  url: string,
+  init: JarvisRequestOptions = {},
+): Promise<Response> {
+  const send = async (idToken: string) => {
+    const headers = new Headers(init.headers);
+
+    headers.set('Authorization', `Bearer ${idToken}`);
+
+    return fetch(url, {
+      method: init.method,
+      headers,
+      body: init.body,
+    });
+  };
+
+  let tokens = await getGoogleTokens();
+
+  let response = await send(tokens.idToken);
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  // The Android Google credential may be stale.
+  // Clear the cached access token and request fresh tokens.
+  try {
+    await GoogleSignin.clearCachedAccessToken(
+      tokens.accessToken,
+    );
+  } catch {
+    // Continue; getTokens() may still refresh successfully.
+  }
+
+  try {
+    tokens = await getGoogleTokens();
+  } catch {
+    // If silent recovery fails, explicitly sign in again.
+    await GoogleSignin.hasPlayServices();
+    await GoogleSignin.signIn();
+    tokens = await getGoogleTokens();
+  }
+
+  response = await send(tokens.idToken);
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  // The refreshed credential was still rejected.
+  // Give the user one fresh interactive sign-in attempt.
+  await GoogleSignin.hasPlayServices();
+  await GoogleSignin.signIn();
+
+  tokens = await getGoogleTokens();
+
+  return send(tokens.idToken);
 }
 
 function errorFromPayload(
@@ -194,15 +265,12 @@ export async function organiseFolderWithJarvis(
     })),
   });
 
-  const idToken = await getGoogleIdToken();
-
-  const response = await fetch(
+  const response = await fetchWithJarvisAuth(
     `${BASE_URL}/api/jarvis/organise/`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${idToken}`,
       },
       body: requestBody,
     },
