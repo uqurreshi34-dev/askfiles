@@ -1,6 +1,4 @@
-import { Platform } from 'react-native';
 import { fetch } from 'expo/fetch';
-import { postJson } from './jarvis-network';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export type JarvisFolderItem = {
@@ -20,17 +18,46 @@ export type JarvisOrganisationPlan = {
   create_folders: string[];
 };
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const tokens = await GoogleSignin.getTokens();
+const BASE_URL = (process.env.EXPO_PUBLIC_JARVIS_URL || '')
+  .trim()
+  .replace(/\/$/, '');
 
-  if (!tokens.idToken) {
-    throw new Error('Please sign in with Google to use JARVIS.');
+const GOOGLE_WEB_CLIENT_ID =
+  (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim();
+
+GoogleSignin.configure({
+  webClientId: GOOGLE_WEB_CLIENT_ID,
+});
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!GOOGLE_WEB_CLIENT_ID) {
+    throw new Error('Google authentication is not configured for JARVIS.');
   }
 
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${tokens.idToken}`,
-  };
+  try {
+    const currentUser = await GoogleSignin.getCurrentUser();
+
+    if (!currentUser) {
+      throw new Error('Please sign in with Google to use JARVIS.');
+    }
+
+    const tokens = await GoogleSignin.getTokens();
+
+    if (!tokens.idToken) {
+      throw new Error('Please sign in with Google to use JARVIS.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${tokens.idToken}`,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Please sign in')) {
+      throw error;
+    }
+
+    throw new Error('Please sign in with Google to use JARVIS.');
+  }
 }
 
 function validatePlan(value: unknown): JarvisOrganisationPlan {
@@ -48,38 +75,78 @@ function validatePlan(value: unknown): JarvisOrganisationPlan {
 
   for (const rawMove of plan.moves) {
     if (!rawMove || typeof rawMove !== 'object') continue;
-    const move = rawMove as Record<string, unknown>;
-    const file = typeof move.file === 'string' ? move.file.trim() : '';
-    const destination = typeof move.destination === 'string' ? move.destination.trim() : '';
 
-    if (!file || !destination || /[\\/]/.test(destination)) continue;
-    moves.push({ file, destination });
+    const move = rawMove as Record<string, unknown>;
+
+    const file =
+      typeof move.file === 'string'
+        ? move.file.trim()
+        : '';
+
+    const destination =
+      typeof move.destination === 'string'
+        ? move.destination.trim()
+        : '';
+
+    if (!file || !destination || /[\\/]/.test(destination)) {
+      continue;
+    }
+
+    moves.push({
+      file,
+      destination,
+    });
   }
 
-  const create_folders = plan.create_folders
-    .filter((name): name is string => typeof name === 'string')
-    .map(name => name.trim())
-    .filter(name => !!name && !/[\\/]/.test(name));
+  const create_folders = [
+    ...new Set(
+      plan.create_folders
+        .filter(
+          (name): name is string =>
+            typeof name === 'string'
+        )
+        .map(name => name.trim())
+        .filter(
+          name => !!name && !/[\\/]/.test(name)
+        ),
+    ),
+  ];
 
   return {
-    summary: typeof plan.summary === 'string' ? plan.summary.trim() : '',
+    summary:
+      typeof plan.summary === 'string'
+        ? plan.summary.trim()
+        : '',
     moves,
-    create_folders: [...new Set(create_folders)],
+    create_folders,
   };
 }
 
-function errorFromPayload(value: unknown, fallback: string): string {
-  if (!value || typeof value !== 'object') return fallback;
+function errorFromPayload(
+  value: unknown,
+  fallback: string,
+): string {
+  if (!value || typeof value !== 'object') {
+    return fallback;
+  }
 
-  const error = (value as Record<string, unknown>).error;
-  return typeof error === 'string' && error.trim() ? error : fallback;
+  const error =
+    (value as Record<string, unknown>).error;
+
+  return typeof error === 'string' && error.trim()
+    ? error
+    : fallback;
 }
 
 export async function organiseFolderWithJarvis(
   currentPath: string,
   items: JarvisFolderItem[],
 ): Promise<JarvisOrganisationPlan> {
-  const { baseUrl, token } = config();
+  if (!BASE_URL) {
+    throw new Error(
+      'JARVIS service is not configured.',
+    );
+  }
 
   const existingChildFolders = items
     .filter(item => item.isDirectory)
@@ -88,8 +155,13 @@ export async function organiseFolderWithJarvis(
 
   const requestBody = JSON.stringify({
     current_path: currentPath,
-    current_folder: currentPath.replace(/\/$/, '').split('/').pop() || 'Current folder',
-    existing_child_folders: existingChildFolders,
+    current_folder:
+      currentPath
+        .replace(/\/$/, '')
+        .split('/')
+        .pop() || 'Current folder',
+    existing_child_folders:
+      existingChildFolders,
     items: items.map(item => ({
       name: item.name,
       isDirectory: item.isDirectory,
@@ -97,45 +169,25 @@ export async function organiseFolderWithJarvis(
     })),
   });
 
-  let payload: unknown;
-
-  if (Platform.OS === 'android') {
-    const dnsIp = (process.env.EXPO_PUBLIC_JARVIS_TAILSCALE_IP || '').trim();
-
-    if (!dnsIp) {
-      throw new Error('JARVIS Tailscale IP is not configured.');
-    }
-
-    const responseText = await postJson(
-      `${baseUrl}/askfiles/organise`,
-      token,
-      requestBody,
-      new URL(baseUrl).hostname,
-      dnsIp,
-    );
-
-    try {
-      payload = JSON.parse(responseText) as unknown;
-    } catch {
-      throw new Error('JARVIS returned an invalid organisation response.');
-    }
-  } else {
-    const response = await fetch(`${baseUrl}/askfiles/organise`, {
+  const response = await fetch(
+    `${BASE_URL}/api/jarvis/organise/`,
+    {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Jarvis-Token': token,
-      },
+      headers: await authHeaders(),
       body: requestBody,
-    });
+    },
+  );
 
-    payload = await response.json().catch(() => null) as unknown;
+  const payload =
+    (await response.json().catch(() => null)) as unknown;
 
-    if (!response.ok) {
-      throw new Error(
-        errorFromPayload(payload, `JARVIS bridge returned HTTP ${response.status}.`),
-      );
-    }
+  if (!response.ok) {
+    throw new Error(
+      errorFromPayload(
+        payload,
+        `JARVIS returned HTTP ${response.status}.`,
+      ),
+    );
   }
 
   return validatePlan(payload);
