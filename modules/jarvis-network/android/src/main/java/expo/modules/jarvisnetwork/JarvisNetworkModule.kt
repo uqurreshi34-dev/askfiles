@@ -3,11 +3,11 @@ package expo.modules.jarvisnetwork
 import android.net.Uri
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Dns
 import java.io.File
 import java.net.InetAddress
 import java.util.UUID
@@ -22,20 +22,31 @@ class JarvisNetworkModule : Module() {
       throw Exception("JARVIS DNS configuration is missing.")
     }
 
-    if (InetAddress.getByName(ip).hostAddress != ip) {
+    val address = try {
+      InetAddress.getByName(ip)
+    } catch (e: Exception) {
+      throw Exception("JARVIS DNS IP is invalid.", e)
+    }
+
+    if (address.hostAddress != ip) {
       throw Exception("JARVIS DNS IP is invalid.")
     }
 
-    val dns = Dns { hostname ->
-      if (hostname.trim().lowercase() == host) {
-        listOf(InetAddress.getByName(ip))
-      } else {
-        Dns.SYSTEM.lookup(hostname)
+    val dns = object : Dns {
+      override fun lookup(hostname: String): List<InetAddress> {
+        return if (hostname.trim().lowercase() == host) {
+          listOf(address)
+        } else {
+          Dns.SYSTEM.lookup(hostname)
+        }
       }
     }
 
     return OkHttpClient.Builder()
       .dns(dns)
+      .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+      .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
+      .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
       .build()
   }
 
