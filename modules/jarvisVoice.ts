@@ -15,6 +15,18 @@ function config() {
 
 let activePlayer: ReturnType<typeof createAudioPlayer> | null = null;
 
+export function stopJarvisVoice() {
+  if (!activePlayer) return;
+
+  try {
+    activePlayer.remove();
+  } catch {
+    // The player may already have been released by the native layer.
+  }
+
+  activePlayer = null;
+}
+
 export async function speakWithJarvis(text: string): Promise<void> {
   const message = (text || '').trim();
 
@@ -48,14 +60,7 @@ export async function speakWithJarvis(text: string): Promise<void> {
     interruptionMode: 'doNotMix',
   });
 
-  if (activePlayer) {
-    try {
-      activePlayer.remove();
-    } catch {
-      // The previous player may already have been released by the native layer.
-    }
-    activePlayer = null;
-  }
+  stopJarvisVoice();
 
   const player = createAudioPlayer(file.uri, {
     updateInterval: 100,
