@@ -26,18 +26,15 @@ class JarvisNetworkModule : Module() {
     val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
       ?: throw Exception("Android connectivity service is unavailable.")
 
-    val active = connectivity.activeNetwork
-    val activeCapabilities = active?.let(connectivity::getNetworkCapabilities)
-    if (active != null && activeCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
-      return active
+    val network = connectivity.activeNetwork
+      ?: throw Exception("No active Android network is available.")
+
+    val capabilities = connectivity.getNetworkCapabilities(network)
+    if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) != true) {
+      throw Exception("Tailscale VPN network is not active.")
     }
 
-    connectivity.allNetworks.firstOrNull { network ->
-      connectivity.getNetworkCapabilities(network)
-        ?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
-    }?.let { return it }
-
-    throw Exception("Tailscale VPN network is not available.")
+    return network
   }
 
   private fun client(dnsHost: String, dnsIp: String): OkHttpClient {
