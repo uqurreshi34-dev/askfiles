@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { speakWithJarvis, stopJarvisVoice } from '@/modules/jarvisVoice';
 import RNFS from 'react-native-fs';
 import { createDirectory, moveFileStream } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
@@ -49,12 +48,6 @@ function buildSummary(plan: JarvisOrganisationPlan) {
     .join('; ');
 
   return parts || plan.summary || 'No changes proposed.';
-}
-
-function speak(text: string) {
-  void speakWithJarvis(text).catch(error => {
-    console.warn('[AskFiles] JARVIS voice failed:', error);
-  });
 }
 
 function queuePathSync(oldPath: string, newPath: string, newName: string) {
@@ -226,12 +219,9 @@ export default function JarvisOrganiseButton({
         failed > 0 ? `Failed ${failed}.` : '',
       ].filter(Boolean).join(' ');
 
-      speak(details);
       Alert.alert('JARVIS', details);
     } catch (error: any) {
-      stopJarvisVoice();
       const message = error?.message || 'I could not finish organising this folder.';
-      speak(message);
       Alert.alert('JARVIS', message);
     } finally {
       setWorking(false);
@@ -248,7 +238,6 @@ export default function JarvisOrganiseButton({
 
       if (plan.moves.length === 0) {
         const message = plan.summary || 'This folder is already organised.';
-        speak(message);
         Alert.alert('JARVIS', message);
         setWorking(false);
         return;
@@ -260,7 +249,6 @@ export default function JarvisOrganiseButton({
         : '';
       const message = `${summary}.${newFolders}\n\nProceed?`;
 
-      speak(`I propose ${summary}.`);
       Alert.alert(
         'JARVIS organisation',
         message,
@@ -269,7 +257,6 @@ export default function JarvisOrganiseButton({
             text: 'Cancel',
             style: 'cancel',
             onPress: () => {
-              stopJarvisVoice();
               setWorking(false);
             },
           },
@@ -280,9 +267,7 @@ export default function JarvisOrganiseButton({
         ],
       );
     } catch (error: any) {
-      stopJarvisVoice();
       const message = error?.message || 'I could not organise this folder.';
-      speak(message);
       Alert.alert('JARVIS', message);
       setWorking(false);
     }

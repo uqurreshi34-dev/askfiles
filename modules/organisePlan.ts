@@ -67,9 +67,12 @@ import type {
     // Video and audio. Not in the original spec -- delete these lines if you
     // would rather they stayed put.
     mp4: 'Videos', mkv: 'Videos', mov: 'Videos', avi: 'Videos',
-    webm: 'Videos', m4v: 'Videos', '3gp': 'Videos',
+    webm: 'Videos', m4v: 'Videos', '3gp': 'Videos', '3g2': 'Videos',
+    wmv: 'Videos', flv: 'Videos', mpg: 'Videos', mpeg: 'Videos',
+    ts: 'Videos', mts: 'Videos', m2ts: 'Videos',
     mp3: 'Music', m4a: 'Music', wav: 'Music', flac: 'Music',
-    ogg: 'Music', opus: 'Music', aac: 'Music',
+    ogg: 'Music', opus: 'Music', aac: 'Music', oga: 'Music',
+    wma: 'Music', amr: 'Music', m4b: 'Music', mid: 'Music', midi: 'Music',
   
     // Everything that is plainly a leftover rather than a document.
     apk: 'Miscellaneous', patch: 'Miscellaneous', bak: 'Miscellaneous',
