@@ -56,7 +56,7 @@ import type {
     // Documents
     doc: 'Documents', docx: 'Documents', pdf: 'Documents',
     ppt: 'Documents', pptx: 'Documents', odp: 'Documents',
-    odt: 'Documents', rtf: 'Documents', txt: 'Documents',
+    odt: 'Documents', rtf: 'Documents', txt: 'Text Files',
     md: 'Documents', epub: 'Documents', ics: 'Documents',
   
     // Archives
