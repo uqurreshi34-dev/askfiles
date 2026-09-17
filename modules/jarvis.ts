@@ -1,5 +1,6 @@
 import { fetch } from 'expo/fetch';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { planLocally } from '@/modules/organisePlan';
 
 export type JarvisFolderItem = {
   name: string;
@@ -238,16 +239,26 @@ export async function organiseFolderWithJarvis(
   currentPath: string,
   items: JarvisFolderItem[],
 ): Promise<JarvisOrganisationPlan> {
+  const existingChildFolders = items
+    .filter(item => item.isDirectory)
+    .map(item => item.name)
+    .filter(Boolean);
+
+  // The device first: no network, no model, no cost. The backend only ever
+  // asked Claude for compact extension and name rules, so the model was
+  // being paid to reproduce a lookup table. null means this folder holds
+  // nothing the table recognises, which is the one case worth asking about.
+  const local = planLocally(currentPath, items, existingChildFolders);
+
+  if (local) {
+    return validatePlan(local);
+  }
+
   if (!BASE_URL) {
     throw new Error(
       'JARVIS service is not configured.',
     );
   }
-
-  const existingChildFolders = items
-    .filter(item => item.isDirectory)
-    .map(item => item.name)
-    .filter(Boolean);
 
   const requestBody = JSON.stringify({
     current_path: currentPath,
