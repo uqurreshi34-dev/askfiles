@@ -23,6 +23,12 @@ const BASE_URL = (process.env.EXPO_PUBLIC_JARVIS_URL || '')
   .trim()
   .replace(/\/$/, '');
 
+// The Anthropic Foundry trial ends, and the device plans every folder that
+// holds anything recognisable. Set this back to true to restore the model
+// fallback; nothing else needs changing, and the backend endpoint stays
+// exactly as it is.
+const USE_MODEL_FALLBACK = false;
+
 const GOOGLE_WEB_CLIENT_ID =
   (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim();
 
@@ -252,6 +258,15 @@ export async function organiseFolderWithJarvis(
 
   if (local) {
     return validatePlan(local);
+  }
+
+  if (!USE_MODEL_FALLBACK) {
+    return {
+      summary:
+        'Nothing in here is a type I recognise, sir, so I have left it alone.',
+      moves: [],
+      create_folders: [],
+    };
   }
 
   if (!BASE_URL) {

@@ -57,7 +57,7 @@ import type {
     doc: 'Documents', docx: 'Documents', pdf: 'Documents',
     ppt: 'Documents', pptx: 'Documents', odp: 'Documents',
     odt: 'Documents', rtf: 'Documents', txt: 'Documents',
-    md: 'Documents', epub: 'Documents',
+    md: 'Documents', epub: 'Documents', ics: 'Documents',
   
     // Archives
     zip: 'Archives', '7z': 'Archives', rar: 'Archives', tar: 'Archives',
