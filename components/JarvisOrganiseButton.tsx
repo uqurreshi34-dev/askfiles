@@ -12,6 +12,7 @@ import {
   JarvisFolderItem,
   JarvisOrganisationPlan,
 } from '@/modules/jarvis';
+import { recordOrganisation, undoOrganisation, UndoMove } from '@/modules/organiseUndo';
 import { useTheme } from '@/hooks/useTheme';
 
 export type JarvisOrganiseItem = JarvisFolderItem & {
@@ -112,6 +113,8 @@ export default function JarvisOrganiseButton({
       new Set(plan.moves.map(move => move.destination)),
     );
     const readyFolders = new Set<string>();
+    const undoMoves: UndoMove[] = [];
+    const createdFolderPaths: string[] = [];
 
     try {
       await Promise.all(
@@ -131,6 +134,7 @@ export default function JarvisOrganiseButton({
 
             await createDirectory(folderPath);
             createdFolders.add(folder);
+            createdFolderPaths.push(folderPath);
             readyFolders.add(folder);
           } catch {
             try {
@@ -192,6 +196,7 @@ export default function JarvisOrganiseButton({
           console.warn('[AskFiles] JARVIS media scan failed:', error);
         });
 
+        undoMoves.push({ from: src, to: dst });
         moved++;
       });
 
@@ -219,7 +224,41 @@ export default function JarvisOrganiseButton({
         failed > 0 ? `Failed ${failed}.` : '',
       ].filter(Boolean).join(' ');
 
-      Alert.alert('JARVIS', details);
+      const recorded = await recordOrganisation(
+        basePath(currentPath),
+        undoMoves,
+        createdFolderPaths,
+      );
+
+      if (!recorded) {
+        Alert.alert('JARVIS', details);
+        return;
+      }
+
+      Alert.alert('JARVIS', details, [
+        {
+          text: 'Undo',
+          onPress: () => {
+            void (async () => {
+              setWorking(true);
+
+              try {
+                const result = await undoOrganisation();
+
+                try {
+                  await onComplete();
+                } catch (refreshError) {
+                  console.warn('[AskFiles] JARVIS refresh failed:', refreshError);
+                }
+                Alert.alert('JARVIS', result.summary);
+              } finally {
+                setWorking(false);
+              }
+            })();
+          },
+        },
+        { text: 'Dismiss', style: 'cancel' },
+      ]);
     } catch (error: any) {
       const message = error?.message || 'I could not finish organising this folder.';
       Alert.alert('JARVIS', message);
