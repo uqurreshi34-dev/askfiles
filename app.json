@@ -84,8 +84,7 @@
       "./modules/ftp-server/app.plugin.js",
       "./modules/csv-reader/app.plugin.js",
       "./modules/pdf-viewer/app.plugin.js",
-      "./modules/text-editor/app.plugin.js",
-      "expo-audio"
+      "./modules/text-editor/app.plugin.js"
     ],
     "extra": {
       "router": {},
