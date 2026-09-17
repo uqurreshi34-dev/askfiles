@@ -31,7 +31,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative, shareFiles, copyImageToClipboard } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
-import { startWifiServer, copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview } from 'file-reader';
+import { startWifiServer, copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview, readDocxPreview } from 'file-reader';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
@@ -246,6 +246,8 @@ export default function SearchScreen() {
       readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
     } else if (lowerName.endsWith('.pdf')) {
       DocIndexer.getPdfPreview(toPath(item.uri)).then(text => setTxtPreview(text || null)).catch(() => setTxtPreview(null));
+    } else if (lowerName.endsWith('.docx')) {
+      readDocxPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
     }
   }
 
@@ -1191,7 +1193,7 @@ export default function SearchScreen() {
                   </View>
                   </View>
                 <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-                {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
+                {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf') || selectedItem?.name.toLowerCase().endsWith('.docx')) && (
                   <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
                       {txtPreview}

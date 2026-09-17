@@ -24,7 +24,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates, readTextPreview } from 'file-reader';
+import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates, readTextPreview, readDocxPreview } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes, getPinnedFolders, setPinnedFolders, getPendingBrowsePath } from '@/modules/storage-stats';
@@ -263,6 +263,8 @@ export default function BrowseScreen() {
           readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
       } else if (lowerName.endsWith('.pdf')) {
           DocIndexer.getPdfPreview(toPath(item.uri)).then(text => setTxtPreview(text || null)).catch(() => setTxtPreview(null));
+      } else if (lowerName.endsWith('.docx')) {
+        readDocxPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
       }
     }
   }
@@ -1865,7 +1867,7 @@ export default function BrowseScreen() {
                 </View>
 
                 <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
-                {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
+                {txtPreview && (selectedItem?.name.toLowerCase().endsWith('.txt') || selectedItem?.name.toLowerCase().endsWith('.pdf') || selectedItem?.name.toLowerCase().endsWith('.docx')) && (
                   <View style={[styles.txtPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Text style={[styles.txtPreviewText, { color: colors.textSecondary }]} numberOfLines={3}>
                       {txtPreview}
