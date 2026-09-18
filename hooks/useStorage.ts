@@ -246,8 +246,8 @@ cache.fileCounts.downloads = dlItems.length;
   }
   const largestScreenshots = await queryLargestByName(['screenshot'], 'image/', 5);
   const [largestImages, largestVideos, largestDocs, largestDownloads] = await Promise.all([
-    queryLargestFiles('/storage/emulated/0/DCIM/', 'image/', 5),
-    queryLargestFiles('/storage/emulated/0/DCIM/', 'video/', 5),
+    queryLargestFiles('/storage/emulated/0/', 'image/', 5),
+    queryLargestFiles('/storage/emulated/0/', 'video/', 5),
     queryLargestFiles('/storage/emulated/0/Documents/', 'application/', 5),
     queryLargestFiles('/storage/emulated/0/Download/', '', 5),
   ]);
