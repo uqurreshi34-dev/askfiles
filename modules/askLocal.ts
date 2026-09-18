@@ -122,10 +122,32 @@ function listTally(counts: Record<string, number>, limit = 6): string {
   return rest > 0 ? `${listed}, plus ${rest} other format${rest === 1 ? '' : 's'}` : listed;
 }
 
-function describeFile(file: NamedFile | undefined, label: string): string | null {
-  if (!file) return `I can't see any ${label} on your device.`;
+function describeFile(
+  files: NamedFile[] | undefined,
+  label: string,
+): string | null {
+  const first = files && files[0];
 
-  return `Your largest ${label} is ${file.name} at ${file.size}, in ${file.folder}.`;
+  if (!first) return `I can't see any ${label} on your device.`;
+
+  // The same file in two folders is two rows of the same size, so the
+  // largest can legitimately be in several places at once. Naming only the
+  // first hides a duplicate that is costing real space.
+  const folders = (files || [])
+    .filter(file => file.name === first.name && file.size === first.size)
+    .map(file => file.folder)
+    .filter((folder, index, all) => all.indexOf(folder) === index);
+
+  if (folders.length === 1) {
+    return `Your largest ${label} is ${first.name} at ${first.size}, in ${folders[0]}.`;
+  }
+
+  const listed = `${folders.slice(0, -1).join(', ')} and ${folders[folders.length - 1]}`;
+
+  return (
+    `Your largest ${label} is ${first.name} at ${first.size}. ` +
+    `There are ${folders.length} copies: ${listed}.`
+  );
 }
 
 /**
@@ -182,15 +204,15 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
 
       if (!shots) return null;
 
-      return describeFile(shots[0], 'screenshot');
+      return describeFile(shots, 'screenshot');
     }
 
     const subject = subjectOf(list);
 
-    if (subject === 'images') return describeFile(data.largestFiles.images[0], 'image');
-    if (subject === 'videos') return describeFile(data.largestFiles.videos[0], 'video');
-    if (subject === 'documents') return describeFile(data.largestFiles.documents[0], 'document');
-    if (subject === 'downloads') return describeFile(data.largestFiles.downloads[0], 'download');
+    if (subject === 'images') return describeFile(data.largestFiles.images, 'image');
+    if (subject === 'videos') return describeFile(data.largestFiles.videos, 'video');
+    if (subject === 'documents') return describeFile(data.largestFiles.documents, 'document');
+    if (subject === 'downloads') return describeFile(data.largestFiles.downloads, 'download');
 
     if (has(list, 'file', 'files', 'thing', 'anything')) {
       const top = data.largestFiles.overall;
@@ -206,7 +228,7 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
         return `Your largest files:\n${shown.join('\n')}`;
       }
 
-      return describeFile(top[0], 'file');
+      return describeFile(top, 'file');
     }
   }
 
