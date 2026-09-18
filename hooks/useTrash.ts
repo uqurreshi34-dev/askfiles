@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system';
 import RNFS from 'react-native-fs';
 import { scanFile } from '@/modules/share-module';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 
 const TRASH_DIR = FileSystem.Paths.document.uri.endsWith('/')
   ? FileSystem.Paths.document.uri + 'trash/'
@@ -120,6 +121,15 @@ export function useTrash() {
       meta[destName] = { originalUri: sourceUri, deletedAt: Date.now() };
       await writeMeta(meta);
       if (reload) await loadFiles();
+
+      // After the move, never before: a failed move must not appear in the
+      // log. Awaited so bulk callers cannot interleave writes.
+      await recordActivity({
+        action: 'trashed',
+        name: fileName,
+        from: readableFolder(sourceUri),
+      });
+
       return true;
     } catch {
       return false;

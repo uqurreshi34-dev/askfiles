@@ -82,9 +82,31 @@ export const MAX_ITEMS_PER_ENTRY = 200;
 
 const LOG_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-activity.json`;
 
-/** Serialises writes, so two operations finishing together cannot both
- * read the same list and write it back with one entry missing. */
-let queue: Promise<unknown> = Promise.resolve();
+/**
+ * The log is held in memory and written back on a short delay.
+ *
+ * Reading, parsing, serialising and writing the whole file on every entry
+ * makes a bulk operation quadratic: a 200-file delete did 199 reads, 200
+ * writes and serialised 1.9 MB. Now it is one read and one write however
+ * many files the operation touched.
+ *
+ * null means "not loaded yet". Loading happens once, lazily.
+ */
+let cache: ActivityEntry[] | null = null;
+
+/** Set while a load is in flight, so parallel callers share one read. */
+let loading: Promise<ActivityEntry[]> | null = null;
+
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+let flushing: Promise<void> = Promise.resolve();
+
+/**
+ * How long to wait for more entries before writing. Long enough that a
+ * bulk loop coalesces into one write, short enough that the file is on
+ * disk before the user can reach the Activity screen.
+ */
+const FLUSH_DELAY_MS = 300;
 
 function readableName(value: string | undefined): string {
   const text = (value || '').trim();
@@ -129,72 +151,118 @@ export function readableFolder(pathOrUri: string | undefined): string {
   return parent;
 }
 
-export async function readActivity(): Promise<ActivityEntry[]> {
-  try {
-    if (!(await RNFS.exists(LOG_PATH))) return [];
+async function loadOnce(): Promise<ActivityEntry[]> {
+  if (cache) return cache;
 
-    const raw = await RNFS.readFile(LOG_PATH, 'utf8');
-    const parsed = JSON.parse(raw) as unknown;
+  if (!loading) {
+    loading = (async () => {
+      try {
+        if (!(await RNFS.exists(LOG_PATH))) return [];
 
-    if (!Array.isArray(parsed)) return [];
+        const raw = await RNFS.readFile(LOG_PATH, 'utf8');
+        const parsed = JSON.parse(raw) as unknown;
 
-    return parsed.filter(
-      (entry): entry is ActivityEntry =>
-        Boolean(entry) &&
-        typeof entry === 'object' &&
-        typeof (entry as ActivityEntry).at === 'number' &&
-        typeof (entry as ActivityEntry).name === 'string',
-    );
-  } catch (error) {
-    console.warn('[AskFiles] could not read activity log:', error);
-    return [];
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed.filter(
+          (entry): entry is ActivityEntry =>
+            Boolean(entry) &&
+            typeof entry === 'object' &&
+            typeof (entry as ActivityEntry).at === 'number' &&
+            typeof (entry as ActivityEntry).name === 'string',
+        );
+      } catch (error) {
+        console.warn('[AskFiles] could not read activity log:', error);
+        return [];
+      }
+    })();
   }
+
+  cache = await loading;
+  loading = null;
+
+  return cache;
+}
+
+/** Write the in-memory log to disk now. */
+export function flushActivity(): Promise<void> {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+
+  const entries = cache;
+
+  if (!entries) return flushing;
+
+  flushing = flushing
+    .then(() => RNFS.writeFile(LOG_PATH, JSON.stringify(entries), 'utf8'))
+    .then(() => undefined)
+    .catch(error => {
+      console.warn('[AskFiles] could not write activity log:', error);
+    });
+
+  return flushing;
+}
+
+function scheduleFlush(): void {
+  if (flushTimer) clearTimeout(flushTimer);
+
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    void flushActivity();
+  }, FLUSH_DELAY_MS);
+}
+
+export async function readActivity(): Promise<ActivityEntry[]> {
+  return [...(await loadOnce())];
 }
 
 /**
  * Add one entry. Never throws: a failure to log must not fail the file
  * operation that produced it.
  */
-export function recordActivity(entry: Omit<ActivityEntry, 'at'>): Promise<void> {
-  const next = queue.then(async () => {
-    try {
-      const name = (entry.name || '').trim();
+export async function recordActivity(entry: Omit<ActivityEntry, 'at'>): Promise<void> {
+  try {
+    const name = (entry.name || '').trim();
 
-      if (!name) return;
+    if (!name) return;
 
-      const existing = await readActivity();
+    const entries = await loadOnce();
 
-      existing.push({
-        at: Date.now(),
-        action: entry.action,
-        name,
-        ...(entry.from ? { from: entry.from } : {}),
-        ...(entry.to ? { to: entry.to } : {}),
-        ...(entry.count && entry.count > 1 ? { count: entry.count } : {}),
-        ...(entry.isFolder ? { isFolder: true } : {}),
-        ...(entry.source ? { source: entry.source } : {}),
-        ...(entry.items && entry.items.length
-          ? { items: entry.items.slice(0, MAX_ITEMS_PER_ENTRY) }
-          : {}),
-      });
+    entries.push({
+      at: Date.now(),
+      action: entry.action,
+      name,
+      ...(entry.from ? { from: entry.from } : {}),
+      ...(entry.to ? { to: entry.to } : {}),
+      ...(entry.count && entry.count > 1 ? { count: entry.count } : {}),
+      ...(entry.isFolder ? { isFolder: true } : {}),
+      ...(entry.source ? { source: entry.source } : {}),
+      ...(entry.items && entry.items.length
+        ? { items: entry.items.slice(0, MAX_ITEMS_PER_ENTRY) }
+        : {}),
+    });
 
-      // Oldest first in the file, so trimming the front keeps the newest.
-      const trimmed =
-        existing.length > MAX_ENTRIES ? existing.slice(existing.length - MAX_ENTRIES) : existing;
-
-      await RNFS.writeFile(LOG_PATH, JSON.stringify(trimmed), 'utf8');
-    } catch (error) {
-      console.warn('[AskFiles] could not record activity:', error);
+    // Oldest first, so trimming the front keeps the newest.
+    if (entries.length > MAX_ENTRIES) {
+      entries.splice(0, entries.length - MAX_ENTRIES);
     }
-  });
 
-  // Keep the chain alive even if one write rejects.
-  queue = next.catch(() => {});
-
-  return next;
+    scheduleFlush();
+  } catch (error) {
+    console.warn('[AskFiles] could not record activity:', error);
+  }
 }
 
 export async function clearActivity(): Promise<void> {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+
+  cache = [];
+
   try {
     if (await RNFS.exists(LOG_PATH)) await RNFS.unlink(LOG_PATH);
   } catch (error) {
@@ -204,7 +272,7 @@ export async function clearActivity(): Promise<void> {
 
 /** Newest first, which is how the screen wants them. */
 export async function recentActivity(limit = MAX_ENTRIES): Promise<ActivityEntry[]> {
-  const entries = await readActivity();
+  const entries = await loadOnce();
 
   return entries.slice(-limit).reverse();
 }
