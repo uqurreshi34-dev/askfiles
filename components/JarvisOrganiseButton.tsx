@@ -14,6 +14,7 @@ import {
 } from '@/modules/jarvis';
 import { recordOrganisation, undoOrganisation, UndoMove, clearOrganisation } from '@/modules/organiseUndo';
 import { useTheme } from '@/hooks/useTheme';
+import { Cancellable } from '@shopify/flash-list';
 
 export type JarvisOrganiseItem = JarvisFolderItem & {
   uri: string;
@@ -260,9 +261,14 @@ export default function JarvisOrganiseButton({
         {
           text: 'Dismiss',
           style: 'cancel',
+           // Clears the record rather than just closing. Nothing reads it
+          // today except this prompt, but canUndo() is exported and unused
+          // -- the moment it feeds a menu item or a startup check, a record
+          // left from last week becomes undoable and would move files that
+          // were accepted days ago.
           onPress: () => { void clearOrganisation(); },
         },
-      ]);
+      ], {cancelable: false});
     } catch (error: any) {
       const message = error?.message || 'I could not finish organising this folder.';
       Alert.alert('JARVIS', message);

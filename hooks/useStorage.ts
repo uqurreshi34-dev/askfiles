@@ -53,6 +53,7 @@ interface StorageCache {
     downloads: { name: string; size: string; folder: string }[];
     overall: { name: string; size: string; folder: string }[];
   };
+  documentExtensions: Record<string, number>;
   loaded: boolean;
 }
 
@@ -76,6 +77,7 @@ const cache: StorageCache = {
     downloads: [] as { name: string; size: string; folder: string }[],
     overall: [] as { name: string; size: string; folder: string }[],
   },
+  documentExtensions: {},
   loaded: false,
 };
 
@@ -211,6 +213,21 @@ const [docItems, dlItems] = await Promise.all([
 
 cache.fileCounts.documents = docItems.length;
 cache.fileCounts.downloads = dlItems.length;
+  // Exact, device-wide: queryDocuments and queryDownloads return full
+  // listings, not samples, so a per-extension tally here is a real count
+  // rather than an estimate.
+  const extensionCounts: Record<string, number> = {};
+
+  for (const file of [...docItems, ...dlItems]) {
+    const dot = file.name.lastIndexOf('.');
+    const extension = dot > 0 ? file.name.slice(dot + 1).toLowerCase() : '';
+
+    if (extension) {
+      extensionCounts[extension] = (extensionCounts[extension] || 0) + 1;
+    }
+  }
+
+  cache.documentExtensions = extensionCounts;
   cache.fileCounts.images = imgScan.count;
   cache.fileCounts.videos = vidScan.count;
   cache.mediaContext.recentImages = imgScan.recentNames;
@@ -328,6 +345,7 @@ export function useStorage() {
       downloads: [...cache.largestFiles.downloads],
       overall: [...cache.largestFiles.overall],
     },
+    documentExtensions: { ...cache.documentExtensions },
     permissionGranted: cache.loaded,
     loading,
     reload,

@@ -45,6 +45,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches, RecentSearch } from 'recent-searches';
 import { getDateGroup } from '@/hooks/useRecents';
 import Thumb from '@/components/Thumb';
+import { answerLocally } from '@/modules/askLocal';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -122,6 +123,7 @@ export default function SearchScreen() {
   const [aiQuery, setAiQuery] = useState('');
   const { results, setResults, searching, search, removeResult } = useSearch();
   const { answer, thinking, cooldown, ask, reset } = useAskAI();
+  const [localAnswer, setLocalAnswer] = useState('');
   const router = useRouter();
   const { autofocus } = useLocalSearchParams<{ autofocus?: string }>();
   const searchInputRef = useRef<TextInput>(null);
@@ -157,7 +159,7 @@ export default function SearchScreen() {
     handleIndexNow();
   }, [mode]);
 
-  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles } = useStorage();
+  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions } = useStorage();
   const { isPro } = usePro();
   const { addToVault } = useVault();
   const insets = useSafeAreaInsets();
@@ -530,6 +532,22 @@ export default function SearchScreen() {
     const q = question ?? aiQuery;
     if (q.trim().length < 3) return;
     Keyboard.dismiss();
+        // The numbers are already exact on this device. Only questions that
+    // need judgement rather than arithmetic should cost a request.
+    const local = answerLocally(q, {
+      storageInfo,
+      fileCounts,
+      folderSizes,
+      mediaContext,
+      largestFiles,
+      documentExtensions,
+    });
+
+    if (local) {
+      setLocalAnswer(local);
+      return;
+    }
+
     const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles);
     await ask(q, context);
   }
@@ -575,6 +593,7 @@ export default function SearchScreen() {
 
   function handleAskAgain() {
     setAiQuery('');
+    setLocalAnswer('');
     reset();
   }
 
@@ -957,14 +976,14 @@ export default function SearchScreen() {
               <ActivityIndicator color={colors.blue} />
               <Text style={[styles.hint, { color: colors.textMuted }]}>Thinking...</Text>
             </View>
-          ) : answer.length > 0 ? (
+          ) : (localAnswer || answer).length > 0 ? (
             <ScrollView style={styles.answerScroll} contentContainerStyle={styles.answerScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={[styles.answerWrap, { backgroundColor: colors.blueBg }]}>
                 <View style={styles.answerHeader}>
                   <Ionicons name="sparkles-outline" size={16} color={colors.blue} />
                   <Text style={[styles.answerLabel, { color: colors.blue }]}>AskFiles AI</Text>
                 </View>
-                <Text style={[styles.answerText, { color: colors.textPrimary }]}>{answer}</Text>
+                <Text style={[styles.answerText, { color: colors.textPrimary }]}>{localAnswer || answer}</Text>
               </View>
               <TouchableOpacity style={[styles.askAgainBtn, { backgroundColor: colors.surface }]} onPress={handleAskAgain}>
                 <Ionicons name="sparkles-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />

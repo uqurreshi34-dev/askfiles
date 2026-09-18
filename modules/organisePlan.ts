@@ -43,7 +43,7 @@ import type {
    * would sweep up files whose home nobody has decided on, and moving a file
    * you did not expect to move is worse than leaving it.
    */
-  const EXTENSION_RULES: Record<string, string> = {
+  export const EXTENSION_RULES: Record<string, string> = {
     // Images
     jpg: 'Images', jpeg: 'Images', png: 'Images', gif: 'Images',
     webp: 'Images', bmp: 'Images', heic: 'Images', heif: 'Images',
