@@ -532,7 +532,11 @@ export default function SearchScreen() {
     const q = question ?? aiQuery;
     if (q.trim().length < 3) return;
     Keyboard.dismiss();
-        // The numbers are already exact on this device. Only questions that
+    // Clear first. The answer box renders localAnswer || answer, so a
+    // previous local answer would otherwise show while a new question is
+    // still in flight -- or for ever, if that question fails.
+    setLocalAnswer('');
+    // The numbers are already exact on this device. Only questions that
     // need judgement rather than arithmetic should cost a request.
     const local = answerLocally(q, {
       storageInfo,

@@ -5,7 +5,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles } from 'media-store';
+import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount } from 'media-store';
 
 interface StorageInfo {
   totalBytes: number;
@@ -233,6 +233,15 @@ cache.fileCounts.downloads = dlItems.length;
   cache.mediaContext.recentImages = imgScan.recentNames;
   cache.mediaContext.recentVideos = vidScan.recentNames;
   cache.mediaContext.screenshotCount = imgScan.screenshotCount;
+  // Replace the sampled figure with a real device-wide count. Falls back to
+  // the sample if the query fails, which is a floor rather than a lie.
+  try {
+    const screenshots = await queryNameMatchCount(['screenshot'], 'image/');
+
+    if (screenshots > 0) cache.mediaContext.screenshotCount = screenshots;
+  } catch {
+    // Keep imgScan.screenshotCount.
+  }
   const [largestImages, largestVideos, largestDocs, largestDownloads] = await Promise.all([
     queryLargestFiles('/storage/emulated/0/DCIM/', 'image/', 5),
     queryLargestFiles('/storage/emulated/0/DCIM/', 'video/', 5),

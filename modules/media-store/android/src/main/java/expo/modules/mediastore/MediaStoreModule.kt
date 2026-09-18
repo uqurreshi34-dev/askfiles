@@ -329,6 +329,44 @@ class MediaStoreModule : Module() {
       results
     }
 
+    // Counts rather than lists. The screenshot total came from the 500 most
+    // recent photos, so a phone whose screenshots are older than its last
+    // 500 pictures reported zero. MediaStore counts the whole device in one
+    // query and returns an integer, so size does not matter here.
+    AsyncFunction("queryNameMatchCount") { keywords: List<String>, mimePrefix: String ->
+      val context = appContext.reactContext ?: return@AsyncFunction 0
+      var total = 0
+      try {
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        val keywordClause = keywords.joinToString(" OR ") {
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        }
+        val selection = if (mimePrefix.isEmpty()) {
+          "($keywordClause)"
+        } else {
+          "($keywordClause) AND ${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ?"
+        }
+        val args = if (mimePrefix.isEmpty()) {
+          keywords.map { "%$it%" }.toTypedArray()
+        } else {
+          (keywords.map { "%$it%" } + "$mimePrefix%").toTypedArray()
+        }
+        val cursor = context.contentResolver.query(uri, projection, selection, args, null)
+        cursor?.use {
+          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+          while (it.moveToNext()) {
+            val name = it.getString(nameCol) ?: continue
+            // Hidden files and anything inside a hidden folder are not the
+            // user's screenshots.
+            if (name.startsWith('.')) continue
+            total++
+          }
+        }
+      } catch (e: Exception) {}
+      total
+    }
+
     AsyncFunction("queryAllFiles") {
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()

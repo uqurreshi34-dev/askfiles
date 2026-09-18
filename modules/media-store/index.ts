@@ -125,3 +125,10 @@ export const queryVideos = async (sortKey: string = 'date_desc'): Promise<{ name
 export async function getMediaInfo(filePath: string): Promise<MediaInfo> {
   return MediaStore.getMediaInfo(filePath);
 }
+
+export async function queryNameMatchCount(
+  keywords: string[],
+  mimePrefix: string = ''
+): Promise<number> {
+  return MediaStore.queryNameMatchCount(keywords, mimePrefix);
+}
