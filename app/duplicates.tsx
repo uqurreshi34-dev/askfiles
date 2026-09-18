@@ -52,10 +52,10 @@ export default function DuplicatesScreen() {
   async function handleKeepOne(group: DuplicateGroup) {
     Alert.alert(
       'Keep one copy',
-      `Keep the first copy of "${group.name}" and move the rest to Trash?`,
+      `Keep the first copy of "${group.name}" and permanently delete the rest? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Keep one', style: 'destructive', onPress: async () => {
+        { text: 'Delete rest', style: 'destructive', onPress: async () => {
           setKeepingGroup(group.key);
           const toDelete = group.files.slice(1);
           for (const file of toDelete) {

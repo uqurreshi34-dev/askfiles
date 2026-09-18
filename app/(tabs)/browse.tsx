@@ -49,6 +49,7 @@ import { TextEditorView } from 'text-editor';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import { MediaViewerView } from '@/modules/media-viewer';
 import JarvisOrganiseButton from '@/components/JarvisOrganiseButton';
+import { recentActivity } from '@/modules/activityLog';
 
 interface FileItem {
   name: string;
@@ -65,6 +66,12 @@ const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 
 export default function BrowseScreen() {
   const { colors } = useTheme();
   const { moveToTrash } = useTrash();
+  useEffect(() => {
+    const t = setInterval(async () => {
+      console.log('[ACTIVITY]', JSON.stringify(await recentActivity(10), null, 2));
+    }, 5000);
+    return () => clearInterval(t);
+  }, []);
   const { initialPath } = useLocalSearchParams<{ initialPath?: string }>();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [items, setItems] = useState<FileItem[]>([]);
