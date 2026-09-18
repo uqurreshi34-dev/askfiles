@@ -32,7 +32,14 @@
 
 import RNFS from 'react-native-fs';
 
-export type ActivityAction = 'moved' | 'trashed' | 'deleted';
+export type ActivityAction = 'moved' | 'copied' | 'trashed' | 'deleted';
+
+/** One file inside a bulk operation. */
+export type ActivityItem = {
+  name: string;
+  from?: string;
+  to?: string;
+};
 
 export type ActivityEntry = {
   /** Epoch milliseconds. */
@@ -50,6 +57,14 @@ export type ActivityEntry = {
   isFolder?: boolean;
   /** Which screen or operation produced it, e.g. "Vault", "Duplicates". */
   source?: string;
+  /**
+   * The individual files, when this entry stands for a bulk operation.
+   *
+   * One entry per batch rather than one per file, because a 230-file move
+   * written as 230 entries would empty the whole log in a single action.
+   * count is always the true total; this list may be shorter.
+   */
+  items?: ActivityItem[];
 };
 
 /**
@@ -57,6 +72,13 @@ export type ActivityEntry = {
  * person will scroll and small enough to read and write in one go.
  */
 export const MAX_ENTRIES = 500;
+
+/**
+ * How many individual files one batch entry keeps. The count is still
+ * exact; beyond this the screen says how many more there were. Stops a
+ * ten-thousand-file paste turning the log into a megabyte of JSON.
+ */
+export const MAX_ITEMS_PER_ENTRY = 200;
 
 const LOG_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-activity.json`;
 
@@ -151,6 +173,9 @@ export function recordActivity(entry: Omit<ActivityEntry, 'at'>): Promise<void> 
         ...(entry.count && entry.count > 1 ? { count: entry.count } : {}),
         ...(entry.isFolder ? { isFolder: true } : {}),
         ...(entry.source ? { source: entry.source } : {}),
+        ...(entry.items && entry.items.length
+          ? { items: entry.items.slice(0, MAX_ITEMS_PER_ENTRY) }
+          : {}),
       });
 
       // Oldest first in the file, so trimming the front keeps the newest.
@@ -184,28 +209,60 @@ export async function recentActivity(limit = MAX_ENTRIES): Promise<ActivityEntry
   return entries.slice(-limit).reverse();
 }
 
-/** One line describing an entry, used by the screen and by askLocal. */
+/** The heading line for an entry: what happened, and how much of it. */
 export function describeActivity(entry: ActivityEntry): string {
+  const total = entry.count && entry.count > 1 ? entry.count : 0;
   const thing = entry.isFolder ? 'folder' : 'file';
-  const many = entry.count && entry.count > 1;
 
-  if (entry.action === 'moved') {
-    const subject = many
-      ? `Moved ${entry.count} files`
-      : `Moved ${entry.isFolder ? `${thing} ` : ''}${entry.name}`;
+  if (entry.action === 'moved' || entry.action === 'copied') {
+    const verb = entry.action === 'moved' ? 'Moved' : 'Copied';
+    const subject = total
+      ? `${verb} ${total} files`
+      : `${verb} ${entry.isFolder ? `${thing} ` : ''}${entry.name}`;
 
     return entry.to ? `${subject} to ${entry.to}` : subject;
   }
 
   if (entry.action === 'trashed') {
-    const subject = many ? `Moved ${entry.count} files to Trash` : `Moved ${entry.name} to Trash`;
+    const subject = total
+      ? `Moved ${total} files to Trash`
+      : `Moved ${entry.name} to Trash`;
 
     return entry.from ? `${subject}, from ${entry.from}` : subject;
   }
 
-  const subject = many
-    ? `Deleted ${entry.count} files permanently`
+  const subject = total
+    ? `Deleted ${total} files permanently`
     : `Deleted ${entry.name} permanently`;
 
   return entry.from ? `${subject}, from ${entry.from}` : subject;
+}
+
+/**
+ * The lines inside a bulk entry, one per file, plus a closing line when
+ * more files were affected than the entry kept.
+ *
+ * Empty for a single-file entry -- describeActivity already said it all,
+ * and a block of one is noise.
+ */
+export function describeActivityItems(entry: ActivityEntry): string[] {
+  const items = entry.items || [];
+
+  if (items.length === 0) return [];
+
+  const lines = items.map(item => {
+    if (item.from && item.to) return `${item.name}: ${item.from} to ${item.to}`;
+    if (item.to) return `${item.name} to ${item.to}`;
+    if (item.from) return `${item.name}, from ${item.from}`;
+
+    return item.name;
+  });
+
+  const total = entry.count || items.length;
+
+  if (total > items.length) {
+    lines.push(`and ${total - items.length} more`);
+  }
+
+  return lines;
 }
