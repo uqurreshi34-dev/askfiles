@@ -78,7 +78,7 @@ Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.si
 Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
-Largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
+Largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
 Note: always use the folder name provided in brackets when stating where a file is located — never guess or assume a file's location based on its type.
   `.trim();
