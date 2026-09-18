@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
 import { removeFavourite } from '@/hooks/useFavourites';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 
 const VAULT_DIR = FileSystem.Paths.document.uri.endsWith('/')
   ? FileSystem.Paths.document.uri + 'vault/'
@@ -68,6 +69,15 @@ export function useVault() {
       src.move(dst);
       await removeFavourite(sourceUri);
       if (refresh) await loadFiles();
+
+      await recordActivity({
+        action: 'moved',
+        name: fileName,
+        from: readableFolder(sourceUri),
+        to: 'Vault',
+        source: 'Vault',
+      });
+
       return true;
     } catch {
       return false;
@@ -92,6 +102,14 @@ export function useVault() {
       const f = new FileSystem.File(file.uri);
       f.delete();
       await loadFiles();
+
+      await recordActivity({
+        action: 'deleted',
+        name: file.name,
+        from: 'Vault',
+        source: 'Vault',
+      });
+
       return true;
     } catch {
       return false;

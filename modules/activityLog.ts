@@ -119,8 +119,23 @@ function readableName(value: string | undefined): string {
   return plain;
 }
 
-/** The folder part of a path, trimmed of the storage root for reading. */
-export function readableFolder(pathOrUri: string | undefined): string {
+/**
+ * The file's name from a path or URI.
+ *
+ * Both duplicate hooks are handed only a uri, and decoding it is the one
+ * place this codebase keeps getting wrong -- a bare path where a file://
+ * URI was expected is what silently broke removeFromVault. One helper.
+ */
+export function fileNameFrom(pathOrUri: string | undefined): string {
+    const plain = readableName(pathOrUri);
+  
+    if (!plain) return '';
+  
+    return plain.slice(plain.lastIndexOf('/') + 1);
+  }
+  
+  /** The folder part of a path, trimmed of the storage root for reading. */
+  export function readableFolder(pathOrUri: string | undefined): string {
   const plain = readableName(pathOrUri);
 
   if (!plain) return '';

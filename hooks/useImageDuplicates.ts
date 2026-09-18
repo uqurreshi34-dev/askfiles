@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { scanImageDuplicates, ImageDuplicateGroup, addScanProgressListener } from '@/modules/image-hash';
 import * as FileSystem from 'expo-file-system';
 import { formatSize } from '@/utils/files';
+import { recordActivity, readableFolder, fileNameFrom } from '@/modules/activityLog';
 
 export function useImageDuplicates() {
   const [groups, setGroups] = useState<ImageDuplicateGroup[]>([]);
@@ -55,6 +56,13 @@ export function useImageDuplicates() {
     try {
       const file = new FileSystem.File(uri);
       if (file.exists) file.delete();
+
+      await recordActivity({
+        action: 'deleted',
+        name: fileNameFrom(uri),
+        from: readableFolder(uri),
+        source: 'Similar images',
+      });
     } catch (e) {
       console.error('delete failed:', e);
     }

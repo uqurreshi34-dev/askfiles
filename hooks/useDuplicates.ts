@@ -2,6 +2,7 @@ import { useState } from 'react';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { queryAllFiles } from 'media-store';
+import { recordActivity, readableFolder, fileNameFrom } from '@/modules/activityLog';
 
 export interface DuplicateFile {
   name: string;
@@ -95,6 +96,15 @@ export function useDuplicates() {
         if (match) await MediaLibrary.deleteAssetsAsync([match]);
       } catch {}
     }
+
+    // Permanent: nothing goes to Trash here, so this entry is the only
+    // record the file existed.
+    await recordActivity({
+      action: 'deleted',
+      name: fileNameFrom(uri),
+      from: readableFolder(uri),
+      source: 'Duplicates',
+    });
 
     return true;
   }
