@@ -77,7 +77,6 @@ function buildContext(
   storageInfo: any,
   fileCounts: any,
   folderSizes: any,
-  mediaContext: any,
   largestFiles: any,
 ): string {
 
@@ -536,7 +535,7 @@ export default function SearchScreen() {
       return;
     }
 
-    const context = buildContext(storageInfo, fileCounts, folderSizes, mediaContext, largestFiles);
+    const context = buildContext(storageInfo, fileCounts, folderSizes, largestFiles);
     await ask(q, context);
   }
 
