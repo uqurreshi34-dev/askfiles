@@ -50,6 +50,7 @@ export type AskLocalData = {
     videos: NamedFile[];
     documents: NamedFile[];
     downloads: NamedFile[];
+    screenshots?: NamedFile[];
     overall: NamedFile[];
   };
   /**
@@ -174,6 +175,16 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
 
   // ── Largest single file, overall or by kind. ────────────────────────────
   if (asksLargest) {
+    // Before subjectOf, which would resolve "screenshot" to images and
+    // answer about the wrong file.
+    if (has(list, 'screenshot', 'screenshots')) {
+      const shots = data.largestFiles.screenshots;
+
+      if (!shots) return null;
+
+      return describeFile(shots[0], 'screenshot');
+    }
+
     const subject = subjectOf(list);
 
     if (subject === 'images') return describeFile(data.largestFiles.images[0], 'image');

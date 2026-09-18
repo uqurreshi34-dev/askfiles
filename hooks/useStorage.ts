@@ -5,7 +5,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount } from 'media-store';
+import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount, queryLargestByName } from 'media-store';
 
 interface StorageInfo {
   totalBytes: number;
@@ -51,6 +51,7 @@ interface StorageCache {
     videos: { name: string; size: string; folder: string }[];
     documents: { name: string; size: string; folder: string }[];
     downloads: { name: string; size: string; folder: string }[];
+    screenshots: { name: string; size: string; folder: string }[];
     overall: { name: string; size: string; folder: string }[];
   };
   documentExtensions: Record<string, number>;
@@ -75,6 +76,7 @@ const cache: StorageCache = {
     videos: [] as { name: string; size: string; folder: string }[],
     documents: [] as { name: string; size: string; folder: string }[],
     downloads: [] as { name: string; size: string; folder: string }[],
+    screenshots: [] as { name: string; size: string; folder: string }[],
     overall: [] as { name: string; size: string; folder: string }[],
   },
   documentExtensions: {},
@@ -242,6 +244,7 @@ cache.fileCounts.downloads = dlItems.length;
   } catch {
     // Keep imgScan.screenshotCount.
   }
+  const largestScreenshots = await queryLargestByName(['screenshot'], 'image/', 5);
   const [largestImages, largestVideos, largestDocs, largestDownloads] = await Promise.all([
     queryLargestFiles('/storage/emulated/0/DCIM/', 'image/', 5),
     queryLargestFiles('/storage/emulated/0/DCIM/', 'video/', 5),
@@ -254,6 +257,7 @@ cache.fileCounts.downloads = dlItems.length;
     videos: largestVideos.map(f => ({ ...f, size: formatSize(f.size) })),
     documents: largestDocs.map(f => ({ ...f, size: formatSize(f.size) })),
     downloads: largestDownloads.map(f => ({ ...f, size: formatSize(f.size) })),
+    screenshots: largestScreenshots.map(f => ({ ...f, size: formatSize(f.size) })),
     overall: [], // derived below
   };
 
@@ -352,6 +356,7 @@ export function useStorage() {
       videos: [...cache.largestFiles.videos],
       documents: [...cache.largestFiles.documents],
       downloads: [...cache.largestFiles.downloads],
+      screenshots: [...cache.largestFiles.screenshots],
       overall: [...cache.largestFiles.overall],
     },
     documentExtensions: { ...cache.documentExtensions },

@@ -132,3 +132,11 @@ export async function queryNameMatchCount(
 ): Promise<number> {
   return MediaStore.queryNameMatchCount(keywords, mimePrefix);
 }
+
+export async function queryLargestByName(
+  keywords: string[],
+  mimePrefix: string = '',
+  limit: number = 5
+): Promise<LargestFile[]> {
+  return MediaStore.queryLargestByName(keywords, mimePrefix, limit);
+}

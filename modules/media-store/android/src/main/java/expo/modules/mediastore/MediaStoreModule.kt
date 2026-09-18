@@ -285,6 +285,63 @@ class MediaStoreModule : Module() {
       results
     }
 
+    // queryLargestFiles matches on folder path. Screenshots are scattered
+    // -- 237 across the device against 29 in Pictures/Screenshots -- so
+    // "largest screenshot" has to match the name instead. Same ordering and
+    // same hidden-file rules as above.
+    AsyncFunction("queryLargestByName") { keywords: List<String>, mimePrefix: String, limit: Int ->
+      val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
+      val results = mutableListOf<Map<String, Any>>()
+      try {
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+          MediaStore.Files.FileColumns.DISPLAY_NAME,
+          MediaStore.Files.FileColumns.SIZE,
+          MediaStore.Files.FileColumns.DATA,
+        )
+        val keywordClause = keywords.joinToString(" OR ") {
+          "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        }
+        val selection = if (mimePrefix.isEmpty()) {
+          "($keywordClause)"
+        } else {
+          "($keywordClause) AND ${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ?"
+        }
+        val selectionArgs = if (mimePrefix.isEmpty()) {
+          keywords.map { "%$it%" }.toTypedArray()
+        } else {
+          (keywords.map { "%$it%" } + "$mimePrefix%").toTypedArray()
+        }
+        val cursor = context.contentResolver.query(
+          uri, projection, selection, selectionArgs,
+          "${MediaStore.Files.FileColumns.SIZE} DESC"
+        )
+        cursor?.use {
+          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+          val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+          var count = 0
+          while (it.moveToNext() && count < limit) {
+            val name = it.getString(nameCol) ?: continue
+            if (name.startsWith('.')) continue
+            val size = it.getLong(sizeCol)
+            if (size <= 0) continue
+            val path = it.getString(dataCol) ?: continue
+            if (path.contains("/.")) continue
+            val folder = path.split("/").dropLast(1).lastOrNull() ?: "Storage"
+            results.add(mapOf(
+              "name" to name,
+              "size" to size.toDouble(),
+              "folder" to folder,
+              "uri" to "file://$path",
+            ))
+            count++
+          }
+        }
+      } catch (e: Exception) {}
+      results
+    }
+
     AsyncFunction("querySensitiveFiles") { keywords: List<String> ->
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
