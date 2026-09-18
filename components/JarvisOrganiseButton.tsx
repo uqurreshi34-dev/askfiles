@@ -12,7 +12,7 @@ import {
   JarvisFolderItem,
   JarvisOrganisationPlan,
 } from '@/modules/jarvis';
-import { recordOrganisation, undoOrganisation, UndoMove } from '@/modules/organiseUndo';
+import { recordOrganisation, undoOrganisation, UndoMove, clearOrganisation } from '@/modules/organiseUndo';
 import { useTheme } from '@/hooks/useTheme';
 
 export type JarvisOrganiseItem = JarvisFolderItem & {
@@ -257,7 +257,11 @@ export default function JarvisOrganiseButton({
             })();
           },
         },
-        { text: 'Dismiss', style: 'cancel' },
+        {
+          text: 'Dismiss',
+          style: 'cancel',
+          onPress: () => { void clearOrganisation(); },
+        },
       ]);
     } catch (error: any) {
       const message = error?.message || 'I could not finish organising this folder.';
