@@ -274,10 +274,25 @@ class MediaStoreModule : Module() {
             // The parent path relative to internal storage, not just its
             // last segment. The organiser creates an Images folder inside
             // every folder it tidies, so "Images" alone names nothing.
-            val folder = path.substringBeforeLast('/')
-              .removePrefix("/storage/emulated/0/")
-              .removePrefix("/sdcard/")
-              .ifEmpty { "Internal storage" }
+            // The parent path, labelled by which volume it is on. SD cards
+            // mirror the internal folder names, so "aaa/Images" alone names
+            // two different folders on a phone with a card in it.
+            val parent = path.substringBeforeLast('/')
+            val folder = when {
+              parent == "/storage/emulated/0" || parent == "/sdcard" ->
+                "Internal storage"
+              parent.startsWith("/storage/emulated/0/") ->
+                "Internal storage/" + parent.removePrefix("/storage/emulated/0/")
+              parent.startsWith("/sdcard/") ->
+                "Internal storage/" + parent.removePrefix("/sdcard/")
+              parent.startsWith("/storage/") -> {
+                // /storage/<volume-id>/rest — a removable volume.
+                val rest = parent.removePrefix("/storage/")
+                val slash = rest.indexOf('/')
+                if (slash < 0) "SD card" else "SD card/" + rest.substring(slash + 1)
+              }
+              else -> parent.trim('/').ifEmpty { "Storage" }
+            }
             results.add(mapOf(
               "name" to name,
               "size" to size.toDouble(),
@@ -337,10 +352,25 @@ class MediaStoreModule : Module() {
             // The parent path relative to internal storage, not just its
             // last segment. The organiser creates an Images folder inside
             // every folder it tidies, so "Images" alone names nothing.
-            val folder = path.substringBeforeLast('/')
-              .removePrefix("/storage/emulated/0/")
-              .removePrefix("/sdcard/")
-              .ifEmpty { "Internal storage" }
+            // The parent path, labelled by which volume it is on. SD cards
+            // mirror the internal folder names, so "aaa/Images" alone names
+            // two different folders on a phone with a card in it.
+            val parent = path.substringBeforeLast('/')
+            val folder = when {
+              parent == "/storage/emulated/0" || parent == "/sdcard" ->
+                "Internal storage"
+              parent.startsWith("/storage/emulated/0/") ->
+                "Internal storage/" + parent.removePrefix("/storage/emulated/0/")
+              parent.startsWith("/sdcard/") ->
+                "Internal storage/" + parent.removePrefix("/sdcard/")
+              parent.startsWith("/storage/") -> {
+                // /storage/<volume-id>/rest — a removable volume.
+                val rest = parent.removePrefix("/storage/")
+                val slash = rest.indexOf('/')
+                if (slash < 0) "SD card" else "SD card/" + rest.substring(slash + 1)
+              }
+              else -> parent.trim('/').ifEmpty { "Storage" }
+            }
             results.add(mapOf(
               "name" to name,
               "size" to size.toDouble(),
