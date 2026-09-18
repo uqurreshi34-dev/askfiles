@@ -271,7 +271,13 @@ class MediaStoreModule : Module() {
             if (size <= 0) continue
             val path = it.getString(dataCol) ?: continue
             if (path.contains("/.")) continue
-            val folder = path.split("/").dropLast(1).lastOrNull() ?: "Storage"
+            // The parent path relative to internal storage, not just its
+            // last segment. The organiser creates an Images folder inside
+            // every folder it tidies, so "Images" alone names nothing.
+            val folder = path.substringBeforeLast('/')
+              .removePrefix("/storage/emulated/0/")
+              .removePrefix("/sdcard/")
+              .ifEmpty { "Internal storage" }
             results.add(mapOf(
               "name" to name,
               "size" to size.toDouble(),
@@ -328,7 +334,13 @@ class MediaStoreModule : Module() {
             if (size <= 0) continue
             val path = it.getString(dataCol) ?: continue
             if (path.contains("/.")) continue
-            val folder = path.split("/").dropLast(1).lastOrNull() ?: "Storage"
+            // The parent path relative to internal storage, not just its
+            // last segment. The organiser creates an Images folder inside
+            // every folder it tidies, so "Images" alone names nothing.
+            val folder = path.substringBeforeLast('/')
+              .removePrefix("/storage/emulated/0/")
+              .removePrefix("/sdcard/")
+              .ifEmpty { "Internal storage" }
             results.add(mapOf(
               "name" to name,
               "size" to size.toDouble(),

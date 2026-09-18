@@ -60,19 +60,6 @@ const SUGGESTIONS = [
   'Should I free up some space?',
 ];
 
-function friendlyFolder(folder: string): string {
-  const map: Record<string, string> = {
-    'Camera': 'Camera Roll',
-    'Download': 'Downloads',
-    'Pictures': 'Pictures',
-    'Movies': 'Videos',
-    'Documents': 'Documents',
-    'Music': 'Music',
-    'My Files': 'My Files',
-  };
-  return map[folder] ?? folder;
-}
-
 function buildContext(
   storageInfo: any,
   fileCounts: any,
@@ -87,10 +74,10 @@ Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadabl
 File counts: ${fileCounts.images} images, ${fileCounts.videos} videos, ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
 Folder sizes: DCIM/Camera ${folderSizes.dcim}, Pictures ${folderSizes.pictures}, Videos total ${folderSizes.videos}, Downloads ${folderSizes.downloads}, Documents ${folderSizes.documents}.
 Files with 1970 date have corrupted/missing timestamps from WhatsApp.
-Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
-Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
-Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
-Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
+Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
+Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
 Note: always use the folder name provided in brackets when stating where a file is located — never guess or assume a file's location based on its type.
@@ -142,7 +129,7 @@ export default function SearchScreen() {
     handleIndexNow();
   }, [mode]);
 
-  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions } = useStorage();
+  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, silentReload } = useStorage();
   const { isPro } = usePro();
   const { addToVault } = useVault();
   const insets = useSafeAreaInsets();
@@ -177,6 +164,15 @@ export default function SearchScreen() {
     setShowSheet(false);
     setSelectedItem(null);
   });
+
+  // The storage cache is only rebuilt by the home tab's reload(), so a file
+  // moved in browse is still reported at its old location here. Separate
+  // from the focus effect above because useStorage is called below it.
+  useFocusEffect(
+    useCallback(() => {
+      void silentReload();
+    }, [silentReload])
+  );
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
