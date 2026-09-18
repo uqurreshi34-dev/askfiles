@@ -83,21 +83,6 @@ function buildContext(
 
   const freeSpace = storageInfo?.freeBytes ? formatSize(storageInfo.freeBytes) : 'unknown';
 
-  const imageCounts: Record<string, number> = {};
-  for (const name of mediaContext.recentImages) {
-    const ext = name.split('.').pop()?.toLowerCase() ?? 'unknown';
-    imageCounts[ext] = (imageCounts[ext] ?? 0) + 1;
-  }
-  const imageBreakdown = Object.entries(imageCounts).map(([ext, count]) => `${count} ${ext}`).join(', ');
-
-  const videoCounts: Record<string, number> = {};
-  for (const name of mediaContext.recentVideos) {
-    const ext = name.split('.').pop()?.toLowerCase() ?? 'unknown';
-    videoCounts[ext] = (videoCounts[ext] ?? 0) + 1;
-  }
-  const videoBreakdown = Object.entries(videoCounts).map(([ext, count]) => `${count} ${ext}`).join(', ');
-
-
   return `
 Device storage: ${storageInfo?.usedReadable} used of ${storageInfo?.totalReadable} total. ${freeSpace} free.
 File counts: ${fileCounts.images} images, ${fileCounts.videos} videos, ${fileCounts.documents} documents, ${fileCounts.downloads} downloads.
@@ -107,7 +92,7 @@ Largest images by size: ${largestFiles.images.map((f: any) => `${f.name} (${f.si
 Largest videos by size: ${largestFiles.videos.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
-Top 10 largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
+Largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${friendlyFolder(f.folder)})`).join(', ') || 'none'}.
 Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
 Note: always use the folder name provided in brackets when stating where a file is located — never guess or assume a file's location based on its type.
   `.trim();
