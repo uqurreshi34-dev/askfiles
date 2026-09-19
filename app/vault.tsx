@@ -12,6 +12,7 @@ import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
 import RNFS from 'react-native-fs';
 import { isImageFile, getMimeType, getFileColor, formatSize, getFileIcon, toPath, formatDate, exifLines, ROOT_PATH } from '@/utils/files';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { verifyPin, isPinSet } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
@@ -175,6 +176,16 @@ export default function VaultScreen() {
         await scanFile(dst).catch(() => {});
         const f = new FileSystem.File(file.uri);
         f.delete();
+
+        // After the delete, so a copy that succeeded but failed to clear
+        // the vault copy is not reported as a completed move.
+        await recordActivity({
+          action: 'moved',
+          name: file.name,
+          from: 'Vault',
+          to: readableFolder(dst + '/x'),
+          source: 'Vault',
+        });
       } catch { failed++; }
     }
     await loadFiles();
@@ -206,6 +217,13 @@ export default function VaultScreen() {
             const f = new FileSystem.File(file.uri);
             f.delete();
             DocIndexer.removeFromIndex(file.uri);
+
+            await recordActivity({
+              action: 'deleted',
+              name: file.name,
+              from: 'Vault',
+              source: 'Vault',
+            });
           } catch {}
         }
         await loadFiles();
