@@ -49,7 +49,7 @@ export default function ImageDuplicatesScreen() {
   async function handleKeepOne(group: ImageDuplicateGroup) {
     Alert.alert(
       'Keep one copy',
-      'Keep the largest copy and delete the rest?',
+      'Keep the largest copy and delete the rest? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

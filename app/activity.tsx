@@ -141,7 +141,7 @@ export default function ActivityScreen() {
         <Text style={[styles.title, { color: colors.textPrimary }]}>Activity</Text>
         {entries.length > 0 ? (
           <TouchableOpacity onPress={handleClear} style={styles.backBtn}>
-            <Ionicons name="trash-outline" size={22} color={colors.textSecondary} />
+           <Ionicons name="trash-outline" size={22} color={colors.deleteRed} />
           </TouchableOpacity>
         ) : (
           <View style={styles.backBtn} />
@@ -215,7 +215,11 @@ export default function ActivityScreen() {
                     <View style={styles.info}>
                       <Text
                         style={[styles.line, { color: colors.textPrimary }]}
-                        numberOfLines={isOpen ? undefined : 2}
+                        // Three, not two: "Deleted Scan_1784573626439.pdf
+                        // permanently, from Internal storage/Adeeb/Scans"
+                        // wraps past two lines in portrait and the path --
+                        // the part you actually need -- is what gets cut.
+                        numberOfLines={isOpen ? undefined : 3}
                       >
                         {describeActivity(entry)}
                       </Text>

@@ -67,14 +67,14 @@ export default function BrowseScreen() {
   const { colors } = useTheme();
   const { moveToTrash } = useTrash();
   useEffect(() => {
-    let lastCount = -1;
+    let lastAt = 0;
     const t = setInterval(async () => {
       const entries = await recentActivity(10);
-      if (entries.length === lastCount) return;   // nothing new, stay quiet
-      lastCount = entries.length;
+      if (!entries.length || entries[0].at === lastAt) return;   // nothing new
+      lastAt = entries[0].at;
       const lines = entries
         .slice()
-        .reverse()                                 // oldest first, newest at the bottom
+        .reverse()
         .map(e => {
           const d = new Date(e.at);
           const when = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
