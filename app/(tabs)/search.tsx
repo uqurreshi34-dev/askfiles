@@ -335,9 +335,9 @@ export default function SearchScreen() {
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
       await syncPathReferences(oldUri, newUri, newName);
       await recordActivity({
-        action: 'moved',
-        name: `renamed to ${newName}`,
-        from: readableFolder(oldUri),
+        action: 'renamed',
+        name: oldUri.slice(oldUri.lastIndexOf('/') + 1),
+        newName,
         to: readableFolder(newUri),
         source: 'Search',
       });

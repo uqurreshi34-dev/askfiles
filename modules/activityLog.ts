@@ -32,7 +32,7 @@
 
 import RNFS from 'react-native-fs';
 
-export type ActivityAction = 'moved' | 'copied' | 'trashed' | 'deleted';
+export type ActivityAction = 'moved' | 'copied' | 'renamed' | 'trashed' | 'deleted';
 
 /** One file inside a bulk operation. */
 export type ActivityItem = {
@@ -57,6 +57,12 @@ export type ActivityEntry = {
   isFolder?: boolean;
   /** Which screen or operation produced it, e.g. "Vault", "Duplicates". */
   source?: string;
+  /**
+   * The name after a rename. A rename is not a move -- forcing it through
+   * the move sentence gave "Moved dummy.jpg renamed to dummy1.jpg to
+   * Internal storage/tests", which reads like two sentences collided.
+   */
+  newName?: string;
   /**
    * The individual files, when this entry stands for a bulk operation.
    *
@@ -254,6 +260,7 @@ export async function recordActivity(entry: Omit<ActivityEntry, 'at'>): Promise<
       ...(entry.count && entry.count > 1 ? { count: entry.count } : {}),
       ...(entry.isFolder ? { isFolder: true } : {}),
       ...(entry.source ? { source: entry.source } : {}),
+      ...(entry.newName ? { newName: entry.newName } : {}),
       ...(entry.items && entry.items.length
         ? { items: entry.items.slice(0, MAX_ITEMS_PER_ENTRY) }
         : {}),
@@ -304,6 +311,16 @@ export function describeActivity(entry: ActivityEntry): string {
       : `${verb} ${entry.isFolder ? `${thing} ` : ''}${entry.name}`;
 
     return entry.to ? `${subject} to ${entry.to}` : subject;
+  }
+
+  if (entry.action === 'renamed') {
+    const subject = total
+      ? `Renamed ${total} files`
+      : `Renamed ${entry.name}${entry.newName ? ` to ${entry.newName}` : ''}`;
+
+    // "in" not "to": a rename usually stays put, and when the file also
+    // moved, naming the destination is what matters.
+    return entry.to ? `${subject}, in ${entry.to}` : subject;
   }
 
   if (entry.action === 'trashed') {

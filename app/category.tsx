@@ -423,12 +423,11 @@ async function handleSsInfo() {
       }
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
       await syncPathReferences(oldUri, newUri, newName);
-      // A rename is a move within one folder: the old name is gone, and
-      // "where did X go" is exactly the question it creates.
+      // Logging a file rename
       await recordActivity({
-        action: 'moved',
-        name: `${selectedItem.name} renamed to ${newName}`,
-        from: readableFolder(oldUri),
+        action: 'renamed',
+        name: selectedItem.name,
+        newName,
         to: readableFolder(newUri),
         source: 'Categories',
       });
@@ -1158,6 +1157,20 @@ async function handleSsInfo() {
       const results = await batchRename(items);
       const succeeded = results.filter(r => r.success).length;
       const failed = results.filter(r => !r.success).length;
+
+      // results[i] pairs with items[i], so only the ones that actually
+      // succeeded are recorded.
+      for (let i = 0; i < results.length; i++) {
+        if (!results[i]?.success) continue;
+
+        await recordActivity({
+          action: 'renamed',
+          name: files[i].name,
+          newName: items[i].dst.slice(items[i].dst.lastIndexOf('/') + 1),
+          to: readableFolder(items[i].dst),
+          source: 'Categories',
+        });
+      }
   
       // Update items list for moved files
       if (succeeded > 0) {
