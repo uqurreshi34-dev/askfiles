@@ -346,7 +346,7 @@ export function describeActivity(entry: ActivityEntry): string {
 
   const subject = total
     ? `Deleted ${total} files permanently`
-    : `Deleted ${entry.name} permanently`;
+    : `Deleted ${entry.isFolder ? `${thing} ` : ''}${entry.name} permanently`;
 
   return entry.from ? `${subject}, from ${entry.from}` : subject;
 }

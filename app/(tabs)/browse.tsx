@@ -697,6 +697,14 @@ export default function BrowseScreen() {
             setDeletingFolder(true);
             await new Promise(resolve => setTimeout(resolve, 100));
             await deleteDirectory(toPath(item.uri));
+            // Folders never go to Trash, so this entry is the only record.
+            await recordActivity({
+              action: 'deleted',
+              name: item.name,
+              from: readableFolder(item.uri),
+              isFolder: true,
+              source: 'Browse',
+            });
             setDeleting(false);
             setDeletingFolder(false);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1229,6 +1237,14 @@ export default function BrowseScreen() {
           await syncPathReferences(item.uri, destUri, item.name);
         }
         await scanFile(dst).catch(() => {});
+        await recordActivity({
+          action: 'moved',
+          name: item.name,
+          from: readableFolder(item.uri),
+          to: readableFolder(dst),
+          isFolder: item.isDirectory,
+          source: 'Browse',
+        });
         const destFolder = pickerPath.endsWith('/') ? pickerPath : pickerPath + '/';
         const isInternalRoot = destFolder === ROOT_PATH;
         const sdVolume = volumes.find(v => v.type === 'sdcard' && destFolder.includes(v.path));
