@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  StyleSheet, Text, View, FlatList, TouchableOpacity,
+  StyleSheet, Text, View, SectionList, TouchableOpacity,
   ActivityIndicator, Alert, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import {
 } from '@/modules/activityLog';
 
 /** A day heading plus the entries under it. */
-type Section = { key: string; label: string; entries: ActivityEntry[] };
+type Section = { key: string; label: string; data: ActivityEntry[] };
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   moved: 'arrow-forward-outline',
@@ -66,11 +66,11 @@ function toSections(entries: ActivityEntry[]): Section[] {
     const key = String(startOfDay(entry.at));
 
     if (!current || current.key !== key) {
-      current = { key, label: dayLabel(entry.at), entries: [] };
+      current = { key, label: dayLabel(entry.at), data: [] };
       sections.push(current);
     }
 
-    current.entries.push(entry);
+    current.data.push(entry);
   }
 
   return sections;
@@ -84,7 +84,7 @@ export default function ActivityScreen() {
 
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     // Entries sit in memory for up to 300ms before being written, so flush
@@ -100,11 +100,11 @@ export default function ActivityScreen() {
     }, [load])
   );
 
-  function toggle(at: number) {
+  function toggle(key: string) {
     setExpanded(prev => {
       const next = new Set(prev);
-      if (next.has(at)) next.delete(at);
-      else next.add(at);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -165,87 +165,76 @@ export default function ActivityScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={sections}
-          keyExtractor={section => section.key}
-          contentContainerStyle={[
-            styles.list,
-            landscape && styles.listLandscape,
-          ]}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <Text style={[styles.count, { color: colors.textMuted }]}>
-              {entries.length} action{entries.length !== 1 ? 's' : ''} · last{' '}
-              {MAX_ENTRIES} kept on this device
-            </Text>
-          }
-          renderItem={({ item: section }) => (
-            <View>
-              <Text style={[styles.dayLabel, { color: colors.textMuted }]}>
-                {section.label}
-              </Text>
-              {section.entries.map(entry => {
-                const items = describeActivityItems(entry);
-                const isOpen = expanded.has(entry.at);
-                const permanent = entry.action === 'deleted';
+        <SectionList
+        sections={sections}
+        keyExtractor={(entry, index) => entry.id ?? `${entry.at}-${index}`}
+        contentContainerStyle={[styles.list, landscape && styles.listLandscape]}
+        showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
+        initialNumToRender={20}
+        maxToRenderPerBatch={20}
+        windowSize={11}
+        removeClippedSubviews
+        ListHeaderComponent={
+          <Text style={[styles.count, { color: colors.textMuted }]}>
+            {entries.length} action{entries.length !== 1 ? 's' : ''} · last{' '}
+            {MAX_ENTRIES} kept on this device
+          </Text>
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.dayLabel, { color: colors.textMuted }]}>
+            {section.label}
+          </Text>
+        )}
+        renderItem={({ item: entry, index }) => {
+          const key = entry.id ?? `${entry.at}-${index}`;
+          const items = describeActivityItems(entry);
+          const isOpen = expanded.has(key);
+          const permanent = entry.action === 'deleted';
 
-                return (
-                  <TouchableOpacity
-                    key={entry.at}
-                    activeOpacity={items.length ? 0.6 : 1}
-                    onPress={() => items.length && toggle(entry.at)}
-                    style={[styles.row, { borderBottomColor: colors.surface }]}
-                  >
-                    <View
-                      style={[
-                        styles.icon,
-                        {
-                          backgroundColor: permanent
-                            ? colors.trashBg ?? colors.surface
-                            : colors.surface,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={ICONS[entry.action] ?? 'ellipse-outline'}
-                        size={18}
-                        color={permanent ? colors.deleteRed : colors.textSecondary}
-                      />
-                    </View>
+          return (
+            <TouchableOpacity
+              activeOpacity={items.length ? 0.6 : 1}
+              onPress={() => items.length && toggle(key)}
+              style={[styles.row, { borderBottomColor: colors.surface }]}
+            >
+              <View
+                style={[
+                  styles.icon,
+                  { backgroundColor: permanent ? colors.trashBg ?? colors.surface : colors.surface },
+                ]}
+              >
+                <Ionicons
+                  name={ICONS[entry.action] ?? 'ellipse-outline'}
+                  size={18}
+                  color={permanent ? colors.deleteRed : colors.textSecondary}
+                />
+              </View>
 
-                    <View style={styles.info}>
-                      <Text
-                        style={[styles.line, { color: colors.textPrimary }]}
-                        // Three, not two: "Deleted Scan_1784573626439.pdf
-                        // permanently, from Internal storage/Adeeb/Scans"
-                        // wraps past two lines in portrait and the path --
-                        // the part you actually need -- is what gets cut.
-                        numberOfLines={isOpen ? undefined : 3}
-                      >
-                        {describeActivity(entry)}
-                      </Text>
-                      <Text style={[styles.meta, { color: colors.textMuted }]}>
-                        {timeLabel(entry.at)}
-                        {entry.source ? ` · ${entry.source}` : ''}
-                        {items.length && !isOpen ? ' · tap for detail' : ''}
-                      </Text>
+              <View style={styles.info}>
+                <Text
+                  style={[styles.line, { color: colors.textPrimary }]}
+                  numberOfLines={isOpen ? undefined : 3}
+                >
+                  {describeActivity(entry)}
+                </Text>
+                <Text style={[styles.meta, { color: colors.textMuted }]}>
+                  {timeLabel(entry.at)}
+                  {entry.source ? ` · ${entry.source}` : ''}
+                  {items.length && !isOpen ? ' · tap for detail' : ''}
+                </Text>
 
-                      {isOpen &&
-                        items.map((line, index) => (
-                          <Text
-                            key={index}
-                            style={[styles.detail, { color: colors.textSecondary }]}
-                          >
-                            {line}
-                          </Text>
-                        ))}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        />
+                {isOpen &&
+                  items.map((line, i) => (
+                    <Text key={i} style={[styles.detail, { color: colors.textSecondary }]}>
+                      {line}
+                    </Text>
+                  ))}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+      />
       )}
     </SafeAreaView>
   );

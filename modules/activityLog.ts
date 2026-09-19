@@ -42,8 +42,15 @@ export type ActivityItem = {
 };
 
 export type ActivityEntry = {
-  /** Epoch milliseconds. */
-  at: number;
+    /**
+     * Unique per entry. Date.now() is not: a rename or delete loop finishes
+     * several entries inside the same millisecond, which gave React
+     * duplicate keys and made them expand as one. Optional so entries
+     * written before this existed still load.
+     */
+    id?: string;
+    /** Epoch milliseconds. */
+    at: number;
   action: ActivityAction;
   /** The file's display name, or the folder's name for a folder move. */
   name: string;
@@ -87,6 +94,9 @@ export const MAX_ENTRIES = 500;
 export const MAX_ITEMS_PER_ENTRY = 200;
 
 const LOG_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-activity.json`;
+
+/** Rises for the life of the process, so ids never collide. */
+let sequence = 0;
 
 /**
  * The log is held in memory and written back on a short delay.
@@ -251,8 +261,11 @@ export async function recordActivity(entry: Omit<ActivityEntry, 'at'>): Promise<
 
     const entries = await loadOnce();
 
+    const at = Date.now();
+
     entries.push({
-      at: Date.now(),
+      id: `${at}-${++sequence}`,
+      at,
       action: entry.action,
       name,
       ...(entry.from ? { from: entry.from } : {}),
