@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import FilePane, { FilePaneHandle, FileItem } from '@/components/FilePane';
 import { copyFileStream, moveFileStream, copyFolderRecursive, moveFolderRecursive, addCopyProgressListener, checkDuplicates } from 'file-reader';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 import { toPath } from '@/utils/files';
 import { scanFile } from '@/modules/share-module';
 import { syncPathReferences } from '@/hooks/usePathSync';
@@ -208,6 +209,16 @@ export default function DualPaneScreen() {
                   await syncPathReferences(file.uri, destUri, file.name);
                 }
                 await scanFile(dst).catch(() => {});
+                // One entry per folder, not per file inside it: a folder
+                // of 500 files would otherwise fill the whole log.
+                await recordActivity({
+                  action: 'moved',
+                  name: file.name,
+                  from: readableFolder(file.uri),
+                  to: readableFolder(dst),
+                  isFolder: file.isDirectory,
+                  source: 'Dual pane',
+                });
               }
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               clearSelection();

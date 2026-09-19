@@ -49,7 +49,6 @@ import { TextEditorView } from 'text-editor';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import { MediaViewerView } from '@/modules/media-viewer';
 import JarvisOrganiseButton from '@/components/JarvisOrganiseButton';
-import { recentActivity } from '@/modules/activityLog';
 
 interface FileItem {
   name: string;
@@ -66,25 +65,6 @@ const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 
 export default function BrowseScreen() {
   const { colors } = useTheme();
   const { moveToTrash } = useTrash();
-  useEffect(() => {
-    let lastAt = 0;
-    const t = setInterval(async () => {
-      const entries = await recentActivity(10);
-      if (!entries.length || entries[0].at === lastAt) return;   // nothing new
-      lastAt = entries[0].at;
-      const lines = entries
-        .slice()
-        .reverse()
-        .map(e => {
-          const d = new Date(e.at);
-          const when = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-          const where = e.to ? ` -> ${e.to}` : e.from ? ` (${e.from})` : '';
-          return `${when}  ${e.action.padEnd(7)} ${e.name}${where}${e.source ? `  [${e.source}]` : ''}`;
-        });
-      console.log('\n[ACTIVITY]\n' + lines.join('\n'));
-    }, 2000);
-    return () => clearInterval(t);
-  }, []);
   const { initialPath } = useLocalSearchParams<{ initialPath?: string }>();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [items, setItems] = useState<FileItem[]>([]);

@@ -1,4 +1,5 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates, batchRename, readTextPreview, readDocxPreview } from 'file-reader';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, InteractionManager, useWindowDimensions, ScrollView, StatusBar, BackHandler } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -380,6 +381,13 @@ async function handleSsInfo() {
         await moveFileStream(src, dst);
         await syncPathReferences(item.uri, destUri, item.name);
         await scanFile(dst).catch(() => {});
+        await recordActivity({
+          action: 'moved',
+          name: item.name,
+          from: readableFolder(item.uri),
+          to: readableFolder(dst),
+          source: 'Categories',
+        });
         setItems(prev => prev.filter(f => f.uri !== item.uri));
         Alert.alert('Success', `"${item.name}" moved successfully.`);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -415,6 +423,15 @@ async function handleSsInfo() {
       }
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
       await syncPathReferences(oldUri, newUri, newName);
+      // A rename is a move within one folder: the old name is gone, and
+      // "where did X go" is exactly the question it creates.
+      await recordActivity({
+        action: 'moved',
+        name: `${selectedItem.name} renamed to ${newName}`,
+        from: readableFolder(oldUri),
+        to: readableFolder(newUri),
+        source: 'Categories',
+      });
       // Register the new path, then clear the old one — scanning a path that
       // no longer exists makes MediaStore drop the stale row.
       await scanFile(toPath(newUri)).catch(() => {});
@@ -656,6 +673,15 @@ async function handleSsInfo() {
             await moveFileStream(src, dst);
             await syncPathReferences(file.uri, destDir + finalName, finalName);
             await scanFile(dst).catch(() => {});
+            // Moves only. A copy leaves the original where it was, so it
+            // never creates a "where did it go".
+            await recordActivity({
+              action: 'moved',
+              name: finalName,
+              from: readableFolder(file.uri),
+              to: readableFolder(dst),
+              source: 'Categories',
+            });
           }
           copiedCount++;
         } catch {

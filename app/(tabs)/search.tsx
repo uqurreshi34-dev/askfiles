@@ -32,6 +32,7 @@ import { openFile as openFileNative, shareFiles, copyImageToClipboard } from '@/
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
 import { startWifiServer, copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview, readDocxPreview } from 'file-reader';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
 import { useTags } from '@/hooks/useTags';
@@ -289,6 +290,13 @@ export default function SearchScreen() {
         await moveFileStream(src, dst);
         await syncPathReferences(item.uri, destUri, item.name);
         await scanFile(dst).catch(() => {});
+        await recordActivity({
+          action: 'moved',
+          name: item.name,
+          from: readableFolder(item.uri),
+          to: readableFolder(dst),
+          source: 'Search',
+        });
         if (item.inFolder) { removeFolderItem(item.uri); }
         else { removeResult(item.uri); }
         Alert.alert('Success', `"${item.name}" moved successfully.`);
@@ -326,6 +334,13 @@ export default function SearchScreen() {
       }
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
       await syncPathReferences(oldUri, newUri, newName);
+      await recordActivity({
+        action: 'moved',
+        name: `renamed to ${newName}`,
+        from: readableFolder(oldUri),
+        to: readableFolder(newUri),
+        source: 'Search',
+      });
       // Register the new path, then clear the old one — scanning a path that
       // no longer exists makes MediaStore drop the stale row.
       await scanFile(toPath(newUri)).catch(() => {});
