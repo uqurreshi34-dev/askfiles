@@ -67,9 +67,22 @@ export default function BrowseScreen() {
   const { colors } = useTheme();
   const { moveToTrash } = useTrash();
   useEffect(() => {
+    let lastCount = -1;
     const t = setInterval(async () => {
-      console.log('[ACTIVITY]', JSON.stringify(await recentActivity(10), null, 2));
-    }, 5000);
+      const entries = await recentActivity(10);
+      if (entries.length === lastCount) return;   // nothing new, stay quiet
+      lastCount = entries.length;
+      const lines = entries
+        .slice()
+        .reverse()                                 // oldest first, newest at the bottom
+        .map(e => {
+          const d = new Date(e.at);
+          const when = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          const where = e.to ? ` -> ${e.to}` : e.from ? ` (${e.from})` : '';
+          return `${when}  ${e.action.padEnd(7)} ${e.name}${where}${e.source ? `  [${e.source}]` : ''}`;
+        });
+      console.log('\n[ACTIVITY]\n' + lines.join('\n'));
+    }, 2000);
     return () => clearInterval(t);
   }, []);
   const { initialPath } = useLocalSearchParams<{ initialPath?: string }>();

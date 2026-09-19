@@ -227,7 +227,15 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
           </View>
           <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
         </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              onPress={() => router.push('/activity' as any)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.settingsBtn}
               onPress={toggleTheme}
