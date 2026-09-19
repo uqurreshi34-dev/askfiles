@@ -183,7 +183,7 @@ export default function VaultScreen() {
           action: 'moved',
           name: file.name,
           from: 'Vault',
-          to: readableFolder(dst + '/x'),
+          to: readableFolder(dst),
           source: 'Vault',
         });
       } catch { failed++; }
