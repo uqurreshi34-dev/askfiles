@@ -32,6 +32,7 @@ import * as Haptics from 'expo-haptics';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useBookmarks, addBookmark, removeBookmark, isBookmarkedSync } from '@/hooks/useBookmarks';
 import { batchRename } from 'file-reader';
+import { recordActivity, readableFolder } from '@/modules/activityLog';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
@@ -933,6 +934,15 @@ export default function BrowseScreen() {
               continue;
             }
             await deleteDirectory(toPath(folder.uri));
+            // Folders bypass Trash entirely, so this entry is the only
+            // record. The file loop above is already covered by moveToTrash.
+            await recordActivity({
+              action: 'deleted',
+              name: folder.name,
+              from: readableFolder(folder.uri),
+              isFolder: true,
+              source: 'Browse',
+            });
           } catch {}
         }
         setDeleting(false);
@@ -995,6 +1005,19 @@ export default function BrowseScreen() {
       const results = await batchRename(items);
       const succeeded = results.filter(r => r.success).length;
       const failed = results.filter(r => !r.success).length;
+
+      // results[i] pairs with items[i], so only successes are recorded.
+      for (let i = 0; i < results.length; i++) {
+        if (!results[i]?.success) continue;
+
+        await recordActivity({
+          action: 'renamed',
+          name: files[i].name,
+          newName: items[i].dst.slice(items[i].dst.lastIndexOf('/') + 1),
+          to: readableFolder(items[i].dst),
+          source: 'Browse',
+        });
+      }
   
       if (succeeded > 0) {
         await scanFile(folderPath).catch(() => {});
@@ -1257,6 +1280,13 @@ export default function BrowseScreen() {
       }
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
       await syncPathReferences(oldUri, newUri, renameValue.trim());
+      await recordActivity({
+        action: 'renamed',
+        name: oldUri.slice(oldUri.lastIndexOf('/') + 1),
+        newName: renameValue.trim(),
+        to: readableFolder(newUri),
+        source: 'Browse',
+      });
       // Register the new path, then clear the old one — scanning a path that
       // no longer exists makes MediaStore drop the stale row.
       await scanFile(toPath(newUri)).catch(() => {});
@@ -1381,6 +1411,16 @@ export default function BrowseScreen() {
             await syncPathReferences(file.uri, destDir + finalName, finalName);
           }
           await scanFile(dst).catch(() => {});
+          // Moves only -- a copy leaves the original in place. One entry
+          // per folder, not per file inside it.
+          await recordActivity({
+            action: 'moved',
+            name: finalName,
+            from: readableFolder(file.uri),
+            to: readableFolder(dst),
+            isFolder: file.isDirectory,
+            source: 'Browse',
+          });
         }
         copiedCount++;
       }
