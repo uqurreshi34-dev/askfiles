@@ -80,11 +80,16 @@ useEffect(() => {
             onSeek={(e: any) => {
               setPosition(e.nativeEvent.position);
               setSeekTo(undefined);
-              const prev = position;
-              const next = e.nativeEvent.position;
-              if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
-              setSeekFlash(next > prev ? 'forward' : 'back');
-              seekFlashTimer.current = setTimeout(() => setSeekFlash(null), 600);
+
+              // Only a double-tap sends a direction. A scrubber drag does
+              // not, so it no longer flashes the skip bubble.
+              const skip = e.nativeEvent.skip;
+
+              if (skip === 'back' || skip === 'forward') {
+                if (seekFlashTimer.current) clearTimeout(seekFlashTimer.current);
+                setSeekFlash(skip);
+                seekFlashTimer.current = setTimeout(() => setSeekFlash(null), 600);
+              }
             }}
             onPlayingStateChange={(e: any) => {
               const isPlaying = e.nativeEvent.isPlaying;

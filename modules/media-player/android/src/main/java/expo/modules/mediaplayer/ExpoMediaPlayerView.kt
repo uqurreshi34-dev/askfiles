@@ -48,7 +48,15 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
             val newPos = (mp.currentPosition + seekMs).coerceIn(0, mp.duration)
             seeking = true
             mp.seekTo(newPos)
-            onSeek(mapOf("position" to newPos, "duration" to mp.duration))
+            // The direction is known here and nowhere else. Without it JS
+            // compares position before and after, but it has already
+            // updated its own position by then, so every skip looked
+            // backwards.
+            onSeek(mapOf(
+                "position" to newPos,
+                "duration" to mp.duration,
+                "skip" to if (seekMs < 0) "back" else "forward"
+            ))
             return true
         }
     })
