@@ -20,6 +20,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   moved: 'arrow-forward-outline',
   copied: 'copy-outline',
   renamed: 'create-outline',
+  restored: 'arrow-undo-outline',
   trashed: 'trash-outline',
   deleted: 'close-circle-outline',
 };

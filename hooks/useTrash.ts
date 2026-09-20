@@ -164,7 +164,7 @@ export function useTrash() {
       // folder was gone, so the file is in Downloads and nowhere the user
       // would think to look.
       await recordActivity({
-        action: 'moved',
+        action: 'restored',
         name: file.name,
         from: 'Trash',
         to: readableFolder(finalPath),

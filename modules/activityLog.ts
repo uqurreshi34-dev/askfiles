@@ -32,7 +32,7 @@
 
 import RNFS from 'react-native-fs';
 
-export type ActivityAction = 'moved' | 'copied' | 'renamed' | 'trashed' | 'deleted';
+export type ActivityAction = 'moved' | 'copied' | 'renamed' | 'restored' | 'trashed' | 'deleted';
 
 /** One file inside a bulk operation. */
 export type ActivityItem = {
@@ -317,8 +317,9 @@ export function describeActivity(entry: ActivityEntry): string {
   const total = entry.count && entry.count > 1 ? entry.count : 0;
   const thing = entry.isFolder ? 'folder' : 'file';
 
-  if (entry.action === 'moved' || entry.action === 'copied') {
-    const verb = entry.action === 'moved' ? 'Moved' : 'Copied';
+  if (entry.action === 'moved' || entry.action === 'copied' || entry.action === 'restored') {
+    const verb =
+      entry.action === 'moved' ? 'Moved' : entry.action === 'copied' ? 'Copied' : 'Restored';
     const subject = total
       ? `${verb} ${total} files`
       : `${verb} ${entry.isFolder ? `${thing} ` : ''}${entry.name}`;
