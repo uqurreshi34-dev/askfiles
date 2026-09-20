@@ -647,7 +647,8 @@ export default function BrowseScreen() {
             const uri = selectedItem.uri;
             const name = selectedItem.name;
             closeSheet();
-            setMovingUri(uri);
+            // Before setMovingUri, not after: the early return below would
+            // otherwise leave the row spinning for ever.
             if (await vaultHas(name)) {
               Alert.alert(
                 'Already in the Vault',
@@ -655,6 +656,7 @@ export default function BrowseScreen() {
               );
               return;
             }
+            setMovingUri(uri);
             const ok = await addToVault(uri, name);
             setMovingUri(null);
             if (ok) {

@@ -418,7 +418,6 @@ export default function SearchScreen() {
           const name = selectedItem.name;
           const inFolder = selectedItem.inFolder;
           closeSheet();
-          setMovingUri(uri);
           if (await vaultHas(name)) {
             Alert.alert(
               'Already in the Vault',
@@ -426,6 +425,7 @@ export default function SearchScreen() {
             );
             return;
           }
+          setMovingUri(uri);
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) {

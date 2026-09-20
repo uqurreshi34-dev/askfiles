@@ -897,7 +897,6 @@ async function handleSsInfo() {
           const uri = selectedItem.uri;
           const name = selectedItem.name;
           closeSheet();
-          setMovingUri(uri);
           if (await vaultHas(name)) {
             Alert.alert(
               'Already in the Vault',
@@ -905,7 +904,7 @@ async function handleSsInfo() {
             );
             return;
           }
-
+          setMovingUri(uri);
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) { 

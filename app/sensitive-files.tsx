@@ -83,7 +83,6 @@ export default function SensitiveFilesScreen() {
     Alert.alert('Move to Vault', `Move "${file.name}" to your Secure Vault?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
-        setMovingUri(file.uri);
         if (await vaultHas(file.name)) {
           Alert.alert(
             'Already in the Vault',
@@ -91,6 +90,7 @@ export default function SensitiveFilesScreen() {
           );
           return;
         }
+        setMovingUri(file.uri);
         const ok = await addToVault(file.uri, file.name);
         if (ok) {
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
