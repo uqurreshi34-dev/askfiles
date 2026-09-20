@@ -67,6 +67,8 @@ export type AskLocalData = {
    * inputs and the log's own cache does the I/O once.
    */
   activity?: ActivityEntry[];
+  /** The finished trend sentence, or null when there is nothing to say. */
+  storageTrend?: string | null;
 };
 
 /** How many names MediaLibrary gives us per media type. */
@@ -323,6 +325,16 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
 
   // ── What is taking up the space. ────────────────────────────────────────
   if (asksSpace) {
+      // "Why is my phone filling up" is about change, and no screen in the
+    // app shows change -- they all show a snapshot. Answer it before the
+    // snapshot answers below.
+    if (
+      data.storageTrend &&
+      (has(list, 'grown', 'growing', 'grew', 'filling', 'filled', 'changed', 'more', 'less') ||
+        has(list, 'why'))
+    ) {
+      return data.storageTrend;
+    }
     const info = data.storageInfo;
 
     if (!info) return null;

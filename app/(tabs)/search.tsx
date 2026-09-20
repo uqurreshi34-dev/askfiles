@@ -48,6 +48,7 @@ import { getDateGroup } from '@/hooks/useRecents';
 import Thumb from '@/components/Thumb';
 import { answerLocally } from '@/modules/askLocal';
 import { recentActivity } from '@/modules/activityLog';
+import { storageChange } from '@/modules/storageTrend';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -131,7 +132,7 @@ export default function SearchScreen() {
     handleIndexNow();
   }, [mode]);
 
-  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, silentReload } = useStorage();
+  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, folderBytes, silentReload } = useStorage();
   const { isPro } = usePro();
   const { addToVault, vaultHas } = useVault();
   const insets = useSafeAreaInsets();
@@ -541,6 +542,9 @@ export default function SearchScreen() {
     // 200 rather than the full 500: a week's window rarely needs more, and
     // it is an in-memory slice after the log's first read.
     const activity = await recentActivity(200);
+    // null on a first run, a second ask the same day, or a change under
+    // 500 MB -- in which case the trend matcher simply does not fire.
+    const change = await storageChange(storageInfo?.usedBytes ?? 0, folderBytes);
 
     // The numbers are already exact on this device. Only questions that
     // need judgement rather than arithmetic should cost a request.
@@ -552,6 +556,7 @@ export default function SearchScreen() {
       largestFiles,
       documentExtensions,
       activity,
+      storageTrend: change?.sentence ?? null,
     });
 
     if (local) {

@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '@/hooks/useStorage';
 import StorageSummaryCard from '@/components/StorageSummaryCard';
 import { useTheme } from '@/hooks/useTheme';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getStorageVolumes, getVolumeStats } from '@/modules/storage-stats';
+import { storageChange } from '@/modules/storageTrend';
 
 interface Category {
   label: string;
@@ -30,8 +31,9 @@ function parseSize(readable: string): number {
 export default function StorageBreakdownScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { storageInfo, folderSizes, loading, permissionGranted, refreshSizes } = useStorage();
+  const { storageInfo, folderSizes, folderBytes, loading, permissionGranted, refreshSizes } = useStorage();
   const [refreshing, setRefreshing] = useState(false);
+  const [trend, setTrend] = useState<string | null>(null);
 
   const categories: Category[] = [
     { label: 'Images',    size: folderSizes.pictures, bytes: parseSize(folderSizes.pictures), color: '#185FA5', icon: 'image-outline',      route: '/category?category=images' },
@@ -45,6 +47,23 @@ export default function StorageBreakdownScreen() {
   const totalBytes = storageInfo?.totalBytes ?? 1;
   const freeBytes = storageInfo?.freeBytes ?? 0;
   const usedBytes = storageInfo?.usedBytes ?? 0;
+
+  useEffect(() => {
+    if (!usedBytes) return;
+
+    let cancelled = false;
+
+    // Returns null on a first run, a second open the same day, or a change
+    // under 500 MB -- so the line simply does not appear rather than
+    // saying something not worth reading.
+    storageChange(usedBytes, folderBytes)
+      .then(change => {
+        if (!cancelled) setTrend(change?.sentence ?? null);
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [usedBytes, folderBytes]);
 
   const [sdCard, setSdCard] = useState<{ name: string; used: number; total: number } | null>(null);
 
@@ -99,8 +118,14 @@ export default function StorageBreakdownScreen() {
             note="Includes apps and user files"
             showChevron={false}
             sdCard={sdCard}
-          />
-
+            />
+  
+            {trend && (
+              <Text style={[styles.trend, { color: colors.textSecondary }]}>
+                {trend}
+              </Text>
+            )}
+  
           <View style={[styles.segmentCard, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>BY CATEGORY</Text>
             <View style={[styles.segmentBar, { backgroundColor: colors.surface }]}>
@@ -185,4 +210,5 @@ const styles = StyleSheet.create({
   catBarTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   catBarFill: { height: '100%', borderRadius: 2 },
   note: { fontSize: 10, textAlign: 'center', marginTop: 16, marginHorizontal: 16 },
+  trend: { fontSize: 12, lineHeight: 18, marginTop: 10, marginBottom: 2, paddingHorizontal: 4 },
 });
