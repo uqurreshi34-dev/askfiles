@@ -6,6 +6,7 @@ import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount, queryLargestByName } from 'media-store';
+import { recordSnapshot } from '@/modules/storageTrend';
 
 interface StorageInfo {
   totalBytes: number;
@@ -55,6 +56,12 @@ interface StorageCache {
     overall: { name: string; size: string; folder: string }[];
   };
   documentExtensions: Record<string, number>;
+    /**
+   * The same figures as folderSizes, unformatted. storageTrend compares
+   * days, and parsing "18.2 GB" back would carry 100 MB of error against
+   * a 500 MB threshold.
+   */
+    folderBytes: Record<string, number>;
   loaded: boolean;
 }
 
@@ -80,6 +87,7 @@ const cache: StorageCache = {
     overall: [] as { name: string; size: string; folder: string }[],
   },
   documentExtensions: {},
+  folderBytes: {},
   loaded: false,
 };
 
@@ -149,15 +157,30 @@ async function loadFolderSizes(): Promise<void> {
   const knownBytes = totalImagesSize + totalVideosSize + downloadsSize + documentsSize + musicSize;
   const usedBytes = cache.storageInfo?.usedBytes ?? 0;
 
-  cache.folderSizes = {
-    pictures: formatSize(totalImagesSize),
-    videos: formatSize(totalVideosSize),
-    downloads: formatSize(downloadsSize),
-    documents: formatSize(documentsSize),
-    dcim: formatSize(dcimSize),
-    music: formatSize(musicSize),
-    other: formatSize(Math.max(0, usedBytes - knownBytes)),
+  cache.folderBytes = {
+    pictures: totalImagesSize,
+    videos: totalVideosSize,
+    downloads: downloadsSize,
+    documents: documentsSize,
+    dcim: dcimSize,
+    music: musicSize,
+    other: Math.max(0, usedBytes - knownBytes),
   };
+
+  cache.folderSizes = {
+    pictures: formatSize(cache.folderBytes.pictures),
+    videos: formatSize(cache.folderBytes.videos),
+    downloads: formatSize(cache.folderBytes.downloads),
+    documents: formatSize(cache.folderBytes.documents),
+    dcim: formatSize(cache.folderBytes.dcim),
+    music: formatSize(cache.folderBytes.music),
+    other: formatSize(cache.folderBytes.other),
+  };
+
+  // Not awaited: the trend is a nice-to-have and must never hold up a
+  // screen that is waiting for folder sizes. No-ops on the second and
+  // later opens of the same day, so this costs one file write per day.
+  void recordSnapshot(usedBytes, cache.folderBytes);
 }
 
 async function doLoad(): Promise<void> {
@@ -360,6 +383,7 @@ export function useStorage() {
       overall: [...cache.largestFiles.overall],
     },
     documentExtensions: { ...cache.documentExtensions },
+    folderBytes: { ...cache.folderBytes },
     permissionGranted: cache.loaded,
     loading,
     reload,
