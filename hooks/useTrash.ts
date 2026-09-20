@@ -159,6 +159,18 @@ export function useTrash() {
       delete meta[file.name];
       await writeMeta(meta);
       if (reload) await loadFiles();
+
+      // Where it went matters most when it could not go home: the original
+      // folder was gone, so the file is in Downloads and nowhere the user
+      // would think to look.
+      await recordActivity({
+        action: 'moved',
+        name: file.name,
+        from: 'Trash',
+        to: readableFolder(finalPath),
+        source: 'Trash',
+      });
+
       return restoredTo;
     } catch {
       return null;
@@ -173,6 +185,14 @@ export function useTrash() {
       delete meta[file.name];
       await writeMeta(meta);
       await loadFiles();
+
+      await recordActivity({
+        action: 'deleted',
+        name: file.name,
+        from: 'Trash',
+        source: 'Trash',
+      });
+
       return true;
     } catch {
       return false;
@@ -181,12 +201,21 @@ export function useTrash() {
 
   async function emptyTrash(): Promise<void> {
     try {
-      const meta = await readMeta();
       const dir = new FileSystem.Directory(TRASH_DIR);
       const contents = dir.list();
       for (const item of contents) {
         if (item instanceof FileSystem.File && !item.name.startsWith('.')) {
           item.delete();
+
+          // Past this point nothing can recover the file, and Trash itself
+          // no longer lists it. One entry per file rather than a count, so
+          // the names survive.
+          await recordActivity({
+            action: 'deleted',
+            name: item.name,
+            from: 'Trash',
+            source: 'Trash',
+          });
         }
       }
       await writeMeta({});
