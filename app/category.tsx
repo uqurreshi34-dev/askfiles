@@ -125,7 +125,7 @@ export default function CategoryScreen() {
   const dupeAction = useRef<'skip' | 'replace'>('skip');
   const router = useRouter();
   const config = CATEGORY_CONFIG[category ?? 'images'];
-  const { addToVault } = useVault();
+  const { addToVault, vaultHas, vaultFileNames } = useVault();
   const { isPro } = usePro();
   const [sortKey, setSortKey] = useState<SortKey>('name_asc');
   const [showSortSheet, setShowSortSheet] = useState(false);
@@ -898,6 +898,14 @@ async function handleSsInfo() {
           const name = selectedItem.name;
           closeSheet();
           setMovingUri(uri);
+          if (await vaultHas(name)) {
+            Alert.alert(
+              'Already in the Vault',
+              `A file called "${name}" is already in the Vault. Rename this one first, or remove the copy that is already there.`
+            );
+            return;
+          }
+
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) { 
@@ -1054,12 +1062,26 @@ async function handleSsInfo() {
         setVaultingTotal(files.length);
         await new Promise(r => requestAnimationFrame(() => r(null)));
         const moved: string[] = [];
+        const clashed: string[] = [];
         let failed = 0;
         try {
+          // One directory read for the whole batch, rather than a
+          // filesystem check per selected file.
+          const taken = await vaultFileNames();
+
           for (const file of files) {
+            if (taken.has(file.name)) {
+              clashed.push(file.name);
+              continue;
+            }
+
             const ok = await addToVault(file.uri, file.name, false);
             if (ok) {
               moved.push(file.uri);
+              // Keeps the snapshot true within this batch: two selected
+              // files can share a name from different folders, and the
+              // second would otherwise overwrite the first.
+              taken.add(file.name);
               DocIndexer.removeFromIndex(file.uri);
             } else {
               failed++;
@@ -1070,13 +1092,13 @@ async function handleSsInfo() {
           setSelectMode(false);
           setSelectedUris(new Set());
           setSelectedItemsMap(new Map());
-          if (failed > 0) {
-            Alert.alert(
-              moved.length > 0 ? 'Partial success' : 'Error',
-              moved.length > 0
-                ? `${moved.length} file${moved.length !== 1 ? 's' : ''} moved to Vault. ${failed} could not be moved.`
-                : 'Could not move files to Vault.'
-            );
+          if (clashed.length > 0 || failed > 0) {
+            const parts = [`${moved.length} file${moved.length !== 1 ? 's' : ''} moved to Vault.`];
+            if (clashed.length > 0) {
+              parts.push(`${clashed.length} ${clashed.length === 1 ? 'is' : 'are'} already in the Vault: ${clashed.slice(0, 5).join(', ')}${clashed.length > 5 ? ` and ${clashed.length - 5} more` : ''}.`);
+            }
+            if (failed > 0) parts.push(`${failed} could not be moved.`);
+            Alert.alert(moved.length > 0 ? 'Partial success' : 'Nothing moved', parts.join(' '));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           } else {
             Alert.alert('Moved to Vault', `${moved.length} file${moved.length !== 1 ? 's' : ''} secured.`);

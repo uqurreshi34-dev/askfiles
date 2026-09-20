@@ -132,7 +132,7 @@ export default function SearchScreen() {
 
   const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, silentReload } = useStorage();
   const { isPro } = usePro();
-  const { addToVault } = useVault();
+  const { addToVault, vaultHas } = useVault();
   const insets = useSafeAreaInsets();
   const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
   const [showSheet, setShowSheet] = useState(false);
@@ -419,6 +419,13 @@ export default function SearchScreen() {
           const inFolder = selectedItem.inFolder;
           closeSheet();
           setMovingUri(uri);
+          if (await vaultHas(name)) {
+            Alert.alert(
+              'Already in the Vault',
+              `A file called "${name}" is already in the Vault. Rename this one first, or remove the copy that is already there.`
+            );
+            return;
+          }
           const ok = await addToVault(uri, name);
           setMovingUri(null);
           if (ok) {

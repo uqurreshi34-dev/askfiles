@@ -34,7 +34,7 @@ const SENSITIVE_KEYWORDS = [
 export default function SensitiveFilesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { addToVault } = useVault();
+  const { addToVault, vaultHas } = useVault();
   const { isPro } = usePro();
   const [files, setFiles] = useState<SensitiveFile[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -84,6 +84,13 @@ export default function SensitiveFilesScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Move', onPress: async () => {
         setMovingUri(file.uri);
+        if (await vaultHas(file.name)) {
+          Alert.alert(
+            'Already in the Vault',
+            `A file called "${file.name}" is already in the Vault. Rename this one first, or remove the copy that is already there.`
+          );
+          return;
+        }
         const ok = await addToVault(file.uri, file.name);
         if (ok) {
           setFiles(prev => prev.filter(f => f.uri !== file.uri));

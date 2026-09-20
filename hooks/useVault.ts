@@ -61,6 +61,42 @@ export function useVault() {
     }
   }
 
+    /**
+   * Is a name already taken in the vault?
+   *
+   * addToVault cannot say why it failed -- it catches everything and
+   * returns false -- so "Could not move file to vault" covers a name
+   * clash, a permission problem and a full disk alike. Asking first is
+   * what lets the screen say something useful.
+   */
+    async function vaultHas(fileName: string): Promise<boolean> {
+      try {
+        return new FileSystem.File(VAULT_DIR + fileName).exists;
+      } catch {
+        return false;
+      }
+    }
+  
+    /**
+     * Every name in the vault, for checking a batch.
+     *
+     * One listing and a Set, rather than one filesystem call per selected
+     * file. Moving 200 files then costs one directory read, not 200 stats.
+     */
+    async function vaultFileNames(): Promise<Set<string>> {
+      try {
+        const dir = new FileSystem.Directory(VAULT_DIR);
+  
+        return new Set(
+          dir.list()
+            .filter(item => item instanceof FileSystem.File)
+            .map(item => item.name)
+        );
+      } catch {
+        return new Set();
+      }
+    }
+
   async function addToVault(sourceUri: string, fileName: string, refresh: boolean = true): Promise<boolean> {
     try {
       const destUri = VAULT_DIR + fileName;
@@ -129,6 +165,8 @@ export function useVault() {
     addToVault,
     removeFromVault,
     deleteFromVault,
+    vaultHas,
+    vaultFileNames,
     loadFiles,
     lock,
     vaultDir: VAULT_DIR,
