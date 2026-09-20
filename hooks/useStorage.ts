@@ -222,7 +222,10 @@ cache.loaded = true;
 onPhase1Complete?.();
 onPhase1Complete = null;
 
-statsPromise.then(() => loadFolderSizes());
+statsPromise.then(async () => {
+  await loadFolderSizes();
+  void recordSnapshot(cache.storageInfo?.usedBytes ?? 0, cache.folderBytes);
+});
 
   // ── PHASE 2: Slow filesystem scans — AI context, runs silently ────────────
 
