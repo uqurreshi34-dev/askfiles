@@ -23,6 +23,7 @@
  */
 
 import { EXTENSION_RULES } from '@/modules/organisePlan';
+import type { ActivityEntry } from '@/modules/activityLog';
 
 export type NamedFile = { name: string; size: string; folder: string };
 
@@ -59,6 +60,13 @@ export type AskLocalData = {
    * before the useStorage change lands.
    */
   documentExtensions?: Record<string, number>;
+  /**
+   * Recent entries from the activity log, newest first.
+   *
+   * Passed in rather than read here, so this stays a pure function of its
+   * inputs and the log's own cache does the I/O once.
+   */
+  activity?: ActivityEntry[];
 };
 
 /** How many names MediaLibrary gives us per media type. */
@@ -176,6 +184,87 @@ function categoryOf(list: string[]): string | null {
   if (has(list, 'music', 'song', 'songs', 'audio', 'mp3s')) return 'Music';
 
   return null;
+}
+
+
+type Window = 'today' | 'yesterday' | 'week';
+
+/** Which period a question asks about, or null when it names none. */
+function windowAsked(list: string[]): Window | null {
+  if (has(list, 'today')) return 'today';
+  if (has(list, 'yesterday')) return 'yesterday';
+  if (has(list, 'week', 'lately', 'recently')) return 'week';
+
+  return null;
+}
+
+function windowStart(window: Window): number {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+
+  if (window === 'today') return midnight.getTime();
+  if (window === 'yesterday') return midnight.getTime() - 86400000;
+
+  return midnight.getTime() - 6 * 86400000;
+}
+
+function windowWords(window: Window): string {
+  if (window === 'today') return 'today';
+  if (window === 'yesterday') return 'yesterday';
+
+  return 'in the last week';
+}
+
+function joinCounts(parts: string[]): string {
+  if (parts.length === 1) return parts[0];
+
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+/** "Did I delete anything today?" -- trash and permanent kept apart. */
+function describeDeletions(entries: ActivityEntry[], window: Window): string {
+  const trashed = entries.filter(entry => entry.action === 'trashed').length;
+  const deleted = entries.filter(entry => entry.action === 'deleted').length;
+
+  if (!trashed && !deleted) {
+    return `No, you haven't deleted anything ${windowWords(window)}.`;
+  }
+
+  const parts: string[] = [];
+
+  // Recoverable and gone for good are different answers to this question,
+  // so they are never added together.
+  if (trashed) parts.push(`${count(trashed, 'file')} to Trash, still recoverable`);
+  if (deleted) parts.push(`${count(deleted, 'file')} permanently`);
+
+  return `Yes: ${joinCounts(parts)}.`;
+}
+
+/** "What did I do today?" */
+function describeActions(entries: ActivityEntry[], window: Window): string {
+  if (!entries.length) {
+    return `Nothing recorded ${windowWords(window)}.`;
+  }
+
+  const tally: Record<string, number> = {};
+
+  for (const entry of entries) {
+    tally[entry.action] = (tally[entry.action] || 0) + 1;
+  }
+
+  const order: [string, string][] = [
+    ['moved', 'moved'],
+    ['renamed', 'renamed'],
+    ['restored', 'restored from Trash'],
+    ['trashed', 'moved to Trash'],
+    ['deleted', 'deleted permanently'],
+  ];
+
+  const parts = order
+    .filter(([action]) => tally[action])
+    .map(([action, words]) => `${count(tally[action], 'file')} ${words}`);
+
+  return `${joinCounts(parts)}. Tap the clock icon on the home screen for the detail.`;
 }
 
 export function answerLocally(question: string, data: AskLocalData): string | null {
@@ -335,6 +424,31 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
       const breakdown = listTally(data.documentExtensions, 8);
 
       if (breakdown) return `Your documents and downloads: ${breakdown}.`;
+    }
+  }
+
+  // ── What happened recently. The only answers here that no screen
+  //    already gives, which is the test this feature keeps failing
+  //    elsewhere.
+  if (data.activity && data.activity.length) {
+    const window = windowAsked(list);
+
+    if (window) {
+      const since = windowStart(window);
+      // Yesterday ends at midnight. Without an upper bound "what did I do
+      // yesterday" returns today's actions as well.
+      const until =
+        window === 'yesterday' ? windowStart('today') : Number.MAX_SAFE_INTEGER;
+      const recent = data.activity.filter(
+        entry => entry.at >= since && entry.at < until
+      );
+      const asksDeleted = has(list, 'delete', 'deleted', 'deleting', 'remove', 'removed');
+
+      if (asksDeleted) return describeDeletions(recent, window);
+
+      if (has(list, 'did', 'do', 'done', 'happened', 'changed', 'activity')) {
+        return describeActions(recent, window);
+      }
     }
   }
 

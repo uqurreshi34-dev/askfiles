@@ -47,6 +47,7 @@ import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSear
 import { getDateGroup } from '@/hooks/useRecents';
 import Thumb from '@/components/Thumb';
 import { answerLocally } from '@/modules/askLocal';
+import { recentActivity } from '@/modules/activityLog';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -537,6 +538,10 @@ export default function SearchScreen() {
     // previous local answer would otherwise show while a new question is
     // still in flight -- or for ever, if that question fails.
     setLocalAnswer('');
+    // 200 rather than the full 500: a week's window rarely needs more, and
+    // it is an in-memory slice after the log's first read.
+    const activity = await recentActivity(200);
+
     // The numbers are already exact on this device. Only questions that
     // need judgement rather than arithmetic should cost a request.
     const local = answerLocally(q, {
@@ -546,6 +551,7 @@ export default function SearchScreen() {
       mediaContext,
       largestFiles,
       documentExtensions,
+      activity,
     });
 
     if (local) {
