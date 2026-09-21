@@ -198,41 +198,63 @@ function label(key: string): string {
  *
  * Returns null when there is nothing to compare against yet -- a first
  * run, or a second open on the same day.
+ *
+ * Takes the live usedBytes for the headline. The per-category attribution
+ * comes from the snapshots themselves, so the two sides can never be
+ * measured differently.
  */
-export async function storageChange(
-  usedBytes: number,
-  folders: Record<string, number>,
-): Promise<StorageChange | null> {
+export async function storageChange(usedBytes: number): Promise<StorageChange | null> {
   const snapshots = await loadOnce();
 
   if (!snapshots.length || !usedBytes) return null;
 
   const today = startOfDay(Date.now());
 
-  // The most recent snapshot from an EARLIER day. Comparing against one
-  // taken this morning would report a few minutes of change.
+  // Both sides of the subtraction come off disk, and that is the point.
+  // Taking the current buckets from a caller invited a caller to pass a
+  // differently-keyed object -- which is exactly what happened: the
+  // recorded buckets are keyed by top-level folder and the screens hold
+  // a by-category breakdown, so every key looked new and a category's
+  // whole size was reported as its growth. A parameter that can be the
+  // wrong shape is removed rather than documented.
   let previous: StorageSnapshot | null = null;
+  let current: StorageSnapshot | null = null;
 
   for (let i = snapshots.length - 1; i >= 0; i--) {
-    if (startOfDay(snapshots[i].at) < today) {
+    const day = startOfDay(snapshots[i].at);
+
+    // The most recent snapshot from an EARLIER day. Comparing against one
+    // taken this morning would report a few minutes of change.
+    if (day < today) {
       previous = snapshots[i];
       break;
     }
+
+    if (day === today && !current) current = snapshots[i];
   }
 
   if (!previous) return null;
 
+  // Live, so the headline is true as of this moment rather than as of
+  // whenever the app was first opened today.
   const deltaBytes = usedBytes - previous.usedBytes;
 
   // An older snapshot's buckets overlapped each other, so subtracting them
   // would name a single camera import twice. The headline delta is still
   // sound -- usedBytes means the same thing under any shape -- so only the
-  // attribution is dropped.
-  const comparable = previous.v === SNAPSHOT_VERSION;
+  // attribution is dropped. Today's snapshot may not be written yet on the
+  // very first load of the day, which costs the attribution and nothing else.
+  const comparable =
+    current !== null && current.v === SNAPSHOT_VERSION && previous.v === SNAPSHOT_VERSION;
+
+  const todayFolders = current?.folders ?? {};
 
   const risers = comparable
-    ? Object.keys(folders)
-        .map(key => ({ key, deltaBytes: (folders[key] || 0) - (previous.folders[key] || 0) }))
+    ? Object.keys(todayFolders)
+        .map(key => ({
+          key,
+          deltaBytes: (todayFolders[key] || 0) - (previous.folders[key] || 0),
+        }))
         .filter(item => item.deltaBytes > 0)
         .sort((a, b) => b.deltaBytes - a.deltaBytes)
     : [];

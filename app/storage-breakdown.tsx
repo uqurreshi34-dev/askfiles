@@ -60,7 +60,7 @@ export default function StorageBreakdownScreen() {
         .catch(e => console.log('[TREND FILE] none:', String(e)));
     }
 
-    storageChange(usedBytes, folderBytes)
+    storageChange(usedBytes)
       .then(change => {
         if (!cancelled) setTrend(change?.sentence ?? null);
       })
@@ -214,5 +214,5 @@ const styles = StyleSheet.create({
   catBarTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   catBarFill: { height: '100%', borderRadius: 2 },
   note: { fontSize: 10, textAlign: 'center', marginTop: 16, marginHorizontal: 16 },
-  trend: { fontSize: 12, lineHeight: 18, marginTop: 10, marginBottom: 2, paddingHorizontal: 4 },
+  trend: { fontSize: 12, lineHeight: 18, marginTop: 10, marginBottom: 2, marginHorizontal: 16 },
 });

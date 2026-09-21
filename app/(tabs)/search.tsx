@@ -544,7 +544,7 @@ export default function SearchScreen() {
     const activity = await recentActivity(200);
     // null on a first run, a second ask the same day, or a change under
     // 500 MB -- in which case the trend matcher simply does not fire.
-    const change = await storageChange(storageInfo?.usedBytes ?? 0, folderBytes);
+    const change = await storageChange(storageInfo?.usedBytes ?? 0);
 
     // The numbers are already exact on this device. Only questions that
     // need judgement rather than arithmetic should cost a request.
