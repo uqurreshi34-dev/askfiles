@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useCallback, useState, useEffect } from 'react';
 import { getStorageVolumes, getVolumeStats } from '@/modules/storage-stats';
 import { storageChange } from '@/modules/storageTrend';
+import RNFS from 'react-native-fs';
 
 interface Category {
   label: string;
@@ -52,6 +53,12 @@ export default function StorageBreakdownScreen() {
     if (!usedBytes) return;
 
     let cancelled = false;
+
+    if (__DEV__) {
+      RNFS.readFile(RNFS.DocumentDirectoryPath + '/askfiles-storage-trend.json', 'utf8')
+        .then(t => console.log('[TREND FILE]', t))
+        .catch(e => console.log('[TREND FILE] none:', String(e)));
+    }
 
     storageChange(usedBytes, folderBytes)
       .then(change => {

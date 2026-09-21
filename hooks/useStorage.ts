@@ -10,14 +10,21 @@ import { recordSnapshot, hasSnapshotForToday } from '@/modules/storageTrend';
 
 
 /**
- * Buckets that beat file type in the trend breakdown, most specific first.
- * Add a path here and the trend picks it up -- nothing else to change.
+ * Paths that get their own bucket regardless of depth. Top-level folders
+ * are picked up automatically, so this is only for things buried deeper
+ * that are worth naming on their own, e.g.
+ *   '/storage/emulated/0/Android/media/com.whatsapp/'
+ * Most specific first -- the first match wins.
  */
-const TREND_FOLDERS = [
-  '/storage/emulated/0/DCIM/',
-  '/storage/emulated/0/Download/',
-  '/storage/emulated/0/Music/',
-];
+const TREND_FOLDERS: string[] = [];
+
+/**
+ * Buckets smaller than this fold into other, so a phone with fifty
+ * top-level folders does not carry fifty keys a day for thirty days.
+ * Folding is by today's size: a folder that grows past it gets its own key
+ * that day, and its absence yesterday reads as zero, which is what it was.
+ */
+const MIN_BUCKET_BYTES = 50 * 1024 * 1024;
 
 interface StorageInfo {
   totalBytes: number;
@@ -203,12 +210,21 @@ async function loadFolderSizes(): Promise<void> {
     if (!usedBytes || (await hasSnapshotForToday())) return;
 
     const exclusive = await queryExclusiveBreakdown(TREND_FOLDERS);
-    const { untyped = 0, ...buckets } = exclusive;
     const counted = Object.values(exclusive).reduce((sum, n) => sum + n, 0);
 
-    // Files MediaStore never indexed -- app data, system -- plus anything
-    // it indexed without a type. One bucket, so it is named once.
-    cache.trendBytes = { ...buckets, other: untyped + Math.max(0, usedBytes - counted) };
+    const buckets: Record<string, number> = {};
+    let folded = 0;
+
+    for (const [key, bytes] of Object.entries(exclusive)) {
+      if (key !== 'other' && bytes < MIN_BUCKET_BYTES) folded += bytes;
+      else buckets[key] = bytes;
+    }
+
+    // Plus whatever MediaStore never indexed. Keeps the buckets summing to
+    // usedBytes exactly, which is the check that every byte was counted once.
+    buckets.other = (buckets.other ?? 0) + folded + Math.max(0, usedBytes - counted);
+
+    cache.trendBytes = buckets;
 
     void recordSnapshot(usedBytes, cache.trendBytes);
   })();

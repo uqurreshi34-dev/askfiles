@@ -53,7 +53,7 @@ export const MAX_SNAPSHOTS = 30;
  * an older shape still give a correct usedBytes delta, but their per-bucket
  * figures mean something different, so they are not subtracted.
  */
-export const SNAPSHOT_VERSION = 2;
+export const SNAPSHOT_VERSION = 3;
 
 /**
  * Below this, a change is cache churn, thumbnails and log files rather
@@ -64,15 +64,19 @@ export const MIN_REPORTABLE_BYTES = 500 * 1024 * 1024;
 
 const SNAPSHOT_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-storage-trend.json`;
 
-/** Display names for the exclusive breakdown's keys. */
+/**
+ * Friendly names for the folders worth renaming. Anything not here prints
+ * as the folder's own name, which is the point -- a folder called "aaa"
+ * reads as "aaa" with no code change.
+ */
 const LABELS: Record<string, string> = {
-  '/storage/emulated/0/DCIM/': 'Camera',
-  '/storage/emulated/0/Download/': 'Downloads',
-  '/storage/emulated/0/Music/': 'Music',
-  images: 'Images',
-  videos: 'Videos',
-  audio: 'Audio',
-  documents: 'Documents',
+  DCIM: 'Camera',
+  Download: 'Downloads',
+  Movies: 'Movies',
+  Music: 'Music',
+  Pictures: 'Pictures',
+  Documents: 'Documents',
+  Android: 'app data',
   other: 'other files',
 };
 

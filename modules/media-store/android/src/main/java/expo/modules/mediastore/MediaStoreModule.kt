@@ -1,6 +1,7 @@
 package expo.modules.mediastore
 
 import android.database.Cursor
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.exifinterface.media.ExifInterface
 import expo.modules.kotlin.modules.Module
@@ -77,6 +78,23 @@ class MediaStoreModule : Module() {
     "date_desc" -> "${MediaStore.Video.Media.DATE_ADDED} DESC"
     "date_asc"  -> "${MediaStore.Video.Media.DATE_ADDED} ASC"
     else        -> "${MediaStore.Video.Media.DATE_ADDED} DESC"
+  }
+
+    /**
+   * The top-level folder a file sits under, e.g. "DCIM" for
+   * /storage/emulated/0/DCIM/Camera/x.jpg. Null for a file loose in the
+   * root, or on a volume that is not primary external storage.
+   *
+   * One indexOf per file, bounded by path length -- nothing here scales
+   * with the number of files.
+   */
+  private fun topLevelFolder(path: String, root: String): String? {
+    if (!path.startsWith(root)) return null
+
+    val slash = path.indexOf('/', root.length)
+    if (slash <= root.length) return null
+
+    return path.substring(root.length, slash)
   }
 
   override fun definition() = ModuleDefinition {
@@ -236,40 +254,41 @@ class MediaStoreModule : Module() {
 
     
     // One pass over MediaStore.Files that puts every file in exactly one
-    // bucket, so two days of these figures can be subtracted. folderPaths
-    // beat type: a photo under /DCIM/ is dcim and not images, counted once.
+    // bucket, so two days of these figures can be subtracted. A file is
+    // filed under its top-level folder, whatever that folder is called, so
+    // a new folder needs no code change to be reported. folderPaths are
+    // overrides for paths worth naming that are buried deeper than the top
+    // level; first match wins, so list them most specific first.
+    //
     // Nothing above changes -- the Storage screen's overlapping views are
     // deliberate, this exists only to measure change.
     AsyncFunction("queryExclusiveBreakdown") { folderPaths: List<String> ->
       val context = appContext.reactContext ?: return@AsyncFunction mapOf<String, Double>()
       val totals = HashMap<String, Long>()
+
+      // Resolved once. Doing this per row would be the only hot-path cost
+      // in here worth caring about.
+      val root = Environment.getExternalStorageDirectory().absolutePath.trimEnd('/') + "/"
+
       try {
         val uri = android.provider.MediaStore.Files.getContentUri("external")
         val projection = arrayOf(
           android.provider.MediaStore.Files.FileColumns.SIZE,
-          android.provider.MediaStore.Files.FileColumns.DATA,
-          android.provider.MediaStore.Files.FileColumns.MIME_TYPE
+          android.provider.MediaStore.Files.FileColumns.DATA
         )
         val cursor = context.contentResolver.query(uri, projection, null, null, null)
         cursor?.use {
           val sizeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.SIZE)
           val dataCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.DATA)
-          val mimeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.MIME_TYPE)
           while (it.moveToNext()) {
             val size = it.getLong(sizeCol)
             if (size <= 0L) continue
 
-            val path = it.getString(dataCol) ?: ""
-            val mime = it.getString(mimeCol) ?: ""
+            val path = it.getString(dataCol) ?: continue
 
             val key = folderPaths.firstOrNull { folder -> path.startsWith(folder) }
-              ?: when {
-                mime.startsWith("image/") -> "images"
-                mime.startsWith("video/") -> "videos"
-                mime.startsWith("audio/") -> "audio"
-                mime.isNotEmpty() -> "documents"
-                else -> "untyped"
-              }
+              ?: topLevelFolder(path, root)
+              ?: "other"
 
             totals[key] = (totals[key] ?: 0L) + size
           }
