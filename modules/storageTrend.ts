@@ -62,6 +62,20 @@ export const SNAPSHOT_VERSION = 3;
  */
 export const MIN_REPORTABLE_BYTES = 500 * 1024 * 1024;
 
+/**
+ * How much of the headline the named folders have to account for before
+ * they are worth naming.
+ *
+ * The headline is live, but the folder figures come from today's
+ * snapshot, so a large change made after the app was first opened today
+ * lands in one and not the other. Naming a folder smaller than the total
+ * beside it reads as a contradiction -- "up 3.2 GB, 1.1 GB of that is
+ * Camera" invites the obvious question about the other two. Saying less
+ * is better than saying something that does not add up, and tomorrow's
+ * snapshot answers it properly.
+ */
+export const MIN_EXPLAINED_SHARE = 0.7;
+
 const SNAPSHOT_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-storage-trend.json`;
 
 /**
@@ -278,7 +292,11 @@ export async function storageChange(usedBytes: number): Promise<StorageChange | 
 
   let sentence = `Storage is up ${readable(deltaBytes)} since ${when}.`;
 
-  if (risers.length) {
+  // Positive and past the reporting threshold by here, so this cannot
+  // divide by zero or by something trivially small.
+  const explained = risers.reduce((sum, item) => sum + item.deltaBytes, 0);
+
+  if (risers.length && explained >= deltaBytes * MIN_EXPLAINED_SHARE) {
     // Everything within 5% of the biggest counts as tied. Two categories
     // that grew by 1.20 GB and 1.19 GB have no meaningful winner, and
     // naming one of them would be arbitrary.
