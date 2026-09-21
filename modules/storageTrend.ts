@@ -26,6 +26,8 @@ export type StorageSnapshot = {
   usedBytes: number;
   /** Bytes per category, keyed as useStorage keys them. */
   folders: Record<string, number>;
+  /** Bucket shape this was written with. Absent means pre-versioning. */
+  v?: number;
 };
 
 export type StorageChange = {
@@ -45,6 +47,14 @@ export type StorageChange = {
  */
 export const MAX_SNAPSHOTS = 30;
 
+
+/**
+ * Bumped whenever the bucket definitions change. Snapshots written under
+ * an older shape still give a correct usedBytes delta, but their per-bucket
+ * figures mean something different, so they are not subtracted.
+ */
+export const SNAPSHOT_VERSION = 2;
+
 /**
  * Below this, a change is cache churn, thumbnails and log files rather
  * than anything the user did. Saying "up 40 MB" every day would teach
@@ -54,14 +64,15 @@ export const MIN_REPORTABLE_BYTES = 500 * 1024 * 1024;
 
 const SNAPSHOT_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-storage-trend.json`;
 
-/** Display names for useStorage's folder keys. */
+/** Display names for the exclusive breakdown's keys. */
 const LABELS: Record<string, string> = {
-  pictures: 'Images',
+  '/storage/emulated/0/DCIM/': 'Camera',
+  '/storage/emulated/0/Download/': 'Downloads',
+  '/storage/emulated/0/Music/': 'Music',
+  images: 'Images',
   videos: 'Videos',
-  downloads: 'Downloads',
+  audio: 'Audio',
   documents: 'Documents',
-  dcim: 'Camera',
-  music: 'Music',
   other: 'other files',
 };
 
@@ -128,7 +139,7 @@ export async function recordSnapshot(
     // app twenty minutes ago", which is always a delta of nothing.
     if (snapshots.some(item => startOfDay(item.at) === today)) return false;
 
-    snapshots.push({ at: Date.now(), usedBytes, folders: { ...folders } });
+    snapshots.push({ at: Date.now(), usedBytes, folders: { ...folders }, v: SNAPSHOT_VERSION });
 
     if (snapshots.length > MAX_SNAPSHOTS) {
       snapshots.splice(0, snapshots.length - MAX_SNAPSHOTS);
@@ -141,6 +152,18 @@ export async function recordSnapshot(
     console.warn('[AskFiles] could not record storage trend:', error);
     return false;
   }
+}
+
+
+/**
+ * Whether today's snapshot is already on disk. Lets the caller skip the
+ * breakdown scan on every load but the first of the day.
+ */
+export async function hasSnapshotForToday(): Promise<boolean> {
+  const snapshots = await loadOnce();
+  const today = startOfDay(Date.now());
+
+  return snapshots.some(item => startOfDay(item.at) === today);
 }
 
 function readable(bytes: number): string {
@@ -197,10 +220,18 @@ export async function storageChange(
 
   const deltaBytes = usedBytes - previous.usedBytes;
 
-  const risers = Object.keys(folders)
-    .map(key => ({ key, deltaBytes: (folders[key] || 0) - (previous.folders[key] || 0) }))
-    .filter(item => item.deltaBytes > 0)
-    .sort((a, b) => b.deltaBytes - a.deltaBytes);
+  // An older snapshot's buckets overlapped each other, so subtracting them
+  // would name a single camera import twice. The headline delta is still
+  // sound -- usedBytes means the same thing under any shape -- so only the
+  // attribution is dropped.
+  const comparable = previous.v === SNAPSHOT_VERSION;
+
+  const risers = comparable
+    ? Object.keys(folders)
+        .map(key => ({ key, deltaBytes: (folders[key] || 0) - (previous.folders[key] || 0) }))
+        .filter(item => item.deltaBytes > 0)
+        .sort((a, b) => b.deltaBytes - a.deltaBytes)
+    : [];
 
   const change: StorageChange = {
     since: previous.at,

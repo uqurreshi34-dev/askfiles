@@ -8,7 +8,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useCallback, useState, useEffect } from 'react';
 import { getStorageVolumes, getVolumeStats } from '@/modules/storage-stats';
 import { storageChange } from '@/modules/storageTrend';
-import RNFS from 'react-native-fs';
 
 interface Category {
   label: string;
@@ -54,12 +53,6 @@ export default function StorageBreakdownScreen() {
 
     let cancelled = false;
 
-    // Returns null on a first run, a second open the same day, or a change
-    // under 500 MB -- so the line simply does not appear rather than
-    // saying something not worth reading.
-    RNFS.readFile(RNFS.DocumentDirectoryPath + '/askfiles-storage-trend.json', 'utf8')
-    .then(t => console.log('[TREND FILE]', t))
-    .catch(e => console.log('[TREND FILE] none:', String(e)));
     storageChange(usedBytes, folderBytes)
       .then(change => {
         if (!cancelled) setTrend(change?.sentence ?? null);

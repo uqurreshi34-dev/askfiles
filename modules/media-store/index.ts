@@ -91,6 +91,19 @@ export async function queryFolderSize(folderPath: string): Promise<number> {
   return MediaStore.queryFolderSize(folderPath);
 }
 
+
+/**
+ * Every file counted exactly once. folderPaths take precedence over type,
+ * so a photo under /DCIM/ lands in the /DCIM/ bucket and not in images.
+ * Keys are the paths you passed, plus images / videos / audio / documents
+ * / untyped for everything outside them.
+ */
+export async function queryExclusiveBreakdown(
+  folderPaths: string[]
+): Promise<Record<string, number>> {
+  return MediaStore.queryExclusiveBreakdown(folderPaths);
+}
+
 export async function queryLargestFiles(
   folderPath: string,
   mimePrefix: string,

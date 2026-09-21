@@ -5,8 +5,19 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount, queryLargestByName } from 'media-store';
-import { recordSnapshot } from '@/modules/storageTrend';
+import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount, queryLargestByName, queryExclusiveBreakdown } from 'media-store';
+import { recordSnapshot, hasSnapshotForToday } from '@/modules/storageTrend';
+
+
+/**
+ * Buckets that beat file type in the trend breakdown, most specific first.
+ * Add a path here and the trend picks it up -- nothing else to change.
+ */
+const TREND_FOLDERS = [
+  '/storage/emulated/0/DCIM/',
+  '/storage/emulated/0/Download/',
+  '/storage/emulated/0/Music/',
+];
 
 interface StorageInfo {
   totalBytes: number;
@@ -56,12 +67,17 @@ interface StorageCache {
     overall: { name: string; size: string; folder: string }[];
   };
   documentExtensions: Record<string, number>;
-    /**
-   * The same figures as folderSizes, unformatted. storageTrend compares
-   * days, and parsing "18.2 GB" back would carry 100 MB of error against
-   * a 500 MB threshold.
-   */
-    folderBytes: Record<string, number>;
+  /**
+  * The same figures as folderSizes, unformatted. storageTrend compares
+  * days, and parsing "18.2 GB" back would carry 100 MB of error against
+  * a 500 MB threshold.
+  */
+  folderBytes: Record<string, number>;
+ /**
+ * The trend's own figures: every file in exactly one bucket. Separate
+ * from folderBytes, whose categories overlap by design.
+ */
+  trendBytes: Record<string, number>;
   loaded: boolean;
 }
 
@@ -88,6 +104,7 @@ const cache: StorageCache = {
   },
   documentExtensions: {},
   folderBytes: {},
+  trendBytes: {},
   loaded: false,
 };
 
@@ -178,9 +195,23 @@ async function loadFolderSizes(): Promise<void> {
   };
 
   // Not awaited: the trend is a nice-to-have and must never hold up a
-  // screen that is waiting for folder sizes. No-ops on the second and
-  // later opens of the same day, so this costs one file write per day.
-  void recordSnapshot(usedBytes, cache.folderBytes);
+  // screen waiting for folder sizes.
+  // The breakdown is a full MediaStore pass, so it runs only when a
+  // snapshot is actually due -- once a day. Every other load stops at the
+  // cheap cached check.
+  void (async () => {
+    if (!usedBytes || (await hasSnapshotForToday())) return;
+
+    const exclusive = await queryExclusiveBreakdown(TREND_FOLDERS);
+    const { untyped = 0, ...buckets } = exclusive;
+    const counted = Object.values(exclusive).reduce((sum, n) => sum + n, 0);
+
+    // Files MediaStore never indexed -- app data, system -- plus anything
+    // it indexed without a type. One bucket, so it is named once.
+    cache.trendBytes = { ...buckets, other: untyped + Math.max(0, usedBytes - counted) };
+
+    void recordSnapshot(usedBytes, cache.trendBytes);
+  })();
 }
 
 async function doLoad(): Promise<void> {
@@ -222,10 +253,7 @@ cache.loaded = true;
 onPhase1Complete?.();
 onPhase1Complete = null;
 
-statsPromise.then(async () => {
-  await loadFolderSizes();
-  void recordSnapshot(cache.storageInfo?.usedBytes ?? 0, cache.folderBytes);
-});
+statsPromise.then(() => loadFolderSizes());
 
   // ── PHASE 2: Slow filesystem scans — AI context, runs silently ────────────
 

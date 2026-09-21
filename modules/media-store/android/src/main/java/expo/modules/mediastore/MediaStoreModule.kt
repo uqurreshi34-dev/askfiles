@@ -234,6 +234,50 @@ class MediaStoreModule : Module() {
       totalSize.toDouble()
     }
 
+    
+    // One pass over MediaStore.Files that puts every file in exactly one
+    // bucket, so two days of these figures can be subtracted. folderPaths
+    // beat type: a photo under /DCIM/ is dcim and not images, counted once.
+    // Nothing above changes -- the Storage screen's overlapping views are
+    // deliberate, this exists only to measure change.
+    AsyncFunction("queryExclusiveBreakdown") { folderPaths: List<String> ->
+      val context = appContext.reactContext ?: return@AsyncFunction mapOf<String, Double>()
+      val totals = HashMap<String, Long>()
+      try {
+        val uri = android.provider.MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+          android.provider.MediaStore.Files.FileColumns.SIZE,
+          android.provider.MediaStore.Files.FileColumns.DATA,
+          android.provider.MediaStore.Files.FileColumns.MIME_TYPE
+        )
+        val cursor = context.contentResolver.query(uri, projection, null, null, null)
+        cursor?.use {
+          val sizeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.SIZE)
+          val dataCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.DATA)
+          val mimeCol = it.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.MIME_TYPE)
+          while (it.moveToNext()) {
+            val size = it.getLong(sizeCol)
+            if (size <= 0L) continue
+
+            val path = it.getString(dataCol) ?: ""
+            val mime = it.getString(mimeCol) ?: ""
+
+            val key = folderPaths.firstOrNull { folder -> path.startsWith(folder) }
+              ?: when {
+                mime.startsWith("image/") -> "images"
+                mime.startsWith("video/") -> "videos"
+                mime.startsWith("audio/") -> "audio"
+                mime.isNotEmpty() -> "documents"
+                else -> "untyped"
+              }
+
+            totals[key] = (totals[key] ?: 0L) + size
+          }
+        }
+      } catch (e: Exception) {}
+      totals.mapValues { entry -> entry.value.toDouble() }
+    }
+
     AsyncFunction("queryLargestFiles") { folderPath: String, mimePrefix: String, limit: Int ->
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
       val results = mutableListOf<Map<String, Any>>()
