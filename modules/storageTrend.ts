@@ -16,6 +16,27 @@
  * Bytes, not formatted strings: useStorage has the raw numbers before it
  * formats them, and parsing "18.2 GB" back would lose 100 MB of precision
  * against a 500 MB threshold.
+ *
+ * It used to name the folder responsible, and that is gone, because the
+ * claim could not be made honestly from what is on disk. Two reasons, and
+ * the second is the fatal one:
+ *
+ *   The headline is live and the folder figures were not. Folder sizes
+ *   were captured once, the first time the app opened that day. Anything
+ *   moved afterwards showed up in the headline and could not show up in
+ *   the attribution, so copying a gigabyte into a folder moved the total
+ *   and left that folder unmentioned.
+ *
+ *   "1.7 GB of that is Alpha" says the 1.7 sits inside the total. Only
+ *   folders that grew were counted, so when something else shrank -- a
+ *   cache clearing, usually -- the named figure could exceed the total it
+ *   claimed to be part of. No threshold fixes that; the sentence asserts
+ *   a containment the data does not have.
+ *
+ * Measuring both halves at the same instant would need a full MediaStore
+ * pass every time the line is drawn, which is the cost this file was
+ * written to avoid. So the headline stays -- one system number minus one
+ * stored number, true whenever it is asked -- and the attribution goes.
  */
 
 import RNFS from 'react-native-fs';
@@ -24,10 +45,6 @@ export type StorageSnapshot = {
   /** Epoch milliseconds, at capture. */
   at: number;
   usedBytes: number;
-  /** Bytes per category, keyed as useStorage keys them. */
-  folders: Record<string, number>;
-  /** Bucket shape this was written with. Absent means pre-versioning. */
-  v?: number;
 };
 
 export type StorageChange = {
@@ -35,8 +52,6 @@ export type StorageChange = {
   since: number;
   /** Positive when storage grew. */
   deltaBytes: number;
-  /** Categories that grew, biggest first. */
-  risers: { key: string; deltaBytes: number }[];
   /** The finished sentence, or null when the change is not worth saying. */
   sentence: string | null;
 };
@@ -49,50 +64,13 @@ export const MAX_SNAPSHOTS = 30;
 
 
 /**
- * Bumped whenever the bucket definitions change. Snapshots written under
- * an older shape still give a correct usedBytes delta, but their per-bucket
- * figures mean something different, so they are not subtracted.
- */
-export const SNAPSHOT_VERSION = 3;
-
-/**
  * Below this, a change is cache churn, thumbnails and log files rather
  * than anything the user did. Saying "up 40 MB" every day would teach
  * people to ignore the line.
  */
 export const MIN_REPORTABLE_BYTES = 500 * 1024 * 1024;
 
-/**
- * How much of the headline the named folders have to account for before
- * they are worth naming.
- *
- * The headline is live, but the folder figures come from today's
- * snapshot, so a large change made after the app was first opened today
- * lands in one and not the other. Naming a folder smaller than the total
- * beside it reads as a contradiction -- "up 3.2 GB, 1.1 GB of that is
- * Camera" invites the obvious question about the other two. Saying less
- * is better than saying something that does not add up, and tomorrow's
- * snapshot answers it properly.
- */
-export const MIN_EXPLAINED_SHARE = 0.7;
-
 const SNAPSHOT_PATH = `${RNFS.DocumentDirectoryPath}/askfiles-storage-trend.json`;
-
-/**
- * Friendly names for the folders worth renaming. Anything not here prints
- * as the folder's own name, which is the point -- a folder called "aaa"
- * reads as "aaa" with no code change.
- */
-const LABELS: Record<string, string> = {
-  DCIM: 'Camera',
-  Download: 'Downloads',
-  Movies: 'Movies',
-  Music: 'Music',
-  Pictures: 'Pictures',
-  Documents: 'Documents',
-  Android: 'app data',
-  other: 'other files',
-};
 
 let cache: StorageSnapshot[] | null = null;
 let loading: Promise<StorageSnapshot[]> | null = null;
@@ -143,10 +121,7 @@ async function loadOnce(): Promise<StorageSnapshot[]> {
  * on the second and later opens of the same day it does nothing at all.
  * Returns true when a snapshot was actually written.
  */
-export async function recordSnapshot(
-  usedBytes: number,
-  folders: Record<string, number>,
-): Promise<boolean> {
+export async function recordSnapshot(usedBytes: number): Promise<boolean> {
   try {
     if (!usedBytes || usedBytes < 0) return false;
 
@@ -157,7 +132,7 @@ export async function recordSnapshot(
     // app twenty minutes ago", which is always a delta of nothing.
     if (snapshots.some(item => startOfDay(item.at) === today)) return false;
 
-    snapshots.push({ at: Date.now(), usedBytes, folders: { ...folders }, v: SNAPSHOT_VERSION });
+    snapshots.push({ at: Date.now(), usedBytes });
 
     if (snapshots.length > MAX_SNAPSHOTS) {
       snapshots.splice(0, snapshots.length - MAX_SNAPSHOTS);
@@ -172,17 +147,6 @@ export async function recordSnapshot(
   }
 }
 
-
-/**
- * Whether today's snapshot is already on disk. Lets the caller skip the
- * breakdown scan on every load but the first of the day.
- */
-export async function hasSnapshotForToday(): Promise<boolean> {
-  const snapshots = await loadOnce();
-  const today = startOfDay(Date.now());
-
-  return snapshots.some(item => startOfDay(item.at) === today);
-}
 
 function readable(bytes: number): string {
   const abs = Math.abs(bytes);
@@ -203,19 +167,16 @@ function whenLabel(at: number): string {
   return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
 }
 
-function label(key: string): string {
-  return LABELS[key] || key;
-}
-
 /**
  * How storage has changed since the last day the app was opened.
  *
  * Returns null when there is nothing to compare against yet -- a first
  * run, or a second open on the same day.
  *
- * Takes the live usedBytes for the headline. The per-category attribution
- * comes from the snapshots themselves, so the two sides can never be
- * measured differently.
+ * One subtraction, both sides in the same unit: the live usedBytes now,
+ * against the usedBytes stored on an earlier day. There is nothing here
+ * that can be measured at two different moments, which is what went
+ * wrong when this also tried to name a folder.
  */
 export async function storageChange(usedBytes: number): Promise<StorageChange | null> {
   const snapshots = await loadOnce();
@@ -224,27 +185,15 @@ export async function storageChange(usedBytes: number): Promise<StorageChange | 
 
   const today = startOfDay(Date.now());
 
-  // Both sides of the subtraction come off disk, and that is the point.
-  // Taking the current buckets from a caller invited a caller to pass a
-  // differently-keyed object -- which is exactly what happened: the
-  // recorded buckets are keyed by top-level folder and the screens hold
-  // a by-category breakdown, so every key looked new and a category's
-  // whole size was reported as its growth. A parameter that can be the
-  // wrong shape is removed rather than documented.
+  // The most recent snapshot from an EARLIER day. Comparing against one
+  // taken this morning would report a few minutes of change.
   let previous: StorageSnapshot | null = null;
-  let current: StorageSnapshot | null = null;
 
   for (let i = snapshots.length - 1; i >= 0; i--) {
-    const day = startOfDay(snapshots[i].at);
-
-    // The most recent snapshot from an EARLIER day. Comparing against one
-    // taken this morning would report a few minutes of change.
-    if (day < today) {
+    if (startOfDay(snapshots[i].at) < today) {
       previous = snapshots[i];
       break;
     }
-
-    if (day === today && !current) current = snapshots[i];
   }
 
   if (!previous) return null;
@@ -253,30 +202,9 @@ export async function storageChange(usedBytes: number): Promise<StorageChange | 
   // whenever the app was first opened today.
   const deltaBytes = usedBytes - previous.usedBytes;
 
-  // An older snapshot's buckets overlapped each other, so subtracting them
-  // would name a single camera import twice. The headline delta is still
-  // sound -- usedBytes means the same thing under any shape -- so only the
-  // attribution is dropped. Today's snapshot may not be written yet on the
-  // very first load of the day, which costs the attribution and nothing else.
-  const comparable =
-    current !== null && current.v === SNAPSHOT_VERSION && previous.v === SNAPSHOT_VERSION;
-
-  const todayFolders = current?.folders ?? {};
-
-  const risers = comparable
-    ? Object.keys(todayFolders)
-        .map(key => ({
-          key,
-          deltaBytes: (todayFolders[key] || 0) - (previous.folders[key] || 0),
-        }))
-        .filter(item => item.deltaBytes > 0)
-        .sort((a, b) => b.deltaBytes - a.deltaBytes)
-    : [];
-
   const change: StorageChange = {
     since: previous.at,
     deltaBytes,
-    risers,
     sentence: null,
   };
 
@@ -290,30 +218,7 @@ export async function storageChange(usedBytes: number): Promise<StorageChange | 
     return change;
   }
 
-  let sentence = `Storage is up ${readable(deltaBytes)} since ${when}.`;
-
-  // Positive and past the reporting threshold by here, so this cannot
-  // divide by zero or by something trivially small.
-  const explained = risers.reduce((sum, item) => sum + item.deltaBytes, 0);
-
-  if (risers.length && explained >= deltaBytes * MIN_EXPLAINED_SHARE) {
-    // Everything within 5% of the biggest counts as tied. Two categories
-    // that grew by 1.20 GB and 1.19 GB have no meaningful winner, and
-    // naming one of them would be arbitrary.
-    const top = risers[0].deltaBytes;
-    const tied = risers.filter(item => item.deltaBytes >= top * 0.95);
-
-    if (tied.length === 1) {
-      sentence += ` ${readable(top)} of that is ${label(tied[0].key)}.`;
-    } else {
-      const names = tied.map(item => `${label(item.key)} (${readable(item.deltaBytes)})`);
-
-      sentence +=
-        ` Most of that is ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
-    }
-  }
-
-  change.sentence = sentence;
+  change.sentence = `Storage is up ${readable(deltaBytes)} since ${when}.`;
 
   return change;
 }

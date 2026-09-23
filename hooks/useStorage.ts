@@ -5,26 +5,9 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { formatSize } from '@/utils/files';
 import { getStorageStats, isStorageManager } from '@/modules/storage-stats';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount, queryLargestByName, queryExclusiveBreakdown } from 'media-store';
-import { recordSnapshot, hasSnapshotForToday } from '@/modules/storageTrend';
+import { queryDocuments, queryDownloads, queryImageSize, queryVideoSize, queryFolderSize, queryLargestFiles, queryNameMatchCount, queryLargestByName } from 'media-store';
+import { recordSnapshot } from '@/modules/storageTrend';
 
-
-/**
- * Paths that get their own bucket regardless of depth. Top-level folders
- * are picked up automatically, so this is only for things buried deeper
- * that are worth naming on their own, e.g.
- *   '/storage/emulated/0/Android/media/com.whatsapp/'
- * Most specific first -- the first match wins.
- */
-const TREND_FOLDERS: string[] = [];
-
-/**
- * Buckets smaller than this fold into other, so a phone with fifty
- * top-level folders does not carry fifty keys a day for thirty days.
- * Folding is by today's size: a folder that grows past it gets its own key
- * that day, and its absence yesterday reads as zero, which is what it was.
- */
-const MIN_BUCKET_BYTES = 50 * 1024 * 1024;
 
 interface StorageInfo {
   totalBytes: number;
@@ -80,11 +63,6 @@ interface StorageCache {
   * a 500 MB threshold.
   */
   folderBytes: Record<string, number>;
- /**
- * The trend's own figures: every file in exactly one bucket. Separate
- * from folderBytes, whose categories overlap by design.
- */
-  trendBytes: Record<string, number>;
   loaded: boolean;
 }
 
@@ -111,7 +89,6 @@ const cache: StorageCache = {
   },
   documentExtensions: {},
   folderBytes: {},
-  trendBytes: {},
   loaded: false,
 };
 
@@ -202,32 +179,10 @@ async function loadFolderSizes(): Promise<void> {
   };
 
   // Not awaited: the trend is a nice-to-have and must never hold up a
-  // screen waiting for folder sizes.
-  // The breakdown is a full MediaStore pass, so it runs only when a
-  // snapshot is actually due -- once a day. Every other load stops at the
-  // cheap cached check.
-  void (async () => {
-    if (!usedBytes || (await hasSnapshotForToday())) return;
-
-    const exclusive = await queryExclusiveBreakdown(TREND_FOLDERS);
-    const counted = Object.values(exclusive).reduce((sum, n) => sum + n, 0);
-
-    const buckets: Record<string, number> = {};
-    let folded = 0;
-
-    for (const [key, bytes] of Object.entries(exclusive)) {
-      if (key !== 'other' && bytes < MIN_BUCKET_BYTES) folded += bytes;
-      else buckets[key] = bytes;
-    }
-
-    // Plus whatever MediaStore never indexed. Keeps the buckets summing to
-    // usedBytes exactly, which is the check that every byte was counted once.
-    buckets.other = (buckets.other ?? 0) + folded + Math.max(0, usedBytes - counted);
-
-    cache.trendBytes = buckets;
-
-    void recordSnapshot(usedBytes, cache.trendBytes);
-  })();
+  // screen. It is one number a day now -- the full MediaStore pass that
+  // fed the per-folder figures went with the attribution that needed it,
+  // so nothing here scans anything.
+  void recordSnapshot(usedBytes);
 }
 
 async function doLoad(): Promise<void> {
