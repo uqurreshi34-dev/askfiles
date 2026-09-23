@@ -10,7 +10,7 @@ AI-powered Android file manager - file management made easy
 - React Native / Expo SDK 54
 - Native Kotlin modules (file ops, media grid, storage stats, tags, favourites)
 - Django REST Framework backend
-- Groq LLM (AI search)
+- Groq LLM (AI search only — organise, search and storage all run on-device)
 - RevenueCat (in-app purchases)
 
 > **Note:** the `media-grid` module (the native photo grid — pinch-to-zoom,
@@ -31,6 +31,16 @@ AI-powered Android file manager - file management made easy
 - Secure vault with PIN + biometric lock
 - Google Drive, OneDrive & Dropbox backup with settings sync (Pro)
 - Duplicate file finder (Pro)
+- Similar image finder — perceptual matching, not just name and size (Pro)
+- Storage trends — what changed since you last looked, and which folder caused it
+- One-tap folder organise, planned on-device with full undo
+- Dual-pane browse for landscape and tablets
+- Activity log — what was deleted, moved, restored or tagged, answerable in plain English
+- Sensitive file scan
+- Large file finder
+- Image editor — rotate, crop, resize, restore to original
+- CSV viewer with column info and export
+- Cloud file browsing — Google Drive, OneDrive, Dropbox
 - Recycle bin with 30-day restore
 - PDF tools — create, merge, extract pages
 - OCR text extraction from images
