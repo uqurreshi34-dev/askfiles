@@ -22,6 +22,30 @@ export function disconnect(): Promise<string> {
   return SftpClient.disconnect();
 }
 
+// connect() rejects with one of these codes when the server's key is not yet trusted.
+// Nothing, including the password, has been sent to the server at that point.
+export const HOST_KEY_UNKNOWN = 'ERR_SFTP_HOST_KEY_UNKNOWN';
+export const HOST_KEY_CHANGED = 'ERR_SFTP_HOST_KEY_CHANGED';
+
+export interface PendingHostKey {
+  host: string;
+  port: number;
+  type: string;
+  fingerprint: string;
+  changed: boolean;
+}
+
+// The key the last refused connection presented, for the user to accept or refuse.
+export function pendingHostKey(): Promise<PendingHostKey | null> {
+  return SftpClient.pendingHostKey();
+}
+
+// Trust the key the user was shown. Resolves false if it no longer matches what the
+// server presented, or could not be saved.
+export function trustHostKey(host: string, port: number, fingerprint: string): Promise<boolean> {
+  return SftpClient.trustHostKey(host, port, fingerprint);
+}
+
 export function addTransferProgressListener(callback: (event: { percent: number }) => void) {
     return SftpClient.addListener('onTransferProgress', callback);
   }

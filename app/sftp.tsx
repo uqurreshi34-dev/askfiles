@@ -13,7 +13,10 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
 import RNFS from 'react-native-fs';
-import { connect, listDirectory, downloadFile, uploadFile, disconnect, addTransferProgressListener } from 'sftp-client';
+import {
+  connect, listDirectory, downloadFile, uploadFile, disconnect, addTransferProgressListener,
+  pendingHostKey, trustHostKey, HOST_KEY_UNKNOWN, HOST_KEY_CHANGED, type PendingHostKey,
+} from 'sftp-client';
 import * as FileSystem from 'expo-file-system';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
@@ -123,6 +126,10 @@ export default function SftpScreen() {
       setStage('browse');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
+        if (e?.code === HOST_KEY_UNKNOWN || e?.code === HOST_KEY_CHANGED) {
+          await confirmHostKey();
+          return;
+        }
         const msg = (e?.message ?? '').toLowerCase();
         if (msg.includes('auth') || msg.includes('password') || msg.includes('denied') || msg.includes('credential')) {
         Alert.alert('Sign in failed', 'Wrong username or password.');
@@ -134,6 +141,49 @@ export default function SftpScreen() {
       } finally {
       setConnecting(false);
     }
+  }
+
+  // ─── Server identity ───────────────────────────────────────────────────────
+
+  // The first connection to a server, or one whose key has changed, stops before the
+  // password is sent and asks the user whether this really is their server.
+  async function confirmHostKey() {
+    const key = await pendingHostKey().catch(() => null);
+    if (!key) {
+      Alert.alert('Connection failed', 'Something went wrong. Check your details and try again.');
+      return;
+    }
+    const place = key.port === 22 ? key.host : `${key.host}:${key.port}`;
+    const fingerprint = `${key.type}\n${key.fingerprint}`;
+
+    if (key.changed) {
+      Alert.alert(
+        'Server identity changed',
+        `${place} is presenting a different key from last time. That is expected after the server is reinstalled, but it can also mean someone is intercepting the connection. Your password was not sent.\n\nNew fingerprint:\n${fingerprint}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Trust new key', style: 'destructive', onPress: () => trustAndRetry(key) },
+        ],
+      );
+    } else {
+      Alert.alert(
+        'Trust this server?',
+        `This is the first connection to ${place}. Its fingerprint is:\n${fingerprint}\n\nAskFiles will remember it and warn you if it ever changes.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Trust', onPress: () => trustAndRetry(key) },
+        ],
+      );
+    }
+  }
+
+  async function trustAndRetry(key: PendingHostKey) {
+    const saved = await trustHostKey(key.host, key.port, key.fingerprint).catch(() => false);
+    if (!saved) {
+      Alert.alert('Could not trust server', 'The server key could not be confirmed. Try connecting again.');
+      return;
+    }
+    await handleConnect();
   }
 
   // ─── Load directory ────────────────────────────────────────────────────────

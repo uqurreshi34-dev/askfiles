@@ -2,12 +2,15 @@ package expo.modules.sftpclient
 
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.JSch
+import com.jcraft.jsch.JSchException
 import com.jcraft.jsch.Session
+import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.Locale
 
 class SftpClientModule : Module() {
 
@@ -20,14 +23,26 @@ class SftpClientModule : Module() {
 
         AsyncFunction("connect") { host: String, port: Int, username: String, password: String ->
             disconnect()
+            val target = host.trim().lowercase(Locale.ROOT)
             val jsch = JSch()
-            val s = jsch.getSession(username, host, port)
+            val recorder = hostKeys().attach(jsch)
+            val s = jsch.getSession(username, target, port)
             val passwordBytes = password.toByteArray()
-            s.setPassword(passwordBytes)
-            s.setConfig("StrictHostKeyChecking", "no")
-            s.setConfig("PreferredAuthentications", "password")
-            s.connect(10000)
-            passwordBytes.fill(0)
+            try {
+                s.setPassword(passwordBytes)
+                // The server's key is checked during key exchange, before the password is sent.
+                s.setConfig("StrictHostKeyChecking", "yes")
+                s.setConfig("PreferredAuthentications", "password")
+                try {
+                    s.connect(10000)
+                } catch (e: JSchException) {
+                    val found = hostKeys().rejected(jsch, target, port, recorder) ?: throw e
+                    val code = if (found.changed) "ERR_SFTP_HOST_KEY_CHANGED" else "ERR_SFTP_HOST_KEY_UNKNOWN"
+                    throw CodedException(code, "Server key needs confirming: ${found.fingerprint}", e)
+                }
+            } finally {
+                passwordBytes.fill(0)
+            }
             val ch = s.openChannel("sftp") as ChannelSftp
             ch.connect()
             session = s
@@ -96,6 +111,31 @@ class SftpClientModule : Module() {
             disconnect()
             "disconnected"
         }
+
+        AsyncFunction("pendingHostKey") {
+            hostKeys().pending()?.let {
+                mapOf(
+                    "host" to it.host,
+                    "port" to it.port,
+                    "type" to it.type,
+                    "fingerprint" to it.fingerprint,
+                    "changed" to it.changed
+                )
+            }
+        }
+
+        AsyncFunction("trustHostKey") { host: String, port: Int, fingerprint: String ->
+            hostKeys().trust(host.trim().lowercase(Locale.ROOT), port, fingerprint)
+        }
+    }
+
+    private var verifier: HostKeyVerifier? = null
+
+    @Synchronized
+    private fun hostKeys(): HostKeyVerifier {
+        verifier?.let { return it }
+        val context = appContext.reactContext ?: throw Exception("AskFiles context is unavailable.")
+        return HostKeyVerifier(File(context.filesDir, "sftp_known_hosts")).also { verifier = it }
     }
 
     private fun disconnect() {
