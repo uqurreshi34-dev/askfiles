@@ -15,8 +15,6 @@ import RNFS from 'react-native-fs';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
-import * as IntentLauncher from 'expo-intent-launcher';
 import TagPickerModal from '@/components/TagPickerModal';
 import { shareFiles, openFile, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { addMediaStoreChangeListener } from '@/modules/file-watcher';
@@ -868,12 +866,7 @@ async function handleSsInfo() {
         const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
         const srcPath = toPath(item.uri);
         await RNFS.copyFile(srcPath, cachePath);
-        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri,
-          flags: 1,
-          type: mime,
-        });
+        await openFile(cachePath, mime);
       } catch {}
     } finally {
       setOpeningUri(null);

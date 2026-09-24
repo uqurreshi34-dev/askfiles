@@ -20,7 +20,6 @@ import { usePro } from '@/hooks/usePro';
 import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hooks/useFavourites';
 import RNFS from 'react-native-fs';
 import { useTheme } from '@/hooks/useTheme';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
@@ -332,12 +331,7 @@ export default function BrowseScreen() {
         const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
         const srcPath = toPath(item.uri);
         await RNFS.copyFile(srcPath, cachePath);
-        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri,
-          flags: 1,
-          type: mime,
-        });
+        await openFileNative(cachePath, mime);
       } catch{} 
     } finally {
       setOpeningUri(null);

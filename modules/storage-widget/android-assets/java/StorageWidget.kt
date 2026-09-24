@@ -170,18 +170,10 @@ class StorageWidget : AppWidgetProvider() {
                         // PendingIntent to open file
                         try {
                             val filePath = java.net.URLDecoder.decode(uri.removePrefix("file://"), "UTF-8")
-                            val mime = getMimeType(name)
-                            val file = java.io.File(filePath)
-                            val fileUri = androidx.core.content.FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.provider",
-                                file
-                            )
-                            val fileIntent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(fileUri, mime)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
+                            // Built the same way as opening a file inside the app: real type,
+                            // Open with for unknown types, and SD card files included.
+                            val fileIntent = com.askfiles.mobile.sharemodule.OpenIntents
+                                .viewIntent(context, filePath, getMimeType(name))
                             val filePending = PendingIntent.getActivity(
                                 context, 100 + i, fileIntent,
                                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

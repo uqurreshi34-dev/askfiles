@@ -25,8 +25,6 @@ import * as Haptics from 'expo-haptics';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import { getMediaInfo } from 'media-store';
 import FileDetailsModal from '@/components/FileDetailsModal';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
-import * as IntentLauncher from 'expo-intent-launcher';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
@@ -810,12 +808,7 @@ export default function VaultScreen() {
                     const name = viewerUri.split('/').pop() ?? '';
                     const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
                     await RNFS.copyFile(toPath(viewerUri), cachePath);
-                    const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-                    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-                      data: contentUri,
-                      flags: 1,
-                      type: getMimeType(name),
-                    });
+                    await openFileNative(cachePath, getMimeType(name));
                   } catch {}
                 }} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
                   <Ionicons name="open-outline" size={22} color="#222" />

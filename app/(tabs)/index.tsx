@@ -15,7 +15,6 @@ import { useTheme, LIGHT_PALETTES, DARK_PALETTES } from '@/hooks/useTheme';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { isStorageManager, getPinnedFolders, setPinnedFolders, setPendingBrowsePath } from '@/modules/storage-stats';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import RNFS from 'react-native-fs';
 import { isImageFile, getFileIcon, getMimeType, getFileColor, toPath } from '@/utils/files';
 import { openFile as openFileNative, shareFiles } from '@/modules/share-module';
@@ -642,8 +641,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                         try {
                           const cachePath = `${RNFS.CachesDirectoryPath}/${decodedName}`;
                           await RNFS.copyFile(toPath(stat.uri), cachePath);
-                          const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-                          await IntentLauncher.startActivityAsync('android.intent.action.VIEW', { data: contentUri, flags: 1, type: mime });
+                          await openFileNative(cachePath, mime);
                         } catch {}
                       }
                       setOpeningUri(null);
@@ -717,8 +715,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                             try {
                               const cachePath = `${RNFS.CachesDirectoryPath}/${file.name}`;
                               await RNFS.copyFile(toPath(file.uri), cachePath);
-                              const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-                              await IntentLauncher.startActivityAsync('android.intent.action.VIEW', { data: contentUri, flags: 1, type: mime });
+                              await openFileNative(cachePath, mime);
                             } catch {}
                           }
                           setOpeningUri(null);

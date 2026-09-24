@@ -18,8 +18,6 @@ import { addRecent } from '@/hooks/useRecents';
 import * as Sharing from 'expo-sharing';
 import { useStorage } from '@/hooks/useStorage';
 import { usePro } from '@/hooks/usePro';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { useVault } from '@/hooks/useVault';
 import * as FileSystem from 'expo-file-system/next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -587,12 +585,7 @@ export default function SearchScreen() {
       try {
         const cachePath = `${RNFS.CachesDirectoryPath}/${name}`;
         await RNFS.copyFile(toPath(uri), cachePath);
-        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri,
-          flags: 1,
-          type: mime,
-        });
+        await openFileNative(cachePath, mime);
       } catch (e2) {}
     }
     setOpeningUri(null);

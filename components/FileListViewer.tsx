@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, Image,
   ActivityIndicator, Modal, Animated, Pressable, Alert,
@@ -119,10 +117,7 @@ export default function FileListViewer<T extends ViewableFile>({
       try {
         const cachePath = `${RNFS.CachesDirectoryPath}/${item.name}`;
         await RNFS.copyFile(toPath(item.uri), cachePath);
-        const contentUri = await FileSystemLegacy.getContentUriAsync('file://' + cachePath);
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri, flags: 1, type: mime,
-        });
+        await openFileNative(cachePath, mime);
       } catch (e2) {}
     }
     setOpeningUri(null);
