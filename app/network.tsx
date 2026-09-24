@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { startWifiServer, stopWifiServer } from 'file-reader';
+import { startWifiServer, stopWifiServer, newWifiPassword, WIFI_NO_NETWORK, type WifiShareInfo } from 'file-reader';
 import QRCode from 'react-native-qrcode-svg';
 import * as Haptics from 'expo-haptics';
 import { useWindowDimensions } from 'react-native';
@@ -22,7 +22,7 @@ export default function NetworkScreen() {
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
 
   const [wifiActive, setWifiActive] = useState(false);
-  const [wifiUrl, setWifiUrl] = useState('');
+  const [wifiShare, setWifiShare] = useState<WifiShareInfo | null>(null);
   const [wifiQrVisible, setWifiQrVisible] = useState(false);
   const [ftpActive, setFtpActive] = useState(false);
   const [ftpShare, setFtpShare] = useState<FtpShareInfo | null>(null);
@@ -116,12 +116,16 @@ export default function NetworkScreen() {
             setWifiQrVisible(true);
           } else {
             try {
-              const url = await startWifiServer('/storage/emulated/0/');
-              setWifiUrl(url);
+              const share = await startWifiServer('/storage/emulated/0/');
+              setWifiShare(share);
               setWifiActive(true);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             } catch (e: any) {
-              Alert.alert('Error', e?.message ?? 'Failed to start server');
+              if (e?.code === WIFI_NO_NETWORK) {
+                Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+              } else {
+                Alert.alert('Error', e?.message ?? 'Failed to start server');
+              }
             }
           }
         }}
@@ -139,8 +143,8 @@ export default function NetworkScreen() {
             {wifiActive ? (
               <>
                 <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Type this in any browser:</Text>
-                <Text style={[styles.cardSub, { color: colors.green, fontWeight: '600' }]}>{wifiUrl}</Text>
-                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>or tap to show QR code</Text>
+                <Text style={[styles.cardSub, { color: colors.green, fontWeight: '600' }]}>{wifiShare?.url}</Text>
+                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Password: <Text style={{ fontWeight: '600' }}>{wifiShare?.password}</Text> · or tap for QR code</Text>
               </>
             ) : (
               <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Browse & transfer files from any device on the same WiFi</Text>
@@ -149,7 +153,7 @@ export default function NetworkScreen() {
         </View>
         {wifiActive ? (
           <TouchableOpacity
-            onPress={async () => { await stopWifiServer(); setWifiActive(false); setWifiUrl(''); setWifiQrVisible(false); }}
+            onPress={async () => { await stopWifiServer(); setWifiActive(false); setWifiShare(null); setWifiQrVisible(false); }}
             style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
@@ -186,10 +190,27 @@ export default function NetworkScreen() {
             <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>WiFi Transfer</Text>
             <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Scan with your device camera</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
-              <QRCode value={wifiUrl || 'http://localhost:8080'} size={180} />
+              <QRCode value={wifiShare?.loginUrl || 'http://localhost:8080'} size={180} />
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>Or type in your browser:</Text>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center' }}>{wifiUrl}</Text>
+            <Text selectable style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center' }}>{wifiShare?.url}</Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Password: <Text selectable style={{ fontWeight: '600', color: colors.textPrimary }}>{wifiShare?.password}</Text></Text>
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  const password = await newWifiPassword();
+                  setWifiShare(prev => (prev ? { ...prev, password, loginUrl: `${prev.url}/login?code=${encodeURIComponent(password)}` } : prev));
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  Alert.alert('Password changed', 'Every browser that was connected has been signed out, and shared file links have stopped working. Use the new password to connect again.');
+                } catch {
+                  Alert.alert('Error', 'Could not change the password. Try again.');
+                }
+              }}
+              style={{ marginTop: 12, paddingVertical: 6, paddingHorizontal: 12 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>New password</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>

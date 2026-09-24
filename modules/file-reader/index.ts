@@ -39,8 +39,29 @@ export function unzipFileWithPassword(srcPath: string, destDir: string, password
   return FileReader.unzipFileWithPassword(srcPath, destDir, password);
 }
 
-export function startWifiServer(rootPath: string): Promise<string> {
+export interface WifiShareInfo {
+  url: string;       // the page, for typing into a browser
+  loginUrl: string;  // the page with the password included, for the QR code
+  address: string;
+  port: number;
+  password: string;
+}
+
+// startWifiServer rejects with this code when the phone is not on Wi-Fi or its own hotspot.
+export const WIFI_NO_NETWORK = 'ERR_WIFI_NO_NETWORK';
+
+export function startWifiServer(rootPath: string): Promise<WifiShareInfo> {
   return FileReader.startWifiServer(rootPath);
+}
+
+// Replace the saved password. Signs out every browser and cancels shared links at once.
+export function newWifiPassword(): Promise<string> {
+  return FileReader.newWifiPassword();
+}
+
+// A download link for this one file only, valid for an hour. Starts WiFi Transfer if needed.
+export function shareFileViaWifi(path: string): Promise<string> {
+  return FileReader.shareFileViaWifi(path);
 }
 
 export function stopWifiServer(): Promise<void> {

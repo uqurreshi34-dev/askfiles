@@ -31,7 +31,7 @@ import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative, shareFiles, copyImageToClipboard } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
 import { scanFile } from '@/modules/share-module';
-import { startWifiServer, copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview, readDocxPreview } from 'file-reader';
+import { shareFileViaWifi, WIFI_NO_NETWORK, copyFileStream, moveFileStream, addCopyProgressListener, readTextPreview, readDocxPreview } from 'file-reader';
 import { recordActivity, readableFolder } from '@/modules/activityLog';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { syncPathReferences } from '@/hooks/usePathSync';
@@ -378,21 +378,17 @@ export default function SearchScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      let url: string;
-      try {
-        url = await startWifiServer('/storage/emulated/0/');
-      } catch {
-        await new Promise(res => setTimeout(res, 500));
-        url = await startWifiServer('/storage/emulated/0/');
-      }
-      const ip = url.replace('http://', '').replace(':8080', '');
-      const encodedPath = encodeURIComponent(selectedItem.uri.replace('file://', ''));
-      const fileUrl = `http://${ip}:8080/file?path=${encodedPath}`;
+      // A link to this one file only, not the whole phone, and it expires after an hour.
+      const fileUrl = await shareFileViaWifi(selectedItem.uri.replace('file://', ''));
       setQrUrl(fileUrl);
       setQrModalVisible(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
-      Alert.alert('Error', 'Could not start WiFi server');
+      if (e?.code === WIFI_NO_NETWORK) {
+        Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+      } else {
+        Alert.alert('Error', 'Could not start WiFi server');
+      }
     }
   }
 

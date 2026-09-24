@@ -24,7 +24,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { shareFiles, openFile as openFileNative, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
-import { startWifiServer, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates, readTextPreview, readDocxPreview } from 'file-reader';
+import { shareFileViaWifi, WIFI_NO_NETWORK, deleteDirectory, readDirectory, countFolder, copyFileStream, moveFileStream, addCopyProgressListener, zipFiles, unzipFile, zipFilesWithPassword, unzipFileWithPassword, statFiles, createDirectory, writeTextFile, getShowHidden, setShowHidden as setShowHiddenNative, moveFolderRecursive, copyFolderRecursive, checkDuplicates, readTextPreview, readDocxPreview } from 'file-reader';
 import { scanFile } from '@/modules/share-module';
 import QRCode from 'react-native-qrcode-svg';
 import { getStorageVolumes, getPinnedFolders, setPinnedFolders, getPendingBrowsePath } from '@/modules/storage-stats';
@@ -492,21 +492,17 @@ export default function BrowseScreen() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      let url: string;
-      try {
-        url = await startWifiServer('/storage/emulated/0/');
-      } catch {
-        await new Promise(res => setTimeout(res, 500));
-        url = await startWifiServer('/storage/emulated/0/');
-      }
-      const ip = url.replace('http://', '').replace(':8080', '');
-      const encodedPath = encodeURIComponent(selectedItem.uri.replace('file://', ''));
-      const fileUrl = `http://${ip}:8080/file?path=${encodedPath}`;
+      // A link to this one file only, not the whole phone, and it expires after an hour.
+      const fileUrl = await shareFileViaWifi(selectedItem.uri.replace('file://', ''));
       setQrUrl(fileUrl);
       setQrModalVisible(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
-      Alert.alert('Error', 'Could not start WiFi server');
+      if (e?.code === WIFI_NO_NETWORK) {
+        Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+      } else {
+        Alert.alert('Error', 'Could not start WiFi server');
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-import { copyFileStream, moveFileStream, addCopyProgressListener, startWifiServer, checkDuplicates, batchRename, readTextPreview, readDocxPreview } from 'file-reader';
+import { copyFileStream, moveFileStream, addCopyProgressListener, shareFileViaWifi, WIFI_NO_NETWORK, checkDuplicates, batchRename, readTextPreview, readDocxPreview } from 'file-reader';
 import { recordActivity, readableFolder } from '@/modules/activityLog';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, InteractionManager, useWindowDimensions, ScrollView, StatusBar, BackHandler } from 'react-native';
@@ -957,21 +957,17 @@ async function handleSsInfo() {
     if (!selectedItem) return;
     closeSheet();
     try {
-      let url: string;
-      try {
-        url = await startWifiServer('/storage/emulated/0/');
-      } catch {
-        await new Promise(res => setTimeout(res, 500));
-        url = await startWifiServer('/storage/emulated/0/');
-      }
-      const ip = url.replace('http://', '').replace(':8080', '');
-      const encodedPath = encodeURIComponent(selectedItem.uri.replace('file://', ''));
-      const fileUrl = `http://${ip}:8080/file?path=${encodedPath}`;
+      // A link to this one file only, not the whole phone, and it expires after an hour.
+      const fileUrl = await shareFileViaWifi(selectedItem.uri.replace('file://', ''));
       setQrUrl(fileUrl);
       setQrModalVisible(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
-      Alert.alert('Error', 'Could not start WiFi server');
+      if (e?.code === WIFI_NO_NETWORK) {
+        Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+      } else {
+        Alert.alert('Error', 'Could not start WiFi server');
+      }
     }
   }
 
