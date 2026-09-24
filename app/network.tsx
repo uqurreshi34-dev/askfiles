@@ -232,7 +232,7 @@ export default function NetworkScreen() {
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>FTP Server</Text>
             {ftpActive ? (
               <>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Tap to show QR — scan in Windows Explorer</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Tap for the QR code and Windows Explorer address</Text>
                 <Text style={[styles.cardSub, { color: colors.textSecondary }]}>FileZilla: Host <Text style={{ color: colors.green, fontWeight: '600' }}>{ftpShare?.address}</Text> Port {ftpShare?.port}</Text>
                 <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Username: {ftpShare?.username} · Password: <Text style={{ fontWeight: '600' }}>{ftpShare?.password}</Text></Text>
               </>
@@ -292,12 +292,19 @@ export default function NetworkScreen() {
           </View>
           <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — Host: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpShare?.address}</Text> Port: {ftpShare?.port}</Text>
           <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Username: {ftpShare?.username} · Password: <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{ftpShare?.password}</Text></Text>
+          {ftpShare && (
+            <>
+              <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 12 }}>Windows Explorer — type in the address bar:</Text>
+              <Text selectable style={{ fontSize: 12, fontWeight: '600', color: colors.green, textAlign: 'center', marginTop: 2 }}>{ftpLoginUrl(ftpShare)}</Text>
+            </>
+          )}
           <TouchableOpacity
             onPress={async () => {
               try {
                 const password = await newPassword();
                 setFtpShare(prev => (prev ? { ...prev, password } : prev));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('Password changed', 'Any computer that was connected has been signed out. Use the new password to connect again.');
               } catch {
                 Alert.alert('Error', 'Could not change the password. Try again.');
               }

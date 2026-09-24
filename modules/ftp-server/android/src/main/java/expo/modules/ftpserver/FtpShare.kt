@@ -6,6 +6,7 @@ import org.apache.ftpserver.FtpServerFactory
 import org.apache.ftpserver.filesystem.nativefs.NativeFileSystemFactory
 import org.apache.ftpserver.ftplet.Authority
 import org.apache.ftpserver.ftplet.UserManager
+import org.apache.ftpserver.listener.Listener
 import org.apache.ftpserver.listener.ListenerFactory
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory
 import org.apache.ftpserver.usermanager.SaltedPasswordEncryptor
@@ -40,6 +41,7 @@ internal class FtpShare {
   }
 
   private var server: FtpServer? = null
+  private var listener: Listener? = null
   private var users: UserManager? = null
   private var home: String? = null
 
@@ -52,10 +54,12 @@ internal class FtpShare {
 
     val factory = FtpServerFactory()
 
-    val listener = ListenerFactory()
-    listener.port = port
-    listener.serverAddress = bindAddress
-    factory.addListener("default", listener.createListener())
+    val listenerFactory = ListenerFactory()
+    listenerFactory.port = port
+    listenerFactory.serverAddress = bindAddress
+    val created = listenerFactory.createListener()
+    factory.addListener("default", created)
+    listener = created
 
     val connections = ConnectionConfigFactory()
     connections.isAnonymousLoginEnabled = false
@@ -78,16 +82,33 @@ internal class FtpShare {
     home = rootPath
     saveUser(password)
 
-    val created = factory.createServer()
-    created.start()
-    server = created
+    val running = factory.createServer()
+    running.start()
+    server = running
   }
 
-  /** Change the password on a running share. People already connected stay connected. */
+  /**
+   * Change the password on a running share, and disconnect everyone already signed in.
+   *
+   * Without the disconnect a new password only stops new logins: a PC that signed in with the old
+   * one keeps its connection, and Windows Explorer quietly reuses that connection when the address
+   * is opened again, so the old password appears to still work. Whoever should still have access
+   * signs in again with the new one.
+   */
   @Synchronized
   fun changePassword(password: String) {
-    if (users != null) {
-      saveUser(password)
+    if (users == null) {
+      return
+    }
+
+    saveUser(password)
+
+    listener?.activeSessions?.forEach { session ->
+      try {
+        session.closeNow()
+      } catch (_: Exception) {
+        // Already closing; nothing left to cut off.
+      }
     }
   }
 
@@ -95,6 +116,7 @@ internal class FtpShare {
   fun stop() {
     server?.stop()
     server = null
+    listener = null
     users = null
     home = null
   }
