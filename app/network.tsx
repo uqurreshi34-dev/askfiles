@@ -8,7 +8,12 @@ import { startWifiServer, stopWifiServer } from 'file-reader';
 import QRCode from 'react-native-qrcode-svg';
 import * as Haptics from 'expo-haptics';
 import { useWindowDimensions } from 'react-native';
-import { startServer, stopServer, isRunning } from '@/modules/ftp-server';
+import { startServer, stopServer, newPassword, FTP_NO_WIFI, type FtpShareInfo } from '@/modules/ftp-server';
+
+// Scanning this signs straight in, so the password never has to be typed on the PC.
+function ftpLoginUrl(share: FtpShareInfo): string {
+  return `ftp://${encodeURIComponent(share.username)}:${encodeURIComponent(share.password)}@${share.address}:${share.port}`;
+}
 
 export default function NetworkScreen() {
   const { colors } = useTheme();
@@ -20,7 +25,7 @@ export default function NetworkScreen() {
   const [wifiUrl, setWifiUrl] = useState('');
   const [wifiQrVisible, setWifiQrVisible] = useState(false);
   const [ftpActive, setFtpActive] = useState(false);
-  const [ftpUrl, setFtpUrl] = useState('');
+  const [ftpShare, setFtpShare] = useState<FtpShareInfo | null>(null);
   const [ftpQrVisible, setFtpQrVisible] = useState(false);
 
   useEffect(() => {
@@ -201,13 +206,16 @@ export default function NetworkScreen() {
             setFtpQrVisible(true);
           } else {
             try {
-              const ip = await startServer(2121, '/storage/emulated/0/');
-              const url = `ftp://${ip}:2121`;
-              setFtpUrl(url);
+              const share = await startServer(2121, '/storage/emulated/0/');
+              setFtpShare(share);
               setFtpActive(true);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             } catch (e: any) {
-              Alert.alert('Error', e?.message ?? 'Failed to start FTP server');
+              if (e?.code === FTP_NO_WIFI) {
+                Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+              } else {
+                Alert.alert('Error', e?.message ?? 'Failed to start FTP server');
+              }
             }
           }
         }}
@@ -225,8 +233,8 @@ export default function NetworkScreen() {
             {ftpActive ? (
               <>
                 <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Tap to show QR — scan in Windows Explorer</Text>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>FileZilla: Host <Text style={{ color: colors.green, fontWeight: '600' }}>{ftpUrl.replace('ftp://', '').split(':')[0]}</Text> Port 2121</Text>
-                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Username: askfiles · No password</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>FileZilla: Host <Text style={{ color: colors.green, fontWeight: '600' }}>{ftpShare?.address}</Text> Port {ftpShare?.port}</Text>
+                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Username: {ftpShare?.username} · Password: <Text style={{ fontWeight: '600' }}>{ftpShare?.password}</Text></Text>
               </>
             ) : (
               <>
@@ -241,7 +249,7 @@ export default function NetworkScreen() {
             onPress={async () => {
               await stopServer();
               setFtpActive(false);
-              setFtpUrl('');
+              setFtpShare(null);
               setFtpQrVisible(false);
             }}
             style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
@@ -280,10 +288,25 @@ export default function NetworkScreen() {
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>FTP Server</Text>
           <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Open in FileZilla or Windows Explorer</Text>
           <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
-            <QRCode value={ftpUrl || 'ftp://localhost:2121'} size={180} />
+            <QRCode value={ftpShare ? ftpLoginUrl(ftpShare) : 'ftp://localhost:2121'} size={180} />
           </View>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — Host: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpUrl.replace('ftp://', '').split(':')[0]}</Text> Port: 2121</Text>
-          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Username: askfiles · No password needed</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — Host: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpShare?.address}</Text> Port: {ftpShare?.port}</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Username: {ftpShare?.username} · Password: <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{ftpShare?.password}</Text></Text>
+          <TouchableOpacity
+            onPress={async () => {
+              try {
+                const password = await newPassword();
+                setFtpShare(prev => (prev ? { ...prev, password } : prev));
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch {
+                Alert.alert('Error', 'Could not change the password. Try again.');
+              }
+            }}
+            style={{ marginTop: 12, paddingVertical: 6, paddingHorizontal: 12 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>New password</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     </Modal>
