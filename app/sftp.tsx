@@ -154,12 +154,11 @@ export default function SftpScreen() {
       return;
     }
     const place = key.port === 22 ? key.host : `${key.host}:${key.port}`;
-    const fingerprint = `${key.type}\n${key.fingerprint}`;
 
     if (key.changed) {
       Alert.alert(
         'Server identity changed',
-        `${place} is presenting a different key from last time. That is expected after the server is reinstalled, but it can also mean someone is intercepting the connection. Your password was not sent.\n\nNew fingerprint:\n${fingerprint}`,
+        `${place} is presenting a different key from last time. That is expected after the server is reinstalled, but it can also mean someone is intercepting the connection. Your password was not sent.\n\nNew ${key.type} fingerprint:\n${key.fingerprint}`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Trust new key', style: 'destructive', onPress: () => trustAndRetry(key) },
@@ -168,7 +167,7 @@ export default function SftpScreen() {
     } else {
       Alert.alert(
         'Trust this server?',
-        `This is the first connection to ${place}. Its fingerprint is:\n${fingerprint}\n\nAskFiles will remember it and warn you if it ever changes.`,
+        `This is the first connection to ${place}. Its ${key.type} fingerprint is:\n${key.fingerprint}\n\nTo check it, compare it with the server's ${key.type} key, not another type. AskFiles will remember it and warn you if it ever changes.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Trust', onPress: () => trustAndRetry(key) },
