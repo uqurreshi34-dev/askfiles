@@ -249,6 +249,29 @@ internal class WifiTransfer(private val onFileSaved: (File) -> Unit = {}) {
 
     route(request, output)
     output.flush()
+    finish(client, input)
+  }
+
+  /**
+   * Close gently. If a request is refused before its body is read (a large upload, say) and the
+   * socket is simply closed, the unread bytes make the phone reset the connection, and the browser
+   * shows a connection error instead of the answer. Signalling the end of the reply first and
+   * reading off a little of what is left lets the browser see the answer.
+   */
+  private fun finish(client: Socket, input: InputStream) {
+    try {
+      client.shutdownOutput()
+      client.soTimeout = 2000
+      val buffer = ByteArray(8192)
+      var left = 1024 * 1024
+      while (left > 0) {
+        val read = input.read(buffer, 0, minOf(buffer.size, left))
+        if (read < 0) break
+        left -= read
+      }
+    } catch (_: Exception) {
+      // The browser has already gone; nothing to wait for.
+    }
   }
 
   private fun route(request: Request, output: OutputStream) {
@@ -520,7 +543,9 @@ internal class WifiTransfer(private val onFileSaved: (File) -> Unit = {}) {
     "Cache-Control: no-store\r\n" +
       "X-Content-Type-Options: nosniff\r\n" +
       "X-Frame-Options: DENY\r\n" +
-      "Referrer-Policy: no-referrer\r\n" +
+      // same-origin, not no-referrer: with no-referrer the browser labels its own uploads as
+      // coming from nowhere (Origin: null), and the upload check below then refuses them.
+      "Referrer-Policy: same-origin\r\n" +
       // No scripts at all: even if something slipped past the escaping, it could not run.
       "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; frame-ancestors 'none'\r\n"
 
