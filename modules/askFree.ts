@@ -14,11 +14,9 @@
  */
 
 export const FREE_QUESTIONS: readonly string[] = [
-  "What's my largest file?",
   "What's my largest image?",
   "What's my largest video?",
-  "What's taking up the most space?",
-  'How much storage do I have left?',
+  "What's my largest file?",
 ];
 
 export function isFreeQuestion(question: string): boolean {
@@ -27,13 +25,13 @@ export function isFreeQuestion(question: string): boolean {
 
 /**
  * Shown to a free user under the free questions, locked, to show what asking
- * in your own words adds. Each must be one Pro answers well: the first on
- * the phone, the other two by the model, which askLocal leaves them to.
+ * in your own words adds. Each must be one Pro answers well, as these are,
+ * on the phone.
  */
 export const PRO_EXAMPLES: readonly string[] = [
   'How many screenshots do I have?',
-  'What can I safely delete?',
-  "What's in my downloads?",
+  "What's taking up the most space?",
+  'How much storage do I have left?',
 ];
 
 /** Said to a free user when a free question cannot be answered yet: the storage scan is still running. */

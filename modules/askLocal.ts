@@ -23,6 +23,7 @@
  */
 
 import { EXTENSION_RULES } from '@/modules/organisePlan';
+import { formatSize } from '@/utils/files';
 import type { ActivityEntry } from '@/modules/activityLog';
 
 export type NamedFile = { name: string; size: string; folder: string };
@@ -274,6 +275,10 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
 
   if (list.length === 0) return null;
 
+  // "Should I free up some space?" asks for advice, not a figure. Answered
+  // here, it got only how full the phone is; the model can weigh it up.
+  if (has(list, 'should')) return null;
+
   const asksHowMany = has(list, 'many', 'count', 'number') || list[0] === 'count';
   const asksLargest = has(list, 'largest', 'biggest', 'heaviest');
   const asksSpace =
@@ -349,6 +354,14 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
       if (folders.length === 0) return null;
 
       return `Most of your space goes to ${folders.join(', then ')}.`;
+    }
+
+    // "How much storage do I have left?" asks for what is free, not what is used.
+    if (has(list, 'left', 'remaining', 'available')) {
+      return (
+        `You have ${formatSize(info.freeBytes)} left of ${info.totalReadable}. ` +
+        `You're using ${info.usedReadable}, which is ${info.usedPercent} percent.`
+      );
     }
 
     return (
