@@ -45,7 +45,7 @@ import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSear
 import { getDateGroup } from '@/hooks/useRecents';
 import Thumb from '@/components/Thumb';
 import { answerLocally } from '@/modules/askLocal';
-import { FREE_QUESTIONS, isFreeQuestion, STILL_READING } from '@/modules/askFree';
+import { FREE_QUESTIONS, PRO_EXAMPLES, isFreeQuestion, STILL_READING } from '@/modules/askFree';
 import { recentActivity } from '@/modules/activityLog';
 import { storageChange } from '@/modules/storageTrend';
 
@@ -1042,6 +1042,19 @@ export default function SearchScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+                {!isPro && !proLoading && (
+                  <>
+                    <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: 12 }]}>With Pro</Text>
+                    <View style={styles.suggestions}>
+                      {PRO_EXAMPLES.map(s => (
+                        <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => router.push('/(tabs)/cloud')}>
+                          <Text style={[styles.suggestionText, { color: colors.textMuted }]}>{s}</Text>
+                          <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
               </>
             </ScrollView>
           ) : (
@@ -1061,6 +1074,19 @@ export default function SearchScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+                {!isPro && !proLoading && (
+                  <>
+                    <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: 12 }]}>With Pro</Text>
+                    <View style={styles.suggestions}>
+                      {PRO_EXAMPLES.map(s => (
+                        <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => router.push('/(tabs)/cloud')}>
+                          <Text style={[styles.suggestionText, { color: colors.textMuted }]}>{s}</Text>
+                          <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
               </>
             </ScrollView>
           )}

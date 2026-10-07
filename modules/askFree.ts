@@ -25,5 +25,16 @@ export function isFreeQuestion(question: string): boolean {
   return FREE_QUESTIONS.includes(question.trim());
 }
 
+/**
+ * Shown to a free user under the free questions, locked, to show what asking
+ * in your own words adds. Each must be one Pro answers well: the first on
+ * the phone, the other two by the model, which askLocal leaves them to.
+ */
+export const PRO_EXAMPLES: readonly string[] = [
+  'How many screenshots do I have?',
+  'What can I safely delete?',
+  "What's in my downloads?",
+];
+
 /** Said to a free user when a free question cannot be answered yet: the storage scan is still running. */
 export const STILL_READING = "I'm still reading your storage. Give me a moment and ask again.";
