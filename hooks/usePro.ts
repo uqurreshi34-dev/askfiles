@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Purchases, { PurchasesPackage } from 'react-native-purchases';
+import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
 const RC_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
@@ -30,6 +30,20 @@ export function usePro() {
     configure();
     loadOfferings();
     checkEntitlement();
+
+    // Every screen has its own usePro. Without this, buying Pro on the Pro
+    // screen left the others -- the search tab's Ask AI among them -- locked
+    // until the app restarted.
+    if (!configured) return;
+
+    const onUpdate = (info: CustomerInfo) => {
+      setIsPro(typeof info.entitlements.active['pro'] !== 'undefined');
+    };
+
+    Purchases.addCustomerInfoUpdateListener(onUpdate);
+    return () => {
+      Purchases.removeCustomerInfoUpdateListener(onUpdate);
+    };
   }, []);
 
   async function checkEntitlement() {

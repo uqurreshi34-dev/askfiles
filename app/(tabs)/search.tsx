@@ -45,6 +45,7 @@ import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSear
 import { getDateGroup } from '@/hooks/useRecents';
 import Thumb from '@/components/Thumb';
 import { answerLocally } from '@/modules/askLocal';
+import { FREE_QUESTIONS, isFreeQuestion, STILL_READING } from '@/modules/askFree';
 import { recentActivity } from '@/modules/activityLog';
 import { storageChange } from '@/modules/storageTrend';
 
@@ -130,8 +131,10 @@ export default function SearchScreen() {
     handleIndexNow();
   }, [mode]);
 
-  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, folderBytes, silentReload } = useStorage();
-  const { isPro } = usePro();
+  const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, folderBytes, silentReload, loading: storageLoading } = useStorage();
+  const { isPro, loading: proLoading } = usePro();
+  // Free users ask the questions answered on the phone; their own, typed or spoken, are Pro.
+  const askSuggestions = isPro ? SUGGESTIONS : FREE_QUESTIONS;
   const { addToVault, vaultHas } = useVault();
   const insets = useSafeAreaInsets();
   const [selectedItem, setSelectedItem] = useState<{ name: string; uri: string; inFolder?: boolean } | null>(null);
@@ -528,7 +531,25 @@ export default function SearchScreen() {
   async function handleAsk(question?: string) {
     const q = question ?? aiQuery;
     if (q.trim().length < 3) return;
+
+    // A free user's question never reaches the backend: only the free
+    // questions are asked, and only answered on the phone.
+    const free = !isPro;
+
+    if (free && !isFreeQuestion(q)) {
+      router.push('/(tabs)/cloud');
+      return;
+    }
+
     Keyboard.dismiss();
+
+    // Before the storage scan has found any files, the free questions would
+    // be answered from empty lists: "I can't see any files on your device".
+    if (free && (storageLoading || !largestFiles?.overall?.length)) {
+      setLocalAnswer(STILL_READING);
+      return;
+    }
+
     // Clear first. The answer box renders localAnswer || answer, so a
     // previous local answer would otherwise show while a new question is
     // still in flight -- or for ever, if that question fails.
@@ -555,6 +576,12 @@ export default function SearchScreen() {
 
     if (local) {
       setLocalAnswer(local);
+      return;
+    }
+
+    if (free) {
+      // Answered on the phone or not at all: the storage scan has not finished.
+      setLocalAnswer(STILL_READING);
       return;
     }
 
@@ -688,10 +715,7 @@ export default function SearchScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'ask' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
-          onPress={() => {
-            if (!isPro) { router.push('/(tabs)/cloud'); return; }
-            setMode('ask');
-          }}
+          onPress={() => setMode('ask')}
         >
           <Ionicons name="sparkles-outline" size={14} color={mode === 'ask' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
           <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>Ask AI</Text>
@@ -912,6 +936,19 @@ export default function SearchScreen() {
         </>
       ) : mode === 'ask' ? (
         <>
+          {!isPro && !proLoading ? (
+            <TouchableOpacity
+              style={[styles.inputWrap, { backgroundColor: colors.surface }]}
+              onPress={() => router.push('/(tabs)/cloud')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="sparkles-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+              <Text style={[styles.input, { color: colors.textMuted, textAlignVertical: 'center' }]} numberOfLines={1}>
+                Ask in your own words with Pro
+              </Text>
+              <Ionicons name="lock-closed-outline" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : (
           <View style={[styles.inputWrap, { backgroundColor: colors.surface }]}>
             <Ionicons name="sparkles-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
             <TextInput
@@ -922,7 +959,7 @@ export default function SearchScreen() {
               onChangeText={setAiQuery}
               onSubmitEditing={() => cooldown === 0 && handleAsk()}
               returnKeyType="send"
-              editable={true}
+              editable={isPro}
             />
             <>
             {aiQuery.length > 0 ? (
@@ -975,6 +1012,7 @@ export default function SearchScreen() {
               )}
             </>
           </View>
+          )}
 
           {thinking ? (
             <View style={styles.centered}>
@@ -997,7 +1035,7 @@ export default function SearchScreen() {
               <>
                 <Text style={[styles.suggestionsLabel, { color: colors.textMuted }]}>Try these</Text>
                 <View style={styles.suggestions}>
-                  {SUGGESTIONS.map(s => (
+                  {askSuggestions.map(s => (
                     <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => handleSuggestion(s)}>
                       <Text style={[styles.suggestionText, { color: colors.textSecondary }]}>{s}</Text>
                       <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
@@ -1011,10 +1049,12 @@ export default function SearchScreen() {
               <>
                 <View style={styles.centeredContent}>
                   <Ionicons name="sparkles-outline" size={40} color={colors.textDisabled} />
-                  <Text style={[styles.hint, { color: colors.textMuted }]}>Ask about your files in plain English</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>
+                    {isPro ? 'Ask about your files in plain English' : 'Tap a question for an instant answer'}
+                  </Text>
                 </View>
                 <View style={styles.suggestions}>
-                  {SUGGESTIONS.map(s => (
+                  {askSuggestions.map(s => (
                     <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => handleSuggestion(s)}>
                       <Text style={[styles.suggestionText, { color: colors.textSecondary }]}>{s}</Text>
                       <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />

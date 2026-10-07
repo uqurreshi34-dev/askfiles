@@ -14,8 +14,8 @@ const PRO_FEATURES = [
   },
   {
     icon: 'sparkles-outline' as const,
-    title: 'Unlimited AI Queries',
-    desc: 'Ask AI anything about your files with no daily limit',
+    title: 'Ask AI Anything',
+    desc: 'Ask about your files in your own words, typed or spoken',
     route: null,
   },
   {
