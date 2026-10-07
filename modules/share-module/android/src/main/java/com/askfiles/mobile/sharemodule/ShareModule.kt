@@ -186,7 +186,9 @@ class ShareModule : Module() {
       val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
       BitmapFactory.decodeFile(filePath, bounds)
       val (w, h) = bounds.outWidth to bounds.outHeight
-      if (w <= 0 || h <= 0) return BitmapFactory.decodeFile(filePath)
+      // No readable size means no decoder here can read it, so decoding it whole only adds risk:
+      // a full-resolution bitmap if it somehow succeeds. printImage reports it as unreadable.
+      if (w <= 0 || h <= 0) return null
       var sample = 1
       while (w / sample > maxDimension || h / sample > maxDimension) {
         sample *= 2
