@@ -1063,7 +1063,7 @@ export default function SearchScreen() {
                 <View style={styles.centeredContent}>
                   <Ionicons name="sparkles-outline" size={40} color={colors.textDisabled} />
                   <Text style={[styles.hint, { color: colors.textMuted }]}>
-                    {isPro ? 'Ask about your files in plain English' : 'Tap a question for an instant answer'}
+                    {isPro ? 'Ask about your files in plain English' : 'Free: tap a question for an instant answer, as often as you like'}
                   </Text>
                 </View>
                 <View style={styles.suggestions}>

@@ -35,6 +35,10 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
     private var progressRunnable: Runnable? = null
     private val onProgress by EventDispatcher()
     private val onSeek by EventDispatcher()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    // Bumped on every load and release, so a load that finishes after the
+    // view has moved on is thrown away instead of playing over the new one.
+    private var loadToken = 0
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
@@ -172,40 +176,62 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
             uri.removePrefix("file://")
         }
 
+        val texture = surfaceTexture ?: run { releaseAudioFocus(); return }
+        val token = ++loadToken
+
+        // Made on the main thread so its callbacks still arrive there, as before.
         val mp = MediaPlayer()
-        try {
-            val surface = Surface(surfaceTexture)
-            mp.setSurface(surface)
-            surface.release()
-            mp.setDataSource(context, Uri.parse("file://$decoded"))
-            mp.setOnPreparedListener { player ->
-                player.isLooping = false
-                videoWidth = player.videoWidth
-                videoHeight = player.videoHeight
-                textureView.requestLayout()
-                if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true, "duration" to player.duration)) }
-            }
-            mp.setOnCompletionListener {
-                releaseAudioFocus()
-                onComplete(mapOf<String, Any>())
-            }
-            mp.setOnErrorListener { _, what, extra ->
-                releaseAudioFocus()
-                onError(mapOf("what" to what, "extra" to extra))
-                true
-            }
-            mp.setOnSeekCompleteListener { seeking = false }
-            mp.prepareAsync()
-            mediaPlayer = mp
-            startProgressTicker()
-        } catch (e: Exception) {
-            // setDataSource throws synchronously if the file is missing or
-            // unreadable — the error listener above can't catch that, and this
-            // runs inside the render path, so an uncaught exception kills the app.
-            try { mp.release() } catch (_: Exception) {}
-            mediaPlayer = null
+        mp.setOnPreparedListener { player ->
+            if (token != loadToken) return@setOnPreparedListener
+            player.isLooping = false
+            videoWidth = player.videoWidth
+            videoHeight = player.videoHeight
+            textureView.requestLayout()
+            if (!pendingPaused) { player.start(); onPlayingStateChange(mapOf("isPlaying" to true, "duration" to player.duration)) }
+        }
+        mp.setOnCompletionListener {
+            if (token != loadToken) return@setOnCompletionListener
             releaseAudioFocus()
-            onError(mapOf("what" to -1, "extra" to -1))
+            onComplete(mapOf<String, Any>())
+        }
+        mp.setOnErrorListener { _, what, extra ->
+            if (token != loadToken) return@setOnErrorListener true
+            releaseAudioFocus()
+            onError(mapOf("what" to what, "extra" to extra))
+            true
+        }
+        mp.setOnSeekCompleteListener { seeking = false }
+
+        // setDataSource waits on the system media service, which can take
+        // seconds on a busy phone. Run inside the draw pass it froze the
+        // screen, so it runs on the loader thread instead.
+        loadExecutor.execute {
+            val loaded = try {
+                val surface = Surface(texture)
+                mp.setSurface(surface)
+                surface.release()
+                mp.setDataSource(context, Uri.parse("file://$decoded"))
+                mp.prepareAsync()
+                true
+            } catch (e: Exception) {
+                false
+            }
+            mainHandler.post {
+                if (token != loadToken) {
+                    // New video, surface gone or view detached while this loaded.
+                    try { mp.release() } catch (_: Exception) {}
+                    return@post
+                }
+                if (!loaded) {
+                    // Missing or unreadable file: setDataSource throws and the error listener never fires.
+                    try { mp.release() } catch (_: Exception) {}
+                    releaseAudioFocus()
+                    onError(mapOf("what" to -1, "extra" to -1))
+                    return@post
+                }
+                mediaPlayer = mp
+                startProgressTicker()
+            }
         }
     }
 
@@ -261,6 +287,7 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
     }
 
     private fun releasePlayer() {
+        loadToken++
         stopProgressTicker()
         mediaPlayer?.let {
             try {
@@ -284,5 +311,12 @@ class ExpoMediaPlayerView(context: Context, appContext: AppContext) : ExpoView(c
         releasePlayer()
         releaseAudioFocus()
         currentUri = null
+    }
+
+    companion object {
+        // One shared loader thread for every player view; loads stay in order.
+        private val loadExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread(r, "AskFilesMediaLoader").apply { isDaemon = true }
+        }
     }
 }
