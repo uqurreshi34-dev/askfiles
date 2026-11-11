@@ -267,6 +267,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => setSettingsVisible(false)}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
+            <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
@@ -358,6 +359,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                   </TouchableOpacity>
                 ))}
               </View>
+              </ScrollView>
 
               <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled }]} activeOpacity={0.7} onPress={() => setSettingsVisible(false)}>
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Close</Text>
