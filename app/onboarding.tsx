@@ -13,43 +13,35 @@ import { useColorScheme } from 'react-native';
 import { getColors } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { onboardingText } from '@/modules/onboardingText';
 
 
+// Icons and colours only; the words, in the phone's language, come from onboardingText().
 const SLIDES = [
   {
     icon: 'albums-outline' as const,
     iconColor: '#185FA5',
     iconBg: '#E6F1FB',
-    title: 'Welcome to AskFiles',
-    body: 'Your personal file manager. Browse, organise, and access everything on your device — simply and fast.',
   },
   {
     icon: 'apps-outline' as const,
     iconColor: '#185FA5',
     iconBg: '#E6F1FB',
-    title: 'Powerful. Free.',
-    body: 'Document scanner with automatic edge detection. Password-protected ZIP. WiFi file transfer — no cables, just a browser. QR file sharing. SD card support. All free, no account needed.',
   },
   {
     icon: 'lock-closed-outline' as const,
     iconColor: '#3B6D11',
     iconBg: '#EAF3DE',
-    title: 'Your Privacy, Protected',
-    body: 'No account needed. No ads. Your files never leave your device. AI search sends only your typed question — never file contents. Smart Search reads your documents privately on your phone — no internet, no servers, no one else can see your files.',
   },
   {
     icon: 'star-outline' as const,
     iconColor: '#854F0B',
     iconBg: '#FEF3E2',
-    title: 'Unlock Pro — Yours Forever',
-    body: 'AI-powered file search. Smart Search — find words inside your documents. Secure Vault with biometrics. Cloud backup to Google Drive, OneDrive and Dropbox. Duplicate finder. One payment, no subscription.',
   },
   {
     icon: 'folder-open-outline' as const,
     iconColor: '#185FA5',
     iconBg: '#E6F1FB',
-    title: 'Access Your Files',
-    body: 'AskFiles needs access to your photos, videos and files to work. Your files never leave your device.',
   },
 ];
 
@@ -61,6 +53,8 @@ export default function OnboardingScreen() {
   const PORTRAIT_WIDTH = Math.min(width, height);
   const isLandscape = width > height;
   const router = useRouter();
+  const T = onboardingText();
+  const slides = SLIDES.map((s, i) => ({ ...s, ...T.slides[i] }));
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState(false);
@@ -111,7 +105,7 @@ export default function OnboardingScreen() {
   }
 
   const isPermissionSlide = currentIndex === SLIDES.length - 1;
-  const slide = SLIDES[currentIndex];
+  const slide = slides[currentIndex];
 
   // ── LANDSCAPE ─────────────────────────────────────────────────────────────
   if (isLandscape) {
@@ -119,7 +113,7 @@ export default function OnboardingScreen() {
       <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Skip — top right */}
         <TouchableOpacity onPress={finish} style={styles.lsSkip}>
-          <Text style={[styles.skip, { color: colors.textMuted }]}>Skip</Text>
+          <Text style={[styles.skip, { color: colors.textMuted }]}>{T.skip}</Text>
         </TouchableOpacity>
 
         {/* Centre: prev arrow | content | next arrow */}
@@ -161,22 +155,22 @@ export default function OnboardingScreen() {
               {!permissionGranted ? (
                 <TouchableOpacity style={styles.btnPrimary} onPress={requestPermissions} disabled={requestingPermission} activeOpacity={0.8}>
                   {requestingPermission ? (
-                    <Text style={styles.btnPrimaryText}>Requesting...</Text>
+                    <Text style={styles.btnPrimaryText}>{T.requesting}</Text>
                   ) : (
                     <>
                       <Ionicons name="shield-checkmark-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                      <Text style={styles.btnPrimaryText}>Grant Access</Text>
+                      <Text style={styles.btnPrimaryText}>{T.grantAccess}</Text>
                     </>
                   )}
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.btnPrimary, { backgroundColor: '#3B6D11' }]}>
                   <Ionicons name="checkmark-circle-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.btnPrimaryText}>Access Granted ✓</Text>
+                  <Text style={styles.btnPrimaryText}>{T.accessGranted}</Text>
                 </View>
               )}
               <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: permissionGranted ? '#185FA5' : colors.surface }]} onPress={finish} activeOpacity={0.8}>
-                <Text style={[styles.btnPrimaryText, { color: permissionGranted ? '#fff' : colors.textMuted }]}>Get Started</Text>
+                <Text style={[styles.btnPrimaryText, { color: permissionGranted ? '#fff' : colors.textMuted }]}>{T.getStarted}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -200,7 +194,7 @@ export default function OnboardingScreen() {
         onMomentumScrollEnd={handleScroll}
         scrollEventThrottle={16}
       >
-        {SLIDES.map((s, i) => (
+        {slides.map((s, i) => (
           <View key={i} style={[styles.slide, { width: PORTRAIT_WIDTH }]}>
             <View style={[styles.iconWrap, { backgroundColor: i === 0 ? 'transparent' : s.iconBg }]}>
               {i === 0
@@ -226,31 +220,31 @@ export default function OnboardingScreen() {
             {!permissionGranted ? (
               <TouchableOpacity style={styles.btnPrimary} onPress={requestPermissions} disabled={requestingPermission} activeOpacity={0.8}>
                 {requestingPermission ? (
-                  <Text style={styles.btnPrimaryText}>Requesting...</Text>
+                  <Text style={styles.btnPrimaryText}>{T.requesting}</Text>
                 ) : (
                   <>
                     <Ionicons name="shield-checkmark-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                    <Text style={styles.btnPrimaryText}>Grant Access</Text>
+                    <Text style={styles.btnPrimaryText}>{T.grantAccess}</Text>
                   </>
                 )}
               </TouchableOpacity>
             ) : (
               <View style={[styles.btnPrimary, { backgroundColor: '#3B6D11' }]}>
                 <Ionicons name="checkmark-circle-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.btnPrimaryText}>Access Granted ✓</Text>
+                <Text style={styles.btnPrimaryText}>{T.accessGranted}</Text>
               </View>
             )}
             <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: permissionGranted ? '#185FA5' : colors.surface }]} onPress={finish} activeOpacity={0.8}>
-              <Text style={[styles.btnPrimaryText, { color: permissionGranted ? '#fff' : colors.textMuted }]}>Get Started</Text>
+              <Text style={[styles.btnPrimaryText, { color: permissionGranted ? '#fff' : colors.textMuted }]}>{T.getStarted}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.footerRow}>
             <TouchableOpacity onPress={finish} activeOpacity={0.7}>
-              <Text style={[styles.skip, { color: colors.textMuted }]}>Skip</Text>
+              <Text style={[styles.skip, { color: colors.textMuted }]}>{T.skip}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnPrimary} onPress={goNext} activeOpacity={0.8}>
-              <Text style={styles.btnPrimaryText}>Next</Text>
+              <Text style={styles.btnPrimaryText}>{T.next}</Text>
               <Ionicons name="arrow-forward" size={16} color="#fff" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
