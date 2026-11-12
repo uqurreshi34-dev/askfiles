@@ -162,9 +162,9 @@ const EN: HomeText = {
   whatsNew: "What's New",
   whatsNewItems: [
     'Arabic and Hindi — for the welcome screens, Home and Settings. Switch any time in Settings',
+    'Folder organiser — in Browse, tap the sparkle button to sort a messy folder into tidy subfolders, with undo',
     'Free AI answers — tap a question to find your largest image, video or file',
     'Activity log — see what you moved, deleted or put in the Vault',
-    'Storage changes — see how much your storage grew or shrank since yesterday',
   ],
   gotIt: 'Got it',
   enjoying: 'Enjoying AskFiles?',
@@ -252,9 +252,9 @@ const AR: HomeText = {
   whatsNew: 'ما الجديد',
   whatsNewItems: [
     'العربية والهندية — لشاشات الترحيب والرئيسية والإعدادات. غيّر اللغة متى شئت من الإعدادات',
+    'منظّم المجلدات — في تصفّح، اضغط زر النجمة لترتيب مجلد فوضوي في مجلدات فرعية مرتبة، مع إمكانية التراجع',
     'إجابات مجانية بالذكاء الاصطناعي — اضغط سؤالاً لتعرف أكبر صورة أو فيديو أو ملف لديك',
     'سجل النشاط — اعرف ما نقلته أو حذفته أو وضعته في الخزنة',
-    'تغيّرات التخزين — اعرف كم زادت مساحة التخزين أو نقصت منذ أمس',
   ],
   gotIt: 'حسناً',
   enjoying: 'هل يعجبك AskFiles؟',
@@ -335,9 +335,9 @@ const HI: HomeText = {
   whatsNew: 'नया क्या है',
   whatsNewItems: [
     'अरबी और हिन्दी — वेलकम स्क्रीन, होम और सेटिंग्स के लिए। सेटिंग्स में कभी भी बदलें',
+    'फ़ोल्डर ऑर्गनाइज़र — ब्राउज़ में स्पार्कल बटन दबाकर बिखरे फ़ोल्डर को साफ़ सब-फ़ोल्डरों में बाँटें, अनडू के साथ',
     'मुफ़्त AI जवाब — अपनी सबसे बड़ी इमेज, वीडियो या फ़ाइल जानने के लिए सवाल पर टैप करें',
     'एक्टिविटी लॉग — देखें आपने क्या मूव किया, हटाया या Vault में रखा',
-    'स्टोरेज बदलाव — देखें कल से आपका स्टोरेज कितना बढ़ा या घटा',
   ],
   gotIt: 'ठीक है',
   enjoying: 'AskFiles पसंद आ रहा है?',

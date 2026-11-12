@@ -409,9 +409,9 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               {[
                 { icon: 'language-outline', color: colors.blue, text: t.whatsNewItems[0] },
-                { icon: 'sparkles-outline', color: colors.purple, text: t.whatsNewItems[1] },
-                { icon: 'time-outline', color: colors.redBrown, text: t.whatsNewItems[2] },
-                { icon: 'stats-chart-outline', color: colors.green, text: t.whatsNewItems[3] },
+                { icon: 'color-wand-outline', color: colors.purple, text: t.whatsNewItems[1] },
+                { icon: 'sparkles-outline', color: colors.redBrown, text: t.whatsNewItems[2] },
+                { icon: 'time-outline', color: colors.green, text: t.whatsNewItems[3] },
               ].map((item, i) => (
                 <View key={i} style={styles.modalRow}>
                   <Ionicons name={item.icon as any} size={18} color={item.color} style={{ marginRight: 10 }} />
