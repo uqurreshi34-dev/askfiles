@@ -40,6 +40,7 @@
  */
 
 import RNFS from 'react-native-fs';
+import { askText } from '@/modules/i18n/askText';
 
 export type StorageSnapshot = {
   /** Epoch milliseconds, at capture. */
@@ -161,10 +162,11 @@ function readable(bytes: number): string {
 function whenLabel(at: number): string {
   const days = Math.round((startOfDay(Date.now()) - startOfDay(at)) / 86400000);
 
-  if (days <= 1) return 'yesterday';
-  if (days < 7) return new Date(at).toLocaleDateString(undefined, { weekday: 'long' });
+  const t = askText();
+  if (days <= 1) return t.yesterday;
+  if (days < 7) return new Date(at).toLocaleDateString(t.dateLocale, { weekday: 'long' });
 
-  return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+  return new Date(at).toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'long' });
 }
 
 /**
@@ -213,12 +215,12 @@ export async function storageChange(usedBytes: number): Promise<StorageChange | 
   const when = whenLabel(previous.at);
 
   if (deltaBytes < 0) {
-    change.sentence = `Storage is down ${readable(deltaBytes)} since ${when}.`;
+    change.sentence = askText().trendDown(readable(deltaBytes), when);
 
     return change;
   }
 
-  change.sentence = `Storage is up ${readable(deltaBytes)} since ${when}.`;
+  change.sentence = askText().trendUp(readable(deltaBytes), when);
 
   return change;
 }

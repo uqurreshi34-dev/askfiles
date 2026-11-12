@@ -25,6 +25,8 @@
 import { EXTENSION_RULES } from '@/modules/organisePlan';
 import { formatSize } from '@/utils/files';
 import type { ActivityEntry } from '@/modules/activityLog';
+import { askText, AskText } from '@/modules/i18n/askText';
+import type { AppLang } from '@/modules/appLanguage';
 
 export type NamedFile = { name: string; size: string; folder: string };
 
@@ -86,12 +88,6 @@ function has(list: string[], ...candidates: string[]): boolean {
   return candidates.some(candidate => list.includes(candidate));
 }
 
-function count(value: number, singular: string, plural?: string): string {
-  const word = value === 1 ? singular : plural || `${singular}s`;
-
-  return `${value.toLocaleString()} ${word}`;
-}
-
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
 
@@ -117,29 +113,27 @@ function tally(names: string[]): Record<string, number> {
   return counts;
 }
 
-function listTally(counts: Record<string, number>, limit = 6): string {
+function listTally(t: AskText, counts: Record<string, number>, limit = 6): string {
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
   if (sorted.length === 0) return '';
 
-  const shown = sorted.slice(0, limit).map(([extension, n]) => `${n} ${extension}`);
+  const shown = sorted.slice(0, limit).map(([extension, n]) => t.tallyItem(n, extension));
   const rest = sorted.length - shown.length;
 
-  const listed =
-    shown.length === 1
-      ? shown[0]
-      : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+  const listed = t.join(shown);
 
-  return rest > 0 ? `${listed}, plus ${rest} other format${rest === 1 ? '' : 's'}` : listed;
+  return rest > 0 ? t.plusOthers(listed, rest) : listed;
 }
 
 function describeFile(
+  t: AskText,
   files: NamedFile[] | undefined,
-  label: string,
+  label: 'screenshot' | 'image' | 'video' | 'document' | 'download' | 'file',
 ): string | null {
   const first = files && files[0];
 
-  if (!first) return `I can't see any ${label} on your device.`;
+  if (!first) return t.noneOfKind(label);
 
   // The same file in two folders is two rows of the same size, so the
   // largest can legitimately be in several places at once. Naming only the
@@ -150,15 +144,10 @@ function describeFile(
     .filter((folder, index, all) => all.indexOf(folder) === index);
 
   if (folders.length === 1) {
-    return `Your largest ${label} is ${first.name} at ${first.size}, in ${folders[0]}.`;
+    return t.largestOne(label, first.name, first.size, folders[0]);
   }
 
-  const listed = `${folders.slice(0, -1).join(', ')} and ${folders[folders.length - 1]}`;
-
-  return (
-    `Your largest ${label} is ${first.name} at ${first.size}. ` +
-    `There are ${folders.length} copies: ${listed}.`
-  );
+  return t.largestCopies(label, first.name, first.size, folders.length, t.join(folders));
 }
 
 /**
@@ -211,42 +200,29 @@ function windowStart(window: Window): number {
   return midnight.getTime() - 6 * 86400000;
 }
 
-function windowWords(window: Window): string {
-  if (window === 'today') return 'today';
-  if (window === 'yesterday') return 'yesterday';
-
-  return 'in the last week';
-}
-
-function joinCounts(parts: string[]): string {
-  if (parts.length === 1) return parts[0];
-
-  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-}
-
 /** "Did I delete anything today?" -- trash and permanent kept apart. */
-function describeDeletions(entries: ActivityEntry[], window: Window): string {
+function describeDeletions(t: AskText, entries: ActivityEntry[], window: Window): string {
   const trashed = entries.filter(entry => entry.action === 'trashed').length;
   const deleted = entries.filter(entry => entry.action === 'deleted').length;
 
   if (!trashed && !deleted) {
-    return `No, you haven't deleted anything ${windowWords(window)}.`;
+    return t.noneDeleted(window);
   }
 
   const parts: string[] = [];
 
   // Recoverable and gone for good are different answers to this question,
   // so they are never added together.
-  if (trashed) parts.push(`${count(trashed, 'file')} to Trash, still recoverable`);
-  if (deleted) parts.push(`${count(deleted, 'file')} permanently`);
+  if (trashed) parts.push(t.trashedPart(trashed));
+  if (deleted) parts.push(t.deletedPart(deleted));
 
-  return `Yes: ${joinCounts(parts)}.`;
+  return t.yesDeleted(t.join(parts));
 }
 
 /** "What did I do today?" */
-function describeActions(entries: ActivityEntry[], window: Window): string {
+function describeActions(t: AskText, entries: ActivityEntry[], window: Window): string {
   if (!entries.length) {
-    return `Nothing recorded ${windowWords(window)}.`;
+    return t.nothingRecorded(window);
   }
 
   const tally: Record<string, number> = {};
@@ -255,22 +231,18 @@ function describeActions(entries: ActivityEntry[], window: Window): string {
     tally[entry.action] = (tally[entry.action] || 0) + 1;
   }
 
-  const order: [string, string][] = [
-    ['moved', 'moved'],
-    ['renamed', 'renamed'],
-    ['restored', 'restored from Trash'],
-    ['trashed', 'moved to Trash'],
-    ['deleted', 'deleted permanently'],
-  ];
+  const order = ['moved', 'renamed', 'restored', 'trashed', 'deleted'] as const;
 
   const parts = order
-    .filter(([action]) => tally[action])
-    .map(([action, words]) => `${count(tally[action], 'file')} ${words}`);
+    .filter(action => tally[action])
+    .map(action => t.actionPart(action, tally[action]));
 
-  return `${joinCounts(parts)}. Tap the clock icon on the home screen for the detail.`;
+  return t.actionsSummary(t.join(parts));
 }
 
-export function answerLocally(question: string, data: AskLocalData): string | null {
+export function answerLocally(question: string, data: AskLocalData, lang?: AppLang): string | null {
+  // Questions are matched in English; only the answer follows the app's language.
+  const t = askText(lang);
   const list = words(question);
 
   if (list.length === 0) return null;
@@ -288,7 +260,7 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
 
   // ── Screenshots. Exact, and the one the prompt shouted about. ───────────
   if (asksHowMany && has(list, 'screenshot', 'screenshots')) {
-    return `You have ${count(data.mediaContext.screenshotCount, 'screenshot')}.`;
+    return t.screenshots(data.mediaContext.screenshotCount);
   }
 
   // ── Largest single file, overall or by kind. ────────────────────────────
@@ -300,31 +272,31 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
 
       if (!shots) return null;
 
-      return describeFile(shots, 'screenshot');
+      return describeFile(t, shots, 'screenshot');
     }
 
     const subject = subjectOf(list);
 
-    if (subject === 'images') return describeFile(data.largestFiles.images, 'image');
-    if (subject === 'videos') return describeFile(data.largestFiles.videos, 'video');
-    if (subject === 'documents') return describeFile(data.largestFiles.documents, 'document');
-    if (subject === 'downloads') return describeFile(data.largestFiles.downloads, 'download');
+    if (subject === 'images') return describeFile(t, data.largestFiles.images, 'image');
+    if (subject === 'videos') return describeFile(t, data.largestFiles.videos, 'video');
+    if (subject === 'documents') return describeFile(t, data.largestFiles.documents, 'document');
+    if (subject === 'downloads') return describeFile(t, data.largestFiles.downloads, 'download');
 
     if (has(list, 'file', 'files', 'thing', 'anything')) {
       const top = data.largestFiles.overall;
 
-      if (top.length === 0) return "I can't see any files on your device.";
+      if (top.length === 0) return t.noFiles;
 
       // "files", plural, wants the list rather than the winner.
       if (has(list, 'files') && !has(list, 'file')) {
         const shown = top
           .slice(0, 5)
-          .map((file, index) => `${index + 1}. ${file.name}, ${file.size}, in ${file.folder}`);
+          .map((file, index) => t.fileLine(index + 1, file.name, file.size, file.folder));
 
-        return `Your largest files:\n${shown.join('\n')}`;
+        return `${t.largestFilesHeader}\n${shown.join('\n')}`;
       }
 
-      return describeFile(top, 'file');
+      return describeFile(t, top, 'file');
     }
   }
 
@@ -349,25 +321,19 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
         .filter(([name]) => name !== 'other')
         .sort((a, b) => parseSize(b[1]) - parseSize(a[1]))
         .slice(0, 3)
-        .map(([name, size]) => `${friendly(name)} at ${size}`);
+        .map(([name, size]) => t.folderAt(t.folderName(name), size));
 
       if (folders.length === 0) return null;
 
-      return `Most of your space goes to ${folders.join(', then ')}.`;
+      return t.mostSpace(folders);
     }
 
     // "How much storage do I have left?" asks for what is free, not what is used.
     if (has(list, 'left', 'remaining', 'available')) {
-      return (
-        `You have ${formatSize(info.freeBytes)} left of ${info.totalReadable}. ` +
-        `You're using ${info.usedReadable}, which is ${info.usedPercent} percent.`
-      );
+      return t.storageLeft(formatSize(info.freeBytes), info.totalReadable, info.usedReadable, info.usedPercent);
     }
 
-    return (
-      `You're using ${info.usedReadable} of ${info.totalReadable}, ` +
-      `which is ${info.usedPercent} percent.`
-    );
+    return t.storageUsed(info.usedReadable, info.totalReadable, info.usedPercent);
   }
 
   // ── A category from the organiser's table: spreadsheets, archives, music.
@@ -392,13 +358,10 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
     }
 
     if (total === 0) {
-      return `I can't see any ${category.toLowerCase()} on your device.`;
+      return t.categoryNone(category);
     }
 
-    return (
-      `You have ${count(total, 'file')} I'd call ${category.toLowerCase()}: ` +
-      `${listTally(matched)}.`
-    );
+    return t.categoryCount(total, category, listTally(t, matched));
   }
 
   // ── Plain counts. ───────────────────────────────────────────────────────
@@ -406,16 +369,13 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
     const subject = subjectOf(list);
 
     if (subject) {
-      return `You have ${count(data.fileCounts[subject], subject.replace(/s$/, ''))}.`;
+      return t.countOf(subject, data.fileCounts[subject]);
     }
 
     if (has(list, 'file', 'files')) {
       const { images, videos, documents, downloads } = data.fileCounts;
 
-      return (
-        `${count(images, 'image')}, ${count(videos, 'video')}, ` +
-        `${count(documents, 'document')} and ${count(downloads, 'download')}.`
-      );
+      return t.allCounts(images, videos, documents, downloads);
     }
   }
 
@@ -430,25 +390,22 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
       if (names.length === 0) return null;
 
       const total = data.fileCounts[subject];
-      const breakdown = listTally(tally(names));
+      const breakdown = listTally(t, tally(names));
 
       // MediaLibrary gives us the most recent 500 names. When there are
       // fewer than that in total, the sample IS everything and the number
       // is exact -- so only hedge when hedging is true.
       if (total <= MEDIA_SAMPLE_SIZE) {
-        return `Your ${total.toLocaleString()} ${subject}: ${breakdown}.`;
+        return t.typesAll(total, subject, breakdown);
       }
 
-      return (
-        `Of your ${MEDIA_SAMPLE_SIZE} most recent ${subject}: ${breakdown}. ` +
-        `You have ${total.toLocaleString()} ${subject} in total, so that's a sample.`
-      );
+      return t.typesSample(MEDIA_SAMPLE_SIZE, subject, breakdown, total);
     }
 
     if (data.documentExtensions) {
-      const breakdown = listTally(data.documentExtensions, 8);
+      const breakdown = listTally(t, data.documentExtensions, 8);
 
-      if (breakdown) return `Your documents and downloads: ${breakdown}.`;
+      if (breakdown) return t.docsBreakdown(breakdown);
     }
   }
 
@@ -469,10 +426,10 @@ export function answerLocally(question: string, data: AskLocalData): string | nu
       );
       const asksDeleted = has(list, 'delete', 'deleted', 'deleting', 'remove', 'removed');
 
-      if (asksDeleted) return describeDeletions(recent, window);
+      if (asksDeleted) return describeDeletions(t, recent, window);
 
       if (has(list, 'did', 'do', 'done', 'happened', 'changed', 'activity')) {
-        return describeActions(recent, window);
+        return describeActions(t, recent, window);
       }
     }
   }
@@ -500,15 +457,3 @@ function parseSize(text: string): number {
   return value * (scale[unit] || 1);
 }
 
-function friendly(key: string): string {
-  const names: Record<string, string> = {
-    pictures: 'Pictures',
-    videos: 'Videos',
-    downloads: 'Downloads',
-    documents: 'Documents',
-    dcim: 'your camera folder',
-    music: 'Music',
-  };
-
-  return names[key] || key;
-}

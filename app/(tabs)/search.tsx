@@ -582,7 +582,7 @@ export default function SearchScreen() {
       documentExtensions,
       activity,
       storageTrend: change?.sentence ?? null,
-    });
+    }, lang);
 
     if (local) {
       setLocalAnswer(local);
