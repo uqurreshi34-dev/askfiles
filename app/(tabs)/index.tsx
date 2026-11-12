@@ -399,21 +399,19 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
           animationType="fade"
           onRequestClose={() => setWhatsNewVisible(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}
-          >
-            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
+          <View style={styles.modalOverlay}>
+            {/* Backdrop behind the card: tapping outside closes it, and the card scrolls freely. */}
+            <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }} />
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]}>
               <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.whatsNew}</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               {[
-                { icon: 'sparkles-outline', color: colors.blue, text: t.whatsNewItems[0] },
-                { icon: 'shield-checkmark-outline', color: colors.purple, text: t.whatsNewItems[1] },
-                { icon: 'copy-outline', color: colors.redBrown, text: t.whatsNewItems[2] },
-                { icon: 'notifications-outline', color: colors.green, text: t.whatsNewItems[3] },
+                { icon: 'language-outline', color: colors.blue, text: t.whatsNewItems[0] },
+                { icon: 'sparkles-outline', color: colors.purple, text: t.whatsNewItems[1] },
+                { icon: 'time-outline', color: colors.redBrown, text: t.whatsNewItems[2] },
+                { icon: 'stats-chart-outline', color: colors.green, text: t.whatsNewItems[3] },
               ].map((item, i) => (
                 <View key={i} style={styles.modalRow}>
                   <Ionicons name={item.icon as any} size={18} color={item.color} style={{ marginRight: 10 }} />
@@ -425,7 +423,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>{t.gotIt}</Text>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
 
         {/* Rate Prompt Modal */}
