@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react';
+import { getLanguage } from '@/modules/appLanguage';
+import { searchText } from '@/modules/i18n/searchText';
 
 const BACKEND_URL = 'https://askfiles-backend.onrender.com';
 const API_KEY = process.env.EXPO_PUBLIC_ASKFILES_API_KEY ?? '';
@@ -31,6 +33,9 @@ export function useAskAI() {
         return prev - 1;
       });
     }, 1000);
+    // The reply comes back in the app's language (the backend checks the value).
+    const language = getLanguage();
+    const t = searchText(language);
     try {
       const response = await fetch(`${BACKEND_URL}/api/ask-ai/`, {
         method: 'POST',
@@ -38,19 +43,21 @@ export function useAskAI() {
           'Content-Type': 'application/json',
           'X-API-Key': API_KEY,
         },
-        body: JSON.stringify({ question, context }),
+        body: JSON.stringify({ question, context, language }),
       });
 
       const data = await response.json();
 
       if (data.error) {
-        setAnswer(`Error: ${data.error}`);
+        // The server's wording is English: shown as before in English,
+        // and in the app's language otherwise.
+        setAnswer(language === 'en' ? `Error: ${data.error}` : response.status === 429 ? t.aiBusy : t.aiUnavailable);
         return;
       }
 
-      setAnswer(data.answer ?? 'No answer received.');
+      setAnswer(data.answer ?? t.aiNoAnswer);
     } catch (e) {
-      setAnswer('Could not reach AI. Check your connection and try again.');
+      setAnswer(t.aiOffline);
     } finally {
       setThinking(false);
       askingRef.current = false;

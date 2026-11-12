@@ -30,6 +30,7 @@ export type SearchText = {
   searchFilesPh: string; askAnythingPh: string; searchInsideDocsPh: string;
   filter: Record<string, string>;
   question: (english: string) => string;
+  aiBusy: string; aiUnavailable: string; aiNoAnswer: string; aiOffline: string;
 };
 
 const Q: Record<'ar' | 'hi', Record<string, string>> = {
@@ -82,6 +83,8 @@ const TEXT: Record<AppLang, SearchText> = {
     searchFilesPh: 'Search files...', askAnythingPh: 'Ask anything about your files...', searchInsideDocsPh: 'Search inside documents...',
     filter: { All: 'All', Images: 'Images', Videos: 'Videos', Audio: 'Audio', Docs: 'Docs', Other: 'Other' },
     question: q => q,
+    aiBusy: 'AskFiles AI is busy right now. Try again later.', aiUnavailable: 'AI unavailable. Try again.',
+    aiNoAnswer: 'No answer received.', aiOffline: 'Could not reach AI. Check your connection and try again.',
   },
   ar: {
     search: 'بحث', askAi: 'اسأل الذكاء الاصطناعي', smart: 'ذكي',
@@ -106,6 +109,8 @@ const TEXT: Record<AppLang, SearchText> = {
     searchFilesPh: 'ابحث في الملفات...', askAnythingPh: 'اسأل عن أي شيء يخص ملفاتك...', searchInsideDocsPh: 'ابحث داخل المستندات...',
     filter: { All: 'الكل', Images: 'الصور', Videos: 'الفيديو', Audio: 'الصوت', Docs: 'المستندات', Other: 'أخرى' },
     question: q => Q.ar[q] ?? q,
+    aiBusy: 'ذكاء AskFiles مشغول الآن. حاول لاحقاً.', aiUnavailable: 'الذكاء الاصطناعي غير متاح. حاول مرة أخرى.',
+    aiNoAnswer: 'لم تصل أي إجابة.', aiOffline: 'تعذّر الوصول إلى الذكاء الاصطناعي. تحقّق من اتصالك وحاول مرة أخرى.',
   },
   hi: {
     search: 'सर्च', askAi: 'AI से पूछें', smart: 'स्मार्ट',
@@ -130,6 +135,8 @@ const TEXT: Record<AppLang, SearchText> = {
     searchFilesPh: 'फ़ाइलें खोजें...', askAnythingPh: 'अपनी फ़ाइलों के बारे में कुछ भी पूछें...', searchInsideDocsPh: 'डॉक्यूमेंट के अंदर खोजें...',
     filter: { All: 'सभी', Images: 'इमेज', Videos: 'वीडियो', Audio: 'ऑडियो', Docs: 'डॉक्स', Other: 'अन्य' },
     question: q => Q.hi[q] ?? q,
+    aiBusy: 'AskFiles AI अभी व्यस्त है। थोड़ी देर बाद कोशिश करें।', aiUnavailable: 'AI उपलब्ध नहीं है। फिर से कोशिश करें।',
+    aiNoAnswer: 'कोई जवाब नहीं मिला।', aiOffline: 'AI तक नहीं पहुँच सके। अपना कनेक्शन जाँचें और फिर से कोशिश करें।',
   },
 };
 
