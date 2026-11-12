@@ -9,6 +9,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { isImageFile, getFileColor, formatSize, getFileIcon, getFriendlyPath } from '@/utils/files';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { toolsText } from '@/modules/i18n/toolsText';
 import { useTrash } from '@/hooks/useTrash';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
@@ -29,6 +33,8 @@ const SIZE_GROUPS = [
 
 export default function LargeFilesScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const c = commonText(lang), tf = filesText(lang), t = toolsText(lang);
   const { moveToTrash } = useTrash();
   const router = useRouter();
   const [files, setFiles] = useState<LargeFile[]>([]);
@@ -62,12 +68,12 @@ export default function LargeFilesScreen() {
 
   async function handleDelete(file: LargeFile) {
     Alert.alert(
-      'Move to Trash',
-      `"${file.name}" will be moved to Trash and deleted after 30 days.`,
+      tf.moveToTrash,
+      tf.trashOneMsg(file.name),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: c.cancel, style: 'cancel' },
         {
-          text: 'Move to Trash', style: 'destructive',
+          text: tf.moveToTrash, style: 'destructive',
           onPress: async () => {
             setDeleting(file.uri);
             const ok = await moveToTrash(file.uri, file.name);
@@ -76,7 +82,7 @@ export default function LargeFilesScreen() {
               DocIndexer.removeFromIndex(file.uri);
               setFiles(prev => prev.filter(f => f.uri !== file.uri));
             } else {
-              Alert.alert('Error', 'Could not move file to Trash.');
+              Alert.alert(c.error, tf.couldNotTrash);
             }
             setDeleting(null);
           },
@@ -151,7 +157,7 @@ export default function LargeFilesScreen() {
       >
         <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
       </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Large Files</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.largeTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -160,11 +166,11 @@ export default function LargeFilesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.redBrownBg }]}>
             <Ionicons name="folder-open-outline" size={40} color={colors.redBrown} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Find large files</Text>
-          <Text style={[styles.startSub, { color: colors.textMuted }]}>Scans your storage for files over 25 MB, sorted by size.</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{t.findLarge}</Text>
+          <Text style={[styles.startSub, { color: colors.textMuted }]}>{t.findLargeSub}</Text>
           <TouchableOpacity style={styles.scanBtn} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.scanBtnText}>Start Scan</Text>
+            <Text style={styles.scanBtnText}>{t.startScan}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -172,8 +178,8 @@ export default function LargeFilesScreen() {
       {scanning && (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.redBrown} />
-          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>Scanning your storage...</Text>
-          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>This may take a moment</Text>
+          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>{t.scanning}</Text>
+          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>{t.mayTakeMoment}</Text>
         </View>
       )}
 
@@ -188,28 +194,28 @@ export default function LargeFilesScreen() {
             <View style={[styles.summaryCard, { backgroundColor: colors.surfaceAlt }]}>
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryCount, { color: colors.textPrimary }]}>{files.length}</Text>
-                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>large files</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t.largeFilesLabel(files.length)}</Text>
               </View>
               <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryCount, { color: colors.redBrown }]}>{formatSize(totalSize)}</Text>
-                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>total size</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t.totalSize}</Text>
               </View>
               <TouchableOpacity style={styles.rescanBtn} onPress={scan}>
-                <Text style={[styles.rescanText, { color: colors.redBrown }]}>Scan again</Text>
+                <Text style={[styles.rescanText, { color: colors.redBrown }]}>{t.scanAgain}</Text>
               </TouchableOpacity>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.centered}>
               <Ionicons name="checkmark-circle-outline" size={56} color="#2E7D32" />
-              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>No large files found!</Text>
-              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>Your storage looks clean.</Text>
+              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>{t.noLarge}</Text>
+              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>{t.looksClean}</Text>
             </View>
           }
           renderItem={({ item }) => {
             if (item.type === 'header') {
-              return <Text style={[styles.groupLabel, { color: colors.textMuted }]}>{item.label}</Text>;
+              return <Text style={[styles.groupLabel, { color: colors.textMuted }]}>{item.label === 'Over 75 MB' ? t.over75 : item.label}</Text>;
             }
             return renderFile(item.file);
           }}

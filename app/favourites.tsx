@@ -3,11 +3,14 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { removeFavourite, cleanupBrokenFavourites, FavouriteItem, useFavourites } from '@/hooks/useFavourites';
 import { useTheme } from '@/hooks/useTheme';
 import FileListViewer from '@/components/FileListViewer';
+import { useLanguage } from '@/modules/appLanguage';
+import { listsText } from '@/modules/i18n/listsText';
 
 export default function FavouritesScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { favourites } = useFavourites();
+  const t = listsText(useLanguage());
 
   useFocusEffect(
     useCallback(() => {
@@ -17,18 +20,18 @@ export default function FavouritesScreen() {
 
   return (
     <FileListViewer<FavouriteItem>
-      title="Favourites"
+      title={t.favTitle}
       files={favourites}
       emptyIcon="heart-outline"
-      emptyTitle="No favourites yet"
-      emptySub='Long press any file and tap "Add to Favourites"'
-      countLabel={count => `${count} favourite${count !== 1 ? 's' : ''}`}
+      emptyTitle={t.favEmpty}
+      emptySub={t.favEmptySub}
+      countLabel={t.favCount}
       removeAction={{
         icon: 'heart-dislike-outline',
-        label: 'Remove from Favourites',
+        label: t.removeFav,
         color: colors.deleteRed,
-        confirmTitle: 'Remove from Favourites',
-        confirmMessage: (item) => `Remove "${item.name}"?`,
+        confirmTitle: t.removeFav,
+        confirmMessage: (item) => t.removeFavMsg(item.name),
         onConfirm: async (item) => {
           await removeFavourite(item.uri);
         },

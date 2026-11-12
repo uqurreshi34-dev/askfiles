@@ -14,6 +14,9 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { Accelerometer } from 'expo-sensors';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { trashText } from '@/modules/i18n/trashText';
 
 
 export default function TrashScreen() {
@@ -21,7 +24,10 @@ export default function TrashScreen() {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { files, loading, restoreFile, deletePermanently, emptyTrash, formatDaysLeft, loadFiles } = useTrash();
+  const { files, loading, restoreFile, deletePermanently, emptyTrash, loadFiles } = useTrash();
+  const lang = useLanguage();
+  const c = commonText(lang), t = trashText(lang);
+  const formatDaysLeft = (deletedAt: number) => t.expires(30 - Math.floor((Date.now() - deletedAt) / 86400000));
   const [selectedFile, setSelectedFile] = useState<TrashFile | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -87,24 +93,24 @@ export default function TrashScreen() {
     setRestoring(false);
     if (result === 'original') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Restored', `"${file.name}" restored to its original location.`);
+      Alert.alert(t.restored, t.oneRestored(file.name));
     } else if (result === 'downloads') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Restored to Downloads', `"${file.name}" could not be restored to its original location as the folder no longer exists. It has been moved to Downloads instead.`);
+      Alert.alert(t.restoredToDownloads, t.oneToDownloads(file.name));
     } else {
-      Alert.alert('Error', 'Could not restore file.');
+      Alert.alert(c.error, t.couldNotRestore);
     }
   }
 
   async function handleDeletePermanently() {
     if (!selectedFile) return;
     Alert.alert(
-      'Delete permanently',
-      `Delete "${selectedFile.name}" forever? This cannot be undone.`,
+      t.deletePermanently,
+      t.deleteForever(selectedFile.name),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: c.cancel, style: 'cancel' },
         {
-          text: 'Delete', style: 'destructive', onPress: async () => {
+          text: c.delete, style: 'destructive', onPress: async () => {
             closeSheet();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await deletePermanently(selectedFile);
@@ -116,13 +122,11 @@ export default function TrashScreen() {
 
   function handleEmptyTrash() {
     Alert.alert(
-      'Empty Trash',
-      files.length === 1
-        ? `Permanently delete this file? This cannot be undone.`
-        : `Permanently delete ${files.length} files? This cannot be undone.`,
+      t.emptyTrash,
+      t.emptyMsg(files.length),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Empty Trash', style: 'destructive', onPress: () => {
+        { text: c.cancel, style: 'cancel' },
+        { text: t.emptyTrash, style: 'destructive', onPress: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           emptyTrash();
         }},
@@ -148,11 +152,11 @@ export default function TrashScreen() {
       await loadFiles();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (downloadsCount === 0) {
-        Alert.alert('Restored', `${filesToRestore.length} file${filesToRestore.length !== 1 ? 's' : ''} restored to original location.`);
+        Alert.alert(t.restored, t.nRestored(filesToRestore.length));
       } else if (downloadsCount === filesToRestore.length) {
-        Alert.alert('Restored to Downloads', `${filesToRestore.length} file${filesToRestore.length !== 1 ? 's' : ''} restored to Downloads as original folder no longer exists.`);
+        Alert.alert(t.restoredToDownloads, t.nToDownloads(filesToRestore.length));
       } else {
-        Alert.alert('Restored', `${filesToRestore.length - downloadsCount} file${filesToRestore.length - downloadsCount !== 1 ? 's' : ''} restored to original location. ${downloadsCount} moved to Downloads as original folder no longer exists.`);
+        Alert.alert(t.restored, `${t.nRestored(filesToRestore.length - downloadsCount)} ${t.nMovedToDownloads(downloadsCount)}`);
       }
     } finally {
       setMultiRestoring(false);
@@ -178,7 +182,7 @@ export default function TrashScreen() {
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {selectMode ? `${selectedUris.size} selected` : 'Recently Deleted'}
+          {selectMode ? c.selected(selectedUris.size) : t.title}
         </Text>
         {selectMode ? (
           <TouchableOpacity onPress={() => {
@@ -187,7 +191,7 @@ export default function TrashScreen() {
             setSelectedUris(newSet);
             setSelectedFilesMap(newMap);
           }} style={styles.backBtn} disabled={multiRestoring}>
-             <Text style={{ fontSize: 12, color: multiRestoring ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
+             <Text style={{ fontSize: 12, color: multiRestoring ? colors.textDisabled : colors.blue, fontWeight: '500' }}>{c.all}</Text>
           </TouchableOpacity>
         ) : files.length > 0 ? (
           <TouchableOpacity onPress={handleEmptyTrash} style={styles.backBtn} disabled={multiRestoring}>
@@ -202,7 +206,7 @@ export default function TrashScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {multiRestoring && restoringTotal > 1 ? `Restoring ${restoringCount} of ${restoringTotal}...` : 'Restoring...'}
+            {multiRestoring && restoringTotal > 1 ? t.restoringOf(restoringCount, restoringTotal) : t.restoring}
           </Text>
         </View>
       )}
@@ -213,8 +217,8 @@ export default function TrashScreen() {
       ) : files.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="trash-outline" size={48} color={colors.textDisabled} />
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Trash is empty</Text>
-          <Text style={[styles.emptySub, { color: colors.textMuted }]}>Deleted files appear here for 30 days before being permanently removed.</Text>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>{t.empty}</Text>
+          <Text style={[styles.emptySub, { color: colors.textMuted }]}>{t.emptySub}</Text>
         </View>
       ) : (
         <FlatList
@@ -224,7 +228,7 @@ export default function TrashScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <Text style={[styles.count, { color: colors.textMuted }]}>
-            {files.length} file{files.length !== 1 ? 's' : ''} · Kept for up to 30 days
+            {t.countLine(files.length)}
           </Text>
         }
         renderItem={({ item }) => {
@@ -331,19 +335,19 @@ export default function TrashScreen() {
 
                 <TouchableOpacity style={styles.sheetAction} onPress={handleRestore}>
                   <Ionicons name="arrow-undo-outline" size={20} color={colors.blue} />
-                  <Text style={[styles.sheetActionText, { color: colors.blue }]}>Restore</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.blue }]}>{t.restore}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.sheetAction} onPress={handleDeletePermanently}>
                   <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
-                  <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete permanently</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>{t.deletePermanently}</Text>
                 </TouchableOpacity>
 
                 <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
 
                 <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                   <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-                  <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>{c.cancel}</Text>
                 </TouchableOpacity>
               </Pressable>
             </ScrollView>
@@ -358,7 +362,7 @@ export default function TrashScreen() {
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue, borderRadius: 12, paddingVertical: 14 }}
           >
             <Ionicons name="arrow-undo-outline" size={20} color="#fff" />
-            <Text style={{ fontSize: 11, color: '#fff', marginTop: 2 }}>Restore</Text>
+            <Text style={{ fontSize: 11, color: '#fff', marginTop: 2 }}>{t.restore}</Text>
           </TouchableOpacity>
         </View>
       )}

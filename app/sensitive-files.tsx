@@ -9,6 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { toolsText } from '@/modules/i18n/toolsText';
 import { openFile as openFileNative } from '@/modules/share-module';
 import { removeFavourite } from '@/hooks/useFavourites';
 import { getFileColor, formatSize, getMimeType, getFriendlyPath } from '@/utils/files';
@@ -33,6 +37,8 @@ const SENSITIVE_KEYWORDS = [
 
 export default function SensitiveFilesScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const c = commonText(lang), tf = filesText(lang), t = toolsText(lang);
   const router = useRouter();
   const { addToVault, vaultHas } = useVault();
   const { isPro } = usePro();
@@ -74,19 +80,19 @@ export default function SensitiveFilesScreen() {
 
   async function handleMoveToVault(file: SensitiveFile) {
     if (!isPro) {
-      Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud' as any) },
+      Alert.alert(c.proFeature, tf.proVaultMsg, [
+        { text: tf.notNow, style: 'cancel' },
+        { text: tf.upgrade, onPress: () => router.push('/(tabs)/cloud' as any) },
       ]);
       return;
     }
-    Alert.alert('Move to Vault', `Move "${file.name}" to your Secure Vault?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move', onPress: async () => {
+    Alert.alert(tf.moveToVault, t.vaultMsg(file.name), [
+      { text: c.cancel, style: 'cancel' },
+      { text: t.move, onPress: async () => {
         if (await vaultHas(file.name)) {
           Alert.alert(
-            'Already in the Vault',
-            `A file called "${file.name}" is already in the Vault. Rename this one first, or remove the copy that is already there.`
+            tf.alreadyInVault,
+            tf.alreadyInVaultMsg(file.name)
           );
           return;
         }
@@ -96,7 +102,7 @@ export default function SensitiveFilesScreen() {
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
           DocIndexer.removeFromIndex(file.uri);
         } else {
-          Alert.alert('Error', 'Could not move file to Vault.');
+          Alert.alert(c.error, t.couldNotVault);
         }
         setMovingUri(null);
       }},
@@ -104,9 +110,9 @@ export default function SensitiveFilesScreen() {
   }
 
   async function handleDelete(file: SensitiveFile) {
-    Alert.alert('Move to Trash', `"${file.name}" will be moved to Trash and deleted after 30 days.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+    Alert.alert(tf.moveToTrash, tf.trashOneMsg(file.name), [
+      { text: c.cancel, style: 'cancel' },
+      { text: tf.moveToTrash, style: 'destructive', onPress: async () => {
         setDeletingUri(file.uri);
         const ok = await moveToTrash(file.uri, file.name);
         if (ok) {
@@ -114,7 +120,7 @@ export default function SensitiveFilesScreen() {
           DocIndexer.removeFromIndex(file.uri);
           setFiles(prev => prev.filter(f => f.uri !== file.uri));
         } else {
-          Alert.alert('Error', 'Could not move file to Trash.');
+          Alert.alert(c.error, tf.couldNotTrash);
         }
         setDeletingUri(null);
       }},
@@ -131,7 +137,7 @@ export default function SensitiveFilesScreen() {
       >
         <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
       </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Sensitive Files</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.sensTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -140,13 +146,13 @@ export default function SensitiveFilesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.amberTint }]}>
             <Ionicons name="shield-outline" size={40} color={colors.amber} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Find sensitive files</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{t.findSens}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>
-            Scans for files with names suggesting sensitive content — passwords, bank statements, IDs, CVs and more. Move them to your Secure Vault.
+            {t.findSensSub}
           </Text>
           <TouchableOpacity style={[styles.scanBtn, { backgroundColor: colors.amber }]} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.scanBtnText}>Start Scan</Text>
+            <Text style={styles.scanBtnText}>{t.startScan}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -154,8 +160,8 @@ export default function SensitiveFilesScreen() {
       {scanning && (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.amber} />
-          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>Scanning your storage...</Text>
-          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>This may take a moment</Text>
+          <Text style={[styles.scanningText, { color: colors.textPrimary }]}>{t.scanning}</Text>
+          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>{t.mayTakeMoment}</Text>
         </View>
       )}
 
@@ -170,22 +176,22 @@ export default function SensitiveFilesScreen() {
               <Ionicons name="warning-outline" size={20} color={colors.amber} style={{ marginRight: 10 }} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.summaryTitle, { color: colors.textPrimary }]}>
-                  {files.length === 0 ? 'No sensitive files found' : `${files.length} sensitive file${files.length !== 1 ? 's' : ''} found`}
+                  {files.length === 0 ? t.noSens : t.sensFound(files.length)}
                 </Text>
                 <Text style={[styles.summarySub, { color: colors.textSecondary }]}>
-                  {files.length === 0 ? 'Your storage looks clean.' : 'Consider moving these to your Secure Vault.'}
+                  {files.length === 0 ? t.looksClean : t.considerVault}
                 </Text>
               </View>
               <TouchableOpacity onPress={scan} style={{ paddingLeft: 8 }}>
-                <Text style={[styles.rescanText, { color: colors.amber }]}>Rescan</Text>
+                <Text style={[styles.rescanText, { color: colors.amber }]}>{t.rescan}</Text>
               </TouchableOpacity>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.centered}>
               <Ionicons name="shield-checkmark-outline" size={56} color="#2E7D32" />
-              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>No sensitive files found!</Text>
-              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>Your storage looks clean.</Text>
+              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>{t.noSensBang}</Text>
+              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>{t.looksClean}</Text>
             </View>
           }
           renderItem={({ item }) => {

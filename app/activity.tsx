@@ -9,9 +9,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import {
   recentActivity, clearActivity, flushActivity,
-  describeActivity, describeActivityItems,
   ActivityEntry, MAX_ENTRIES,
 } from '@/modules/activityLog';
+import { useLanguage } from '@/modules/appLanguage';
+import { activityText } from '@/modules/i18n/activityText';
+
+type ActivityWords = ReturnType<typeof activityText>;
 
 /** A day heading plus the entries under it. */
 type Section = { key: string; label: string; data: ActivityEntry[] };
@@ -32,22 +35,22 @@ function startOfDay(at: number): number {
 }
 
 /** "Today", "Yesterday", or "19 September 2026". */
-function dayLabel(at: number): string {
+function dayLabel(at: number, t: ActivityWords): string {
   const today = startOfDay(Date.now());
   const day = startOfDay(at);
 
-  if (day === today) return 'Today';
-  if (day === today - 86400000) return 'Yesterday';
+  if (day === today) return t.today;
+  if (day === today - 86400000) return t.yesterday;
 
-  return new Date(at).toLocaleDateString(undefined, {
+  return new Date(at).toLocaleDateString(t.locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
 }
 
-function timeLabel(at: number): string {
-  return new Date(at).toLocaleTimeString(undefined, {
+function timeLabel(at: number, locale: string): string {
+  return new Date(at).toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -59,7 +62,7 @@ function timeLabel(at: number): string {
  * One pass over an already-sorted list, so this stays linear however many
  * entries there are.
  */
-function toSections(entries: ActivityEntry[]): Section[] {
+function toSections(entries: ActivityEntry[], t: ActivityWords): Section[] {
   const sections: Section[] = [];
   let current: Section | null = null;
 
@@ -67,7 +70,7 @@ function toSections(entries: ActivityEntry[]): Section[] {
     const key = String(startOfDay(entry.at));
 
     if (!current || current.key !== key) {
-      current = { key, label: dayLabel(entry.at), data: [] };
+      current = { key, label: dayLabel(entry.at, t), data: [] };
       sections.push(current);
     }
 
@@ -82,6 +85,7 @@ export default function ActivityScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const t = activityText(useLanguage());
 
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,12 +116,12 @@ export default function ActivityScreen() {
 
   function handleClear() {
     Alert.alert(
-      'Clear activity',
-      'Remove the record of what happened to your files? This does not change any files.',
+      t.clearTitle,
+      t.clearMsg,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.cancel, style: 'cancel' },
         {
-          text: 'Clear',
+          text: t.clear,
           style: 'destructive',
           onPress: async () => {
             await clearActivity();
@@ -129,7 +133,7 @@ export default function ActivityScreen() {
     );
   }
 
-  const sections = toSections(entries);
+  const sections = toSections(entries, t);
 
   return (
     <SafeAreaView
@@ -140,7 +144,7 @@ export default function ActivityScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Activity</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
         {entries.length > 0 ? (
           <TouchableOpacity onPress={handleClear} style={styles.backBtn}>
            <Ionicons name="trash-outline" size={22} color={colors.deleteRed} />
@@ -158,11 +162,10 @@ export default function ActivityScreen() {
         <View style={styles.centered}>
           <Ionicons name="time-outline" size={48} color={colors.textDisabled} />
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-            Nothing yet
+            {t.nothingYet}
           </Text>
           <Text style={[styles.emptySub, { color: colors.textMuted }]}>
-            Files you move, delete or add to the Vault are recorded here, so you
-            can find where something went.
+            {t.emptySub}
           </Text>
         </View>
       ) : (
@@ -178,8 +181,7 @@ export default function ActivityScreen() {
         removeClippedSubviews
         ListHeaderComponent={
           <Text style={[styles.count, { color: colors.textMuted }]}>
-            {entries.length} action{entries.length !== 1 ? 's' : ''} · last{' '}
-            {MAX_ENTRIES} kept on this device
+            {t.countLine(entries.length, MAX_ENTRIES)}
           </Text>
         }
         renderSectionHeader={({ section }) => (
@@ -189,7 +191,7 @@ export default function ActivityScreen() {
         )}
         renderItem={({ item: entry, index }) => {
           const key = entry.id ?? `${entry.at}-${index}`;
-          const items = describeActivityItems(entry);
+          const items = t.describeItems(entry);
           const isOpen = expanded.has(key);
           const permanent = entry.action === 'deleted';
 
@@ -217,12 +219,12 @@ export default function ActivityScreen() {
                   style={[styles.line, { color: colors.textPrimary }]}
                   numberOfLines={isOpen ? undefined : 3}
                 >
-                  {describeActivity(entry)}
+                  {t.describeEntry(entry)}
                 </Text>
                 <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  {timeLabel(entry.at)}
-                  {entry.source ? ` · ${entry.source}` : ''}
-                  {items.length && !isOpen ? ' · tap for detail' : ''}
+                  {timeLabel(entry.at, t.locale)}
+                  {entry.source ? ` · ${t.source(entry.source)}` : ''}
+                  {items.length && !isOpen ? ` · ${t.tapForDetail}` : ''}
                 </Text>
 
                 {isOpen &&

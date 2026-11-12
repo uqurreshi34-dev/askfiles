@@ -4,6 +4,8 @@ import { Modal, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { DonutView } from '@/modules/storage-stats/src/StorageStatsView';
+import { useLanguage } from '@/modules/appLanguage';
+import { storageText, StorageText } from '@/modules/i18n/storageText';
 
 interface Props {
   usedBytes: number;
@@ -18,12 +20,12 @@ function getStatusColor(usedPercent: number): string {
   return usedPercent < 50 ? '#2E7D32' : usedPercent < 75 ? '#F5B731' : '#D32F2F';
 }
 
-function getStatusMessage(usedPercent: number): string {
+function getStatusMessage(usedPercent: number, t: StorageText): string {
   return usedPercent < 50
-    ? 'Storage is healthy'
+    ? t.healthy
     : usedPercent < 75
-    ? 'Consider clearing some space'
-    : 'Running low on space';
+    ? t.consider
+    : t.low;
 }
 
 export default function StorageSummaryCard({
@@ -35,6 +37,7 @@ export default function StorageSummaryCard({
   sdCard,
 }: Props) {
   const { colors, dark } = useTheme();
+  const t = storageText(useLanguage());
   const [infoVisible, setInfoVisible] = useState(false);
 
   const trackColor = dark ? '#2A2A2A' : '#EFEFEF';
@@ -56,7 +59,7 @@ export default function StorageSummaryCard({
 
       <View style={styles.headerRow}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>
-          {hasSd ? 'Storage' : 'Internal storage'}
+          {hasSd ? t.storage : t.internalStorage}
         </Text>
         <TouchableOpacity
           onPress={() => setInfoVisible(true)}
@@ -72,7 +75,7 @@ export default function StorageSummaryCard({
 
           {/* Internal */}
           <View style={styles.donutCol}>
-            <Text style={[styles.donutColLabel, { color: colors.textMuted }]}>Internal</Text>
+            <Text style={[styles.donutColLabel, { color: colors.textMuted }]}>{t.internal}</Text>
             <View style={styles.donutWrapSm}>
               <DonutView
                 usedBytes={usedBytes}
@@ -85,20 +88,20 @@ export default function StorageSummaryCard({
                 <Text style={[styles.donutUsedSm, { color: colors.textPrimary }]}>
                   {formatSize(usedBytes)}
                 </Text>
-                <Text style={[styles.donutLabel, { color: colors.textMuted }]}>used</Text>
+                <Text style={[styles.donutLabel, { color: colors.textMuted }]}>{t.used}</Text>
               </View>
             </View>
             <View style={[styles.statusRow]}>
               <View style={[styles.statusDot, { backgroundColor: intStatusColor }]} />
               <Text style={[styles.statusTextSm, { color: intStatusColor }]} numberOfLines={1}>
-                {getStatusMessage(intUsedPct)}
+                {getStatusMessage(intUsedPct, t)}
               </Text>
             </View>
             <View style={styles.pillColStack}>
               {[
-                { label: 'Free',  value: formatSize(freeBytes) },
-                { label: 'Used',  value: `${intUsedPct}%` },
-                { label: 'Total', value: formatSize(totalBytes) },
+                { label: t.free,  value: formatSize(freeBytes) },
+                { label: t.usedLabel,  value: `${intUsedPct}%` },
+                { label: t.total, value: formatSize(totalBytes) },
               ].map(s => (
                 <View key={s.label} style={[styles.pillRow, { backgroundColor: colors.background }]}>
                   <Text style={[styles.pillVal, { color: colors.textPrimary }]}>{s.value}</Text>
@@ -128,20 +131,20 @@ export default function StorageSummaryCard({
                 <Text style={[styles.donutUsedSm, { color: colors.textPrimary }]}>
                   {formatSize(sdUsedBytes)}
                 </Text>
-                <Text style={[styles.donutLabel, { color: colors.textMuted }]}>used</Text>
+                <Text style={[styles.donutLabel, { color: colors.textMuted }]}>{t.used}</Text>
               </View>
             </View>
             <View style={styles.statusRow}>
               <View style={[styles.statusDot, { backgroundColor: sdStatusColor }]} />
               <Text style={[styles.statusTextSm, { color: sdStatusColor }]} numberOfLines={1}>
-                {getStatusMessage(sdUsedPct)}
+                {getStatusMessage(sdUsedPct, t)}
               </Text>
             </View>
             <View style={styles.pillColStack}>
               {[
-                { label: 'Free',  value: formatSize(sdFreeBytes) },
-                { label: 'Used',  value: `${sdUsedPct}%` },
-                { label: 'Total', value: formatSize(sdTotalBytes) },
+                { label: t.free,  value: formatSize(sdFreeBytes) },
+                { label: t.usedLabel,  value: `${sdUsedPct}%` },
+                { label: t.total, value: formatSize(sdTotalBytes) },
               ].map(s => (
                 <View key={s.label} style={[styles.pillRow, { backgroundColor: colors.background }]}>
                   <Text style={[styles.pillVal, { color: colors.textPrimary }]}>{s.value}</Text>
@@ -167,22 +170,22 @@ export default function StorageSummaryCard({
               <Text style={[styles.donutUsed, { color: colors.textPrimary }]}>
                 {formatSize(usedBytes)}
               </Text>
-              <Text style={[styles.donutLabel, { color: colors.textMuted }]}>used</Text>
+              <Text style={[styles.donutLabel, { color: colors.textMuted }]}>{t.used}</Text>
             </View>
           </View>
 
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: intStatusColor }]} />
             <Text style={[styles.statusText, { color: intStatusColor }]}>
-              {getStatusMessage(intUsedPct)}
+              {getStatusMessage(intUsedPct, t)}
             </Text>
           </View>
 
           <View style={styles.pillsRow}>
             {[
-              { label: 'Free',  value: formatSize(freeBytes) },
-              { label: 'Used',  value: `${intUsedPct}%` },
-              { label: 'Total', value: formatSize(totalBytes) },
+              { label: t.free,  value: formatSize(freeBytes) },
+              { label: t.usedLabel,  value: `${intUsedPct}%` },
+              { label: t.total, value: formatSize(totalBytes) },
             ].map(s => (
               <View key={s.label} style={[styles.pill, { backgroundColor: colors.background }]}>
                 <Text style={[styles.pillVal, { color: colors.textPrimary }]}>{s.value}</Text>
@@ -209,7 +212,7 @@ export default function StorageSummaryCard({
             onStartShouldSetResponder={() => true}
           >
             <Text style={[styles.modalText, { color: colors.textPrimary }]}>
-              {`Your device has ${formatSize(totalBytes)} of internal storage. AskFiles shows ${formatSize(usedBytes)} used across your files and apps.${hasSd ? ` Your ${sdCard!.name} has ${formatSize(sdTotalBytes)} total with ${formatSize(sdFreeBytes)} free.` : ''} Android Settings may show a slightly different figure — this is normal and is due to how the operating system calculates reserved and system space.`}
+              {t.info(formatSize(totalBytes), formatSize(usedBytes)) + (hasSd ? t.sdInfo(sdCard!.name, formatSize(sdTotalBytes), formatSize(sdFreeBytes)) : '') + t.infoEnd}
             </Text>
           </View>
         </TouchableOpacity>

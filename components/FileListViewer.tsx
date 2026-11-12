@@ -26,6 +26,10 @@ import { MediaViewerView } from 'media-viewer';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { recordOpen, getStats } from 'file-stats';
 import * as Haptics from 'expo-haptics';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { listsText } from '@/modules/i18n/listsText';
 
 // Minimal shape every list this component renders must satisfy.
 // FavouriteItem and FileTagEntry both already match this.
@@ -61,6 +65,8 @@ export default function FileListViewer<T extends ViewableFile>({
   title, files, emptyIcon, emptyTitle, emptySub, countLabel, removeAction, onBack,
 }: FileListViewerProps<T>) {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const c = commonText(lang), tf = filesText(lang), tl = listsText(lang);
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -88,14 +94,14 @@ export default function FileListViewer<T extends ViewableFile>({
 
   async function openSheet(item: T) {
     setSelectedItem(item);
-    setFileSize('Calculating...');
+    setFileSize(tl.calculating);
     setShowSheet(true);
     animateOpen();
     try {
       const file = new FileSystem.File(item.uri);
       if (file.size && file.size > 0) { setFileSize(formatSize(file.size)); return; }
     } catch {}
-    setFileSize('Unknown');
+    setFileSize(tf.unknown);
   }
 
   async function openItem(item: T) {
@@ -145,7 +151,7 @@ export default function FileListViewer<T extends ViewableFile>({
         await printImage(filePath);
       }
     } catch {
-      Alert.alert('Print failed', 'Could not print this file. Make sure a printer is set up on your device.');
+      Alert.alert(tf.printFailed, tf.couldNotPrint);
     }
   }
 
@@ -153,11 +159,11 @@ export default function FileListViewer<T extends ViewableFile>({
     if (!selectedItem) return;
     const item = selectedItem;
     Alert.alert(
-      'Move to Vault',
-      `Move "${item.name}" to your Secure Vault? The original file will be removed from its current location.`,
+      tf.moveToVault,
+      tf.moveOneToVaultMsg(item.name),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Move to Vault', onPress: async () => {
+        { text: c.cancel, style: 'cancel' },
+        { text: tf.moveToVault, onPress: async () => {
           const uri = item.uri;
           closeSheet();
           setMovingUri(uri);
@@ -166,7 +172,7 @@ export default function FileListViewer<T extends ViewableFile>({
           if (ok) {
             DocIndexer.removeFromIndex(uri);
           } else {
-            Alert.alert('Error', 'Could not move file to Vault. Try again.');
+            Alert.alert(c.error, tf.couldNotVault);
           }
         }},
       ]
@@ -177,8 +183,8 @@ export default function FileListViewer<T extends ViewableFile>({
     if (!selectedItem) return;
     const item = selectedItem;
     Alert.alert(removeAction.confirmTitle, removeAction.confirmMessage(item), [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => {
+      { text: c.cancel, style: 'cancel' },
+      { text: tl.remove, style: 'destructive', onPress: async () => {
         closeSheet();
         await removeAction.onConfirm(item);
       }},
@@ -208,7 +214,7 @@ export default function FileListViewer<T extends ViewableFile>({
         </View>
         <View style={styles.info}>
           <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-          <Text style={[styles.meta, { color: colors.textMuted }]}>{(item.name.split('.').pop()?.toUpperCase() ?? '?')} file</Text>
+          <Text style={[styles.meta, { color: colors.textMuted }]}>{tl.fileType(item.name.split('.').pop()?.toUpperCase() ?? '?')}</Text>
         </View>
         <TouchableOpacity onPress={() => openSheet(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           {movingUri === item.uri
@@ -283,35 +289,35 @@ export default function FileListViewer<T extends ViewableFile>({
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{c.share}</Text>
               </TouchableOpacity>
               {(isImageFile(selectedItem?.name ?? '') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
                   <Ionicons name="print-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Print</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.print}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
-                () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-                  { text: 'Not now', style: 'cancel' },
-                  { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                () => Alert.alert(c.proFeature, tf.proVaultMsg, [
+                  { text: tf.notNow, style: 'cancel' },
+                  { text: tf.upgrade, onPress: () => router.push('/(tabs)/cloud') },
                 ])}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
                 <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
-                  Move to Vault{!isPro ? '  🔒' : ''}
+                  {tf.moveToVault}{!isPro ? '  🔒' : ''}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={async () => {
                   if (!selectedItem) return;
                   closeSheet();
                   const lines: { label: string; value: string }[] = [];
-                  if (fileSize) lines.push({ label: 'Size', value: fileSize });
-                  lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
-                  lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                  if (fileSize) lines.push({ label: c.size, value: fileSize });
+                  lines.push({ label: c.type, value: c.typeFile(selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') });
+                  lines.push({ label: tf.location, value: getFriendlyPath(selectedItem.uri, volumes) });
                   const stats = getStats(selectedItem.uri);
                   if (stats && stats.count > 0) {
-                    lines.push({ label: 'Times opened', value: `${stats.count}` });
-                    lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
+                    lines.push({ label: tf.timesOpened, value: `${stats.count}` });
+                    lines.push({ label: tf.lastOpened, value: formatDate(stats.lastOpened) });
                   }
                   const isMedia = isImageFile(selectedItem.name) || isVideoFile(selectedItem.name);
                   let info: any = null;
@@ -321,12 +327,12 @@ export default function FileListViewer<T extends ViewableFile>({
                   const exif = info ? exifLines(info) : [];
                   try {
                     const stat = await RNFS.stat(toPath(selectedItem.uri));
-                    if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                    if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                    if (stat.mtime) lines.push({ label: c.modified, value: formatDate(new Date(stat.mtime).getTime()) });
+                    if (stat.ctime && exif.length === 0) lines.push({ label: c.created, value: formatDate(new Date(stat.ctime).getTime()) });
                   } catch {}
                   if (info) {
-                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                    if (info.width && info.height) lines.push({ label: c.resolution, value: `${info.width}×${info.height}` });
+                    if (info.duration) lines.push({ label: c.duration, value: info.duration });
                   }
                   lines.push(...exif);
                   setDetailsName(selectedItem.name);
@@ -334,7 +340,7 @@ export default function FileListViewer<T extends ViewableFile>({
                   setShowDetailsModal(true);
                 }}>
                   <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{c.info}</Text>
                 </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleRemove}>
                 <Ionicons name={removeAction.icon as any} size={20} color={removeAction.color} />
@@ -343,7 +349,7 @@ export default function FileListViewer<T extends ViewableFile>({
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                 <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-                <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>{c.cancel}</Text>
               </TouchableOpacity>
            </Pressable>
             </ScrollView>

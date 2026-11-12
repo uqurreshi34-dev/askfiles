@@ -5,11 +5,14 @@ import { getTag } from '@/hooks/useTags';
 import { getFilesForTag, removeTagFromFile, FileTagEntry, cleanupBrokenFileTags } from '@/hooks/useFileTags';
 import { useTheme } from '@/hooks/useTheme';
 import FileListViewer from '@/components/FileListViewer';
+import { useLanguage } from '@/modules/appLanguage';
+import { listsText } from '@/modules/i18n/listsText';
 
 export default function TagFilesScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const [tagName, setTagName] = useState('Tag');
+  const t = listsText(useLanguage());
+  const [tagName, setTagName] = useState('');
   const [files, setFiles] = useState<FileTagEntry[]>([]);
   // Keep tagId stable across renders so onConfirm always removes the right tag
   const tagIdRef = useRef<string>('');
@@ -40,18 +43,18 @@ export default function TagFilesScreen() {
 
   return (
     <FileListViewer
-      title={tagName}
+      title={tagName || t.tagFallback}
       files={files}
       emptyIcon="pricetag-outline"
-      emptyTitle="No files tagged yet"
-      emptySub={`Tag files with "${tagName}" from the file long-press menu in Browse or Categories.`}
-      countLabel={count => `${count} file${count !== 1 ? 's' : ''}`}
+      emptyTitle={t.tagEmpty}
+      emptySub={t.tagEmptySub(tagName || t.tagFallback)}
+      countLabel={t.fileCount}
       removeAction={{
         icon: 'pricetag-outline',
-        label: `Remove "${tagName}" tag`,
+        label: t.removeTagLabel(tagName),
         color: colors.deleteRed,
-        confirmTitle: 'Remove tag',
-        confirmMessage: (item) => `Remove the "${tagName}" tag from "${item.name}"?`,
+        confirmTitle: t.removeTag,
+        confirmMessage: (item) => t.removeTagMsg(tagName, item.name),
         onConfirm: async (item) => {
           await removeTagFromFile(item.uri, tagIdRef.current);
           setFiles(prev => prev.filter(f => f.uri !== item.uri));

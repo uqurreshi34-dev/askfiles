@@ -9,6 +9,8 @@ import { useCallback, useState, useEffect } from 'react';
 import { getStorageVolumes, getVolumeStats } from '@/modules/storage-stats';
 import { storageChange } from '@/modules/storageTrend';
 import RNFS from 'react-native-fs';
+import { useLanguage } from '@/modules/appLanguage';
+import { storageText } from '@/modules/i18n/storageText';
 
 interface Category {
   label: string;
@@ -35,14 +37,16 @@ export default function StorageBreakdownScreen() {
   const { storageInfo, folderSizes, folderBytes, loading, permissionGranted, refreshSizes } = useStorage();
   const [refreshing, setRefreshing] = useState(false);
   const [trend, setTrend] = useState<string | null>(null);
+  const lang = useLanguage();
+  const t = storageText(lang);
 
   const categories: Category[] = [
-    { label: 'Images',    size: folderSizes.pictures, bytes: parseSize(folderSizes.pictures), color: '#185FA5', icon: 'image-outline',      route: '/category?category=images' },
-    { label: 'Videos',    size: folderSizes.videos,   bytes: parseSize(folderSizes.videos),   color: '#993C1D', icon: 'videocam-outline',    route: '/category?category=videos' },
-    { label: 'Downloads', size: folderSizes.downloads,bytes: parseSize(folderSizes.downloads),color: '#3B6D11', icon: 'download-outline',    route: '/category?category=downloads' },
-    { label: 'Documents', size: folderSizes.documents,bytes: parseSize(folderSizes.documents),color: '#534AB7', icon: 'document-outline',    route: '/category?category=documents' },
-    { label: 'Music',     size: folderSizes.music,    bytes: parseSize(folderSizes.music),    color: '#F5B731', icon: 'musical-notes-outline', route: '/browse?initialPath=file:///storage/emulated/0/Music/' },
-    { label: 'Other',     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: null},
+    { label: t.images,    size: folderSizes.pictures, bytes: parseSize(folderSizes.pictures), color: '#185FA5', icon: 'image-outline',      route: '/category?category=images' },
+    { label: t.videos,    size: folderSizes.videos,   bytes: parseSize(folderSizes.videos),   color: '#993C1D', icon: 'videocam-outline',    route: '/category?category=videos' },
+    { label: t.downloads, size: folderSizes.downloads,bytes: parseSize(folderSizes.downloads),color: '#3B6D11', icon: 'download-outline',    route: '/category?category=downloads' },
+    { label: t.documents, size: folderSizes.documents,bytes: parseSize(folderSizes.documents),color: '#534AB7', icon: 'document-outline',    route: '/category?category=documents' },
+    { label: t.music,     size: folderSizes.music,    bytes: parseSize(folderSizes.music),    color: '#F5B731', icon: 'musical-notes-outline', route: '/browse?initialPath=file:///storage/emulated/0/Music/' },
+    { label: t.other,     size: folderSizes.other,    bytes: parseSize(folderSizes.other),    color: '#888780', icon: 'ellipsis-horizontal-circle-outline', route: null},
   ].sort((a, b) => b.bytes - a.bytes);
 
   const totalBytes = storageInfo?.totalBytes ?? 1;
@@ -67,7 +71,7 @@ export default function StorageBreakdownScreen() {
       .catch(() => {});
 
     return () => { cancelled = true; };
-  }, [usedBytes]);
+  }, [usedBytes, lang]);
 
   const [sdCard, setSdCard] = useState<{ name: string; used: number; total: number } | null>(null);
 
@@ -98,14 +102,14 @@ export default function StorageBreakdownScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Storage Breakdown</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.purple} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Calculating...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>{t.calculating}</Text>
         </View>
       ) : (
         <ScrollView
@@ -119,7 +123,7 @@ export default function StorageBreakdownScreen() {
             usedBytes={usedBytes}
             totalBytes={totalBytes}
             freeBytes={freeBytes}
-            note="Includes apps and user files"
+            note={t.includes}
             showChevron={false}
             sdCard={sdCard}
             />
@@ -131,7 +135,7 @@ export default function StorageBreakdownScreen() {
             )}
   
           <View style={[styles.segmentCard, { backgroundColor: colors.surfaceAlt }]}>
-            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>BY CATEGORY</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t.byCategory}</Text>
             <View style={[styles.segmentBar, { backgroundColor: colors.surface }]}>
               {categories.map(cat => {
                 const pct = totalBytes > 0 ? (cat.bytes / totalBytes) * 100 : 0;
@@ -151,7 +155,7 @@ export default function StorageBreakdownScreen() {
             </View>
           </View>
 
-          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginHorizontal: 16, marginTop: 8 }]}>DETAILS</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginHorizontal: 16, marginTop: 8 }]}>{t.details}</Text>
           <View style={[styles.categoriesCard, { backgroundColor: colors.surfaceAlt }]}>
             {categories.map((cat, i) => {
               const pct = totalBytes > 0 ? Math.min((cat.bytes / totalBytes) * 100, 100) : 0;
@@ -180,7 +184,7 @@ export default function StorageBreakdownScreen() {
             })}
           </View>
 
-          <Text style={[styles.note, { color: colors.textMuted }]}>Sizes shown are for files you can see and manage in AskFiles.</Text>
+          <Text style={[styles.note, { color: colors.textMuted }]}>{t.note}</Text>
         </ScrollView>
       )}
     </SafeAreaView>
