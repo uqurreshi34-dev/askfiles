@@ -269,12 +269,12 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
           animationType="fade"
           onRequestClose={() => setSettingsVisible(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setSettingsVisible(false)}
-          >
-            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
+          <View style={styles.modalOverlay}>
+            {/* Tapping outside the card closes it. The backdrop sits behind the
+                card rather than around it, so nothing in the card has to grab
+                touches to stop them closing it, and the card scrolls freely. */}
+            <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setSettingsVisible(false)} />
+            <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]}>
             <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
@@ -389,7 +389,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>{t.close}</Text>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
 
         {/* What's New Modal */}
