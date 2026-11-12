@@ -25,6 +25,11 @@ import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hoo
 import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { categoryText } from '@/modules/i18n/categoryText';
+import { searchText } from '@/modules/i18n/searchText';
 import { useTrash } from '@/hooks/useTrash';
 import { openFile as openFileNative, shareFiles, copyImageToClipboard } from '@/modules/share-module';
 import { DocIndexer, IndexedFile } from '@/modules/doc-indexer';
@@ -97,6 +102,11 @@ export default function SearchScreen() {
   const { answer, thinking, cooldown, ask, reset } = useAskAI();
   const [localAnswer, setLocalAnswer] = useState('');
   const router = useRouter();
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const tf = filesText(lang);
+  const tk = categoryText(lang);
+  const ts = searchText(lang);
   const { autofocus } = useLocalSearchParams<{ autofocus?: string }>();
   const searchInputRef = useRef<TextInput>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,7 +235,7 @@ export default function SearchScreen() {
     try {
       const file = new FileSystem.File(item.uri);
       setFileSize(formatSize(file.size ?? 0));
-    } catch { setFileSize('Unknown'); }
+    } catch { setFileSize(tf.unknown); }
     const lowerName = item.name.toLowerCase();
     if (lowerName.endsWith('.txt')) {
       readTextPreview(toPath(item.uri)).then(setTxtPreview).catch(() => setTxtPreview(null));
@@ -275,7 +285,7 @@ export default function SearchScreen() {
     const dst = toPath(destUri);
     const exists = await RNFS.exists(dst);
     if (exists) {
-      Alert.alert('File already exists', `"${item.name}" already exists in this folder.`);
+      Alert.alert(tc.fileExists, tf.existsInFolder(item.name));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
@@ -287,7 +297,7 @@ export default function SearchScreen() {
       if (pickerMode === 'copy') {
         await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
-        Alert.alert('Success', `"${item.name}" copied successfully.`);
+        Alert.alert(tf.success, tf.copiedOk(item.name));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
@@ -302,11 +312,11 @@ export default function SearchScreen() {
         });
         if (item.inFolder) { removeFolderItem(item.uri); }
         else { removeResult(item.uri); }
-        Alert.alert('Success', `"${item.name}" moved successfully.`);
+        Alert.alert(tf.success, tf.movedOk(item.name));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch {
-      Alert.alert('Error', `Could not ${pickerMode} file.`);
+      Alert.alert(tc.error, tf.couldNotCopyOrMoveFile(pickerMode === 'copy'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -327,12 +337,12 @@ export default function SearchScreen() {
     try {
       const invalidChars = /[*\/\\:?"<>|]/;
       if (invalidChars.test(newName)) {
-        Alert.alert('Invalid name', 'File names cannot contain: * / \\ : ? " < > |');
+        Alert.alert(tf.invalidName, 'File names cannot contain: * / \\ : ? " < > |');
         return;
       }
       const destExists = await RNFS.exists(toPath(newUri));
       if (destExists) {
-        Alert.alert('Name already taken', `A file named "${newName}" already exists in this folder.`);
+        Alert.alert(tf.nameTaken, tf.fileNamedExistsFolder(newName));
         return;
       }
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
@@ -360,7 +370,7 @@ export default function SearchScreen() {
       closeSheet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert('Rename failed', 'Could not rename this file.');
+      Alert.alert(tf.renameFailed, tk.couldNotRenameFile);
     } finally {
       setRenaming(false);
     }
@@ -386,9 +396,9 @@ export default function SearchScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
       if (e?.code === WIFI_NO_NETWORK) {
-        Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+        Alert.alert(tf.noWifi, tf.connectWifi);
       } else {
-        Alert.alert('Error', 'Could not start WiFi server');
+        Alert.alert(tc.error, tf.couldNotStartWifi);
       }
     }
   }
@@ -398,29 +408,29 @@ export default function SearchScreen() {
     try {
       await copyImageToClipboard(toPath(selectedItem.uri), 'image/*');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Copied', 'Image copied to clipboard.');
+      Alert.alert(tf.copied, tf.imageCopied);
       closeSheet();
     } catch {
-      Alert.alert('Error', 'Could not copy image to clipboard.');
+      Alert.alert(tc.error, tf.couldNotCopyImage);
     }
   }
 
   async function handleMoveToVault() {
     if (!selectedItem) return;
     Alert.alert(
-      'Move to Vault',
-      `Move "${selectedItem.name}" to your Secure Vault? The original file will be removed from its current location.`,
+      tf.moveToVault,
+      tf.moveOneToVaultMsg(selectedItem.name),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Move to Vault', onPress: async () => {
+        { text: tc.cancel, style: 'cancel' },
+        { text: tf.moveToVault, onPress: async () => {
           const uri = selectedItem.uri;
           const name = selectedItem.name;
           const inFolder = selectedItem.inFolder;
           closeSheet();
           if (await vaultHas(name)) {
             Alert.alert(
-              'Already in the Vault',
-              `A file called "${name}" is already in the Vault. Rename this one first, or remove the copy that is already there.`
+              tf.alreadyInVault,
+              tf.alreadyInVaultMsg(name)
             );
             return;
           }
@@ -432,9 +442,9 @@ export default function SearchScreen() {
             DocIndexer.removeFromIndex(uri);
             if (inFolder) { removeFolderItem(uri); }
             else { removeResult(uri); }
-            Alert.alert('Moved to Vault', `"${name}" is now secured.`);
+            Alert.alert(tf.movedToVault, tf.isNowSecured(name));
           } else {
-            Alert.alert('Error', 'Could not move file to Vault. Try again.');
+            Alert.alert(tc.error, tf.couldNotVault);
           }
         }},
     ]);
@@ -442,9 +452,9 @@ export default function SearchScreen() {
 
   async function handleDelete() {
     if (!selectedItem) return;
-    Alert.alert('Move to Trash', `"${selectedItem.name}" will be moved to Trash and deleted after 30 days.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+    Alert.alert(tf.moveToTrash, tf.trashOneMsg(selectedItem.name), [
+      { text: tc.cancel, style: 'cancel' },
+      { text: tf.moveToTrash, style: 'destructive', onPress: async () => {
         closeSheet();
         const ok = await moveToTrash(selectedItem.uri, selectedItem.name);
         if (ok) {
@@ -454,7 +464,7 @@ export default function SearchScreen() {
           if (selectedItem.inFolder) { removeFolderItem(selectedItem.uri); }
           else { removeResult(selectedItem.uri); }
         } else {
-          Alert.alert('Error', 'Could not move file to Trash.');
+          Alert.alert(tc.error, tf.couldNotTrash);
         }
       }},
     ]);
@@ -465,12 +475,12 @@ export default function SearchScreen() {
     if (isFav) {
       await removeFavourite(selectedItem.uri);
       setIsFav(false);
-      Alert.alert('Removed from Favourites', `"${selectedItem.name}" removed.`);
+      Alert.alert(tk.removedFromFavourites, tk.removedShort(selectedItem.name));
     } else {
       await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
       setIsFav(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      Alert.alert('Added to Favourites', `"${selectedItem.name}" added.`);
+      Alert.alert(tk.addedToFavourites, tk.addedShort(selectedItem.name));
     }
   }
 
@@ -546,7 +556,7 @@ export default function SearchScreen() {
     // Before the storage scan has found any files, the free questions would
     // be answered from empty lists: "I can't see any files on your device".
     if (free && (storageLoading || !largestFiles?.overall?.length)) {
-      setLocalAnswer(STILL_READING);
+      setLocalAnswer(ts.stillReading);
       return;
     }
 
@@ -581,7 +591,7 @@ export default function SearchScreen() {
 
     if (free) {
       // Answered on the phone or not at all: the storage scan has not finished.
-      setLocalAnswer(STILL_READING);
+      setLocalAnswer(ts.stillReading);
       return;
     }
 
@@ -619,7 +629,8 @@ export default function SearchScreen() {
   }
 
   function handleSuggestion(s: string) {
-    setAiQuery(s);
+    // Shown in the user's language; the English question is what gets answered.
+    setAiQuery(ts.question(s));
     handleAsk(s);
   }
 
@@ -694,13 +705,13 @@ export default function SearchScreen() {
         <TouchableOpacity onPress={() => router.push('/(tabs)')} style={{ width: 40, height: 40, justifyContent: 'center', marginRight: 8 }}>
           <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Search</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{ts.search}</Text>
       </View>
       {pasting && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {pickerMode === 'copy' ? 'Copying' : 'Moving'} {pendingItem.current?.name}
+            {pickerMode === 'copy' ? tf.copying : tf.moving} {pendingItem.current?.name}
             {copyProgress !== null && copyProgress > 0 ? ` ${copyProgress}%` : '...'}
           </Text>
         </View>
@@ -711,14 +722,14 @@ export default function SearchScreen() {
           onPress={() => setMode('search')}
         >
           <Ionicons name="search-outline" size={14} color={mode === 'search' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
-          <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'search' && { color: colors.blue }]}>Search</Text>
+          <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'search' && { color: colors.blue }]}>{ts.search}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'ask' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
           onPress={() => setMode('ask')}
         >
           <Ionicons name="sparkles-outline" size={14} color={mode === 'ask' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
-          <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>Ask AI</Text>
+          <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>{ts.askAi}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'smart' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
@@ -728,7 +739,7 @@ export default function SearchScreen() {
           }}
         >
             <Ionicons name="document-text-outline" size={14} color={mode === 'smart' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
-            <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'smart' && { color: colors.blue }]}>Smart</Text>
+            <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'smart' && { color: colors.blue }]}>{ts.smart}</Text>
           </TouchableOpacity>
       </View>
 
@@ -739,7 +750,7 @@ export default function SearchScreen() {
             <TextInput
               ref={searchInputRef}
               style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="Search files..."
+              placeholder={ts.searchFilesPh}
               placeholderTextColor={colors.textMuted}
               value={query}
               onChangeText={handleSearchChange}
@@ -772,7 +783,7 @@ export default function SearchScreen() {
                         style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, flexShrink: 0, backgroundColor: active ? colors.blue : colors.surface }}
                         activeOpacity={0.7}
                       >
-                        <Text style={{ fontSize: 12, fontWeight: '500', lineHeight: 16, color: active ? '#fff' : colors.textSecondary }} numberOfLines={1}>{label}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '500', lineHeight: 16, color: active ? '#fff' : colors.textSecondary }} numberOfLines={1}>{ts.filter[label] ?? label}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -781,18 +792,18 @@ export default function SearchScreen() {
           {searching ? (
             <View style={styles.centered}>
               <ActivityIndicator color={colors.blue} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>Searching...</Text>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.searching}</Text>
             </View>
           ) : query.length < 2 ? (
             recentSearches.length === 0 || historyHidden ? (
               <View style={styles.centered}>
                 <Ionicons name="search-outline" size={40} color={colors.textDisabled} />
                 <Text style={[styles.hint, { color: colors.textMuted }]}>
-                  {historyHidden ? 'Search history hidden' : 'Type 2+ characters'}
+                  {historyHidden ? ts.historyHidden : ts.typeTwoChars}
                 </Text>
                 {historyHidden && recentSearches.length > 0 && (
                   <TouchableOpacity onPress={() => setHistoryHidden(false)} style={{ marginTop: 8 }}>
-                    <Text style={[styles.hint, { color: colors.blue }]}>Show history</Text>
+                    <Text style={[styles.hint, { color: colors.blue }]}>{ts.showHistory}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -805,16 +816,16 @@ export default function SearchScreen() {
                 keyboardShouldPersistTaps="handled"
                 ListHeaderComponent={
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 12 }}>
-                    <Text style={[styles.resultCount, { color: colors.textMuted, flex: 1 }]} numberOfLines={1}>Recent searches</Text>
+                    <Text style={[styles.resultCount, { color: colors.textMuted, flex: 1 }]} numberOfLines={1}>{ts.recentSearches}</Text>
                     <View style={{ flexDirection: 'row', gap: 16, flexShrink: 0 }}>
                       <TouchableOpacity onPress={() => setHistoryHidden(true)}>
-                        <Text style={{ fontSize: 12, color: colors.textMuted }}>Hide</Text>
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>{tf.hide}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => {
                         clearRecentSearches();
                         setRecentSearches([]);
                       }}>
-                        <Text style={{ fontSize: 12, color: colors.blue }}>Clear</Text>
+                        <Text style={{ fontSize: 12, color: colors.blue }}>{ts.clear}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -861,7 +872,7 @@ export default function SearchScreen() {
           ) : results.length === 0 ? (
             <View style={styles.centered}>
               <Ionicons name="document-outline" size={40} color={colors.textDisabled} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>No files found for "{query}"</Text>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.noFilesFor(query)}</Text>
             </View>
           ) : (
             <FlatList
@@ -872,7 +883,7 @@ export default function SearchScreen() {
               keyboardShouldPersistTaps="handled"
               ListHeaderComponent={
                 <Text style={[styles.resultCount, { color: colors.textMuted }]}>
-                  {results.length} result{results.length !== 1 ? 's' : ''}
+                  {ts.nResults(results.length)}
                 </Text>
               }
               renderItem={({ item }) => {
@@ -903,7 +914,7 @@ export default function SearchScreen() {
                     <View style={styles.fileInfo}>
                       <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+                        <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? tf.folder : ts.fileOfType(ext)}</Text>
                         {favSet.has(item.uri) && (
                           <Ionicons name="heart" size={12} color="#E24B4A" />
                         )}
@@ -944,7 +955,7 @@ export default function SearchScreen() {
             >
               <Ionicons name="sparkles-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.input, { color: colors.textMuted, textAlignVertical: 'center' }]} numberOfLines={1}>
-                Ask in your own words with Pro
+                {ts.askOwnWordsPro}
               </Text>
               <Ionicons name="lock-closed-outline" size={16} color={colors.textMuted} />
             </TouchableOpacity>
@@ -953,7 +964,7 @@ export default function SearchScreen() {
             <Ionicons name="sparkles-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="Ask anything about your files..."
+              placeholder={ts.askAnythingPh}
               placeholderTextColor={colors.textMuted}
               value={aiQuery}
               onChangeText={setAiQuery}
@@ -989,10 +1000,10 @@ export default function SearchScreen() {
                     elevation: 6,
                   }}>
                   <Text style={{ color: dark ? '#111' : '#fff', fontSize: 12, fontWeight: '600', marginBottom: 3 }}>
-                    🎤 Microphone access needed
+                    {ts.micNeeded}
                   </Text>
                   <Text style={{ color: dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.75)', fontSize: 11 }}>
-                    Enable microphone access in Settings to use voice search
+                    {ts.micVoiceSearch}
                   </Text>
                     <View style={{
                       position: 'absolute',
@@ -1017,38 +1028,38 @@ export default function SearchScreen() {
           {thinking ? (
             <View style={styles.centered}>
               <ActivityIndicator color={colors.blue} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>Thinking...</Text>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.thinking}</Text>
             </View>
           ) : (localAnswer || answer).length > 0 ? (
             <ScrollView style={styles.answerScroll} contentContainerStyle={styles.answerScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={[styles.answerWrap, { backgroundColor: colors.blueBg }]}>
                 <View style={styles.answerHeader}>
                   <Ionicons name="sparkles-outline" size={16} color={colors.blue} />
-                  <Text style={[styles.answerLabel, { color: colors.blue }]}>AskFiles AI</Text>
+                  <Text style={[styles.answerLabel, { color: colors.blue }]}>{ts.askFilesAi}</Text>
                 </View>
                 <Text style={[styles.answerText, { color: colors.textPrimary }]}>{localAnswer || answer}</Text>
               </View>
               <TouchableOpacity style={[styles.askAgainBtn, { backgroundColor: colors.surface }]} onPress={handleAskAgain}>
                 <Ionicons name="sparkles-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={[styles.askAgainText, { color: colors.textSecondary }]}>Ask something else</Text>
+                <Text style={[styles.askAgainText, { color: colors.textSecondary }]}>{ts.askSomethingElse}</Text>
               </TouchableOpacity>
               <>
-                <Text style={[styles.suggestionsLabel, { color: colors.textMuted }]}>Try these</Text>
+                <Text style={[styles.suggestionsLabel, { color: colors.textMuted }]}>{ts.tryThese}</Text>
                 <View style={styles.suggestions}>
                   {askSuggestions.map(s => (
                     <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => handleSuggestion(s)}>
-                      <Text style={[styles.suggestionText, { color: colors.textSecondary }]}>{s}</Text>
+                      <Text style={[styles.suggestionText, { color: colors.textSecondary }]}>{ts.question(s)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                     </TouchableOpacity>
                   ))}
                 </View>
                 {!isPro && !proLoading && (
                   <>
-                    <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: 12 }]}>With Pro</Text>
+                    <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: 12 }]}>{ts.withPro}</Text>
                     <View style={styles.suggestions}>
                       {PRO_EXAMPLES.map(s => (
                         <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => router.push('/(tabs)/cloud')}>
-                          <Text style={[styles.suggestionText, { color: colors.textMuted }]}>{s}</Text>
+                          <Text style={[styles.suggestionText, { color: colors.textMuted }]}>{ts.question(s)}</Text>
                           <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} />
                         </TouchableOpacity>
                       ))}
@@ -1063,24 +1074,24 @@ export default function SearchScreen() {
                 <View style={styles.centeredContent}>
                   <Ionicons name="sparkles-outline" size={40} color={colors.textDisabled} />
                   <Text style={[styles.hint, { color: colors.textMuted }]}>
-                    {isPro ? 'Ask about your files in plain English' : 'Free: tap a question for an instant answer, as often as you like'}
+                    {isPro ? ts.askAboutPlain : ts.freeHint}
                   </Text>
                 </View>
                 <View style={styles.suggestions}>
                   {askSuggestions.map(s => (
                     <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => handleSuggestion(s)}>
-                      <Text style={[styles.suggestionText, { color: colors.textSecondary }]}>{s}</Text>
+                      <Text style={[styles.suggestionText, { color: colors.textSecondary }]}>{ts.question(s)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                     </TouchableOpacity>
                   ))}
                 </View>
                 {!isPro && !proLoading && (
                   <>
-                    <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: 12 }]}>With Pro</Text>
+                    <Text style={[styles.suggestionsLabel, { color: colors.textMuted, marginTop: 12 }]}>{ts.withPro}</Text>
                     <View style={styles.suggestions}>
                       {PRO_EXAMPLES.map(s => (
                         <TouchableOpacity key={s} style={[styles.suggestion, { backgroundColor: colors.surface }]} onPress={() => router.push('/(tabs)/cloud')}>
-                          <Text style={[styles.suggestionText, { color: colors.textMuted }]}>{s}</Text>
+                          <Text style={[styles.suggestionText, { color: colors.textMuted }]}>{ts.question(s)}</Text>
                           <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} />
                         </TouchableOpacity>
                       ))}
@@ -1098,7 +1109,7 @@ export default function SearchScreen() {
             <Ionicons name="document-text-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="Search inside documents..."
+              placeholder={ts.searchInsideDocsPh}
               placeholderTextColor={colors.textMuted}
               value={smartQuery}
               onChangeText={handleSmartQueryChange}
@@ -1114,21 +1125,21 @@ export default function SearchScreen() {
           {smartSearching ? (
             <View style={styles.centered}>
               <ActivityIndicator color={colors.blue} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>Searching content...</Text>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.searchingContent}</Text>
             </View>
           ) : smartQuery.length < 2 ? (
             <View style={styles.centered}>
               {indexing ? (
                 <>
                   <ActivityIndicator color={colors.blue} />
-                  <Text style={[styles.hint, { color: colors.textMuted }]}>Reading your documents...</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.readingDocs}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="document-text-outline" size={40} color={colors.textDisabled} />
-                  <Text style={[styles.hint, { color: colors.textMuted }]}>Search inside your documents</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.searchInsideDocs}</Text>
                   <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>
-                    {indexCount > 0 ? `${indexCount} file${indexCount !== 1 ? 's' : ''} ready to search - scans up to 200 files per visit` : 'PDFs, Word, Excel and text files'}
+                    {indexCount > 0 ? ts.readyToSearch(indexCount) : ts.docTypes}
                   </Text>
                 </>
               )}
@@ -1136,8 +1147,8 @@ export default function SearchScreen() {
           ) : smartResults.length === 0 ? (
             <View style={styles.centered}>
               <Ionicons name="search-outline" size={40} color={colors.textDisabled} />
-              <Text style={[styles.hint, { color: colors.textMuted }]}>No documents contain "{smartQuery}"</Text>
-              <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>Can't find your document? Make sure it's saved to Downloads or Documents.</Text>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.noDocsContain(smartQuery)}</Text>
+              <Text style={[styles.hint, { color: colors.textMuted, fontSize: 11 }]}>{ts.cantFindDoc}</Text>
             </View>
           ) : (
             <FlatList
@@ -1148,7 +1159,7 @@ export default function SearchScreen() {
               keyboardShouldPersistTaps="handled"
               ListHeaderComponent={
                 <Text style={[styles.resultCount, { color: colors.textMuted }]}>
-                  {smartResults.length} document{smartResults.length !== 1 ? 's' : ''} match
+                  {ts.nDocsMatch(smartResults.length)}
                 </Text>
               }
               renderItem={({ item }) => {
@@ -1202,7 +1213,7 @@ export default function SearchScreen() {
                 ) : current.items.length === 0 ? (
                   <View style={styles.centered}>
                     <Ionicons name="folder-open-outline" size={40} color={colors.textDisabled} />
-                    <Text style={[styles.hint, { color: colors.textMuted }]}>Folder is empty</Text>
+                    <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.folderIsEmpty}</Text>
                   </View>
                 ) : (
                   <FlatList
@@ -1233,7 +1244,7 @@ export default function SearchScreen() {
                           </View>
                           <View style={styles.fileInfo}>
                             <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-                            <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? 'Folder' : ext + ' file'}</Text>
+                            <Text style={[styles.fileMeta, { color: colors.textMuted }]}>{item.isDirectory ? tf.folder : ts.fileOfType(ext)}</Text>
                           </View>
                           {!item.isDirectory && (
                             <TouchableOpacity onPress={() => openSheet({ ...item, inFolder: true })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1292,16 +1303,16 @@ export default function SearchScreen() {
                 )}
                 <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                   <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tc.share}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={handleShareViaQr}>
                   <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
                 </TouchableOpacity>
                 {isImageFile(selectedItem?.name ?? '') && (
                   <TouchableOpacity style={styles.sheetAction} onPress={handleCopyImage}>
                     <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.copyImage}</Text>
                   </TouchableOpacity>
                 )}
                 {isImageFile(selectedItem?.name ?? '') && (
@@ -1312,17 +1323,17 @@ export default function SearchScreen() {
                     router.push({ pathname: '/image-editor', params: { uri: u, name: n } });
                   }}>
                     <Ionicons name="create-outline" size={20} color={colors.textPrimary} />
-                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Edit image</Text>
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.editImage}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
-                  () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-                    { text: 'Not now', style: 'cancel' },
-                    { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                  () => Alert.alert(tc.proFeature, tf.proVaultMsg, [
+                    { text: tf.notNow, style: 'cancel' },
+                    { text: tf.upgrade, onPress: () => router.push('/(tabs)/cloud') },
                   ])}>
                   <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
                   <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
-                    Move to Vault{!isPro ? '  🔒' : ''}
+                    {tf.moveToVault}{!isPro ? '  🔒' : ''}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={() => {
@@ -1333,27 +1344,27 @@ export default function SearchScreen() {
                   <Ionicons name="pricetag-outline" size={20} color={colors.purple} />
                   <Text style={[styles.sheetActionText, { color: colors.purple }]}>
                     {(fileTagsMap[selectedItem?.uri ?? '']?.length ?? 0) > 0
-                      ? `Tags (${fileTagsMap[selectedItem!.uri].length})`
-                      : 'Add Tag'}
+                      ? tf.tagsCount(fileTagsMap[selectedItem!.uri].length)
+                      : tf.addTag}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                   <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
                   <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>
-                    {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
+                    {isFav ? tf.removeFromFavourites : tf.addToFavourites}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={async () => {
                   if (!selectedItem) return;
                   closeSheet();
                   const lines: { label: string; value: string }[] = [];
-                  if (fileSize) lines.push({ label: 'Size', value: fileSize });
-                  lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
-                  lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                  if (fileSize) lines.push({ label: tc.size, value: fileSize });
+                  lines.push({ label: tc.type, value: tc.typeFile(selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') });
+                  lines.push({ label: tf.location, value: getFriendlyPath(selectedItem.uri, volumes) });
                   const stats = getStats(selectedItem.uri);
                   if (stats && stats.count > 0) {
-                    lines.push({ label: 'Times opened', value: `${stats.count}` });
-                    lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
+                    lines.push({ label: tf.timesOpened, value: `${stats.count}` });
+                    lines.push({ label: tf.lastOpened, value: formatDate(stats.lastOpened) });
                   }
                   const isMedia = isImageFile(selectedItem.name) || isVideoFile(selectedItem.name);
                   let info: any = null;
@@ -1363,12 +1374,12 @@ export default function SearchScreen() {
                   const exif = info ? exifLines(info) : [];
                   try {
                     const stat = await RNFS.stat(toPath(selectedItem.uri));
-                    if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                    if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                    if (stat.mtime) lines.push({ label: tc.modified, value: formatDate(new Date(stat.mtime).getTime()) });
+                    if (stat.ctime && exif.length === 0) lines.push({ label: tc.created, value: formatDate(new Date(stat.ctime).getTime()) });
                   } catch {}
                   if (info) {
-                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                    if (info.width && info.height) lines.push({ label: tc.resolution, value: `${info.width}×${info.height}` });
+                    if (info.duration) lines.push({ label: tc.duration, value: info.duration });
                   }
                   lines.push(...exif);
                   setDetailsName(selectedItem.name);
@@ -1376,11 +1387,11 @@ export default function SearchScreen() {
                   setShowDetailsModal(true);
                 }}>
                   <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tc.info}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
                   <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
-                  <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>{tc.delete}</Text>
                 </TouchableOpacity>
                 <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
                 {showRename ? (
@@ -1391,19 +1402,19 @@ export default function SearchScreen() {
                       onChangeText={setRenameValue}
                       autoFocus
                       selectTextOnFocus
-                      placeholder="New name..."
+                      placeholder={tf.newNamePh}
                       placeholderTextColor={colors.textMuted}
                       returnKeyType="done"
                       onSubmitEditing={handleRename}
                     />
                     <View style={styles.renameActions}>
                       <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowRename(false); setRenameValue(''); }}>
-                        <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                        <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>{tc.cancel}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.renameConfirmBtn, renaming && { opacity: 0.6 }]} onPress={handleRename} disabled={renaming}>
                         {renaming
                           ? <ActivityIndicator size="small" color="#fff" />
-                          : <Text style={styles.renameConfirmText}>Rename</Text>
+                          : <Text style={styles.renameConfirmText}>{tf.rename}</Text>
                         }
                       </TouchableOpacity>
                     </View>
@@ -1412,19 +1423,19 @@ export default function SearchScreen() {
                   <>
                     <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
                       <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.copy}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
                       <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.move}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
                       <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
-                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
+                      <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.rename}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                       <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-                      <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+                      <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>{tc.cancel}</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -1452,13 +1463,13 @@ export default function SearchScreen() {
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', color: colors.textPrimary, textAlign: 'center', letterSpacing: -0.5 }} numberOfLines={1}>
-              {pickerMode === 'copy' ? 'Copy to...' : 'Move to...'}
+              {pickerMode === 'copy' ? tf.copyTo : tc.moveTo}
             </Text>
             <View style={{ width: 40 }} />
           </View>
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
           {(() => {
-              let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+              let display = pickerPath.replace('file:///storage/emulated/0/', tf.storage + '/');
               const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
               if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
               try { return decodeURIComponent(display); } catch { return display; }
@@ -1477,7 +1488,7 @@ export default function SearchScreen() {
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.hint, { color: colors.textMuted }]}>This folder is empty</Text></View>
+            <View style={styles.centered}><Text style={[styles.hint, { color: colors.textMuted }]}>{tc.folderEmpty}</Text></View>
           ) : (
             <FlatList
               data={[...pickerItems, ...pickerFiles]}
@@ -1511,11 +1522,11 @@ export default function SearchScreen() {
           )}
           <View style={[styles.pickerFooter, { borderTopColor: colors.border }]}>
             <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
-              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{tc.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pickerPasteBtn} onPress={handlePaste}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.pickerPasteText}>{pickerMode === 'copy' ? 'Copy here' : 'Move here'}</Text>
+              <Text style={styles.pickerPasteText}>{pickerMode === 'copy' ? tf.copyHere : tc.moveHere}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -1571,9 +1582,9 @@ export default function SearchScreen() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Share via QR</Text>
+            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
             <Text style={[styles.qrSub, { color: colors.textMuted }]}>{selectedItem?.name}</Text>
-            <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>Scan with any device on the same WiFi</Text>
+            <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>{tf.scanSameWifi}</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' }}>
               <QRCode value={qrUrl || 'http://localhost:8080'} size={200} />
             </View>
