@@ -29,10 +29,10 @@ export default function CallbackScreen() {
         if (!alive) return;
         if (!provider) { setStatus('failed'); return; }
         // Warm start: Cloud Backup is underneath, so go back to it.
-        // Cold start: nothing is underneath, so rebuild Home > Cloud Backup
-        // so the back button still works.
+        // Cold start: nothing is underneath, so rebuild Pro > Cloud Backup
+        // (the way users always arrive) so the back button still works.
         if (router.canGoBack()) router.dismissTo('/backup');
-        else { router.replace('/(tabs)'); router.push('/backup'); }
+        else { router.replace('/(tabs)/cloud'); router.push('/backup'); }
       })
       .catch(() => { if (alive) setStatus('failed'); });
     return () => { alive = false; };
