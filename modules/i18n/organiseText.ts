@@ -9,6 +9,9 @@ import { arCount as A } from './common';
 const s = (n: number) => (n !== 1 ? 's' : '');
 const H = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
+/** Arabic: exactly 2 uses the dual word on its own (ملفين / ملفان); otherwise number + word. */
+const D = (n: number, one: string, few: string, dual: string) => (n === 2 ? dual : `${n} ${A(n, one, few)}`);
+
 export type OrganiseText = {
   title: string; organise: string; undo: string; dismiss: string; proceed: string;
   noChanges: string; alreadyOrganised: string; protectedFolder: string;
@@ -58,16 +61,16 @@ const TEXT: Record<AppLang, OrganiseText> = {
     couldNotFinish: 'لم أتمكن من إنهاء تنظيم هذا المجلد.', couldNotOrganise: 'لم أتمكن من تنظيم هذا المجلد.',
     intoFolder: (n, f) => `${n} إلى ${f}`,
     create: f => `إنشاء: ${f}`,
-    movedN: n => `تم نقل ${n} ${A(n, 'عنصر', 'عناصر')}.`, noneMoved: 'لم يتم نقل أي عنصر.',
-    createdN: n => `تم إنشاء ${n} ${A(n, 'مجلد', 'مجلدات')}.`, skippedN: n => `تم تخطي ${n}.`,
-    prepFailedN: n => `تعذّر تجهيز ${n} ${A(n, 'مجلد وجهة', 'مجلدات وجهة')}.`, failedN: n => `فشل ${n}.`,
+    movedN: n => `تم نقل ${D(n, 'عنصر', 'عناصر', 'عنصرين')}.`, noneMoved: 'لم يتم نقل أي عنصر.',
+    createdN: n => `تم إنشاء ${D(n, 'مجلد', 'مجلدات', 'مجلدين')}.`, skippedN: n => `تم تخطي ${n}.`,
+    prepFailedN: n => `تعذّر تجهيز ${D(n, 'مجلد وجهة', 'مجلدات وجهة', 'مجلدَي وجهة')}.`, failedN: n => `فشل ${n}.`,
     toFolder: (n, f) => `${n} إلى ${f}`,
     and: 'و',
-    creatingN: n => `، مع إنشاء ${n} ${A(n, 'مجلد', 'مجلدات')}`, reusing: '، باستخدام المجلدات الموجودة هنا',
-    movingN: (n, list, folders) => `سيتم نقل ${n} ${A(n, 'ملف', 'ملفات')}: ${list}${folders}.`,
+    creatingN: n => `، مع إنشاء ${D(n, 'مجلد', 'مجلدات', 'مجلدين')}`, reusing: '، باستخدام المجلدات الموجودة هنا',
+    movingN: (n, list, folders) => `سيتم نقل ${D(n, 'ملف', 'ملفات', 'ملفين')}: ${list}${folders}.`,
     nothingToUndo: 'لا يوجد ما يمكن التراجع عنه.', nothingLeft: 'لم يتبقَّ شيء لإعادته.',
-    putBack: n => `تمت إعادة ${n} ${A(n, 'ملف', 'ملفات')} إلى مكانها.`, noneBack: 'لم تتم إعادة أي ملف.',
-    removedEmpty: n => `تمت إزالة ${n} ${A(n, 'مجلد فارغ', 'مجلدات فارغة')}.`,
+    putBack: n => `تمت إعادة ${D(n, 'ملف', 'ملفات', 'ملفين')} إلى مكانها.`, noneBack: 'لم تتم إعادة أي ملف.',
+    removedEmpty: n => `تمت إزالة ${D(n, 'مجلد فارغ', 'مجلدات فارغة', 'مجلدين فارغين')}.`,
     leftAlone: n => `تم ترك ${n} كما ${n === 1 ? 'هو لأنه نُقل' : 'هي لأنها نُقلت'} منذ ذلك الحين.`,
     couldNotMoveBack: n => `تعذّرت إعادة ${n}.`,
   },

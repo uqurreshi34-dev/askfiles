@@ -2,6 +2,9 @@
 import { AppLang } from '../appLanguage';
 import { arCount } from './common';
 
+/** Arabic: exactly 2 uses the dual word on its own (ملفين / ملفان); otherwise number + word. */
+const D = (n: number, one: string, few: string, dual: string) => (n === 2 ? dual : `${n} ${arCount(n, one, few)}`);
+
 export type VaultText = {
   secureVault: string; vault: string; protectedSub: string;
   unlockBiometrics: string; usePinInstead: string; setUpPin: string; enterPin: string;
@@ -47,15 +50,15 @@ const TEXT: Record<AppLang, VaultText> = {
     proSub: 'الخزنة الآمنة جزء من AskFiles Pro. ادفع مرة واحدة واستخدمها للأبد.',
     moveOut: 'إخراج', moveOutOfVault: 'إخراج من الخزنة',
     empty: 'الخزنة فارغة', emptySub: 'اضغط مطوّلاً على أي ملف — أو اضغط ⋮ — واختر «نقل إلى الخزنة»',
-    secured: n => `${n} ${arCount(n, 'ملف محمي', 'ملفات محمية')}`,
+    secured: n => `${D(n, 'ملف محمي', 'ملفات محمية', 'ملفان محميان')}`,
     existsInFolder: name => `«${name}» موجود بالفعل في هذا المجلد.`,
     existsHere: name => `«${name}» موجود بالفعل في هذا المكان.`,
-    nExist: n => `${n} ${arCount(n, 'ملف', 'ملفات')} موجودة بالفعل في هذا المكان ولم يمكن نقلها.`,
+    nExist: n => n === 2 ? 'ملفان موجودان بالفعل في هذا المكان ولم يمكن نقلهما.' : `${D(n, 'ملف', 'ملفات', 'ملفان')} موجودة بالفعل في هذا المكان ولم يمكن نقلها.`,
     movedOne: name => `تم إخراج «${name}» من الخزنة بنجاح.`,
-    movedN: n => `تم إخراج ${n} ${arCount(n, 'ملف', 'ملفات')} من الخزنة.`,
-    partial: (m, f) => `تم نقل ${m} ${arCount(m, 'ملف', 'ملفات')}. تعذّر نقل ${f} لأنها موجودة بالفعل في هذا المكان.`,
+    movedN: n => `تم إخراج ${D(n, 'ملف', 'ملفات', 'ملفين')} من الخزنة.`,
+    partial: (m, f) => `تم نقل ${D(m, 'ملف', 'ملفات', 'ملفين')}. تعذّر نقل ${f} لأنها موجودة بالفعل في هذا المكان.`,
     couldNotMove: 'تعذّر إخراج الملف من الخزنة.',
-    deleteN: n => `حذف ${n} ${arCount(n, 'ملف', 'ملفات')} من الخزنة؟ لا يمكن التراجع عن ذلك.`,
+    deleteN: n => `حذف ${D(n, 'ملف', 'ملفات', 'ملفين')} من الخزنة؟ لا يمكن التراجع عن ذلك.`,
     deleteOne: name => `حذف «${name}» نهائياً؟ لا يمكن التراجع عن ذلك.`,
   },
   hi: {

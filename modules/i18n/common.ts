@@ -12,6 +12,9 @@ export function arCount(n: number, one: string, few: string) {
   return n >= 2 && n <= 10 ? few : one;
 }
 
+/** Arabic: exactly 2 uses the dual word on its own (ملفين / ملفان); otherwise number + word. */
+const D = (n: number, one: string, few: string, dual: string) => (n === 2 ? dual : `${n} ${arCount(n, one, few)}`);
+
 export type CommonText = {
   cancel: string; delete: string; ok: string; done: string; open: string;
   share: string; info: string; error: string; all: string;
@@ -77,10 +80,10 @@ const AR: CommonText = {
   resolution: 'الدقة', duration: 'المدة', dateTaken: 'تاريخ الالتقاط', recorded: 'تاريخ التسجيل',
   camera: 'الكاميرا', iso: 'ISO', aperture: 'فتحة العدسة', shutter: 'سرعة الغالق', gps: 'الموقع (GPS)',
   justNow: 'الآن',
-  minsAgo: n => `منذ ${n} ${arCount(n, 'دقيقة', 'دقائق')}`,
-  hoursAgo: n => `منذ ${n} ${arCount(n, 'ساعة', 'ساعات')}`,
-  daysAgo: n => `منذ ${n} ${arCount(n, 'يوم', 'أيام')}`,
-  monthsAgo: n => `منذ ${n} ${arCount(n, 'شهر', 'أشهر')}`,
+  minsAgo: n => `منذ ${D(n, 'دقيقة', 'دقائق', 'دقيقتين')}`,
+  hoursAgo: n => `منذ ${D(n, 'ساعة', 'ساعات', 'ساعتين')}`,
+  daysAgo: n => `منذ ${D(n, 'يوم', 'أيام', 'يومين')}`,
+  monthsAgo: n => `منذ ${D(n, 'شهر', 'أشهر', 'شهرين')}`,
   dateLocale: 'ar-u-nu-latn',
 };
 
@@ -118,7 +121,8 @@ export function commonText(lang: AppLang = getLanguage()): CommonText {
  * Words the native file lists draw themselves (folder counts, "3 months
  * ago", date headers, empty folder). Passed as the lists' "strings" prop.
  * Each language is one fixed object, so the prop only changes when the
- * language does. "{n}" is the number; _one is 1, _few 2-10, _many 11+.
+ * language does. "{n}" is the number; _one is 1, _two is 2 (Arabic dual; other
+ * languages fall back to _few), _few 2-10, _many 11+.
  */
 const LIST_EN: Record<string, string> = {
   folderEmpty: 'This folder is empty', folder: 'Folder', empty: 'Empty',
@@ -133,13 +137,13 @@ const LIST_EN: Record<string, string> = {
 };
 const LIST_AR: Record<string, string> = {
   folderEmpty: 'هذا المجلد فارغ', folder: 'مجلد', empty: 'فارغ',
-  items_one: 'عنصر واحد', items_few: '{n} عناصر', items_many: '{n} عنصر',
+  items_one: 'عنصر واحد', items_two: 'عنصران', items_few: '{n} عناصر', items_many: '{n} عنصراً',
   today: 'اليوم', yesterday: 'أمس', last7: 'آخر 7 أيام', last30: 'آخر 30 يوماً', older: 'أقدم',
   justNow: 'الآن',
-  mins_one: 'منذ دقيقة', mins_few: 'منذ {n} دقائق', mins_many: 'منذ {n} دقيقة',
-  hours_one: 'منذ ساعة', hours_few: 'منذ {n} ساعات', hours_many: 'منذ {n} ساعة',
-  days_one: 'منذ يوم', days_few: 'منذ {n} أيام', days_many: 'منذ {n} يوماً',
-  months_one: 'منذ شهر', months_few: 'منذ {n} أشهر', months_many: 'منذ {n} شهراً',
+  mins_one: 'منذ دقيقة', mins_two: 'منذ دقيقتين', mins_few: 'منذ {n} دقائق', mins_many: 'منذ {n} دقيقة',
+  hours_one: 'منذ ساعة', hours_two: 'منذ ساعتين', hours_few: 'منذ {n} ساعات', hours_many: 'منذ {n} ساعة',
+  days_one: 'منذ يوم', days_two: 'منذ يومين', days_few: 'منذ {n} أيام', days_many: 'منذ {n} يوماً',
+  months_one: 'منذ شهر', months_two: 'منذ شهرين', months_few: 'منذ {n} أشهر', months_many: 'منذ {n} شهراً',
   locale: 'ar-u-nu-latn',
 };
 const LIST_HI: Record<string, string> = {

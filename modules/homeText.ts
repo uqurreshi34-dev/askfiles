@@ -13,6 +13,9 @@ function ar(n: number, one: string, few: string) {
   return n >= 2 && n <= 10 ? few : one;
 }
 
+/** Arabic: exactly 2 uses the dual word on its own (ملفين / ملفان); otherwise number + word. */
+const D = (n: number, one: string, few: string, dual: string) => (n === 2 ? dual : `${n} ${ar(n, one, few)}`);
+
 export type HomeText = {
   // Header area
   searchFiles: string;
@@ -227,10 +230,10 @@ const AR: HomeText = {
   timeAgo: ts => ago(
     ts,
     'الآن',
-    n => `منذ ${n} ${ar(n, 'دقيقة', 'دقائق')}`,
-    n => `منذ ${n} ${ar(n, 'ساعة', 'ساعات')}`,
+    n => `منذ ${D(n, 'دقيقة', 'دقائق', 'دقيقتين')}`,
+    n => `منذ ${D(n, 'ساعة', 'ساعات', 'ساعتين')}`,
     'أمس',
-    n => `منذ ${n} ${ar(n, 'يوم', 'أيام')}`,
+    n => `منذ ${D(n, 'يوم', 'أيام', 'يومين')}`,
   ),
   fullAccessTitle: 'مطلوب الوصول الكامل إلى التخزين',
   fullAccessSub: 'اضغط للتفعيل — مطلوب للتصفح والمستندات وعمليات الملفات',
@@ -262,7 +265,7 @@ const AR: HomeText = {
   rateAskFiles: 'قيّم AskFiles',
   maybeLater: 'لاحقاً',
   saveScanAs: 'حفظ المسح بصيغة',
-  pagesScanned: n => `تم مسح ${n} ${ar(n, 'صفحة', 'صفحات')}`,
+  pagesScanned: n => `تم مسح ${D(n, 'صفحة', 'صفحات', 'صفحتين')}`,
   imagesJpg: 'صور (JPG)',
   scanFailed: 'فشل المسح',
   scanFailedMsg: 'تعذّر إكمال المسح',
@@ -273,7 +276,7 @@ const AR: HomeText = {
   deleteTagMsg: name => `حذف «${name}» وإزالته من كل الملفات؟`,
   delete: 'حذف',
   saved: 'تم الحفظ',
-  imagesSaved: (n, where) => `تم حفظ ${n} ${ar(n, 'صورة', 'صور')} في ${where}`,
+  imagesSaved: (n, where) => `تم حفظ ${D(n, 'صورة', 'صور', 'صورتين')} في ${where}`,
   pdfSaved: where => `تم حفظ ملف PDF في ${where}`,
   internalStorage: 'التخزين الداخلي',
   chooseLocation: 'اختر المكان',

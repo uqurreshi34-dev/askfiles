@@ -42,7 +42,13 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private var strings: Map<String, String> = emptyMap()
     private fun str(key: String, fallback: String) = strings[key] ?: fallback
     private fun countText(base: String, n: Long, enOne: String, enMany: String): String {
-        val key = when { n == 1L -> "${base}_one"; n in 2L..10L -> "${base}_few"; else -> "${base}_many" }
+        // Arabic has its own word for exactly 2 (the dual); other languages send no _two and use _few.
+        val key = when {
+            n == 1L -> "${base}_one"
+            n == 2L && strings.containsKey("${base}_two") -> "${base}_two"
+            n in 2L..10L -> "${base}_few"
+            else -> "${base}_many"
+        }
         return str(key, if (n == 1L) enOne else enMany).replace("{n}", n.toString())
     }
 

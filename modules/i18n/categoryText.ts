@@ -11,6 +11,8 @@ export type Cat = 'images' | 'videos' | 'documents' | 'downloads';
 
 /** Arabic: 1, 2-10, 11+ */
 const ar3 = (n: number, one: string, few: string, many: string) => (n === 1 ? one : n >= 2 && n <= 10 ? few : many);
+/** Arabic: exactly 2 is the dual word on its own; otherwise number + word. */
+const arN = (n: number, words: [string, string, string], dual: string) => (n === 2 ? dual : `${n} ${ar3(n, ...words)}`);
 
 const EN_NOUN: Record<Cat, [string, string]> = {
   images: ['image', 'images'], videos: ['video', 'videos'],
@@ -23,6 +25,13 @@ const AR_NOUN: Record<Cat, [string, string, string]> = {
   videos: ['فيديو', 'مقاطع فيديو', 'مقطع فيديو'],
   documents: ['مستند', 'مستندات', 'مستنداً'],
   downloads: ['ملف منزّل', 'ملفات منزّلة', 'ملفاً منزّلاً'],
+};
+// Dual (2): after a verb or preposition / standing alone
+const AR_DUAL: Record<Cat, [string, string]> = {
+  images: ['صورتين', 'صورتان'],
+  videos: ['مقطعَي فيديو', 'مقطعا فيديو'],
+  documents: ['مستندين', 'مستندان'],
+  downloads: ['ملفين منزّلين', 'ملفان منزّلان'],
 };
 const AR_TITLE: Record<Cat, string> = { images: 'الصور', videos: 'الفيديو', documents: 'المستندات', downloads: 'التنزيلات' };
 const AR_NONE: Record<Cat, string> = { images: 'لا توجد صور', videos: 'لا توجد مقاطع فيديو', documents: 'لا توجد مستندات', downloads: 'لا توجد تنزيلات' };
@@ -82,23 +91,23 @@ const TEXT: Record<AppLang, CategoryText> = {
   },
   ar: {
     title: c => AR_TITLE[c],
-    selected: (c, n) => `تم تحديد ${n} ${ar3(n, ...AR_NOUN[c])}`,
-    count: (c, n) => `${n} ${ar3(n, ...AR_NOUN[c])}`,
+    selected: (c, n) => `تم تحديد ${arN(n, AR_NOUN[c], AR_DUAL[c][0])}`,
+    count: (c, n) => arN(n, AR_NOUN[c], AR_DUAL[c][1]),
     none: c => AR_NONE[c],
     search: c => AR_SEARCH[c],
     tab: t => TAB.ar[t] ?? t,
-    typeCount: (t, n) => `${n} ${ar3(n, 'ملف', 'ملفات', 'ملفاً')} ${TAB.ar[t] ?? t}`,
+    typeCount: (t, n) => `${arN(n, ['ملف', 'ملفات', 'ملفاً'], 'ملفا')} ${TAB.ar[t] ?? t}`,
     typeNone: t => `لا توجد ملفات ${TAB.ar[t] ?? t}`,
     exitFolders: 'الخروج من المجلدات', viewFolders: 'عرض المجلدات', sort: 'ترتيب', slideshow: 'عرض الشرائح', play: 'تشغيل',
     faved: 'في المفضلة', favourite: 'تفضيل', partlyDone: 'اكتمل جزئياً',
     addedToFavourites: 'تمت الإضافة إلى المفضلة', removedFromFavourites: 'تمت الإزالة من المفضلة',
     addedShort: name => `تمت إضافة «${name}».`, removedShort: name => `تمت إزالة «${name}».`,
     couldNotRenameFile: 'تعذّرت إعادة تسمية هذا الملف.',
-    nDone: (n, copy) => `تم ${copy ? 'نسخ' : 'نقل'} ${n} ${ar3(n, 'عنصر', 'عناصر', 'عنصراً')}`,
+    nDone: (n, copy) => `تم ${copy ? 'نسخ' : 'نقل'} ${arN(n, ['عنصر', 'عناصر', 'عنصراً'], 'عنصرين')}`,
     nSkippedDupes: n => `تم تخطي ${n} (أسماء مكررة)`,
     nFailedUnreadable: n => `فشل ${n} (غير قابلة للقراءة أو تالفة)`,
-    trashNFiles: n => `نقل ${n} ${ar3(n, 'ملف', 'ملفات', 'ملفاً')} إلى المهملات؟ ستُحذف بعد 30 يوماً.`,
-    nFilesSelected: n => `تم تحديد ${n} ${ar3(n, 'ملف', 'ملفات', 'ملفاً')}`,
+    trashNFiles: n => `نقل ${arN(n, ['ملف', 'ملفات', 'ملفاً'], 'ملفين')} إلى المهملات؟ ستُحذف بعد 30 يوماً.`,
+    nFilesSelected: n => `تم تحديد ${arN(n, ['ملف', 'ملفات', 'ملفاً'], 'ملفين')}`,
   },
   hi: {
     title: c => ({ images: 'इमेज', videos: 'वीडियो', documents: 'डॉक्यूमेंट', downloads: 'डाउनलोड' } as Record<Cat, string>)[c],
