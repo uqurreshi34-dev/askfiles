@@ -52,6 +52,10 @@ class BrowseListModule : Module() {
                 view.setColors(colors)
             }
 
+            Prop("strings") { view: BrowseListView, strings: Map<String, String> ->
+                view.setStrings(strings)
+            }
+
             Prop("showFastScroll") { view: BrowseListView, enabled: Boolean ->
                 view.setShowFastScroll(enabled)
             }

@@ -35,6 +35,24 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     private val adapter = FileAdapter()
     private var items: List<FileItem> = emptyList()
     private var folderCounts: Map<String, Int> = emptyMap()
+
+    // Words drawn by the list, in the app's language. Sent from JS as the
+    // "strings" prop; English is used until it arrives. "{n}" is the number.
+    // Counts use _one (1), _few (2-10) and _many (11+) so Arabic plurals work.
+    private var strings: Map<String, String> = emptyMap()
+    private fun str(key: String, fallback: String) = strings[key] ?: fallback
+    private fun countText(base: String, n: Long, enOne: String, enMany: String): String {
+        val key = when { n == 1L -> "${base}_one"; n in 2L..10L -> "${base}_few"; else -> "${base}_many" }
+        return str(key, if (n == 1L) enOne else enMany).replace("{n}", n.toString())
+    }
+
+    fun setStrings(raw: Map<String, String>) {
+        strings = raw
+        if (::emptyText.isInitialized) emptyText.text = str("folderEmpty", "This folder is empty")
+        headerDecoration.invalidateLabels()
+        recyclerView.invalidateItemDecorations()
+        adapter.notifyItemRangeChanged(0, items.size, PAYLOAD_META)
+    }
     private var favouriteUris: Set<String> = emptySet()
     private var tagsByUri: Map<String, List<TagChip>> = emptyMap()
     private var selectedUris: Set<String> = emptySet()
@@ -155,7 +173,7 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
             layoutParams = LinearLayout.LayoutParams((48 * dp).toInt(), (48 * dp).toInt())
         }
         emptyText = TextView(context).apply {
-            text = "This folder is empty"
+            text = str("folderEmpty", "This folder is empty")
             textSize = 14f
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -435,16 +453,16 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
     }
 
     private fun dateBucket(ms: Long): String {
-        if (ms == 0L) return "Older"
+        if (ms == 0L) return str("older", "Older")
         val msActual = if (ms < 10_000_000_000L) ms * 1000L else ms
         val now = System.currentTimeMillis()
         val days = (now - msActual) / 86_400_000
         return when {
-            days < 1 -> "Today"
-            days < 2 -> "Yesterday"
-            days < 7 -> "Last 7 Days"
-            days < 30 -> "Last 30 Days"
-            else -> "Older"
+            days < 1 -> str("today", "Today")
+            days < 2 -> str("yesterday", "Yesterday")
+            days < 7 -> str("last7", "Last 7 Days")
+            days < 30 -> str("last30", "Last 30 Days")
+            else -> str("older", "Older")
         }
     }
 
@@ -612,9 +630,9 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
                 chevron.visibility = View.VISIBLE
                 dotsBtn.visibility = View.GONE
                 when {
-                    count == null -> "Folder"
-                    count == 0 -> "Empty"
-                    else -> "$count item${if (count != 1) "s" else ""}"
+                    count == null -> str("folder", "Folder")
+                    count == 0 -> str("empty", "Empty")
+                    else -> countText("items", count.toLong(), "1 item", "{n} items")
                 }
             } else {
                 bookmarkBtn.visibility = View.GONE
@@ -830,13 +848,13 @@ class BrowseListView(context: Context, appContext: AppContext) : ExpoView(contex
         val days = diff / 86_400_000
         val months = days / 30
         return when {
-            mins < 1 -> "Just now"
-            mins < 60 -> "$mins min ago"
-            hours < 24 -> "$hours hour${if (hours != 1L) "s" else ""} ago"
-            days < 30 -> "$days day${if (days != 1L) "s" else ""} ago"
-            months < 12 -> "$months month${if (months != 1L) "s" else ""} ago"
+            mins < 1 -> str("justNow", "Just now")
+            mins < 60 -> countText("mins", mins, "1 min ago", "{n} min ago")
+            hours < 24 -> countText("hours", hours, "1 hour ago", "{n} hours ago")
+            days < 30 -> countText("days", days, "1 day ago", "{n} days ago")
+            months < 12 -> countText("months", months, "1 month ago", "{n} months ago")
             else -> {
-                val sdf = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault())
+                val sdf = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.forLanguageTag(str("locale", "en-GB")))
                 sdf.format(java.util.Date(msActual))
             }
         }

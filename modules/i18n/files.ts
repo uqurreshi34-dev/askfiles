@@ -182,6 +182,7 @@ export type FilesText = {
   fileCouldNotOpen: string;
   docs: string;
   downloads: string;
+  namePlaceholder: string;
   imagesSavedScans: (n: number) => string;
   pagesSaved: (n: number, name: string) => string;
   pdfsMerged: (n: number) => string;
@@ -230,6 +231,12 @@ export type FilesText = {
   movingNToTrash: (n: number) => string;
   tagsCount: (n: number) => string;
   pillTitle: (move: boolean, n: number) => string;
+  movingNToVault: (n: number) => string;
+  creatingPdfProgress: (cur: number, total: number) => string;
+  extractingPageProgress: (cur: number, total: number) => string;
+  mergingPdfProgress: (cur: number, total: number) => string;
+  renameNFiles: (n: number) => string;
+  filesWillBeNamed: (base: string) => string;
 };
 
 const EN: FilesText = {
@@ -402,6 +409,7 @@ const EN: FilesText = {
   fileCouldNotOpen: 'This file could not be opened. It may have been moved or deleted.',
   docs: 'Docs',
   downloads: 'Downloads',
+  namePlaceholder: 'name',
   imagesSavedScans: (n: number) => `${n} image${s(n)} saved to Documents/Scans`,
   pagesSaved: (n: number, name: string) => `${n} page${s(n)} saved to Documents/Scans/${name}_pages`,
   pdfsMerged: (n: number) => `${n} PDFs merged successfully. Saved to Documents/Scans.`,
@@ -450,6 +458,12 @@ const EN: FilesText = {
   movingNToTrash: (n: number) => `Moving ${n} file${s(n)} to Trash...`,
   tagsCount: (n: number) => `Tags (${n})`,
   pillTitle: (move: boolean, n: number) => `${move ? 'Move' : 'Copy'} ${n} item${s(n)} into…`,
+  movingNToVault: (n: number) => `Moving ${n} file${s(n)} to Vault...`,
+  creatingPdfProgress: (cur: number, total: number) => `Creating PDF... ${cur} of ${total}`,
+  extractingPageProgress: (cur: number, total: number) => `Extracting page ${cur} of ${total}...`,
+  mergingPdfProgress: (cur: number, total: number) => `Merging PDF ${cur} of ${total}...`,
+  renameNFiles: (n: number) => `Rename ${n} file${s(n)}`,
+  filesWillBeNamed: (base: string) => `Files will be named: ${base}_1, ${base}_2...`,
 };
 
 const AR: FilesText = {
@@ -622,6 +636,7 @@ const AR: FilesText = {
   fileCouldNotOpen: 'تعذّر فتح هذا الملف. ربما تم نقله أو حذفه.',
   docs: 'المستندات',
   downloads: 'التنزيلات',
+  namePlaceholder: 'الاسم',
   imagesSavedScans: (n: number) => `تم حفظ ${n} ${A(n,'صورة','صور')} في Documents/Scans`,
   pagesSaved: (n: number, name: string) => `تم حفظ ${n} ${A(n,'صفحة','صفحات')} في Documents/Scans/${name}_pages`,
   pdfsMerged: (n: number) => `تم دمج ${n} ${A(n,'ملف PDF','ملفات PDF')} بنجاح. حُفظت في Documents/Scans.`,
@@ -670,6 +685,12 @@ const AR: FilesText = {
   movingNToTrash: (n: number) => `جارٍ نقل ${n} ${A(n,'ملف','ملفات')} إلى المهملات...`,
   tagsCount: (n: number) => `الوسوم (${n})`,
   pillTitle: (move: boolean, n: number) => `${move ? 'نقل' : 'نسخ'} ${n} ${A(n,'عنصر','عناصر')} إلى…`,
+  movingNToVault: (n: number) => `جارٍ نقل ${n} ${A(n,'ملف','ملفات')} إلى الخزنة...`,
+  creatingPdfProgress: (cur: number, total: number) => `جارٍ إنشاء PDF... ${cur} من ${total}`,
+  extractingPageProgress: (cur: number, total: number) => `جارٍ استخراج الصفحة ${cur} من ${total}...`,
+  mergingPdfProgress: (cur: number, total: number) => `جارٍ دمج ملف PDF ${cur} من ${total}...`,
+  renameNFiles: (n: number) => `إعادة تسمية ${n} ${A(n,'ملف','ملفات')}`,
+  filesWillBeNamed: (base: string) => `ستُسمّى الملفات: ${base}_1، ${base}_2...`,
 };
 
 const HI: FilesText = {
@@ -842,6 +863,7 @@ const HI: FilesText = {
   fileCouldNotOpen: 'यह फ़ाइल नहीं खुल सकी। हो सकता है इसे मूव या डिलीट किया गया हो।',
   docs: 'डॉक्स',
   downloads: 'डाउनलोड',
+  namePlaceholder: 'नाम',
   imagesSavedScans: (n: number) => `${n} ${H(n,'इमेज','इमेज')} Documents/Scans में सेव ${n === 1 ? 'हुई' : 'हुईं'}`,
   pagesSaved: (n: number, name: string) => `${n} पेज Documents/Scans/${name}_pages में सेव ${n === 1 ? 'हुआ' : 'हुए'}`,
   pdfsMerged: (n: number) => `${n} PDF सफलतापूर्वक जुड़ गईं। Documents/Scans में सेव की गईं।`,
@@ -890,6 +912,12 @@ const HI: FilesText = {
   movingNToTrash: (n: number) => `${n} ${H(n,'फ़ाइल','फ़ाइलें')} ट्रैश में जा रही हैं...`,
   tagsCount: (n: number) => `टैग (${n})`,
   pillTitle: (move: boolean, n: number) => `${n} ${H(n,'आइटम','आइटम')} यहाँ ${move ? 'मूव' : 'कॉपी'} करें…`,
+  movingNToVault: (n: number) => `${n} ${H(n,'फ़ाइल','फ़ाइलें')} Vault में जा रही हैं...`,
+  creatingPdfProgress: (cur: number, total: number) => `PDF बन रही है... ${total} में से ${cur}`,
+  extractingPageProgress: (cur: number, total: number) => `${total} में से पेज ${cur} निकाला जा रहा है...`,
+  mergingPdfProgress: (cur: number, total: number) => `${total} में से PDF ${cur} जोड़ी जा रही है...`,
+  renameNFiles: (n: number) => `${n} ${H(n,'फ़ाइल','फ़ाइलों')} के नाम बदलें`,
+  filesWillBeNamed: (base: string) => `फ़ाइलों के नाम होंगे: ${base}_1, ${base}_2...`,
 };
 
 const TEXT: Record<AppLang, FilesText> = { en: EN, ar: AR, hi: HI };

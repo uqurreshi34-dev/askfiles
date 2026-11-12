@@ -23,6 +23,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { filesText } from '@/modules/i18n/files';
+import { listStrings } from '@/modules/i18n/common';
 import { shareFiles, openFile as openFileNative, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { useTrash } from '@/hooks/useTrash';
 import { DocIndexer } from '@/modules/doc-indexer';
@@ -1632,7 +1633,7 @@ export default function BrowseScreen() {
             <TouchableOpacity onPress={() => { setSelectMode(false); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }} style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 }} disabled={multiPasting || deleting}>
               <Text style={{ fontSize: 13, color: (multiPasting || deleting) ? colors.textDisabled : colors.textSecondary }}>{tc.cancel}</Text>
             </TouchableOpacity>
-              <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{shownCount} item{shownCount !== 1 ? 's' : ''} selected</Text>
+              <Text style={{ flex: 1, fontSize: 13, color: colors.textMuted }}>{tf.nItemsSelected(shownCount)}</Text>
             <TouchableOpacity
               onPress={() => {
                 const allFiles = items;
@@ -1754,7 +1755,7 @@ export default function BrowseScreen() {
       {vaulting && (
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={[styles.busyText, { color: colors.blue }]}>Moving {vaultingTotal} file{vaultingTotal !== 1 ? 's' : ''} to Vault...</Text>
+          <Text style={[styles.busyText, { color: colors.blue }]}>{tf.movingNToVault(vaultingTotal)}</Text>
         </View>
       )}
       {deleting && (
@@ -1786,19 +1787,19 @@ export default function BrowseScreen() {
       {creatingPdf && pdfProgress && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Creating PDF... {pdfProgress.current} of {pdfProgress.total}</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{tf.creatingPdfProgress(pdfProgress.current, pdfProgress.total)}</Text>
         </View>
       )}
       {extractingPdf && pdfProgress && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Extracting page {pdfProgress.current} of {pdfProgress.total}...</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{tf.extractingPageProgress(pdfProgress.current, pdfProgress.total)}</Text>
         </View>
       )}
       {mergingPdf && pdfProgress && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Merging PDF {pdfProgress.current} of {pdfProgress.total}...</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{tf.mergingPdfProgress(pdfProgress.current, pdfProgress.total)}</Text>
         </View>
       )}
       {extractingText && (
@@ -1809,6 +1810,7 @@ export default function BrowseScreen() {
       )}
       <View style={{ flex: 1 }}>
       <BrowseListView
+          strings={listStrings(lang)}
           loading={loading}
           favouriteUris={favUriList}
           fileTags={fileTagsForNative}
@@ -2037,7 +2039,7 @@ export default function BrowseScreen() {
                         ])}>
                         <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
                         <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
-                          Move to Vault{!isPro ? '  🔒' : ''}
+                          {tf.moveToVault}{!isPro ? '  🔒' : ''}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -2512,7 +2514,9 @@ export default function BrowseScreen() {
       </Modal>
       {/* Sort sheet */}
       <Modal visible={showSortSheet} transparent animationType="fade" onRequestClose={() => setShowSortSheet(false)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }} activeOpacity={1} onPress={() => setShowSortSheet(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'flex-end', alignItems: SCREEN_WIDTH > SCREEN_HEIGHT ? 'center' : 'stretch' }}>
+          {/* Backdrop behind the sheet: tapping outside closes it, and the sheet scrolls freely. */}
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowSortSheet(false)} />
           <View style={{ backgroundColor: colors.card, borderRadius: SCREEN_WIDTH > SCREEN_HEIGHT ? 20 : 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 8, paddingBottom: insets.bottom + 24, width: SCREEN_WIDTH > SCREEN_HEIGHT ? '50%' : undefined, maxHeight: SCREEN_HEIGHT * 0.85 }}>
             {SCREEN_WIDTH > SCREEN_HEIGHT ? (
               <TouchableOpacity onPress={() => setShowSortSheet(false)} style={{ alignSelf: 'flex-end', padding: 4, marginBottom: 4 }}>
@@ -2521,8 +2525,9 @@ export default function BrowseScreen() {
             ) : (
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.textDisabled, alignSelf: 'center', marginBottom: 16 }} />
             )}
+            {/* Options and the hidden-files switch scroll together; Cancel stays pinned below. */}
+            <ScrollView showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never" style={{ flexGrow: 0, flexShrink: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{tf.sortBy}</Text>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
               {([
                 { key: 'name_asc', label: tf.nameAZ },
                 { key: 'name_desc', label: tf.nameZA },
@@ -2542,7 +2547,6 @@ export default function BrowseScreen() {
                   {sortKey === key && <Ionicons name="checkmark" size={18} color={colors.blue} />}
                 </TouchableOpacity>
               ))}
-            </ScrollView>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 0.5, borderTopColor: colors.border, marginTop: 4 }}
               onPress={toggleHidden}
@@ -2555,11 +2559,12 @@ export default function BrowseScreen() {
                 <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: showHidden ? 'flex-end' : 'flex-start' }} />
               </View>
             </TouchableOpacity>
+            </ScrollView>
             <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: colors.surface, borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
               <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>{tc.cancel}</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
       {/* FAB — only when not in select mode */}
       {!selectMode && (
@@ -2767,14 +2772,14 @@ export default function BrowseScreen() {
             <Pressable style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
-                  Rename {Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory).length} file{Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory).length !== 1 ? 's' : ''}
+                  {tf.renameNFiles(Array.from(selectedItemsMap.values()).filter(f => !f.isDirectory).length)}
                 </Text>
                 <TouchableOpacity onPress={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
                   <Ionicons name="close" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
               <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
-                Files will be named: {multiRenameBase.trim() || 'name'}_1, {multiRenameBase.trim() || 'name'}_2...
+                {tf.filesWillBeNamed(multiRenameBase.trim() || tf.namePlaceholder)}
               </Text>
               <TextInput
                 style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, marginBottom: 16 }}

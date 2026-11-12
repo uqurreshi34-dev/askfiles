@@ -113,3 +113,48 @@ const TEXT: Record<AppLang, CommonText> = { en: EN, ar: AR, hi: HI };
 export function commonText(lang: AppLang = getLanguage()): CommonText {
   return TEXT[lang];
 }
+
+/**
+ * Words the native file lists draw themselves (folder counts, "3 months
+ * ago", date headers, empty folder). Passed as the lists' "strings" prop.
+ * Each language is one fixed object, so the prop only changes when the
+ * language does. "{n}" is the number; _one is 1, _few 2-10, _many 11+.
+ */
+const LIST_EN: Record<string, string> = {
+  folderEmpty: 'This folder is empty', folder: 'Folder', empty: 'Empty',
+  items_one: '1 item', items_few: '{n} items', items_many: '{n} items',
+  today: 'Today', yesterday: 'Yesterday', last7: 'Last 7 Days', last30: 'Last 30 Days', older: 'Older',
+  justNow: 'Just now',
+  mins_one: '1 min ago', mins_few: '{n} min ago', mins_many: '{n} min ago',
+  hours_one: '1 hour ago', hours_few: '{n} hours ago', hours_many: '{n} hours ago',
+  days_one: '1 day ago', days_few: '{n} days ago', days_many: '{n} days ago',
+  months_one: '1 month ago', months_few: '{n} months ago', months_many: '{n} months ago',
+  locale: 'en-GB',
+};
+const LIST_AR: Record<string, string> = {
+  folderEmpty: 'هذا المجلد فارغ', folder: 'مجلد', empty: 'فارغ',
+  items_one: 'عنصر واحد', items_few: '{n} عناصر', items_many: '{n} عنصر',
+  today: 'اليوم', yesterday: 'أمس', last7: 'آخر 7 أيام', last30: 'آخر 30 يوماً', older: 'أقدم',
+  justNow: 'الآن',
+  mins_one: 'منذ دقيقة', mins_few: 'منذ {n} دقائق', mins_many: 'منذ {n} دقيقة',
+  hours_one: 'منذ ساعة', hours_few: 'منذ {n} ساعات', hours_many: 'منذ {n} ساعة',
+  days_one: 'منذ يوم', days_few: 'منذ {n} أيام', days_many: 'منذ {n} يوماً',
+  months_one: 'منذ شهر', months_few: 'منذ {n} أشهر', months_many: 'منذ {n} شهراً',
+  locale: 'ar-u-nu-latn',
+};
+const LIST_HI: Record<string, string> = {
+  folderEmpty: 'यह फ़ोल्डर खाली है', folder: 'फ़ोल्डर', empty: 'खाली',
+  items_one: '1 आइटम', items_few: '{n} आइटम', items_many: '{n} आइटम',
+  today: 'आज', yesterday: 'कल', last7: 'पिछले 7 दिन', last30: 'पिछले 30 दिन', older: 'पुरानी',
+  justNow: 'अभी',
+  mins_one: '1 मिनट पहले', mins_few: '{n} मिनट पहले', mins_many: '{n} मिनट पहले',
+  hours_one: '1 घंटा पहले', hours_few: '{n} घंटे पहले', hours_many: '{n} घंटे पहले',
+  days_one: '1 दिन पहले', days_few: '{n} दिन पहले', days_many: '{n} दिन पहले',
+  months_one: '1 महीना पहले', months_few: '{n} महीने पहले', months_many: '{n} महीने पहले',
+  locale: 'hi-IN',
+};
+const LISTS: Record<AppLang, Record<string, string>> = { en: LIST_EN, ar: LIST_AR, hi: LIST_HI };
+
+export function listStrings(lang: AppLang = getLanguage()): Record<string, string> {
+  return LISTS[lang];
+}

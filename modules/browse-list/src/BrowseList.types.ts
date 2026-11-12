@@ -17,4 +17,6 @@ export type BrowseListViewProps = {
   onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
   style?: StyleProp<ViewStyle>;
   favouriteUris?: string[];
+  /** Words the native list draws, in the app's language (see listStrings in modules/i18n/common.ts). */
+  strings?: Record<string, string>;
 };
