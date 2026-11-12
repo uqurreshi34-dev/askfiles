@@ -45,8 +45,12 @@ const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/'
 
 export default function HomeScreen() {
   const { colors, dark, toggleTheme, palette, setPalette } = useTheme();
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
-  const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+  // Landscape is short but wide: a wider card lets each line fit on one row,
+  // so What's New fits without scrolling and Settings needs far less of it.
+  const modalWidth = SCREEN_WIDTH > SCREEN_HEIGHT
+    ? Math.min(460, SCREEN_WIDTH * 0.7)
+    : Math.min(280, SCREEN_WIDTH * 0.8);
   const { recents, reload } = useRecents();
   const router = useRouter();
   const lang = useLanguage();
@@ -271,7 +275,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => setSettingsVisible(false)}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
-            <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled">
+            <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
@@ -401,7 +405,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
-              <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never">
+              <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.whatsNew}</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
