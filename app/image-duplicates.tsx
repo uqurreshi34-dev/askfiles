@@ -9,6 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useImageDuplicates } from '@/hooks/useImageDuplicates';
 import { ImageDuplicateGroup, ImageDuplicateFile } from '@/modules/image-hash';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { dupText } from '@/modules/i18n/dupText';
 import { usePro } from '@/hooks/usePro';
 import { getFriendlyPath } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
@@ -16,6 +19,9 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 export default function ImageDuplicatesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const td = dupText(lang);
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const { groups, scanning, scanned, totalWasted, listVersion, scan, deleteFile, deleteAllButOne, formatSize, progress } = useImageDuplicates();
   const { isPro } = usePro();
@@ -29,12 +35,12 @@ export default function ImageDuplicatesScreen() {
 
   async function handleDelete(group: ImageDuplicateGroup, file: ImageDuplicateFile) {
     Alert.alert(
-      'Delete image',
-      'Delete this copy? This cannot be undone.',
+      td.deleteImage,
+      td.deleteCopyMsg,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tc.cancel, style: 'cancel' },
         {
-          text: 'Delete',
+          text: tc.delete,
           style: 'destructive',
           onPress: async () => {
             setDeleting(file.uri);
@@ -48,12 +54,12 @@ export default function ImageDuplicatesScreen() {
 
   async function handleKeepOne(group: ImageDuplicateGroup) {
     Alert.alert(
-      'Keep one copy',
-      'Keep the largest copy and delete the rest? This cannot be undone.',
+      td.keepOneCopy,
+      td.keepLargestMsg,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tc.cancel, style: 'cancel' },
         {
-          text: 'Delete rest',
+          text: td.deleteRest,
           style: 'destructive',
           onPress: async () => {
             setKeepingGroup(group.key);
@@ -78,10 +84,10 @@ export default function ImageDuplicatesScreen() {
           )}
           <View style={styles.groupInfo}>
             <Text style={[styles.groupName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {group.files[0]?.name ?? 'Similar images'}
+              {group.files[0]?.name ?? td.similarImages}
             </Text>
             <Text style={[styles.groupMeta, { color: colors.textMuted }]}>
-              {group.files.length} similar · {formatSize(Math.max(...group.files.map(f => f.size)) * (group.files.length - 1))} wasted
+              {td.similarMeta(group.files.length, formatSize(Math.max(...group.files.map(f => f.size)) * (group.files.length - 1)))}
             </Text>
           </View>
         </View>
@@ -121,7 +127,7 @@ export default function ImageDuplicatesScreen() {
           ) : (
             <>
               <Ionicons name="trash-outline" size={16} color={colors.deleteRed} style={{ marginRight: 8 }} />
-              <Text style={[styles.keepOneText, { color: colors.deleteRed }]}>Keep largest, delete rest</Text>
+              <Text style={[styles.keepOneText, { color: colors.deleteRed }]}>{td.keepLargest}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -136,20 +142,20 @@ export default function ImageDuplicatesScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Similar Image Finder</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{td.imgTitle}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.startScreen}>
           <View style={[styles.startIcon, { backgroundColor: colors.blueTint }]}>
             <Ionicons name="images-outline" size={40} color={colors.blue} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Pro Feature</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{tc.proFeature}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>
-            Similar Image Finder is part of AskFiles Pro. Upgrade once, use forever.
+            {td.imgProSub}
           </Text>
           <TouchableOpacity style={styles.scanBtn} onPress={() => router.push('/(tabs)/cloud')} activeOpacity={0.85}>
             <Ionicons name="sparkles-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.scanBtnText}>Upgrade to Pro</Text>
+            <Text style={styles.scanBtnText}>{tc.upgradeToPro}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -166,7 +172,7 @@ export default function ImageDuplicatesScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Similar Image Finder</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{td.imgTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -175,13 +181,13 @@ export default function ImageDuplicatesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.blueTint }]}>
             <Ionicons name="images-outline" size={40} color={colors.blue} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Find similar images</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{td.imgFind}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>
-            Scans all your photos for visually similar duplicates — even if they have different filenames, sizes or formats.
+            {td.imgFindSub}
           </Text>
           <TouchableOpacity style={styles.scanBtn} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.scanBtnText}>Start Scan</Text>
+            <Text style={styles.scanBtnText}>{td.startScan}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -190,9 +196,9 @@ export default function ImageDuplicatesScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.blue} />
           <Text style={[styles.scanningText, { color: colors.textPrimary }]}>
-            {progress.total > 0 ? `Scanning ${progress.scanned} of ${progress.total} images...` : 'Scanning your images...'}
+            {progress.total > 0 ? td.scanningProgress(progress.scanned, progress.total) : td.scanningImages}
           </Text>
-          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>This may take a moment</Text>
+          <Text style={[styles.scanningSubText, { color: colors.textMuted }]}>{td.mayTakeMoment}</Text>
         </View>
       )}
 
@@ -201,10 +207,10 @@ export default function ImageDuplicatesScreen() {
           {groups.length === 0 ? (
             <View style={styles.centered}>
               <Ionicons name="checkmark-circle-outline" size={56} color="#2E7D32" />
-              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>No similar images found!</Text>
-              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>Your photo library looks clean.</Text>
+              <Text style={[styles.cleanTitle, { color: colors.textPrimary }]}>{td.imgNoneFound}</Text>
+              <Text style={[styles.cleanSub, { color: colors.textMuted }]}>{td.imgClean}</Text>
               <TouchableOpacity style={styles.rescanBtn} onPress={scan}>
-                <Text style={[styles.rescanText, { color: colors.blue }]}>Scan again</Text>
+                <Text style={[styles.rescanText, { color: colors.blue }]}>{td.scanAgain}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -219,15 +225,15 @@ export default function ImageDuplicatesScreen() {
                 <View style={[styles.summaryCard, { backgroundColor: colors.surfaceAlt }]}>
                   <View style={styles.summaryRow}>
                     <Text style={[styles.summaryCount, { color: colors.textPrimary }]}>{groups.length}</Text>
-                    <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>similar groups</Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{td.similarGroupsLabel(groups.length)}</Text>
                   </View>
                   <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
                   <View style={styles.summaryRow}>
                     <Text style={[styles.summaryCount, { color: colors.deleteRed }]}>{formatSize(totalWasted)}</Text>
-                    <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>wasted space</Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{td.wastedSpace}</Text>
                   </View>
                   <TouchableOpacity style={styles.rescanBtn} onPress={scan}>
-                    <Text style={[styles.rescanText, { color: colors.blue }]}>Scan again</Text>
+                    <Text style={[styles.rescanText, { color: colors.blue }]}>{td.scanAgain}</Text>
                   </TouchableOpacity>
                 </View>
               }

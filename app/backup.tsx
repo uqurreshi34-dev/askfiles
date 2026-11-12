@@ -10,6 +10,9 @@ import { useOneDrive } from '@/hooks/useOneDrive';
 import { useDropbox } from '@/hooks/useDropbox';
 import { useVault } from '@/hooks/useVault';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { backupText } from '@/modules/i18n/backupText';
 import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
 import { useEffect, useState } from 'react';
 import { getUploadProgress, getRestoreProgress, addProgressListener } from '@/hooks/useCloudProgress';
@@ -18,6 +21,9 @@ import { AppState } from 'react-native';
 export default function BackupScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const bt = backupText(lang);
   const {
     isConnected, lastBackup, loading, syncing, restoring, error,
     signIn, disconnect, backupVault, restoreVault,
@@ -76,27 +82,27 @@ export default function BackupScreen() {
   async function runDBBackup(scope: 'all' | 'files' | 'settings') {
     const ok = await dbBackupVault(vaultDir, scope);
     if (ok && AppState.currentState === 'active') {
-      const msg = scope === 'files' ? 'Your vault files have been backed up to Dropbox.'
-        : scope === 'settings' ? 'Your tags, favourites, pinned folders and appearance have been backed up to Dropbox.'
-        : 'Your vault and settings have been backed up to Dropbox.';
-      Alert.alert('Backup complete', msg);
+      const msg = scope === 'files' ? bt.backedUpFiles('Dropbox')
+        : scope === 'settings' ? bt.backedUpSettings('Dropbox')
+        : bt.backedUpAll('Dropbox');
+      Alert.alert(bt.backupComplete, msg);
     }
   }
 
   function handleDBBackup() {
     Alert.alert(
-      'Back Up to Dropbox',
-      'Choose what to back up.',
+      bt.backUpTo('Dropbox'),
+      bt.chooseBackup,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose what...', onPress: () => {
-          Alert.alert('What would you like to back up?', undefined, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Files Only', onPress: () => runDBBackup('files') },
-            { text: 'Settings Only', onPress: () => runDBBackup('settings') },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.chooseWhat, onPress: () => {
+          Alert.alert(bt.whatBackup, undefined, [
+            { text: tc.cancel, style: 'cancel' },
+            { text: bt.filesOnly, onPress: () => runDBBackup('files') },
+            { text: bt.settingsOnly, onPress: () => runDBBackup('settings') },
           ]);
         }},
-        { text: 'Back Up Everything', onPress: () => runDBBackup('all') },
+        { text: bt.backUpEverything, onPress: () => runDBBackup('all') },
       ]
     );
   }
@@ -105,40 +111,40 @@ export default function BackupScreen() {
     const count = await dbRestoreVault(vaultDir, scope);
     if (AppState.currentState === 'active') {
       if (scope === 'settings') {
-        Alert.alert(dbError ? 'Restore failed' : 'Settings restored', dbError ? undefined : 'Your tags, favourites, pinned folders and appearance have been restored.');
+        Alert.alert(dbError ? bt.restoreFailed : bt.settingsRestored, dbError ? undefined : bt.settingsRestoredMsg);
       } else if (count > 0) {
-        Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault${scope === 'all' ? ' and settings applied' : ''}.`);
+        Alert.alert(bt.restoreComplete, bt.restoredToVault(count, scope === 'all'));
       } else if (count === 0 && !dbError) {
-        Alert.alert('Nothing to restore', 'All Dropbox backup files are already in your vault.');
+        Alert.alert(bt.nothingToRestore, bt.allProviderInVault('Dropbox'));
       }
     }
   }
 
   function handleDBRestore() {
     Alert.alert(
-      'Restore from Dropbox',
-      'Choose what to restore. Files already in your vault will be skipped.',
+      bt.restoreFrom('Dropbox'),
+      bt.chooseRestore,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose what...', onPress: () => {
-          Alert.alert('What would you like to restore?', undefined, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Files Only', onPress: () => runDBRestore('files') },
-            { text: 'Settings Only', onPress: () => runDBRestore('settings') },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.chooseWhat, onPress: () => {
+          Alert.alert(bt.whatRestore, undefined, [
+            { text: tc.cancel, style: 'cancel' },
+            { text: bt.filesOnly, onPress: () => runDBRestore('files') },
+            { text: bt.settingsOnly, onPress: () => runDBRestore('settings') },
           ]);
         }},
-        { text: 'Restore Everything', onPress: () => runDBRestore('all') },
+        { text: bt.restoreEverything, onPress: () => runDBRestore('all') },
       ]
     );
   }
 
   function handleDBDisconnect() {
     Alert.alert(
-      'Disconnect Dropbox',
-      'This removes access to Dropbox from AskFiles. Your backed-up files will remain on Dropbox.',
+      bt.disconnectTitle('Dropbox'),
+      bt.disconnectMsg('Dropbox'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Disconnect', style: 'destructive', onPress: dbDisconnect },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.disconnect, style: 'destructive', onPress: dbDisconnect },
       ]
     );
   }
@@ -146,27 +152,27 @@ export default function BackupScreen() {
   async function runODBackup(scope: 'all' | 'files' | 'settings') {
     const ok = await odBackupVault(vaultDir, scope);
     if (ok && AppState.currentState === 'active') {
-      const msg = scope === 'files' ? 'Your vault files have been backed up to OneDrive.'
-        : scope === 'settings' ? 'Your tags, favourites, pinned folders and appearance have been backed up to OneDrive.'
-        : 'Your vault and settings have been backed up to OneDrive.';
-      Alert.alert('Backup complete', msg);
+      const msg = scope === 'files' ? bt.backedUpFiles('OneDrive')
+        : scope === 'settings' ? bt.backedUpSettings('OneDrive')
+        : bt.backedUpAll('OneDrive');
+      Alert.alert(bt.backupComplete, msg);
     }
   }
 
   function handleODBackup() {
     Alert.alert(
-      'Back Up to OneDrive',
-      'Choose what to back up.',
+      bt.backUpTo('OneDrive'),
+      bt.chooseBackup,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose what...', onPress: () => {
-          Alert.alert('What would you like to back up?', undefined, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Files Only', onPress: () => runODBackup('files') },
-            { text: 'Settings Only', onPress: () => runODBackup('settings') },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.chooseWhat, onPress: () => {
+          Alert.alert(bt.whatBackup, undefined, [
+            { text: tc.cancel, style: 'cancel' },
+            { text: bt.filesOnly, onPress: () => runODBackup('files') },
+            { text: bt.settingsOnly, onPress: () => runODBackup('settings') },
           ]);
         }},
-        { text: 'Back Up Everything', onPress: () => runODBackup('all') },
+        { text: bt.backUpEverything, onPress: () => runODBackup('all') },
       ]
     );
   }
@@ -175,40 +181,40 @@ export default function BackupScreen() {
     const count = await odRestoreVault(vaultDir, scope);
     if (AppState.currentState === 'active') {
       if (scope === 'settings') {
-        Alert.alert(odError ? 'Restore failed' : 'Settings restored', odError ? undefined : 'Your tags, favourites, pinned folders and appearance have been restored.');
+        Alert.alert(odError ? bt.restoreFailed : bt.settingsRestored, odError ? undefined : bt.settingsRestoredMsg);
       } else if (count > 0) {
-        Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault${scope === 'all' ? ' and settings applied' : ''}.`);
+        Alert.alert(bt.restoreComplete, bt.restoredToVault(count, scope === 'all'));
       } else if (count === 0 && !odError) {
-        Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+        Alert.alert(bt.nothingToRestore, bt.allInVault);
       }
     }
   }
 
   function handleODRestore() {
     Alert.alert(
-      'Restore from OneDrive',
-      'Choose what to restore. Files already in your vault will be skipped.',
+      bt.restoreFrom('OneDrive'),
+      bt.chooseRestore,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose what...', onPress: () => {
-          Alert.alert('What would you like to restore?', undefined, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Files Only', onPress: () => runODRestore('files') },
-            { text: 'Settings Only', onPress: () => runODRestore('settings') },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.chooseWhat, onPress: () => {
+          Alert.alert(bt.whatRestore, undefined, [
+            { text: tc.cancel, style: 'cancel' },
+            { text: bt.filesOnly, onPress: () => runODRestore('files') },
+            { text: bt.settingsOnly, onPress: () => runODRestore('settings') },
           ]);
         }},
-        { text: 'Restore Everything', onPress: () => runODRestore('all') },
+        { text: bt.restoreEverything, onPress: () => runODRestore('all') },
       ]
     );
   }
 
   async function handleODDisconnect() {
     Alert.alert(
-      'Disconnect OneDrive',
-      'This removes access to OneDrive from AskFiles. Your backed-up files will remain on OneDrive.',
+      bt.disconnectTitle('OneDrive'),
+      bt.disconnectMsg('OneDrive'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Disconnect', style: 'destructive', onPress: odDisconnect },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.disconnect, style: 'destructive', onPress: odDisconnect },
       ]
     );
   }
@@ -216,27 +222,27 @@ export default function BackupScreen() {
   async function runBackup(scope: 'all' | 'files' | 'settings') {
     const ok = await backupVault(vaultDir, scope);
     if (ok && AppState.currentState === 'active') {
-      const msg = scope === 'files' ? 'Your vault files have been backed up to Google Drive.'
-        : scope === 'settings' ? 'Your tags, favourites, pinned folders and appearance have been backed up to Google Drive.'
-        : 'Your vault and settings have been backed up to Google Drive.';
-      Alert.alert('Backup complete', msg);
+      const msg = scope === 'files' ? bt.backedUpFiles('Google Drive')
+        : scope === 'settings' ? bt.backedUpSettings('Google Drive')
+        : bt.backedUpAll('Google Drive');
+      Alert.alert(bt.backupComplete, msg);
     }
   }
 
   function handleBackup() {
     Alert.alert(
-      'Back Up to Google Drive',
-      'Choose what to back up.',
+      bt.backUpTo('Google Drive'),
+      bt.chooseBackup,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose what...', onPress: () => {
-          Alert.alert('What would you like to back up?', undefined, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Files Only', onPress: () => runBackup('files') },
-            { text: 'Settings Only', onPress: () => runBackup('settings') },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.chooseWhat, onPress: () => {
+          Alert.alert(bt.whatBackup, undefined, [
+            { text: tc.cancel, style: 'cancel' },
+            { text: bt.filesOnly, onPress: () => runBackup('files') },
+            { text: bt.settingsOnly, onPress: () => runBackup('settings') },
           ]);
         }},
-        { text: 'Back Up Everything', onPress: () => runBackup('all') },
+        { text: bt.backUpEverything, onPress: () => runBackup('all') },
       ]
     );
   }
@@ -245,40 +251,40 @@ export default function BackupScreen() {
     const count = await restoreVault(vaultDir, scope);
     if (AppState.currentState === 'active') {
       if (scope === 'settings') {
-        Alert.alert(error ? 'Restore failed' : 'Settings restored', error ? undefined : 'Your tags, favourites, pinned folders and appearance have been restored.');
+        Alert.alert(error ? bt.restoreFailed : bt.settingsRestored, error ? undefined : bt.settingsRestoredMsg);
       } else if (count > 0) {
-        Alert.alert('Restore complete', `${count} file${count !== 1 ? 's' : ''} restored to your vault${scope === 'all' ? ' and settings applied' : ''}.`);
+        Alert.alert(bt.restoreComplete, bt.restoredToVault(count, scope === 'all'));
       } else if (count === 0 && !error) {
-        Alert.alert('Nothing to restore', 'All backed-up files are already in your vault.');
+        Alert.alert(bt.nothingToRestore, bt.allInVault);
       }
     }
   }
 
   function handleRestore() {
     Alert.alert(
-      'Restore from Drive',
-      'Choose what to restore. Files already in your vault will be skipped.',
+      bt.restoreFrom('Google Drive'),
+      bt.chooseRestore,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose what...', onPress: () => {
-          Alert.alert('What would you like to restore?', undefined, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Files Only', onPress: () => runRestore('files') },
-            { text: 'Settings Only', onPress: () => runRestore('settings') },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.chooseWhat, onPress: () => {
+          Alert.alert(bt.whatRestore, undefined, [
+            { text: tc.cancel, style: 'cancel' },
+            { text: bt.filesOnly, onPress: () => runRestore('files') },
+            { text: bt.settingsOnly, onPress: () => runRestore('settings') },
           ]);
         }},
-        { text: 'Restore Everything', onPress: () => runRestore('all') },
+        { text: bt.restoreEverything, onPress: () => runRestore('all') },
       ]
     );
   }
 
   async function handleDisconnect() {
     Alert.alert(
-      'Disconnect Google Drive',
-      'This removes access to Google Drive from AskFiles. Your backed-up files will remain on Google Drive.',
+      bt.disconnectTitle('Google Drive'),
+      bt.disconnectMsg('Google Drive'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Disconnect', style: 'destructive', onPress: disconnect },
+        { text: tc.cancel, style: 'cancel' },
+        { text: bt.disconnect, style: 'destructive', onPress: disconnect },
       ]
     );
   }
@@ -290,7 +296,7 @@ export default function BackupScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Cloud Backup</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{bt.cloudBackup}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.centered}>
@@ -306,26 +312,26 @@ export default function BackupScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Cloud Backup</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{bt.cloudBackup}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
       <View style={[styles.section, { backgroundColor: colors.surfaceAlt }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>What's backed up</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{bt.whatsBackedUp}</Text>
           <View style={styles.itemRow}>
             <Ionicons name="shield-checkmark-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Vault files</Text>
-              <Text style={[styles.itemDesc, { color: colors.textMuted }]}>Your files are stored privately in each cloud provider</Text>
+              <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{bt.vaultFiles}</Text>
+              <Text style={[styles.itemDesc, { color: colors.textMuted }]}>{bt.vaultFilesDesc}</Text>
             </View>
           </View>
           <View style={[styles.itemRow, { marginTop: 14 }]}>
             <Ionicons name="pricetag-outline" size={18} color={colors.purple} style={{ marginRight: 10 }} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Tags, favourites & pinned folders</Text>
-              <Text style={[styles.itemDesc, { color: colors.textMuted }]}>Back up after making changes to keep them in sync across devices</Text>
+              <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{bt.tagsFavPinned}</Text>
+              <Text style={[styles.itemDesc, { color: colors.textMuted }]}>{bt.tagsDesc}</Text>
             </View>
           </View>
         </View>
@@ -344,22 +350,22 @@ export default function BackupScreen() {
             <View>
               <Text style={[styles.driveTitle, { color: colors.textPrimary }]}>Google Drive</Text>
               <Text style={[styles.driveStatus, { color: colors.textMuted }]}>
-                {isConnected ? 'Connected' : 'Not connected'}
+                {isConnected ? bt.connected : bt.notConnected}
               </Text>
             </View>
           </View>
           {isConnected ? (
             <TouchableOpacity onPress={handleDisconnect} style={styles.disconnectBtn}>
-              <Text style={styles.disconnectText}>Disconnect</Text>
+              <Text style={styles.disconnectText}>{bt.disconnect}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={signIn} style={styles.connectBtn}>
-              <Text style={styles.connectText}>Connect</Text>
+              <Text style={styles.connectText}>{bt.connect}</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={styles.errorText}>{bt.error(error)}</Text>}
 
         {isConnected && (
           <>
@@ -367,10 +373,10 @@ export default function BackupScreen() {
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
               {globalUpload.google
-                  ? <Text>Uploading — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalUpload.google.current}/{globalUpload.google.total} files uploaded</Text></Text>
+                  ? <Text>{bt.uploadingWait}<Text style={{ color: colors.blue, fontWeight: '600' }}>{bt.nUploaded(globalUpload.google.current, globalUpload.google.total)}</Text></Text>
                   : globalRestore.google
-                    ? <Text>Restoring — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalRestore.google.current}/{globalRestore.google.total} files restored</Text></Text>
-                    : lastBackup ? `Last backup: ${lastBackup}` : 'No Google Drive backup yet'
+                    ? <Text>{bt.restoringWait}<Text style={{ color: colors.blue, fontWeight: '600' }}>{bt.nRestored(globalRestore.google.current, globalRestore.google.total)}</Text></Text>
+                    : lastBackup ? bt.lastBackup(lastBackup) : bt.noBackupYet('Google Drive')
                 }
               </Text>
             </View>
@@ -378,12 +384,12 @@ export default function BackupScreen() {
               {syncing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Backing up...</Text>
+                  <Text style={styles.backupBtnText}>{bt.backingUp}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Back Up to Google Drive</Text>
+                  <Text style={styles.backupBtnText}>{bt.backUpTo('Google Drive')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -391,21 +397,21 @@ export default function BackupScreen() {
               {restoring ? (
                 <>
                   <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
-                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restoring...</Text>
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>{bt.restoring}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="cloud-download-outline" size={18} color={colors.blue} style={{ marginRight: 8 }} />
-                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restore from Google Drive</Text>
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>{bt.restoreFrom('Google Drive')}</Text>
                 </>
               )}
             </TouchableOpacity>
             <View style={{ paddingHorizontal: 20 }}>
               <Text style={[styles.note, { color: colors.textSecondary }]}>
-                <Text style={{ fontWeight: 'bold' }}>File location:</Text> "AskFiles" folder on your Google Drive.
+                <Text style={{ fontWeight: 'bold' }}>{bt.fileLocation}</Text>{bt.folderOn('Google Drive')}
               </Text>
               <Text style={[styles.note, { marginTop: 4, color: '#2E7D32', fontWeight: '500' }]}>
-                Only you can see these files.
+                {bt.onlyYou}
               </Text>
             </View>
           </>
@@ -413,7 +419,7 @@ export default function BackupScreen() {
 
         {!isConnected && (
           <Text style={[styles.notConnectedHint, { color: colors.textMuted }]}>
-            Connect your Google account to back up and restore your vault files.
+            {bt.connectHint('Google')}
           </Text>
         )}
 
@@ -433,22 +439,22 @@ export default function BackupScreen() {
             <View>
               <Text style={[styles.driveTitle, { color: colors.textPrimary }]}>OneDrive</Text>
               <Text style={[styles.driveStatus, { color: colors.textMuted }]}>
-                {odConnected ? 'Connected' : 'Not connected'}
+                {odConnected ? bt.connected : bt.notConnected}
               </Text>
             </View>
           </View>
           {odConnected ? (
             <TouchableOpacity onPress={handleODDisconnect} style={styles.disconnectBtn}>
-              <Text style={styles.disconnectText}>Disconnect</Text>
+              <Text style={styles.disconnectText}>{bt.disconnect}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={odSignIn} style={styles.connectBtn}>
-              <Text style={styles.connectText}>Connect</Text>
+              <Text style={styles.connectText}>{bt.connect}</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {odError && <Text style={styles.errorText}>{odError}</Text>}
+        {odError && <Text style={styles.errorText}>{bt.error(odError)}</Text>}
 
         {odConnected && (
           <>
@@ -456,10 +462,10 @@ export default function BackupScreen() {
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
               {globalUpload.onedrive
-                  ? <Text>Uploading — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalUpload.onedrive.current}/{globalUpload.onedrive.total} files uploaded</Text></Text>
+                  ? <Text>{bt.uploadingWait}<Text style={{ color: colors.blue, fontWeight: '600' }}>{bt.nUploaded(globalUpload.onedrive.current, globalUpload.onedrive.total)}</Text></Text>
                   : globalRestore.onedrive
-                    ? <Text>Restoring — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalRestore.onedrive.current}/{globalRestore.onedrive.total} files restored</Text></Text>
-                    : odLastBackup ? `Last backup: ${odLastBackup}` : 'No OneDrive backup yet'
+                    ? <Text>{bt.restoringWait}<Text style={{ color: colors.blue, fontWeight: '600' }}>{bt.nRestored(globalRestore.onedrive.current, globalRestore.onedrive.total)}</Text></Text>
+                    : odLastBackup ? bt.lastBackup(odLastBackup) : bt.noBackupYet('OneDrive')
                 }
               </Text>
             </View>
@@ -467,12 +473,12 @@ export default function BackupScreen() {
               {odSyncing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Backing up...</Text>
+                  <Text style={styles.backupBtnText}>{bt.backingUp}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Back Up to OneDrive</Text>
+                  <Text style={styles.backupBtnText}>{bt.backUpTo('OneDrive')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -480,21 +486,21 @@ export default function BackupScreen() {
               {odRestoring ? (
                 <>
                   <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
-                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restoring...</Text>
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>{bt.restoring}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="cloud-download-outline" size={18} color={colors.blue} style={{ marginRight: 8 }} />
-                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restore from OneDrive</Text>
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>{bt.restoreFrom('OneDrive')}</Text>
                 </>
               )}
             </TouchableOpacity>
             <View style={{ paddingHorizontal: 20 }}>
               <Text style={[styles.note, { color: colors.textSecondary }]}>
-                <Text style={{ fontWeight: 'bold' }}>File location:</Text> "AskFiles" folder on your OneDrive.
+                <Text style={{ fontWeight: 'bold' }}>{bt.fileLocation}</Text>{bt.folderOn('OneDrive')}
               </Text>
               <Text style={[styles.note, { marginTop: 4, color: '#2E7D32', fontWeight: '500' }]}>
-                Only you can see these files.
+                {bt.onlyYou}
               </Text>
             </View>
           </>
@@ -502,7 +508,7 @@ export default function BackupScreen() {
 
         {!odConnected && (
           <Text style={[styles.notConnectedHint, { color: colors.textMuted }]}>
-            Connect your Microsoft account to back up and restore your vault files.
+            {bt.connectHint('Microsoft')}
           </Text>
         )}
 
@@ -521,22 +527,22 @@ export default function BackupScreen() {
             <View>
               <Text style={[styles.driveTitle, { color: colors.textPrimary }]}>Dropbox</Text>
               <Text style={[styles.driveStatus, { color: colors.textMuted }]}>
-                {dbConnected ? 'Connected' : 'Not connected'}
+                {dbConnected ? bt.connected : bt.notConnected}
               </Text>
             </View>
           </View>
           {dbConnected ? (
             <TouchableOpacity onPress={handleDBDisconnect} style={styles.disconnectBtn}>
-              <Text style={styles.disconnectText}>Disconnect</Text>
+              <Text style={styles.disconnectText}>{bt.disconnect}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={dbSignIn} style={styles.connectBtn}>
-              <Text style={styles.connectText}>Connect</Text>
+              <Text style={styles.connectText}>{bt.connect}</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {dbError && <Text style={styles.errorText}>{dbError}</Text>}
+        {dbError && <Text style={styles.errorText}>{bt.error(dbError)}</Text>}
 
         {dbConnected && (
           <>
@@ -544,10 +550,10 @@ export default function BackupScreen() {
               <Ionicons name="time-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
               {globalUpload.dropbox
-                  ? <Text>Uploading — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalUpload.dropbox.current}/{globalUpload.dropbox.total} files uploaded</Text></Text>
+                  ? <Text>{bt.uploadingWait}<Text style={{ color: colors.blue, fontWeight: '600' }}>{bt.nUploaded(globalUpload.dropbox.current, globalUpload.dropbox.total)}</Text></Text>
                   : globalRestore.dropbox
-                    ? <Text>Restoring — please wait: <Text style={{ color: colors.blue, fontWeight: '600' }}>{globalRestore.dropbox.current}/{globalRestore.dropbox.total} files restored</Text></Text>
-                    : dbLastBackup ? `Last backup: ${dbLastBackup}` : 'No Dropbox backup yet'
+                    ? <Text>{bt.restoringWait}<Text style={{ color: colors.blue, fontWeight: '600' }}>{bt.nRestored(globalRestore.dropbox.current, globalRestore.dropbox.total)}</Text></Text>
+                    : dbLastBackup ? bt.lastBackup(dbLastBackup) : bt.noBackupYet('Dropbox')
                 }
               </Text>
             </View>
@@ -555,12 +561,12 @@ export default function BackupScreen() {
               {dbSyncing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Backing up...</Text>
+                  <Text style={styles.backupBtnText}>{bt.backingUp}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="cloud-upload-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.backupBtnText}>Back Up to Dropbox</Text>
+                  <Text style={styles.backupBtnText}>{bt.backUpTo('Dropbox')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -568,21 +574,21 @@ export default function BackupScreen() {
               {dbRestoring ? (
                 <>
                   <ActivityIndicator color={colors.blue} size="small" style={{ marginRight: 8 }} />
-                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restoring...</Text>
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>{bt.restoring}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="cloud-download-outline" size={18} color={colors.blue} style={{ marginRight: 8 }} />
-                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>Restore from Dropbox</Text>
+                  <Text style={[styles.restoreBtnText, { color: colors.blue }]}>{bt.restoreFrom('Dropbox')}</Text>
                 </>
               )}
             </TouchableOpacity>
             <View style={{ paddingHorizontal: 20 }}>
               <Text style={[styles.note, { color: colors.textSecondary }]}>
-                <Text style={{ fontWeight: 'bold' }}>File location:</Text> "AskFiles" folder on your Dropbox.
+                <Text style={{ fontWeight: 'bold' }}>{bt.fileLocation}</Text>{bt.folderOn('Dropbox')}
               </Text>
               <Text style={[styles.note, { marginTop: 4, color: '#2E7D32', fontWeight: '500' }]}>
-                Only you can see these files.
+                {bt.onlyYou}
               </Text>
             </View>
           </>
@@ -590,7 +596,7 @@ export default function BackupScreen() {
 
         {!dbConnected && (
           <Text style={[styles.notConnectedHint, { color: colors.textMuted }]}>
-            Connect your Dropbox account to back up and restore your vault files.
+            {bt.connectHint('Dropbox')}
           </Text>
         )}
 
