@@ -10,6 +10,8 @@ export type MediaGridProps = {
   placeholderColor?: string;
   itemDates?: number[];
   sortMode?: string;
+  /** Language for the scroll date bubble, e.g. 'ar-u-nu-latn'; empty uses the phone's. */
+  dateLocale?: string;
   favouriteUris?: string[];
   onItemPress: (event: { nativeEvent: { uri: string; index: number } }) => void;
   onItemLongPress: (event: { nativeEvent: { uri: string; index: number } }) => void;

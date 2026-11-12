@@ -15,6 +15,10 @@ import RNFS from 'react-native-fs';
 import { useVault } from '@/hooks/useVault';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { categoryText } from '@/modules/i18n/categoryText';
 import TagPickerModal from '@/components/TagPickerModal';
 import { shareFiles, openFile, printImage, printPdf, copyImageToClipboard } from '@/modules/share-module';
 import { addMediaStoreChangeListener } from '@/modules/file-watcher';
@@ -122,6 +126,10 @@ export default function CategoryScreen() {
   const pendingMultiItems = useRef<FileItem[]>([]);
   const dupeAction = useRef<'skip' | 'replace'>('skip');
   const router = useRouter();
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const tf = filesText(lang);
+  const tk = categoryText(lang);
   const config = CATEGORY_CONFIG[category ?? 'images'];
   const { addToVault, vaultHas, vaultFileNames } = useVault();
   const { isPro } = usePro();
@@ -361,7 +369,7 @@ async function handleSsInfo() {
     const dst = toPath(destUri);
     const exists = await RNFS.exists(dst);
     if (exists) {
-      Alert.alert('Already exists', `"${item.name}" already exists in this folder.`);
+      Alert.alert(tf.alreadyExists, tf.existsInFolder(item.name));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
@@ -373,7 +381,7 @@ async function handleSsInfo() {
       if (pickerMode === 'copy') {
         await copyFileStream(item.uri, dst);
         await scanFile(dst).catch(() => {});
-        Alert.alert('Success', `"${item.name}" copied successfully.`);
+        Alert.alert(tf.success, tf.copiedOk(item.name));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         await moveFileStream(src, dst);
@@ -387,11 +395,11 @@ async function handleSsInfo() {
           source: 'Categories',
         });
         setItems(prev => prev.filter(f => f.uri !== item.uri));
-        Alert.alert('Success', `"${item.name}" moved successfully.`);
+        Alert.alert(tf.success, tf.movedOk(item.name));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch {
-      Alert.alert('Error', `Could not ${pickerMode} file.`);
+      Alert.alert(tc.error, tf.couldNotCopyOrMoveFile(pickerMode === 'copy'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -411,12 +419,12 @@ async function handleSsInfo() {
     try {
       const invalidChars = /[*\/\\:?"<>|]/;
       if (invalidChars.test(newName)) {
-        Alert.alert('Invalid name', 'File names cannot contain: * / \\ : ? " < > |');
+        Alert.alert(tf.invalidName, 'File names cannot contain: * / \\ : ? " < > |');
         return;
       }
       const destExists = await RNFS.exists(toPath(newUri));
       if (destExists) {
-        Alert.alert('Name already taken', `A file named "${newName}" already exists in this folder.`);
+        Alert.alert(tf.nameTaken, tf.fileNamedExistsFolder(newName));
         return;
       }
       await RNFS.moveFile(toPath(oldUri), toPath(newUri));
@@ -437,7 +445,7 @@ async function handleSsInfo() {
       closeSheet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert('Rename failed', 'Could not rename this file.');
+      Alert.alert(tf.renameFailed, tk.couldNotRenameFile);
     } finally {
       setRenaming(false);
     }
@@ -516,7 +524,7 @@ async function handleSsInfo() {
         const file = new FileSystem.File(item.uri);
         if (file.size && file.size > 0) { setFileSize(formatSize(file.size)); return; }
       } catch {}
-      setFileSize('Unknown');
+      setFileSize(tf.unknown);
     }
     const lowerName = item.name.toLowerCase();
     if (lowerName.endsWith('.txt')) {
@@ -553,13 +561,13 @@ async function handleSsInfo() {
           ));
         }
       } else {
-        Alert.alert('Error', 'Could not move file to Trash.');
+        Alert.alert(tc.error, tf.couldNotTrash);
       }
     };
 
-    Alert.alert('Move to Trash', `"${item.name}" will be moved to Trash and deleted after 30 days.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Trash', style: 'destructive', onPress: doDelete },
+    Alert.alert(tf.moveToTrash, tf.trashOneMsg(item.name), [
+      { text: tc.cancel, style: 'cancel' },
+      { text: tf.moveToTrash, style: 'destructive', onPress: doDelete },
     ]);
   }
 
@@ -605,12 +613,12 @@ async function handleSsInfo() {
         (duplicates.length > 3 ? ` and ${duplicates.length - 3} more` : '');
       const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
         Alert.alert(
-          duplicates.length === 1 ? 'Already exists' : 'Already exist',
-          `${dupeList} already ${duplicates.length === 1 ? 'exists' : 'exist'} in this folder.`,
+          duplicates.length === 1 ? tf.alreadyExists : tf.alreadyExistPlural,
+          tf.dupesExistMsg(duplicates.slice(0, 3).join(', '), Math.max(0, duplicates.length - 3), duplicates.length),
           [
-            { text: 'Skip existing', onPress: () => resolve('skip') },
-            { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+            { text: tf.skipExisting, onPress: () => resolve('skip') },
+            { text: tf.replace, style: 'destructive', onPress: () => resolve('replace') },
+            { text: tc.cancel, style: 'cancel', onPress: () => resolve('cancel') },
           ]
         );
       });
@@ -642,7 +650,7 @@ async function handleSsInfo() {
     const actualTotal = finalNames.size;
 
     if (actualTotal === 0) {
-      Alert.alert('Nothing to do', 'All selected files already exist at the destination and were skipped.');
+      Alert.alert(tf.nothingToDo, tf.allSkipped);
       return;
     }
 
@@ -695,16 +703,16 @@ async function handleSsInfo() {
       setSelectedItemsMap(new Map());
       const verb = mode === 'copy' ? 'copied' : 'moved';
       const parts: string[] = [];
-      if (copiedCount > 0) parts.push(`${copiedCount} item${copiedCount !== 1 ? 's' : ''} ${verb}`);
+      if (copiedCount > 0) parts.push(tk.nDone(copiedCount, mode === 'copy'));
       const skippedDupes = actualTotal - copiedCount - failedCount;
-      if (skippedDupes > 0) parts.push(`${skippedDupes} skipped (duplicate names)`);
-      if (failedCount > 0) parts.push(`${failedCount} failed (unreadable or corrupted)`);
-      Alert.alert(failedCount > 0 ? 'Partly done' : 'Success', parts.join('. ') + '.');
+      if (skippedDupes > 0) parts.push(tk.nSkippedDupes(skippedDupes));
+      if (failedCount > 0) parts.push(tk.nFailedUnreadable(failedCount));
+      Alert.alert(failedCount > 0 ? tk.partlyDone : tf.success, parts.join('. ') + '.');
       Haptics.notificationAsync(
         failedCount > 0 ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success
       );
     } catch {
-      Alert.alert('Error', `Could not ${mode} files.`);
+      Alert.alert(tc.error, tf.couldNotCopyOrMoveFiles(mode === 'copy'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -718,7 +726,7 @@ async function handleSsInfo() {
   async function handleCreatePdf() {
     const files = Array.from(selectedItemsMap.values()).filter(f => isImageFile(f.name));
     if (files.length === 0) {
-      Alert.alert('No images selected', 'Select at least one image to create a PDF.');
+      Alert.alert(tf.noImagesSelected, tf.selectOneImage);
       return;
     }
     const imagePaths = files.map(f => toPath(f.uri));
@@ -732,12 +740,12 @@ async function handleSsInfo() {
     try {
       await createPdfFromImages(imagePaths, outputPath);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('PDF Created', `${files.length} image${files.length !== 1 ? 's' : ''} saved to Documents/Scans`);
+      Alert.alert(tf.pdfCreated, tf.imagesSavedScans(files.length));
       setSelectMode(false);
       setSelectedUris(new Set());
       setSelectedItemsMap(new Map());
     } catch (e) {
-      Alert.alert('Error', 'Could not create PDF.');
+      Alert.alert(tc.error, tf.couldNotCreatePdf);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -759,9 +767,9 @@ async function handleSsInfo() {
     try {
       const paths = await extractPdfPages(toPath(selectedItem.uri), outputDir);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Extracted', `${paths.length} page${paths.length !== 1 ? 's' : ''} saved to Documents/Scans/${fileName}_pages`);
+      Alert.alert(tf.extracted, tf.pagesSaved(paths.length, fileName));
     } catch (e) {
-      Alert.alert('Error', 'Could not extract PDF pages.');
+      Alert.alert(tc.error, tf.couldNotExtractPages);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -776,7 +784,7 @@ async function handleSsInfo() {
     const nonPdfs = files.filter(f => !f.name.toLowerCase().endsWith('.pdf'));
   
     if (pdfs.length < 2) {
-      Alert.alert('Not enough PDFs', 'Select at least 2 PDF files to merge.');
+      Alert.alert(tf.notEnoughPdfs, tf.selectTwoPdfs);
       return;
     }
   
@@ -792,12 +800,12 @@ async function handleSsInfo() {
       try {
         await mergePdfs(pdfs.map(f => toPath(f.uri)), outputPath);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Merged', `${pdfs.length} PDFs merged successfully. Saved to Documents/Scans.`);
+        Alert.alert(tf.merged, tf.pdfsMerged(pdfs.length));
         setSelectMode(false);
         setSelectedUris(new Set());
         setSelectedItemsMap(new Map());
       } catch (e) {
-        Alert.alert('Error', 'Could not merge PDFs.');
+        Alert.alert(tc.error, tf.couldNotMergePdfs);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } finally {
         sub.remove();
@@ -808,11 +816,11 @@ async function handleSsInfo() {
   
     if (nonPdfs.length > 0) {
       Alert.alert(
-        'Mixed selection',
-        `Only PDF files will be merged. ${pdfs.length} PDF${pdfs.length !== 1 ? 's' : ''} selected, ${nonPdfs.length} file${nonPdfs.length !== 1 ? 's' : ''} will be skipped. Continue?`,
+        tf.mixedSelection,
+        tf.mixedPdfMsg(pdfs.length, nonPdfs.length),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Merge PDFs', onPress: proceed },
+          { text: tc.cancel, style: 'cancel' },
+          { text: tf.mergePdfs, onPress: proceed },
         ]
       );
     } else {
@@ -882,18 +890,18 @@ async function handleSsInfo() {
   async function handleMoveToVault() {
     if (!selectedItem) return;
      Alert.alert(
-      'Move to Vault',
-      `Move "${selectedItem.name}" to your Secure Vault? The original file will be removed from its current location.`,
+      tf.moveToVault,
+      tf.moveOneToVaultMsg(selectedItem.name),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Move to Vault', onPress: async () => {
+        { text: tc.cancel, style: 'cancel' },
+        { text: tf.moveToVault, onPress: async () => {
           const uri = selectedItem.uri;
           const name = selectedItem.name;
           closeSheet();
           if (await vaultHas(name)) {
             Alert.alert(
-              'Already in the Vault',
-              `A file called "${name}" is already in the Vault. Rename this one first, or remove the copy that is already there.`
+              tf.alreadyInVault,
+              tf.alreadyInVaultMsg(name)
             );
             return;
           }
@@ -904,9 +912,9 @@ async function handleSsInfo() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setItems(prev => prev.filter(f => f.uri !== uri)); 
             DocIndexer.removeFromIndex(uri); 
-            Alert.alert('Moved to Vault', `"${name}" is now secured.`);
+            Alert.alert(tf.movedToVault, tf.isNowSecured(name));
           }
-          else Alert.alert('Error', 'Could not move file to Vault. Try again.');
+          else Alert.alert(tc.error, tf.couldNotVault);
         }},
     ]);
   }
@@ -916,12 +924,12 @@ async function handleSsInfo() {
     if (isFav) {
       await removeFavourite(selectedItem.uri);
       setIsFav(false);
-      Alert.alert('Removed from Favourites', `"${selectedItem.name}" removed.`);
+      Alert.alert(tk.removedFromFavourites, tk.removedShort(selectedItem.name));
     } else {
       await addFavourite({ name: selectedItem.name, uri: selectedItem.uri });
       setIsFav(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      Alert.alert('Added to Favourites', `"${selectedItem.name}" added.`);
+      Alert.alert(tk.addedToFavourites, tk.addedShort(selectedItem.name));
     }
   }
 
@@ -939,10 +947,10 @@ async function handleSsInfo() {
     try {
       await copyImageToClipboard(toPath(selectedItem.uri), 'image/*');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Copied', 'Image copied to clipboard.');
+      Alert.alert(tf.copied, tf.imageCopied);
       closeSheet();
     } catch {
-      Alert.alert('Error', 'Could not copy image to clipboard.');
+      Alert.alert(tc.error, tf.couldNotCopyImage);
     }
   }
 
@@ -957,9 +965,9 @@ async function handleSsInfo() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e: any) {
       if (e?.code === WIFI_NO_NETWORK) {
-        Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+        Alert.alert(tf.noWifi, tf.connectWifi);
       } else {
-        Alert.alert('Error', 'Could not start WiFi server');
+        Alert.alert(tc.error, tf.couldNotStartWifi);
       }
     }
   }
@@ -972,7 +980,7 @@ async function handleSsInfo() {
       const text = await extractTextFromImage(toPath(selectedItem.uri));
       setExtractedText(text.trim() || '');
     } catch {
-      Alert.alert('Error', 'Could not extract text from this image.');
+      Alert.alert(tc.error, tf.couldNotExtractText);
     } finally {
       setExtractingText(false);
     }
@@ -991,7 +999,7 @@ async function handleSsInfo() {
         await printImage(filePath);
       }
     } catch {
-      Alert.alert('Print failed', 'Could not print this file. Make sure a printer is set up on your device.');
+      Alert.alert(tf.printFailed, tf.couldNotPrint);
     }
   }
 
@@ -1010,7 +1018,7 @@ async function handleSsInfo() {
       }
       setVideoLabels(allLabels.slice(0, 8));
     } catch {
-      Alert.alert('Error', 'Could not generate video summary.');
+      Alert.alert(tc.error, tf.couldNotSummarise);
       setVideoSummaryVisible(false);
     } finally {
       setLoadingVideoSummary(false);
@@ -1035,16 +1043,16 @@ async function handleSsInfo() {
 
   async function handleMultiVault() {
     if (!isPro) {
-      Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+      Alert.alert(tc.proFeature, tf.proVaultMsg, [
+        { text: tf.notNow, style: 'cancel' },
+        { text: tf.upgrade, onPress: () => router.push('/(tabs)/cloud') },
       ]);
       return;
     }
     const files = Array.from(selectedItemsMap.values());
-    Alert.alert('Move to Vault', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to your Secure Vault?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move', onPress: async () => {
+    Alert.alert(tf.moveToVault, tf.moveNToVault(files.length), [
+      { text: tc.cancel, style: 'cancel' },
+      { text: tf.move, onPress: async () => {
         suppressWatcherRef.current = true;
         setVaulting(true);
         setVaultingTotal(files.length);
@@ -1081,15 +1089,15 @@ async function handleSsInfo() {
           setSelectedUris(new Set());
           setSelectedItemsMap(new Map());
           if (clashed.length > 0 || failed > 0) {
-            const parts = [`${moved.length} file${moved.length !== 1 ? 's' : ''} moved to Vault.`];
+            const parts = [tf.nMovedToVault(moved.length)];
             if (clashed.length > 0) {
-              parts.push(`${clashed.length} ${clashed.length === 1 ? 'is' : 'are'} already in the Vault: ${clashed.slice(0, 5).join(', ')}${clashed.length > 5 ? ` and ${clashed.length - 5} more` : ''}.`);
+              parts.push(tf.nAlreadyInVault(clashed.length, clashed.slice(0, 5).join(', '), Math.max(0, clashed.length - 5)));
             }
-            if (failed > 0) parts.push(`${failed} could not be moved.`);
-            Alert.alert(moved.length > 0 ? 'Partial success' : 'Nothing moved', parts.join(' '));
+            if (failed > 0) parts.push(tf.nCouldNotMove(failed));
+            Alert.alert(moved.length > 0 ? tc.partialSuccess : tf.nothingMoved, parts.join(' '));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           } else {
-            Alert.alert('Moved to Vault', `${moved.length} file${moved.length !== 1 ? 's' : ''} secured.`);
+            Alert.alert(tf.movedToVault, tf.nSecured(moved.length));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }
         } finally {
@@ -1103,9 +1111,9 @@ async function handleSsInfo() {
   
   async function handleMultiDelete() {
     const files = Array.from(selectedItemsMap.values());
-    Alert.alert('Move to Trash', `Move ${files.length} file${files.length !== 1 ? 's' : ''} to Trash? They will be deleted after 30 days.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Move to Trash', style: 'destructive', onPress: async () => {
+    Alert.alert(tf.moveToTrash, tk.trashNFiles(files.length), [
+      { text: tc.cancel, style: 'cancel' },
+      { text: tf.moveToTrash, style: 'destructive', onPress: async () => {
         suppressWatcherRef.current = true;
         setDeleting(true);
         setDeletingTotal(files.length);
@@ -1144,7 +1152,7 @@ async function handleSsInfo() {
         } catch {}
       }
     }
-    Alert.alert(`${files.length} file${files.length !== 1 ? 's' : ''} selected`, `Total size: ${formatSize(totalSize)}`);
+    Alert.alert(tk.nFilesSelected(files.length), tf.totalSize(formatSize(totalSize)));
   }
 
   async function handleMultiRename(folderPath: string) {
@@ -1191,18 +1199,18 @@ async function handleSsInfo() {
       const sdVol = volumes.find(v => v.type === 'sdcard' && folderPath.includes(v.path));
       const friendlyPath = sdVol
         ? (folderPath.replace(`${sdVol.path}/`, '').replace(/\/$/, '') || sdVol.name)
-        : (folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage');
+        : (folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || tf.internalStorage);
       const msg = failed > 0
-        ? `${succeeded} file${succeeded !== 1 ? 's' : ''} renamed. ${failed} failed.\nSaved to ${friendlyPath}`
-        : `${succeeded} file${succeeded !== 1 ? 's' : ''} renamed as ${baseName}_1, ${baseName}_2...\nSaved to ${friendlyPath}`;
+        ? tf.renamedWithFails(succeeded, failed, friendlyPath)
+        : tf.renamedAs(succeeded, baseName, friendlyPath);
   
-      Alert.alert('Renamed', msg);
+      Alert.alert(tf.renamed, msg);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSelectMode(false);
       setSelectedUris(new Set());
       setSelectedItemsMap(new Map());
     } catch {
-      Alert.alert('Error', 'Could not rename files.');
+      Alert.alert(tc.error, tf.couldNotRenameFiles);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setMultiRenaming(false);
@@ -1294,9 +1302,7 @@ async function handleSsInfo() {
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {shownCount} {shownCount === 1
-                ? config.title.slice(0, -1).toLowerCase()
-                : config.title.toLowerCase()} selected
+              {tk.selected(category, shownCount)}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -1309,7 +1315,7 @@ async function handleSsInfo() {
               style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center'}}
               disabled={multiPasting || deleting}
             >
-              <Text style={{ fontSize: 12, color: (multiPasting || deleting) ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
+              <Text style={{ fontSize: 12, color: (multiPasting || deleting) ? colors.textDisabled : colors.blue, fontWeight: '500' }}>{tc.all}</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -1317,7 +1323,7 @@ async function handleSsInfo() {
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{config.title}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{tk.title(category)}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <TouchableOpacity
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }}
@@ -1390,7 +1396,7 @@ async function handleSsInfo() {
                 setLoading(false);
               }}
             >
-              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === tab && { color: colors.background }]}>{tab}</Text>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === tab && { color: colors.background }]}>{tk.tab(tab)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1400,7 +1406,7 @@ async function handleSsInfo() {
             <Ionicons name="search-outline" size={15} color={colors.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={{ flex: 1, fontSize: 14, color: colors.textPrimary, padding: 0 }}
-              placeholder={`Search ${config.title.toLowerCase()}...`}
+              placeholder={tk.search(category)}
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -1419,7 +1425,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {pickerMode === 'copy' ? 'Copying' : 'Moving'} {pendingItem.current?.name}
+            {pickerMode === 'copy' ? tf.copying : tf.moving} {pendingItem.current?.name}
             {copyProgress !== null && copyProgress > 0 ? ` ${copyProgress}%` : '...'}
           </Text>
         </View>
@@ -1428,7 +1434,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {multiPasteMode === 'copy' ? 'Copying' : 'Moving'} {multiPasteProgress.current} of {multiPasteProgress.total}: {multiPasteProgress.name}
+            {multiPasteMode === 'copy' ? tf.copying : tf.moving} {multiPasteProgress.current} of {multiPasteProgress.total}: {multiPasteProgress.name}
           </Text>
         </View>
       )}
@@ -1436,7 +1442,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            Creating PDF... {pdfProgress.current} of {pdfProgress.total}
+            {tf.creatingPdfProgress(pdfProgress.current, pdfProgress.total)}
           </Text>
         </View>
       )}
@@ -1444,7 +1450,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            Extracting page {pdfProgress.current} of {pdfProgress.total}...
+            {tf.extractingPageProgress(pdfProgress.current, pdfProgress.total)}
           </Text>
         </View>
       )}
@@ -1452,7 +1458,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            Merging PDF {pdfProgress.current} of {pdfProgress.total}...
+            {tf.mergingPdfProgress(pdfProgress.current, pdfProgress.total)}
           </Text>
         </View>
       )}
@@ -1460,7 +1466,7 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.deleteRed} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            {deletingTotal > 1 ? `Moving ${deletingCount} of ${deletingTotal} files to Trash...` : `Moving ${deletingCount} file${deletingCount !== 1 ? 's' : ''} to Trash...`}           
+            {deletingTotal > 1 ? tf.movingToTrash(deletingCount, deletingTotal) : tf.movingNToTrash(deletingCount)}           
           </Text>
         </View>
       )}
@@ -1468,20 +1474,20 @@ async function handleSsInfo() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
           <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-            Moving {vaultingTotal} file{vaultingTotal !== 1 ? 's' : ''} to Vault...
+            {tf.movingNToVault(vaultingTotal)}
           </Text>
         </View>
       )}
       {multiRenaming && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Renaming files...</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{tf.renamingFiles}</Text>
         </View>
       )}
       {extractingText && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Reading text...</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>{tf.readingText}</Text>
         </View>
       )}
       <View style={{ flex: 1 }}>
@@ -1494,7 +1500,7 @@ async function handleSsInfo() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <Text style={[styles.count, { color: colors.textMuted }]}>
-              {folderGroups.length} folder{folderGroups.length !== 1 ? 's' : ''}
+              {tf.nFolders(folderGroups.length)}
             </Text>
           }
           renderItem={({ item: group }) => (
@@ -1516,7 +1522,7 @@ async function handleSsInfo() {
               </View>
               <View style={styles.info}>
                 <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{group.folderName}</Text>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>{group.count} file{group.count !== 1 ? 's' : ''}</Text>
+                <Text style={[styles.meta, { color: colors.textMuted }]}>{tf.nFiles(group.count)}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
             </TouchableOpacity>
@@ -1532,11 +1538,12 @@ async function handleSsInfo() {
             <Ionicons name="arrow-back" size={18} color={colors.blue} />
             <Text style={{ fontSize: 13, color: colors.blue, fontWeight: '500' }}>{selectedFolder?.folderName}</Text>
             <Text style={{ fontSize: 13, color: colors.textMuted }}>
-              · {selectedFolder?.count} file{selectedFolder?.count !== 1 ? 's' : ''}
+              · {tf.nFiles(selectedFolder?.count ?? 0)}
             </Text>
           </TouchableOpacity>
           {(category === 'images' || category === 'videos') && gridView ? (
             <MediaGridView
+              dateLocale={tc.dateLocale}
               selectedUris={Array.from(selectedUris)}
               style={{ flex: 1 }}
               key={`folder-${selectedFolder?.folderPath}-${gridRemountKey}`}
@@ -1719,14 +1726,15 @@ async function handleSsInfo() {
       ) : filteredItems.length === 0 && !loading ? (
         <View style={styles.centered}>
           <Ionicons name={config.icon as any} size={40} color={colors.textDisabled} />
-          <Text style={[styles.empty, { color: colors.textMuted }]}>No {activeTab === 'All' ? config.title.toLowerCase() : activeTab + ' files'} found</Text>
+          <Text style={[styles.empty, { color: colors.textMuted }]}>{activeTab === 'All' ? tk.none(category) : tk.typeNone(activeTab)}</Text>
         </View>
       ) : (isMediaCategory && gridView) ? (
         <>
           <Text style={[styles.count, { color: colors.textMuted, paddingHorizontal: 16, paddingTop: 8 }]}>
-            {filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}
+            {activeTab === 'All' ? tk.count(category, filteredItems.length) : tk.typeCount(activeTab, filteredItems.length)}
           </Text>
           <MediaGridView
+            dateLocale={tc.dateLocale}
             selectedUris={Array.from(selectedUris)}
             style={{ flex: 1 }}
             key={`grid-${sortKey}-${searchQuery}-${gridRemountKey}`}
@@ -1862,7 +1870,7 @@ async function handleSsInfo() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={[styles.count, { color: colors.textMuted }]}>{filteredItems.length} {activeTab === 'All' ? config.title.toLowerCase() : activeTab.toLowerCase() + ' files'}</Text>
+            <Text style={[styles.count, { color: colors.textMuted }]}>{activeTab === 'All' ? tk.count(category, filteredItems.length) : tk.typeCount(activeTab, filteredItems.length)}</Text>
           }
         />
       )}
@@ -1923,33 +1931,33 @@ async function handleSsInfo() {
             {isVideoFile(selectedItem?.name ?? '') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleVideoSummary}>
                   <Ionicons name="film-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Video Summary</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.videoSummary}</Text>
                 </TouchableOpacity>
               )}
               {isImageFile(selectedItem?.name ?? '') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleExtractText}>
                   <Ionicons name="text-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Extract Text</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.extractText}</Text>
                 </TouchableOpacity>
               )}
               {!isMediaCategory && selectedItem?.name.toLowerCase().endsWith('.pdf') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleExtractPdf}>
                   <Ionicons name="document-outline" size={20} color={colors.green} />
-                  <Text style={[styles.sheetActionText, { color: colors.green }]}>Extract pages as images</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.green }]}>{tf.extractPages}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.sheetAction} onPress={handleShare}>
                 <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tc.share}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleShareViaQr}>
                 <Ionicons name="qr-code-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share via QR</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
               </TouchableOpacity>
               {isImageFile(selectedItem?.name ?? '') && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handleCopyImage}>
                   <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy image</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.copyImage}</Text>
                 </TouchableOpacity>
               )}
               {isImageFile(selectedItem?.name ?? '') && (
@@ -1961,23 +1969,23 @@ async function handleSsInfo() {
                   router.push({ pathname: '/image-editor', params: { uri: u, name: n } });
                 }}>
                   <Ionicons name="create-outline" size={22} color={colors.textSecondary} />
-                  <Text style={styles.sheetActionText}>Edit image</Text>
+                  <Text style={styles.sheetActionText}>{tf.editImage}</Text>
                 </TouchableOpacity>
               )}
               {(isImageFile(selectedItem?.name ?? '') || selectedItem?.name.toLowerCase().endsWith('.pdf')) && (
                 <TouchableOpacity style={styles.sheetAction} onPress={handlePrint}>
                   <Ionicons name="print-outline" size={20} color={colors.textPrimary} />
-                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Print</Text>
+                  <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.print}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.sheetAction} onPress={isPro ? handleMoveToVault :
-                () => Alert.alert('Pro Feature', 'Upgrade to AskFiles Pro to move files to the Vault.', [
-                  { text: 'Not now', style: 'cancel' },
-                  { text: 'Upgrade', onPress: () => router.push('/(tabs)/cloud') },
+                () => Alert.alert(tc.proFeature, tf.proVaultMsg, [
+                  { text: tf.notNow, style: 'cancel' },
+                  { text: tf.upgrade, onPress: () => router.push('/(tabs)/cloud') },
                 ])}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
                 <Text style={[styles.sheetActionText, { color: isPro ? colors.blue : colors.textMuted }]}>
-                  Move to Vault{!isPro ? '  🔒' : ''}
+                  {tf.moveToVault}{!isPro ? '  🔒' : ''}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => {
@@ -1988,41 +1996,41 @@ async function handleSsInfo() {
                 <Ionicons name="pricetag-outline" size={20} color={colors.purple} />
                 <Text style={[styles.sheetActionText, { color: colors.purple }]}>
                 {(fileTagsMap[selectedItem?.uri ?? '']?.length ?? 0) > 0
-                    ? `Tags (${fileTagsMap[selectedItem!.uri].length})`
-                    : 'Add Tag'}
+                    ? tf.tagsCount(fileTagsMap[selectedItem!.uri].length)
+                    : tf.addTag}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleToggleFavourite}>
                 <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? colors.deleteRed : colors.textPrimary} />
                 <Text style={[styles.sheetActionText, { color: isFav ? colors.deleteRed : colors.textPrimary }]}>
-                  {isFav ? 'Remove from Favourites' : 'Add to Favourites'}
+                  {isFav ? tf.removeFromFavourites : tf.addToFavourites}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={async () => {
                 if (!selectedItem) return;
                 closeSheet();
                 const lines: { label: string; value: string }[] = [];
-                if (fileSize) lines.push({ label: 'Size', value: fileSize });
-                lines.push({ label: 'Type', value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
-                lines.push({ label: 'Location', value: getFriendlyPath(selectedItem.uri, volumes) });
+                if (fileSize) lines.push({ label: tc.size, value: fileSize });
+                lines.push({ label: tc.type, value: (selectedItem.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                lines.push({ label: tf.location, value: getFriendlyPath(selectedItem.uri, volumes) });
                 const stats = getStats(selectedItem.uri);
                 if (stats && stats.count > 0) {
-                  lines.push({ label: 'Times opened', value: `${stats.count}` });
-                  lines.push({ label: 'Last opened', value: formatDate(stats.lastOpened) });
+                  lines.push({ label: tf.timesOpened, value: `${stats.count}` });
+                  lines.push({ label: tf.lastOpened, value: formatDate(stats.lastOpened) });
                 }
                 let exif: { label: string; value: string }[] = [];
                 if (isMediaFile(selectedItem)) {
                   try {
                     const info = await getMediaInfo(toPath(selectedItem.uri));
-                    if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                    if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                    if (info.width && info.height) lines.push({ label: tc.resolution, value: `${info.width}×${info.height}` });
+                    if (info.duration) lines.push({ label: tc.duration, value: info.duration });
                     exif = exifLines(info);
                   } catch {}
                 }
                 try {
                   const stat = await RNFS.stat(toPath(selectedItem.uri));
-                  if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                  if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                  if (stat.mtime) lines.push({ label: tc.modified, value: formatDate(new Date(stat.mtime).getTime()) });
+                  if (stat.ctime && exif.length === 0) lines.push({ label: tc.created, value: formatDate(new Date(stat.ctime).getTime()) });
                 } catch {}
                 lines.push(...exif);
                 setDetailsName(selectedItem.name);
@@ -2030,11 +2038,11 @@ async function handleSsInfo() {
                 setShowDetailsModal(true);
               }}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tc.info}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={handleDelete}>
                 <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
-                <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>Delete</Text>
+                <Text style={[styles.sheetActionText, { color: colors.deleteRed }]}>{tc.delete}</Text>
               </TouchableOpacity>
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
               {showRename ? (
@@ -2045,19 +2053,19 @@ async function handleSsInfo() {
                     onChangeText={setRenameValue}
                     autoFocus
                     selectTextOnFocus
-                    placeholder="New name..."
+                    placeholder={tf.newNamePh}
                     placeholderTextColor={colors.textMuted}
                     returnKeyType="done"
                     onSubmitEditing={handleRename}
                   />
                   <View style={styles.renameActions}>
                     <TouchableOpacity style={[styles.renameCancelBtn, { backgroundColor: colors.surface }]} onPress={() => { setShowRename(false); setRenameValue(''); }}>
-                      <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                      <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>{tc.cancel}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.renameConfirmBtn, renaming && { opacity: 0.6 }]} onPress={handleRename} disabled={renaming}>
                       {renaming
                         ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={styles.renameConfirmText}>Rename</Text>
+                        : <Text style={styles.renameConfirmText}>{tf.rename}</Text>
                       }
                     </TouchableOpacity>
                   </View>
@@ -2066,19 +2074,19 @@ async function handleSsInfo() {
                 <>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('copy')}>
                     <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Copy</Text>
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.copy}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => openPicker('move')}>
                     <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
-                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move</Text>
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.move}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={() => { setRenameValue(selectedItem?.name ?? ''); setShowRename(true); }}>
                     <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
-                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Rename</Text>
+                    <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.rename}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                     <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-                    <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+                    <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>{tc.cancel}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -2108,8 +2116,8 @@ async function handleSsInfo() {
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
               {pendingMultiItems.current.length > 0
-                ? (multiPasteMode === 'copy' ? 'Copy to...' : 'Move to...')
-                : (pickerMode === 'copy' ? 'Copy to...' : 'Move to...')}
+                ? (multiPasteMode === 'copy' ? tf.copyTo : tc.moveTo)
+                : (pickerMode === 'copy' ? tf.copyTo : tc.moveTo)}
             </Text>
             <View style={{ width: 40 }} />
           </View>
@@ -2133,7 +2141,7 @@ async function handleSsInfo() {
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.empty, { color: colors.textMuted }]}>This folder is empty</Text></View>
+            <View style={styles.centered}><Text style={[styles.empty, { color: colors.textMuted }]}>{tc.folderEmpty}</Text></View>
           ) : (
             <FlatList
               data={pickerData}
@@ -2167,14 +2175,14 @@ async function handleSsInfo() {
           )}
           <View style={[styles.pickerFooter, { borderTopColor: colors.border }]}>
             <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
-              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{tc.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pickerPasteBtn} onPress={() => (pendingMultiItems.current.length > 0 ? handleMultiPaste() : handlePaste())}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.pickerPasteText}>
                 {pendingMultiItems.current.length > 0
-                  ? (multiPasteMode === 'copy' ? 'Copy here' : 'Move here')
-                  : (pickerMode === 'copy' ? 'Copy here' : 'Move here')}
+                  ? (multiPasteMode === 'copy' ? tf.copyHere : tc.moveHere)
+                  : (pickerMode === 'copy' ? tf.copyHere : tc.moveHere)}
               </Text>
             </TouchableOpacity>
           </View>
@@ -2191,15 +2199,15 @@ async function handleSsInfo() {
             ) : (
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.textDisabled, alignSelf: 'center', marginBottom: 16 }} />
             )}
-            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sort by</Text>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{tf.sortBy}</Text>
             <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
             {([
-              { key: 'name_asc', label: 'Name A → Z' },
-              { key: 'name_desc', label: 'Name Z → A' },
-              { key: 'size_desc', label: 'Size (largest first)' },
-              { key: 'size_asc', label: 'Size (smallest first)' },
-              { key: 'date_desc', label: 'Date (newest first)' },
-              { key: 'date_asc', label: 'Date (oldest first)' },
+              { key: 'name_asc', label: tf.nameAZ },
+              { key: 'name_desc', label: tf.nameZA },
+              { key: 'size_desc', label: tf.sizeLargest },
+              { key: 'size_asc', label: tf.sizeSmallest },
+              { key: 'date_desc', label: tf.dateNewest },
+              { key: 'date_asc', label: tf.dateOldest },
             ] as { key: SortKey; label: string }[]).map(({ key, label }) => (
               <TouchableOpacity
                 key={key}
@@ -2214,7 +2222,7 @@ async function handleSsInfo() {
             ))}
             </ScrollView>
             <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: colors.surface, borderRadius: 10, marginTop: 4 }} onPress={() => setShowSortSheet(false)}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>Cancel</Text>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>{tc.cancel}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -2238,7 +2246,7 @@ async function handleSsInfo() {
           {sharing && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.blue} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Preparing files for sharing...</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>{tf.preparingShare}</Text>
             </View>
           )}
         <View onLayout={(e) => setToolbarHeight(e.nativeEvent.layout.height)} style={{ flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 0.5, borderTopColor: colors.border, backgroundColor: colors.background, paddingBottom: 12 }}>
@@ -2248,7 +2256,7 @@ async function handleSsInfo() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
         >
           <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Copy</Text>
+          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>{tf.copy}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleMultiMove}
@@ -2256,7 +2264,7 @@ async function handleSsInfo() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
         >
           <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
-          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>Move</Text>
+          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>{tf.move}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleMultiShare}
@@ -2264,7 +2272,7 @@ async function handleSsInfo() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sharing ? colors.surface : colors.blue, borderRadius: 12, paddingVertical: 12 }}
         >
           <Ionicons name="share-outline" size={20} color={sharing ? colors.textMuted : '#fff'} />
-          <Text style={{ fontSize: 11, color: sharing ? colors.textMuted : '#fff', marginTop: 2 }}>Share</Text>
+          <Text style={{ fontSize: 11, color: sharing ? colors.textMuted : '#fff', marginTop: 2 }}>{tc.share}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleMultiVault}
@@ -2272,7 +2280,7 @@ async function handleSsInfo() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
         >
           <Ionicons name="shield-checkmark-outline" size={20} color={isPro ? colors.blue : colors.textMuted} />
-          <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>Vault</Text>
+          <Text style={{ fontSize: 11, color: isPro ? colors.blue : colors.textMuted, marginTop: 2 }}>{tf.vault}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleMultiDelete}
@@ -2280,7 +2288,7 @@ async function handleSsInfo() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
         >
           <Ionicons name="trash-outline" size={20} color={colors.deleteRed} />
-          <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>Delete</Text>
+          <Text style={{ fontSize: 11, color: colors.deleteRed, marginTop: 2 }}>{tc.delete}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setShowMoreSheet(true)}
@@ -2288,7 +2296,7 @@ async function handleSsInfo() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12 }}
         >
           <Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />
-          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>More</Text>
+          <Text style={{ fontSize: 11, color: colors.textPrimary, marginTop: 2 }}>{tf.more}</Text>
         </TouchableOpacity>
           </View>
         </>
@@ -2312,9 +2320,9 @@ async function handleSsInfo() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Share via QR</Text>
+            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
             <Text style={[styles.qrSub, { color: colors.textMuted }]}>{selectedItem?.name}</Text>
-            <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>Scan with any device on the same WiFi</Text>
+            <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>{tf.scanSameWifi}</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' }}>
               <QRCode value={qrUrl || 'http://localhost:8080'} size={200} />
             </View>
@@ -2336,7 +2344,7 @@ async function handleSsInfo() {
                 }}
               >
                 <Ionicons name="shuffle" size={20} color={colors.textPrimary} style={{ marginLeft: 16 }} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Slideshow</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tk.slideshow}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -2351,7 +2359,7 @@ async function handleSsInfo() {
             >
               <Ionicons name={folderView ? 'folder' : 'folder-outline'} size={20} color={folderView ? colors.blue : colors.textPrimary} style={{ marginLeft: 16 }} />
               <Text style={[styles.sheetActionText, { color: folderView ? colors.blue : colors.textPrimary }]}>
-                {folderView ? 'Exit folders' : 'View folders'}
+                {folderView ? tk.exitFolders : tk.viewFolders}
               </Text>
             </TouchableOpacity>
             {!folderView && (
@@ -2360,7 +2368,7 @@ async function handleSsInfo() {
                 onPress={() => { setShowHeaderMenu(false); setShowSortSheet(true); }}
               >
                 <Ionicons name="swap-vertical-outline" size={20} color={colors.textPrimary} style={{ marginLeft: 16 }} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Sort</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tk.sort}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -2383,28 +2391,28 @@ async function handleSsInfo() {
             }
             <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); setTimeout(() => setShowMultiRename(true), 150); }}>
               <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Multi-rename</Text>
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tf.multiRename}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleMultiInfo(); }}>
               <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+              <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{tc.info}</Text>
             </TouchableOpacity>
             {selectedHasImages && (
             <TouchableOpacity style={styles.sheetAction} onPress={() => { setShowMoreSheet(false); handleCreatePdf(); }}>
                 <Ionicons name="document-outline" size={20} color={colors.blue} />
-                <Text style={[styles.sheetActionText, { color: colors.blue }]}>Create PDF</Text>
+                <Text style={[styles.sheetActionText, { color: colors.blue }]}>{tf.createPdf}</Text>
               </TouchableOpacity>
             )}
             {selectedHasPdfs && (
               <TouchableOpacity style={styles.sheetAction} onPress={handleMergePdfs}>
                 <Ionicons name="documents-outline" size={20} color={colors.blue} />
-                <Text style={[styles.sheetActionText, { color: colors.blue }]}>Merge PDFs</Text>
+                <Text style={[styles.sheetActionText, { color: colors.blue }]}>{tf.mergePdfs}</Text>
               </TouchableOpacity>
             )}
             <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
             <TouchableOpacity style={styles.sheetAction} onPress={() => setShowMoreSheet(false)}>
               <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-              <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+              <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>{tc.cancel}</Text>
             </TouchableOpacity>
           </Animated.View>
         </Pressable>
@@ -2414,7 +2422,7 @@ async function handleSsInfo() {
           <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setExtractedText(null)} />
           <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.5 : SCREEN_WIDTH - 48, maxHeight: SCREEN_HEIGHT * 0.8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Extracted Text</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{tf.extractedText}</Text>
               <TouchableOpacity onPress={() => setExtractedText(null)}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
@@ -2433,15 +2441,15 @@ async function handleSsInfo() {
                   onPress={async () => {
                     await Clipboard.setString(extractedText ?? '');
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert('Copied', 'Text copied to clipboard.');
+                    Alert.alert(tf.copied, tf.textCopied);
                   }}
                   style={{ marginTop: 16, backgroundColor: colors.blue, borderRadius: 10, padding: 12, alignItems: 'center' }}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '500' }}>Copy Text</Text>
+                  <Text style={{ color: '#fff', fontWeight: '500' }}>{tf.copyText}</Text>
                 </TouchableOpacity>
               </>
             ) : (
-              <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>No text found in this image.</Text>
+              <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>{tf.noTextFound}</Text>
             )}
           </View>
         </View>
@@ -2457,7 +2465,7 @@ async function handleSsInfo() {
           }} />
           <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_WIDTH * 0.5 : SCREEN_WIDTH - 48 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Video Summary</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{tf.videoSummary}</Text>
               <TouchableOpacity onPress={() => {
                   setVideoSummaryVisible(false);
                   videoFrames.forEach(f => RNFS.unlink(f.path).catch(() => {}));
@@ -2468,7 +2476,7 @@ async function handleSsInfo() {
             {loadingVideoSummary ? (
               <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                 <ActivityIndicator color={colors.blue} />
-                <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 12 }}>Analysing video...</Text>
+                <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 12 }}>{tf.analysingVideo}</Text>
               </View>
             ) : (
               <>
@@ -2481,7 +2489,7 @@ async function handleSsInfo() {
                 </View>
                 {videoLabels.length > 0 && (
                   <>
-                    <Text style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Detected</Text>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>{tf.detected}</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                       {videoLabels.map((label, i) => (
                         <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
@@ -2539,19 +2547,19 @@ async function handleSsInfo() {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
                   <TouchableOpacity onPress={() => { setSsControlsVisible(false); setSsPlaying(true); }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
                     <Ionicons name="play" size={26} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Play</Text>
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{tk.play}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={async () => { if (!ssCurrent) return; try { await shareFiles([toPath(ssCurrent.uri)], 'image/*'); } catch {} }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
                     <Ionicons name="share-outline" size={26} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Share</Text>
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{tc.share}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={async () => { if (!ssCurrent) return; if (ssIsFav) { await removeFavourite(ssCurrent.uri); setSsIsFav(false); } else { await addFavourite({ name: ssCurrent.name, uri: ssCurrent.uri }); setSsIsFav(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } }} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
                     <Ionicons name={ssIsFav ? 'heart' : 'heart-outline'} size={26} color={ssIsFav ? '#E24B4A' : '#fff'} />
-                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{ssIsFav ? 'Faved' : 'Favourite'}</Text>
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{ssIsFav ? tk.faved : tk.favourite}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handleSsInfo} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 6, minWidth: 56 }}>
                     <Ionicons name="information-circle-outline" size={26} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>Info</Text>
+                    <Text style={{ color: '#fff', fontSize: 11, marginTop: 4 }}>{tc.info}</Text>
                   </TouchableOpacity>
                 </View>
                 <Text style={{ color: '#888', fontSize: 12, textAlign: 'center', paddingVertical: 4 }} numberOfLines={1}>{ssCurrent?.name}</Text>
@@ -2600,20 +2608,20 @@ async function handleSsInfo() {
             <Pressable style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
-                  Rename {selectedItemsMap.size} file{selectedItemsMap.size !== 1 ? 's' : ''}
+                  {tf.renameNFiles(selectedItemsMap.size)}
                 </Text>
                 <TouchableOpacity onPress={() => { setShowMultiRename(false); setMultiRenameBase(''); }}>
                   <Ionicons name="close" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
               <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
-                Files will be named: {multiRenameBase.trim() || 'name'}_1, {multiRenameBase.trim() || 'name'}_2...
+                {tf.filesWillBeNamed(multiRenameBase.trim() || tf.namePlaceholder)}
               </Text>
               <TextInput
                 style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, marginBottom: 16 }}
                 value={multiRenameBase}
                 onChangeText={setMultiRenameBase}
-                placeholder="Base name e.g. holiday"
+                placeholder={tf.baseNamePh}
                 placeholderTextColor={colors.textMuted}
                 autoFocus
                 autoCapitalize="none"
@@ -2624,7 +2632,7 @@ async function handleSsInfo() {
                   style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: 'center' }}
                   onPress={() => { setShowMultiRename(false); setMultiRenameBase(''); }}
                 >
-                  <Text style={{ fontSize: 14, color: colors.textSecondary }}>Cancel</Text>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary }}>{tc.cancel}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: multiRenameBase.trim() ? colors.blue : colors.textDisabled, alignItems: 'center' }}
@@ -2635,7 +2643,7 @@ async function handleSsInfo() {
                   }}
                   disabled={!multiRenameBase.trim()}
                 >
-                  <Text style={{ fontSize: 14, color: '#fff', fontWeight: '500' }}>Choose location</Text>
+                  <Text style={{ fontSize: 14, color: '#fff', fontWeight: '500' }}>{tf.chooseLocation}</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -2654,9 +2662,9 @@ async function handleSsInfo() {
         onClose={() => setMultiRenamePickerVisible(false)}
         onSave={(folderPath) => handleMultiRename(folderPath)}
         defaultPath="/storage/emulated/0/"
-        defaultLabel="Internal Storage"
-        defaultSubLabel="Root of internal storage"
-        title="Save renamed files"
+        defaultLabel={tf.internalStorage}
+        defaultSubLabel={tf.rootOfInternal}
+        title={tf.saveRenamed}
       />
     </SafeAreaView>
   );
