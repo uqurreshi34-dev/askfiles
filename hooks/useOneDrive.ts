@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { makeRedirectUri, useAuthRequest, exchangeCodeAsync } from 'expo-auth-session';
+import { useAuthRequest } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
@@ -9,23 +9,15 @@ import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as set
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
 import RNFS from 'react-native-fs';
+import { CLOUD_AUTH, redirectUri, rememberSignIn, completeSignIn } from '@/modules/cloudAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const CLIENT_ID = process.env.EXPO_PUBLIC_ONEDRIVE_CLIENT_ID ?? '';
-const TENANT = 'consumers'; // personal Microsoft accounts
+const { clientId: CLIENT_ID, discovery } = CLOUD_AUTH.onedrive; // personal Microsoft accounts
 const SCOPES = ['Files.ReadWrite.AppFolder', 'offline_access', 'User.Read'];
-const TOKEN_KEY = 'onedrive_access_token';
-const REFRESH_KEY = 'onedrive_refresh_token';
+const { tokenKey: TOKEN_KEY, refreshKey: REFRESH_KEY } = CLOUD_AUTH.onedrive;
 const LAST_BACKUP_KEY = 'onedrive_last_backup';
 
-const discovery = {
-  authorizationEndpoint: `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/authorize`,
-  tokenEndpoint: `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`,
-};
-
-const redirectUri = makeRedirectUri({ scheme: 'askfiles', path: 'callback' });
-//const redirectUri = 'askfiles://callback';
 
 export function useOneDrive() {
   const [isConnected, setIsConnected] = useState(false);
@@ -55,7 +47,7 @@ export function useOneDrive() {
   useEffect(() => {
     if (response?.type === 'success') {
       const { code } = response.params;
-      handleCodeExchange(code);
+      handleCodeExchange(code, response.params.state);
     }
   }, [response]);
 
@@ -72,21 +64,11 @@ export function useOneDrive() {
     }
   }
 
-  async function handleCodeExchange(code: string) {
+  async function handleCodeExchange(code: string, state?: string) {
     try {
-      const tokenResponse = await exchangeCodeAsync(
-        {
-          clientId: CLIENT_ID,
-          code,
-          redirectUri,
-          extraParams: { code_verifier: request?.codeVerifier ?? '' },
-        },
-        discovery
-      );
-      await AsyncStorage.setItem(TOKEN_KEY, tokenResponse.accessToken);
-      if (tokenResponse.refreshToken) {
-        await AsyncStorage.setItem(REFRESH_KEY, tokenResponse.refreshToken);
-      }
+      // Shared with the callback screen, so the code is only exchanged once.
+      const provider = await completeSignIn(code, state);
+      if (provider !== 'onedrive') { await checkSignInStatus(); return; }
       setIsConnected(true);
       const lastBackupVal = await AsyncStorage.getItem(LAST_BACKUP_KEY);
       setLastBackup(lastBackupVal);
@@ -131,6 +113,7 @@ export function useOneDrive() {
 
   async function signIn() {
     setError(null);
+    await rememberSignIn('onedrive', request?.codeVerifier, request?.state);
     await promptAsync();
   }
 

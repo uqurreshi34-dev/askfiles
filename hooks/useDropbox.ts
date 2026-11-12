@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { makeRedirectUri, useAuthRequest, exchangeCodeAsync } from 'expo-auth-session';
+import { useAuthRequest } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
@@ -9,20 +9,14 @@ import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as set
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 import RNFS from 'react-native-fs';
 import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
+import { CLOUD_AUTH, redirectUri, rememberSignIn, completeSignIn } from '@/modules/cloudAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const CLIENT_ID = process.env.EXPO_PUBLIC_DROPBOX_CLIENT_ID ?? '';
-const TOKEN_KEY = 'dropbox_access_token';
-const REFRESH_KEY = 'dropbox_refresh_token';
+const { clientId: CLIENT_ID, discovery } = CLOUD_AUTH.dropbox;
+const { tokenKey: TOKEN_KEY, refreshKey: REFRESH_KEY } = CLOUD_AUTH.dropbox;
 const LAST_BACKUP_KEY = 'dropbox_last_backup';
 
-const discovery = {
-  authorizationEndpoint: 'https://www.dropbox.com/oauth2/authorize',
-  tokenEndpoint: 'https://api.dropboxapi.com/oauth2/token',
-};
-
-const redirectUri = makeRedirectUri({ scheme: 'askfiles', path: 'callback' });
 
 export function useDropbox() {
   const [isConnected, setIsConnected] = useState(false);
@@ -55,7 +49,7 @@ export function useDropbox() {
   useEffect(() => {
     if (response?.type === 'success') {
       const { code } = response.params;
-      handleCodeExchange(code);
+      handleCodeExchange(code, response.params.state);
     }
   }, [response]);
 
@@ -72,21 +66,11 @@ export function useDropbox() {
     }
   }
 
-  async function handleCodeExchange(code: string) {
+  async function handleCodeExchange(code: string, state?: string) {
     try {
-      const tokenResponse = await exchangeCodeAsync(
-        {
-          clientId: CLIENT_ID,
-          code,
-          redirectUri,
-          extraParams: { code_verifier: request?.codeVerifier ?? '' },
-        },
-        discovery
-      );
-      await AsyncStorage.setItem(TOKEN_KEY, tokenResponse.accessToken);
-      if (tokenResponse.refreshToken) {
-        await AsyncStorage.setItem(REFRESH_KEY, tokenResponse.refreshToken);
-      }
+      // Shared with the callback screen, so the code is only exchanged once.
+      const provider = await completeSignIn(code, state);
+      if (provider !== 'dropbox') { await checkSignInStatus(); return; }
       setIsConnected(true);
       const lastBackupVal = await AsyncStorage.getItem(LAST_BACKUP_KEY);
       setLastBackup(lastBackupVal);
@@ -125,6 +109,7 @@ export function useDropbox() {
 
   async function signIn() {
     setError(null);
+    await rememberSignIn('dropbox', request?.codeVerifier, request?.state);
     await promptAsync();
   }
 
