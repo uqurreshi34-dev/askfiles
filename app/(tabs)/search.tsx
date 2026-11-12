@@ -25,6 +25,7 @@ import { addFavourite, removeFavourite, isFavourite, useFavourites } from '@/hoo
 import RNFS from 'react-native-fs';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useTheme } from '@/hooks/useTheme';
+import { keyboardClosed } from '@/utils/keyboard';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { filesText } from '@/modules/i18n/files';
@@ -223,9 +224,10 @@ export default function SearchScreen() {
   }
 
   async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
-    // A keyboard left open from searching covers the bottom of the sheet in
-    // landscape, so options like Delete could not be scrolled to.
-    Keyboard.dismiss();
+    // Wait for a keyboard left open from searching to finish closing: a sheet
+    // opened while it slid away measured itself too short in landscape, and
+    // options like Delete could not be scrolled to.
+    await keyboardClosed();
     setTxtPreview(null);
     setSelectedItem(item);
     pendingItem.current = item;
@@ -1270,7 +1272,7 @@ export default function SearchScreen() {
           <Pressable style={styles.overlay} onPress={closeSheet}>
           <Animated.View
               style={SCREEN_WIDTH > SCREEN_HEIGHT
-                ? [styles.sheetLandscape, { backgroundColor: colors.card }]
+                ? [styles.sheetLandscape, { backgroundColor: colors.card, maxHeight: SCREEN_HEIGHT * 0.9 }]
                 : [styles.sheet, { backgroundColor: colors.card, transform: [{ translateY: sheetAnim }], paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16, maxHeight: SCREEN_HEIGHT * 0.75 }]
               }
               {...(SCREEN_WIDTH > SCREEN_HEIGHT ? {} : panResponder.panHandlers)}
