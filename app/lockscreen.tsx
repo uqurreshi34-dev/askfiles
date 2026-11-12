@@ -11,10 +11,16 @@ import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect } from 'react';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { pinText } from '@/modules/i18n/pinText';
 
 export default function LockScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const lang = useLanguage();
+  const c = commonText(lang);
+  const t = pinText(lang);
   const { next } = useLocalSearchParams<{ next?: string }>();
   const destination = next ? decodeURIComponent(next) : '/(tabs)';
   const [entry, setEntry] = useState('');
@@ -32,7 +38,7 @@ export default function LockScreen() {
       router.replace(destination as any);
       return true;
     } else {
-      setError('Incorrect PIN. Try again.');
+      setError(c.incorrectPin);
       setEntry('');
       return false;
     }
@@ -47,7 +53,7 @@ export default function LockScreen() {
 
   async function tryBiometric() {
     try {
-      const result = await showBiometricPrompt('Unlock AskFiles', 'Use your fingerprint or face to unlock');
+      const result = await showBiometricPrompt(t.unlockTitle, t.unlockSub);
       if (result === 'success') {
         router.replace(destination as any);
       }
@@ -62,8 +68,8 @@ export default function LockScreen() {
       ]);
       if (hasHardware && isEnrolled) {
         const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Verify identity to reset PIN',
-          cancelLabel: 'Cancel',
+          promptMessage: c.verifyResetPin,
+          cancelLabel: c.cancel,
           disableDeviceFallback: true,
         });
         if (result.success) {
@@ -71,9 +77,9 @@ export default function LockScreen() {
         }
       } else {
         Alert.alert(
-          'No biometrics available',
-          'For security, go to Settings → Apps → AskFiles → Clear Data to reset. Your vault files will be preserved if you reinstall from Play Store.',
-          [{ text: 'OK' }]
+          c.noBiometricsTitle,
+          c.noBiometricsMsg,
+          [{ text: c.ok }]
         );
       }
     } catch {}
@@ -85,8 +91,8 @@ export default function LockScreen() {
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="lock-closed" size={36} color={colors.blue} />
         </View>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>AskFiles is locked</Text>
-        <Text style={[styles.sub, { color: colors.textMuted }]}>Enter your PIN to continue</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.locked}</Text>
+        <Text style={[styles.sub, { color: colors.textMuted }]}>{t.enterToContinue}</Text>
         <View style={styles.dots}>
           {[0, 1, 2, 3].map(i => (
             <View key={i} style={[styles.dot, i < entry.length && styles.dotFilled, !!error && styles.dotError]} />
@@ -130,7 +136,7 @@ export default function LockScreen() {
       </View>
        {/* pinned, always visible */}
       <TouchableOpacity onPress={handleForgotPin} style={styles.forgotPin}>
-        <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
+        <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>{c.forgotPin}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

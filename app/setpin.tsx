@@ -9,11 +9,17 @@ import { useLocalSearchParams } from 'expo-router';
 import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail'
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { pinText } from '@/modules/i18n/pinText';
 
 export default function SetPinScreen() {
   const { colors } = useTheme();
   const { fromForgotPin } = useLocalSearchParams<{ fromForgotPin?: string }>();
   const router = useRouter();
+  const lang = useLanguage();
+  const c = commonText(lang);
+  const t = pinText(lang);
   const [firstPin, setFirstPin] = useState<string | null>(null);
   const [entry, setEntry] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +41,7 @@ export default function SetPinScreen() {
         void save(code);
         return true;           // stage 2 match → green
       } else {
-        setError("PINs don't match. Try again.");
+        setError(t.mismatch);
         setFirstPin(null);
         setEntry('');
         return false;          // mismatch → red
@@ -50,8 +56,8 @@ export default function SetPinScreen() {
     }
     await savePin(code);
     await enableAppLock();
-    Alert.alert('PIN Set', 'Your PIN has been set. App lock is now enabled.', [
-      { text: 'OK', onPress: () => router.replace('/(tabs)/' as any) },
+    Alert.alert(t.pinSetTitle, t.pinSetMsg, [
+      { text: c.ok, onPress: () => router.replace('/(tabs)/' as any) },
     ]);
   }
 
@@ -70,7 +76,7 @@ export default function SetPinScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Set PIN</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.setPin}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -79,10 +85,10 @@ export default function SetPinScreen() {
           <Ionicons name="keypad-outline" size={36} color={colors.blue} />
         </View>
         <Text style={[styles.prompt, { color: colors.textPrimary }]}>
-          {stageIsConfirm ? 'Confirm your PIN' : 'Enter a 4-digit PIN'}
+          {stageIsConfirm ? t.confirmPin : t.enterNew}
         </Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>
-          {stageIsConfirm ? 'Enter the same PIN again to confirm' : 'This PIN will unlock the app and vault'}
+          {stageIsConfirm ? t.confirmSub : t.newSub}
         </Text>
 
         <View style={styles.dots}>

@@ -2,6 +2,8 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
 
 interface DetailRow {
   label: string;
@@ -18,6 +20,7 @@ interface Props {
 
 export default function FileDetailsModal({ visible, name, data, onClose, title }: Props) {
   const { colors } = useTheme();
+  const c = commonText(useLanguage());
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
   return (
@@ -26,7 +29,7 @@ export default function FileDetailsModal({ visible, name, data, onClose, title }
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
         <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%', maxHeight: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_HEIGHT * 0.8 : SCREEN_HEIGHT * 0.9 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{title ?? 'File Info'}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{title ?? c.fileInfo}</Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
@@ -43,7 +46,7 @@ export default function FileDetailsModal({ visible, name, data, onClose, title }
           <TouchableOpacity
             style={{ marginTop: 16, padding: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: 'center' }}
             onPress={onClose}>
-            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>Done</Text>
+            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>{c.done}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -1,3 +1,5 @@
+import { commonText } from '@/modules/i18n/common';
+
 export const ROOT_PATH = 'file:///storage/emulated/0/';
 
 export function getMimeType(name: string): string {
@@ -71,12 +73,13 @@ export function getMimeType(name: string): string {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
     const months = Math.floor(days / 30);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins} min ago`;
-    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-    if (days < 30) return `${days} day${days !== 1 ? 's' : ''} ago`;
-    if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
-    return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const c = commonText();
+    if (mins < 1) return c.justNow;
+    if (mins < 60) return c.minsAgo(mins);
+    if (hours < 24) return c.hoursAgo(hours);
+    if (days < 30) return c.daysAgo(days);
+    if (months < 12) return c.monthsAgo(months);
+    return new Date(ms).toLocaleDateString(c.dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   export function formatDuration(ms: number): string {
@@ -132,13 +135,14 @@ export function exifLines(info: {
   videoDate?: string;
 }): { label: string; value: string }[] {
   const lines: { label: string; value: string }[] = [];
+  const c = commonText();
 
   // EXIF dates are "yyyy:MM:dd HH:mm:ss" — colons in the date, not parseable directly
   if (info.dateTaken) {
     const m = info.dateTaken.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
     if (m) {
       const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
-      if (!isNaN(t)) lines.push({ label: 'Date taken', value: formatDate(t) });
+      if (!isNaN(t)) lines.push({ label: c.dateTaken, value: formatDate(t) });
     }
   }
   // Video recording date — MediaMetadataRetriever returns "yyyyMMdd'T'HHmmss.SSS'Z'"
@@ -150,22 +154,22 @@ export function exifLines(info: {
       // 1904 (or thereabouts). Reject anything implausible rather than show it.
       if (year > 1990 && year <= new Date().getFullYear() + 1) {
         const t = Date.UTC(year, +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
-        if (!isNaN(t)) lines.push({ label: 'Recorded', value: formatDate(t) });
+        if (!isNaN(t)) lines.push({ label: c.recorded, value: formatDate(t) });
       }
     }
   }
-  if (info.camera) lines.push({ label: 'Camera', value: info.camera });
-  if (info.iso) lines.push({ label: 'ISO', value: info.iso });
-  if (info.aperture) lines.push({ label: 'Aperture', value: `f/${info.aperture}` });
+  if (info.camera) lines.push({ label: c.camera, value: info.camera });
+  if (info.iso) lines.push({ label: c.iso, value: info.iso });
+  if (info.aperture) lines.push({ label: c.aperture, value: `f/${info.aperture}` });
   if (info.shutter) {
     const sec = parseFloat(info.shutter);
     if (!isNaN(sec)) lines.push({
-      label: 'Shutter',
+      label: c.shutter,
       value: sec < 1 ? `1/${Math.round(1 / sec)}s` : `${sec}s`,
     });
   }
   if (info.latitude !== undefined && info.longitude !== undefined) {
-    lines.push({ label: 'GPS', value: `${info.latitude.toFixed(5)}, ${info.longitude.toFixed(5)}` });
+    lines.push({ label: c.gps, value: `${info.latitude.toFixed(5)}, ${info.longitude.toFixed(5)}` });
   }
 
   return lines;

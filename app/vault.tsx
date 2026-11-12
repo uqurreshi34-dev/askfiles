@@ -29,12 +29,18 @@ import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { vaultText } from '@/modules/i18n/vaultText';
 
 
 export default function VaultScreen() {
   const { colors } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const router = useRouter();
+  const lang = useLanguage();
+  const c = commonText(lang);
+  const t = vaultText(lang);
   const { files, loading, authenticated, unlockVault, deleteFromVault, loadFiles, lock } = useVault();
   const [busy, setBusy] = useState(false);
   const [showPinEntry, setShowPinEntry] = useState(false);
@@ -144,16 +150,16 @@ export default function VaultScreen() {
       const exists = await RNFS.exists(dst);
       if (exists) {
         setMovingFile(false);
-        Alert.alert('File already exists', `"${file.name}" already exists in this folder.`);
+        Alert.alert(c.fileExists, t.existsInFolder(file.name));
         return;
       }
       await RNFS.copyFile(toPath(file.uri), dst);
       await scanFile(dst).catch(() => {});
       await deleteFromVault(file);
-      Alert.alert('Moved', `"${file.name}" moved out of Vault successfully.`);
+      Alert.alert(c.moved, t.movedOne(file.name));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert('Error', 'Could not move file out of Vault.');
+      Alert.alert(c.error, t.couldNotMove);
     } finally {
       setMovingFile(false);
     }
@@ -193,22 +199,22 @@ export default function VaultScreen() {
     setSelectedFilesMap(new Map());
     const succeeded = filesToMove.length - failed;
     if (failed > 0 && succeeded === 0) {
-      Alert.alert('File already exists', filesToMove.length === 1
-        ? `"${filesToMove[0].name}" already exists in this location.`
-        : `${failed} file${failed !== 1 ? 's' : ''} already exist at this location and could not be moved.`);
+      Alert.alert(c.fileExists, filesToMove.length === 1
+        ? t.existsHere(filesToMove[0].name)
+        : t.nExist(failed));
     } else if (failed > 0) {
-      Alert.alert('Partial success', `${succeeded} file${succeeded !== 1 ? 's' : ''} moved. ${failed} could not be moved — ${failed === 1 ? 'it' : 'they'} already exist${failed === 1 ? 's' : ''} at this location.`);
+      Alert.alert(c.partialSuccess, t.partial(succeeded, failed));
     } else {
-      Alert.alert('Moved', `${filesToMove.length} file${filesToMove.length !== 1 ? 's' : ''} moved out of Vault.`);
+      Alert.alert(c.moved, t.movedN(filesToMove.length));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   }
   
   async function handleMultiDelete() {
     const files = Array.from(selectedFilesMap.values());
-    Alert.alert('Delete permanently', `Delete ${files.length} file${files.length !== 1 ? 's' : ''} from Vault? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
+    Alert.alert(c.deletePermanently, t.deleteN(files.length), [
+      { text: c.cancel, style: 'cancel' },
+      { text: c.delete, style: 'destructive', onPress: async () => {
         setBusy(true);
         for (const file of files) {
           try {
@@ -260,12 +266,12 @@ export default function VaultScreen() {
   async function handleDelete(file: VaultFile) {
     closeSheet();
     Alert.alert(
-      'Delete permanently',
-      `Delete "${file.name}" forever? This cannot be undone.`,
+      c.deletePermanently,
+      t.deleteOne(file.name),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: c.cancel, style: 'cancel' },
         {
-          text: 'Delete',
+          text: c.delete,
           style: 'destructive',
           onPress: async () => {
             setBusy(true);
@@ -289,8 +295,8 @@ export default function VaultScreen() {
         return;
       }
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock Vault',
-        cancelLabel: 'Use PIN',
+        promptMessage: t.unlockVault,
+        cancelLabel: t.usePin,
         disableDeviceFallback: true,
       });
       if (result.success) {
@@ -310,7 +316,7 @@ export default function VaultScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return true;
     } else {
-      setPinError('Incorrect PIN. Try again.');
+      setPinError(c.incorrectPin);
       setPinInput('');
       return false;
     }
@@ -322,8 +328,8 @@ export default function VaultScreen() {
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (hasHardware && isEnrolled) {
         const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Verify identity to reset PIN',
-          cancelLabel: 'Cancel',
+          promptMessage: c.verifyResetPin,
+          cancelLabel: c.cancel,
           disableDeviceFallback: true,
         });
         if (result.success) {
@@ -331,9 +337,9 @@ export default function VaultScreen() {
         }
       } else {
         Alert.alert(
-          'No biometrics available',
-          'For security, go to Settings → Apps → AskFiles → Clear Data to reset. Your vault files will be preserved if you reinstall from Play Store.',
-          [{ text: 'OK' }]
+          c.noBiometricsTitle,
+          c.noBiometricsMsg,
+          [{ text: c.ok }]
         );
       }
     } catch {}
@@ -401,7 +407,7 @@ export default function VaultScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Secure Vault</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.secureVault}</Text>
         <View style={{ width: 40 }} />
       </View>
         {!showPinEntry ? (
@@ -409,18 +415,18 @@ export default function VaultScreen() {
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
               <Ionicons name="lock-closed" size={40} color={colors.blue} />
             </View>
-            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Secure Vault</Text>
-            <Text style={[styles.lockSub, { color: colors.textMuted }]}>Your files are protected. Authenticate to access your vault.</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>{t.secureVault}</Text>
+            <Text style={[styles.lockSub, { color: colors.textMuted }]}>{t.protectedSub}</Text>
             <TouchableOpacity style={styles.authBtn} onPress={() => tryVaultBiometric()} activeOpacity={0.85}>
               <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.authBtnText}>Unlock with Biometrics</Text>
+              <Text style={styles.authBtnText}>{t.unlockBiometrics}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => pinAvailable ? setShowPinEntry(true) : router.push('/setpin' as any)}
               style={{ marginTop: 16, paddingVertical: 8 }}
             >
               <Text style={{ fontSize: 14, color: colors.textMuted }}>
-                {pinAvailable ? 'Use PIN instead' : 'Set up a PIN'}
+                {pinAvailable ? t.usePinInstead : t.setUpPin}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -430,7 +436,7 @@ export default function VaultScreen() {
               <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
                 <Ionicons name="keypad-outline" size={40} color={colors.blue} />
               </View>
-              <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Enter PIN</Text>
+              <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>{t.enterPin}</Text>
               <View style={{ flexDirection: 'row', gap: 16, marginTop: 24, marginBottom: 12 }}>
                 {[0, 1, 2, 3].map(i => (
                   <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
@@ -474,7 +480,7 @@ export default function VaultScreen() {
               </GestureDetector>
                {/* pinned, always visible */}
             <TouchableOpacity onPress={handleForgotPin} style={styles.forgotPin}>
-              <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>Forgot PIN?</Text>
+              <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>{c.forgotPin}</Text>
             </TouchableOpacity>
             </View>
           </>
@@ -490,20 +496,20 @@ export default function VaultScreen() {
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Secure Vault</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t.secureVault}</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
               <Ionicons name="shield-checkmark-outline" size={40} color={colors.blue} />
             </View>
-            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>Pro Feature</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>{c.proFeature}</Text>
             <Text style={[styles.lockSub, { color: colors.textMuted }]}>
-              Secure Vault is part of AskFiles Pro. Upgrade once, use forever.
+              {t.proSub}
             </Text>
             <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/(tabs)/cloud' as any)} activeOpacity={0.85}>
               <Ionicons name="sparkles-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.authBtnText}>Upgrade to Pro</Text>
+              <Text style={styles.authBtnText}>{c.upgradeToPro}</Text>
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
@@ -519,7 +525,7 @@ export default function VaultScreen() {
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {selectMode ? `${selectedUris.size} selected` : 'Vault'}
+          {selectMode ? c.selected(selectedUris.size) : t.vault}
         </Text>
         {!selectMode ? (
           <View style={{ flexDirection: 'row' }}>
@@ -542,7 +548,7 @@ export default function VaultScreen() {
             style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
             disabled={movingFile || busy}
           >
-            <Text style={{ fontSize: 12, color: (movingFile || busy) ? colors.textDisabled : colors.blue, fontWeight: '500' }}>All</Text>
+            <Text style={{ fontSize: 12, color: (movingFile || busy) ? colors.textDisabled : colors.blue, fontWeight: '500' }}>{c.all}</Text>
           </TouchableOpacity>
         )} 
         </View>
@@ -550,14 +556,14 @@ export default function VaultScreen() {
       {openingFile && (
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="small" color={colors.blue} />
-            <Text style={[styles.busyText, { color: colors.textSecondary }]}>Opening file...</Text>
+            <Text style={[styles.busyText, { color: colors.textSecondary }]}>{c.openingFile}</Text>
           </View>
         )}
         {movingFile && (
           <View style={[styles.busyBanner, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="small" color={colors.blue} />
             <Text style={[styles.busyText, { color: colors.textSecondary }]}>
-              {selectedUris.size > 1 ? 'Moving files...' : 'Moving file...'}
+              {selectedUris.size > 1 ? c.movingFiles : c.movingFile}
             </Text>
           </View>
         )}
@@ -569,7 +575,7 @@ export default function VaultScreen() {
             disabled={movingFile || busy}
           >
             <Ionicons name="arrow-redo-outline" size={16} color="#fff" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Move out</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{t.moveOut}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 10, paddingVertical: 10, opacity: movingFile || busy ? 0.5 : 1 }}
@@ -577,14 +583,14 @@ export default function VaultScreen() {
             disabled={movingFile || busy}
           >
             <Ionicons name="trash-outline" size={16} color={colors.deleteRed} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.deleteRed }}>Delete</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.deleteRed }}>{c.delete}</Text>
           </TouchableOpacity>
         </View>
       )}
       {busy && (
         <View style={[styles.busyBanner, { backgroundColor: colors.busyBg }]}>
           <ActivityIndicator size="small" color={colors.blue} />
-          <Text style={[styles.busyText, { color: colors.blue }]}>Working...</Text>
+          <Text style={[styles.busyText, { color: colors.blue }]}>{c.working}</Text>
         </View>
       )}
 
@@ -595,8 +601,8 @@ export default function VaultScreen() {
       ) : files.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="shield-checkmark-outline" size={48} color={colors.textDisabled} />
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Vault is empty</Text>
-          <Text style={[styles.emptySub, { color: colors.textMuted }]}>Long press any file — or tap ⋮ — and select "Move to Vault"</Text>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>{t.empty}</Text>
+          <Text style={[styles.emptySub, { color: colors.textMuted }]}>{t.emptySub}</Text>
         </View>
       ) : (
         <FlatList
@@ -606,7 +612,7 @@ export default function VaultScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={[styles.count, { color: colors.textMuted }]}>{files.length} file{files.length !== 1 ? 's' : ''} secured</Text>
+            <Text style={[styles.count, { color: colors.textMuted }]}>{t.secured(files.length)}</Text>
           }
         />
       )}
@@ -646,12 +652,12 @@ export default function VaultScreen() {
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => { closeSheet(); selectedFile && openFile(selectedFile); }}>
                 <Ionicons name="open-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Open</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{c.open}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleShare(selectedFile)}>
                 <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Share</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{c.share}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={async () => {
@@ -666,14 +672,14 @@ export default function VaultScreen() {
                 const exif = info ? exifLines(info) : [];
                 try {
                   const stat = await RNFS.stat(toPath(selectedFile.uri));
-                  if (stat.size) lines.push({ label: 'Size', value: formatSize(stat.size) });
-                  if (stat.mtime) lines.push({ label: 'Modified', value: formatDate(new Date(stat.mtime).getTime()) });
-                  if (stat.ctime && exif.length === 0) lines.push({ label: 'Created', value: formatDate(new Date(stat.ctime).getTime()) });
+                  if (stat.size) lines.push({ label: c.size, value: formatSize(stat.size) });
+                  if (stat.mtime) lines.push({ label: c.modified, value: formatDate(new Date(stat.mtime).getTime()) });
+                  if (stat.ctime && exif.length === 0) lines.push({ label: c.created, value: formatDate(new Date(stat.ctime).getTime()) });
                 } catch {}
-                lines.push({ label: 'Type', value: (selectedFile.name.split('.').pop()?.toUpperCase() ?? '?') + ' file' });
+                lines.push({ label: c.type, value: c.typeFile(selectedFile.name.split('.').pop()?.toUpperCase() ?? '?') });
                 if (info) {
-                  if (info.width && info.height) lines.push({ label: 'Resolution', value: `${info.width}×${info.height}` });
-                  if (info.duration) lines.push({ label: 'Duration', value: info.duration });
+                  if (info.width && info.height) lines.push({ label: c.resolution, value: `${info.width}×${info.height}` });
+                  if (info.duration) lines.push({ label: c.duration, value: info.duration });
                 }
                 lines.push(...exif);
                 setDetailsName(selectedFile.name);
@@ -681,24 +687,24 @@ export default function VaultScreen() {
                 setShowDetailsModal(true);
               }}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Info</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{c.info}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && openMovePicker(selectedFile)}>
                 <Ionicons name="arrow-redo-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>Move out of Vault</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textPrimary }]}>{t.moveOutOfVault}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sheetAction} onPress={() => selectedFile && handleDelete(selectedFile)}>
                 <Ionicons name="trash-outline" size={20} color="#E24B4A" />
-                <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>Delete permanently</Text>
+                <Text style={[styles.sheetActionText, { color: '#E24B4A' }]}>{c.deletePermanently}</Text>
               </TouchableOpacity>
 
               <View style={[styles.sheetDivider, { backgroundColor: colors.border }]} />
 
               <TouchableOpacity style={styles.sheetAction} onPress={closeSheet}>
                 <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-                <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>Cancel</Text>
+                <Text style={[styles.sheetActionText, { color: colors.textMuted }]}>{c.cancel}</Text>
               </TouchableOpacity>
               </Pressable>
             </ScrollView>
@@ -722,7 +728,7 @@ export default function VaultScreen() {
             >
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>Move to...</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>{c.moveTo}</Text>
             <View style={{ width: 40 }} />
           </View>
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>
@@ -745,7 +751,7 @@ export default function VaultScreen() {
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 && pickerFiles.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.textMuted }]}>This folder is empty</Text></View>
+            <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.textMuted }]}>{c.folderEmpty}</Text></View>
           ) : (
             <FlatList
               data={[...pickerItems, ...pickerFiles]}
@@ -779,11 +785,11 @@ export default function VaultScreen() {
           )}
           <View style={[styles.pickerFooter, { borderTopColor: colors.border }]}>
             <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: colors.surface }]} onPress={() => setShowPicker(false)}>
-              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>{c.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pickerPasteBtn} onPress={handleMoveOut}>
               <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.pickerPasteText}>Move here</Text>
+              <Text style={styles.pickerPasteText}>{c.moveHere}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
