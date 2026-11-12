@@ -1,7 +1,7 @@
 import { copyFileStream, moveFileStream, addCopyProgressListener, shareFileViaWifi, WIFI_NO_NETWORK, checkDuplicates, batchRename, readTextPreview, readDocxPreview } from 'file-reader';
 import { recordActivity, readableFolder } from '@/modules/activityLog';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, InteractionManager, useWindowDimensions, ScrollView, StatusBar, BackHandler } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, InteractionManager, useWindowDimensions, ScrollView, StatusBar, BackHandler, Keyboard } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -511,6 +511,9 @@ async function handleSsInfo() {
   }, []);
 
   async function openSheet(item: FileItem) {
+    // A keyboard left open from searching covers the bottom of the sheet in
+    // landscape, so options like Delete could not be scrolled to.
+    Keyboard.dismiss();
     setTxtPreview(null);
     setSelectedItem(item);
     setFileSize(null);

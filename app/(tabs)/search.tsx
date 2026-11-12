@@ -223,6 +223,9 @@ export default function SearchScreen() {
   }
 
   async function openSheet(item: { name: string; uri: string; inFolder?: boolean }) {
+    // A keyboard left open from searching covers the bottom of the sheet in
+    // landscape, so options like Delete could not be scrolled to.
+    Keyboard.dismiss();
     setTxtPreview(null);
     setSelectedItem(item);
     pendingItem.current = item;

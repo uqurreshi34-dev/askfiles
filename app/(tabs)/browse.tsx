@@ -4,7 +4,7 @@ import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { extractVideoFrames, labelImage } from '@/modules/scan-module';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Image, Modal, TextInput, Alert,
-  Animated, Pressable, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions, StatusBar
+  Animated, Pressable, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions, StatusBar, Keyboard
 } from 'react-native';
 import { useTags } from '@/hooks/useTags';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -249,6 +249,9 @@ export default function BrowseScreen() {
   }
 
   async function openSheet(item: FileItem) {
+    // A keyboard left open from searching covers the bottom of the sheet in
+    // landscape, so options like Delete could not be scrolled to.
+    Keyboard.dismiss();
     setTxtPreview(null);
     setSelectedItem(item);
     setFileSize(null);
