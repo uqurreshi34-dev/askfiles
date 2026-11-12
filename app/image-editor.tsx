@@ -13,6 +13,8 @@ import { annotateImage } from '@/modules/file-converter';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useLanguage } from '@/modules/appLanguage';
+import { readersText } from '@/modules/i18n/readersText';
 
 type Annotation = { text: string; x: number; y: number; sizeRatio: number };
 
@@ -27,6 +29,8 @@ const SIZES = [
 
 export default function ImageEditorScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const t = readersText(lang);
   const router = useRouter();
   const { uri, name } = useLocalSearchParams<{ uri: string; name: string }>();
   const { width: winWidth } = useWindowDimensions();
@@ -60,8 +64,8 @@ export default function ImageEditorScreen() {
       () => {
         if (cancelled) return;
         setLoading(false);
-        Alert.alert('Unsupported image', 'Could not read this image.', [
-          { text: 'OK', onPress: () => router.back() },
+        Alert.alert(t.unsupported, t.couldNotReadImage, [
+          { text: t.ok, onPress: () => router.back() },
         ]);
       }
     );
@@ -80,7 +84,7 @@ export default function ImageEditorScreen() {
     if (!canvas) return;
     const text = pending.trim();
     if (!text) {
-      Alert.alert('Nothing to place', 'Type some text or pick an emoji first.');
+      Alert.alert(t.nothingToPlace, t.nothingToPlaceMsg);
       return;
     }
     const { locationX, locationY } = e.nativeEvent;
@@ -129,12 +133,12 @@ export default function ImageEditorScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const note = result.downsampled
-        ? '\n\nThis image was very large, so the copy was saved at a slightly reduced size.'
+        ? t.downsampled
         : '';
-      Alert.alert('Saved', `Saved as ${base}_edited_${stamp}.${ext}${note}`, [
-        { text: 'Done', onPress: () => router.back() },
+      Alert.alert(t.saved, t.savedAs(`${base}_edited_${stamp}.${ext}`) + note, [
+        { text: t.done, onPress: () => router.back() },
         {
-          text: 'Open',
+          text: t.open,
           onPress: async () => {
             try {
               await openFileNative(outputPath, `image/${ext.toLowerCase() === 'jpg' ? 'jpeg' : ext.toLowerCase()}`);
@@ -144,7 +148,7 @@ export default function ImageEditorScreen() {
       ]);
     } catch (e: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Could not save', e?.message ?? 'Something went wrong writing the image.');
+      Alert.alert(t.couldNotSaveImage, lang === 'en' && e?.message ? e.message : t.somethingWrongImage);
     } finally {
       setSaving(false);
     }
@@ -157,7 +161,7 @@ export default function ImageEditorScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-          {(name as string) ?? 'Edit image'}
+          {(name as string) ?? t.editImage}
         </Text>
         <TouchableOpacity
           onPress={() => setPickerVisible(true)}
@@ -246,12 +250,12 @@ export default function ImageEditorScreen() {
 
           <View style={styles.controls}>
             <Text style={[styles.hint, { color: colors.textMuted }]}>
-              Type below, then tap the image to place it.
+              {t.typeBelow}
             </Text>
 
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
-              placeholder="Text or emoji..."
+              placeholder={t.textPh}
               placeholderTextColor={colors.textMuted}
               value={pending}
               onChangeText={setPending}
@@ -277,7 +281,7 @@ export default function ImageEditorScreen() {
             </ScrollView>
 
             <View style={styles.row}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Size</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{t.size}</Text>
               {SIZES.map(s => {
                 const active = sizeRatio === s.ratio;
                 return (
@@ -301,7 +305,7 @@ export default function ImageEditorScreen() {
                 style={[styles.actionBtn, { backgroundColor: colors.surface, opacity: annotations.length ? 1 : 0.5 }]}
               >
                 <Ionicons name="arrow-undo-outline" size={18} color={colors.textSecondary} />
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Undo</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.undo}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={clearAll}
@@ -309,15 +313,15 @@ export default function ImageEditorScreen() {
                 style={[styles.actionBtn, { backgroundColor: colors.surface, opacity: annotations.length ? 1 : 0.5 }]}
               >
                 <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Clear</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.clear}</Text>
               </TouchableOpacity>
               <Text style={[styles.count, { color: colors.textMuted }]}>
-                {annotations.length} added
+                {t.added(annotations.length)}
               </Text>
             </View>
 
             <Text style={[styles.hint, { color: colors.textMuted, marginTop: 4 }]}>
-              The original is never changed — saving creates a new copy.
+              {t.originalSafe}
             </Text>
           </View>
         </ScrollView>
@@ -328,9 +332,9 @@ export default function ImageEditorScreen() {
         onClose={() => setPickerVisible(false)}
         onSave={handleSave}
         defaultPath="/storage/emulated/0/Pictures"
-        defaultLabel="Pictures"
-        defaultSubLabel="Default save location"
-        title="Save edited image"
+        defaultLabel={t.pictures}
+        defaultSubLabel={t.defaultSaveLocation}
+        title={t.saveEdited}
       />
     </SafeAreaView>
   );

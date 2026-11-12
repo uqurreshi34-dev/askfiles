@@ -22,6 +22,8 @@ import { Modal } from 'react-native';
 import { ChartView } from '@/modules/chart-view';
 import { getFriendlyPath } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { useLanguage } from '@/modules/appLanguage';
+import { readersText } from '@/modules/i18n/readersText';
  
 const MIN_COL_WIDTH = 90;
 const MAX_COL_WIDTH = 220;
@@ -32,6 +34,8 @@ type SortDir = 'asc' | 'desc' | null;
  
 export default function CsvReaderScreen() {
   const { colors, dark } = useTheme();
+  const lang = useLanguage();
+  const t = readersText(lang);
   const router = useRouter();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
  
@@ -124,7 +128,7 @@ export default function CsvReaderScreen() {
       const path = asset.uri.replace('file://', '');
       await loadCsv(path, name);
     } catch {
-      Alert.alert('Error', 'Could not open file.');
+      Alert.alert(t.error, t.couldNotOpenFile);
     }
   }
  
@@ -132,7 +136,7 @@ export default function CsvReaderScreen() {
     setLoading(true);
     try {
       const data = await parseCsv(path);
-      if (data.headers.length === 0) { Alert.alert('Empty file', 'This CSV has no data.'); return; }
+      if (data.headers.length === 0) { Alert.alert(t.emptyFile, t.noData); return; }
       setColWidths(computeColWidths(data.headers, data.rows));
       setCsvData(data);
       setFileName(name);
@@ -140,12 +144,12 @@ export default function CsvReaderScreen() {
       setProcessedRows(data.rows.map((row, i) => ({ row, originalIndex: i })));
       if (data.truncated) {
         Alert.alert(
-          'Large file',
-          `Showing the first ${data.rows.length.toLocaleString()} rows. This file has more data than AskFiles displays at once.`
+          t.largeFile,
+          t.showingFirst(data.rows.length.toLocaleString())
         );
       }
     } catch (e: any) {
-      Alert.alert('Parse failed', e?.message ?? 'Could not read this CSV.');
+      Alert.alert(t.parseFailed, lang === 'en' && e?.message ? e.message : t.couldNotRead);
     } finally {
       setLoading(false);
     }
@@ -183,15 +187,15 @@ export default function CsvReaderScreen() {
 
     const buttons: any[] = [
       {
-        text: 'Copy column',
+        text: t.copyColumn,
         onPress: () => copyColumn(colIndex),
       },
     ];
 
     if (result.isNumeric) {
-      const scope = indices.length > 0 ? `${indices.length} selected rows` : `${processedRows.length} visible rows`;
+      const scope = indices.length > 0 ? t.selectedRows(indices.length) : t.visibleRows(processedRows.length);
       buttons.push({
-        text: 'Chart',
+        text: t.chart,
         onPress: () => {
           const groupCol = colIndex === 0 ? 1 : 0;
           setChartGroupCol(groupCol);
@@ -201,23 +205,23 @@ export default function CsvReaderScreen() {
         },
       });
       buttons.push({
-        text: 'Analyse',
+        text: t.analyse,
         onPress: () => {
           setAnalysisColName(`${colName} — ${scope}`);
           setAnalysisData([
-            { label: 'Count', value: String(result.count) },
-            { label: 'Sum', value: result.sum! },
-            { label: 'Average', value: result.avg! },
-            { label: 'Min', value: result.min! },
-            { label: 'Max', value: result.max! },
-            { label: 'Std Deviation', value: result.stdDev! },
+            { label: t.count, value: String(result.count) },
+            { label: t.sum, value: result.sum! },
+            { label: t.average, value: result.avg! },
+            { label: t.min, value: result.min! },
+            { label: t.max, value: result.max! },
+            { label: t.stdDev, value: result.stdDev! },
           ]);
           setAnalysisVisible(true);
         },
       });
     }
 
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+    buttons.push({ text: t.cancel, style: 'cancel' });
 
     setColActionTitle(colName);
     setColActionButtons(buttons.filter(b => b.onPress));
@@ -248,7 +252,7 @@ export default function CsvReaderScreen() {
     const rows = [...selectedRowsRef.current].map(i => csvData.rows[i]?.join(csvData.delimiter) ?? '');
     Clipboard.setString(rows.join('\n'));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copied', `${rows.length} row${rows.length !== 1 ? 's' : ''} copied.`);
+    Alert.alert(t.copied, t.rowsCopied(rows.length));
   }
  
   function copyColumn(colIndex: number) {
@@ -256,7 +260,7 @@ export default function CsvReaderScreen() {
     const values = processedRows.map(({ row }) => row[colIndex] ?? '');
     Clipboard.setString(values.join('\n'));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copied', `${values.length} values from "${csvData.headers[colIndex]}" copied.`);
+    Alert.alert(t.copied, t.valuesCopied(values.length, csvData.headers[colIndex]));
   }
 
   async function exportCsv(folderPath: string) {
@@ -275,9 +279,9 @@ export default function CsvReaderScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const volumes = await getStorageVolumes().catch(() => []);
       const friendlyPath = getFriendlyPath(`file://${outputPath}`, volumes);
-      Alert.alert('Exported', `Saved to ${friendlyPath}`);
+      Alert.alert(t.exported, t.savedTo(friendlyPath));
     } catch (e: any) {
-      Alert.alert('Export failed', e?.message ?? 'Could not export.');
+      Alert.alert(t.exportFailed, lang === 'en' && e?.message ? e.message : t.couldNotExport);
     }
   }
  
@@ -292,7 +296,7 @@ export default function CsvReaderScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }} numberOfLines={1}>
-          {csvData ? fileName : 'CSV Reader'}
+          {csvData ? fileName : t.csvTitle}
         </Text>
         {csvData ? (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -315,9 +319,9 @@ export default function CsvReaderScreen() {
             <View style={{ width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8, backgroundColor: dark ? '#2A2200' : '#FFF8E1' }}>
               <Text style={{ fontSize: 28, fontWeight: '900', color: colors.yellow, letterSpacing: 1 }}>CSV</Text>
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>Open a CSV file</Text>
+            <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>{t.csvOpen}</Text>
             <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 20, color: colors.textMuted }}>
-              View, search, sort and filter any CSV file. Works fully offline — your data never leaves your device.
+              {t.csvIntro}
             </Text>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8, backgroundColor: colors.yellow }}
@@ -325,7 +329,7 @@ export default function CsvReaderScreen() {
             >
               {loading
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <><Ionicons name="document-outline" size={18} color="#fff" style={{ marginRight: 8 }} /><Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Choose CSV File</Text></>
+                : <><Ionicons name="document-outline" size={18} color="#fff" style={{ marginRight: 8 }} /><Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.csvChoose}</Text></>
               }
             </TouchableOpacity>
           </View>
@@ -337,7 +341,7 @@ export default function CsvReaderScreen() {
             <Ionicons name="search-outline" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
             <TextInput
               style={{ flex: 1, fontSize: 14, paddingVertical: 0, color: colors.textPrimary }}
-              placeholder={searchCol !== null ? `Search in "${csvData.headers[searchCol]}"…` : 'Search all columns…'}
+              placeholder={searchCol !== null ? t.searchIn(csvData.headers[searchCol]) : t.searchAll}
               placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -355,7 +359,7 @@ export default function CsvReaderScreen() {
               style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, backgroundColor: searchCol === null ? colors.blue : colors.surface, borderColor: colors.border }}
               onPress={() => setSearchCol(null)}
             >
-              <Text style={{ fontSize: 12, fontWeight: '500', color: searchCol === null ? '#fff' : colors.textMuted }}>All</Text>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: searchCol === null ? '#fff' : colors.textMuted }}>{t.all}</Text>
             </TouchableOpacity>
             {csvData.headers.map((h, i) => (
               <TouchableOpacity
@@ -371,12 +375,12 @@ export default function CsvReaderScreen() {
           {/* Stats + selection bar */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
             <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textMuted }}>
-              {processedRows.length} rows{search ? ' (filtered)' : ''} · {csvData.headers.length} cols
+              {t.stats(processedRows.length, csvData.headers.length, !!search)}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               {selectedCount > 0 ? (
                 <>
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>{selectedCount} selected</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>{t.selected(selectedCount)}</Text>
                   <TouchableOpacity onPress={copySelectedRows} style={{ marginLeft: 12 }}>
                     <Ionicons name="copy-outline" size={18} color={colors.blue} />
                   </TouchableOpacity>
@@ -392,7 +396,7 @@ export default function CsvReaderScreen() {
                     setSelectionVersion(v => v + 1);
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>Select all</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.blue }}>{t.selectAll}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -507,7 +511,7 @@ export default function CsvReaderScreen() {
                 }}
                 ListEmptyComponent={
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, color: colors.textMuted }}>No results found</Text>
+                    <Text style={{ fontSize: 14, color: colors.textMuted }}>{t.noResults}</Text>
                   </View>
                 }
               />
@@ -520,7 +524,7 @@ export default function CsvReaderScreen() {
           <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setChartVisible(false)} />
           <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, width: '100%', maxHeight: SCREEN_WIDTH > SCREEN_HEIGHT ? SCREEN_HEIGHT * 0.9 : SCREEN_HEIGHT * 0.8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Chart</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{t.chart}</Text>
               <TouchableOpacity onPress={() => setChartVisible(false)}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
@@ -528,7 +532,7 @@ export default function CsvReaderScreen() {
             {csvData && (
               <>
                 <View style={{ marginBottom: 8 }}>
-                  <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Group by</Text>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{t.groupBy}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
                     {csvData.headers.map((h, i) => (
                       <TouchableOpacity key={i} onPress={() => { setChartGroupCol(i); loadChart(i, chartValueCol); }}
@@ -539,7 +543,7 @@ export default function CsvReaderScreen() {
                   </ScrollView>
                 </View>
                 <View style={{ marginBottom: 12 }}>
-                  <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Value (sum)</Text>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{t.valueSum}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
                     {csvData.headers.map((h, i) => {
                       const isNumeric = processedRows.slice(0, 5).filter(({ row }) => !isNaN(parseFloat(row[i] ?? ''))).length >= 3;
@@ -566,11 +570,11 @@ export default function CsvReaderScreen() {
                       />
                     </ScrollView>
                     <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, textAlign: 'center' }}>
-                      Top {chartData.length} groups by total
+                      {t.topGroups(chartData.length)}
                     </Text>
                   </>
                 ) : (
-                  <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', marginVertical: 40 }}>No data</Text>
+                  <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', marginVertical: 40 }}>{t.noChartData}</Text>
                 )}
               </>
             )}
@@ -605,16 +609,16 @@ export default function CsvReaderScreen() {
         name={analysisColName}
         data={analysisData}
         onClose={() => setAnalysisVisible(false)}
-        title="Column Info"
+        title={t.columnInfo}
       />
       <FolderPickerModal
         visible={exportPickerVisible}
         onClose={() => setExportPickerVisible(false)}
         onSave={(folderPath) => { setExportPickerVisible(false); exportCsv(folderPath); }}
         defaultPath="/storage/emulated/0/Download"
-        defaultLabel="Download"
-        defaultSubLabel="Default save location"
-        title="Export CSV"
+        defaultLabel={t.download}
+        defaultSubLabel={t.defaultSaveLocation}
+        title={t.exportCsv}
       />
     </SafeAreaView>
   );

@@ -6,12 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { completeSignIn } from '@/modules/cloudAuth';
+import { useLanguage } from '@/modules/appLanguage';
+import { readersText } from '@/modules/i18n/readersText';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function CallbackScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = readersText(useLanguage());
   const params = useLocalSearchParams();
 
   const code = typeof params.code === 'string' ? params.code : undefined;
@@ -47,7 +50,7 @@ export default function CallbackScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           <Text style={{ fontSize: 16, color: colors.textPrimary, fontWeight: '500' }}>
-            Back to Cloud Backup
+            {t.backToBackup}
           </Text>
         </TouchableOpacity>
       </View>
@@ -58,12 +61,12 @@ export default function CallbackScreen() {
           color={success ? colors.blue : colors.textMuted}
         />}
         <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary, textAlign: 'center' }}>
-          {status === 'working' ? 'Connecting…' : success ? 'Connected successfully' : 'Sign in cancelled'}
+          {status === 'working' ? t.connecting : success ? t.connected : t.cancelled}
         </Text>
         <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center'}}>
           {success
-            ? 'Tap the back button above to return to Cloud Backup'
-            : 'Tap the back button above to go back'}
+            ? t.tapBackBackup
+            : t.tapBack}
         </Text>
       </View>
     </SafeAreaView>

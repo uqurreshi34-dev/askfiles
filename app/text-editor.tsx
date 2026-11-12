@@ -14,9 +14,13 @@ import FolderPickerModal from '@/components/FolderPickerModal';
 import { getFriendlyPath } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { TextEditorView } from 'text-editor';
+import { useLanguage } from '@/modules/appLanguage';
+import { readersText } from '@/modules/i18n/readersText';
 
 export default function TextEditorScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const t = readersText(lang);
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -37,9 +41,9 @@ export default function TextEditorScreen() {
     setLoading(true);
     resolveContentUri(uri).then(result => {
       if (result) loadFile(result.path, result.name);
-      else Alert.alert('Error', 'Could not open file.');
+      else Alert.alert(t.error, t.couldNotOpenFile);
     }).catch(() => {
-      Alert.alert('Error', 'Could not open file.');
+      Alert.alert(t.error, t.couldNotOpenFile);
     }).finally(() => setLoading(false));
   }, [incomingUri]);
 
@@ -63,9 +67,9 @@ export default function TextEditorScreen() {
 
   function handleBack() {
     if (isDirty) {
-      Alert.alert('Unsaved changes', 'You have unsaved changes. Discard them?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: resetState },
+      Alert.alert(t.unsaved, t.unsavedMsg, [
+        { text: t.cancel, style: 'cancel' },
+        { text: t.discard, style: 'destructive', onPress: resetState },
       ]);
     } else {
       resetState();
@@ -82,9 +86,9 @@ export default function TextEditorScreen() {
       setIsDirty(false);
     } catch (e: any) {
         if (e?.message?.includes('FILE_TOO_LARGE')) {
-          Alert.alert('File too large', 'Text Editor supports files up to 1MB. For larger files, use a desktop editor.');
+          Alert.alert(t.tooLarge, t.tooLargeMsg);
         } else {
-          Alert.alert('Error', 'Could not read file.');
+          Alert.alert(t.error, t.couldNotReadFile);
         }
       }finally {
       setLoading(false);
@@ -103,7 +107,7 @@ export default function TextEditorScreen() {
       const path = asset.uri.replace('file://', '');
       await loadFile(path, name);
     } catch {
-      Alert.alert('Error', 'Could not open file.');
+      Alert.alert(t.error, t.couldNotOpenFile);
     }
   }
 
@@ -118,7 +122,7 @@ export default function TextEditorScreen() {
       setIsDirty(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Error', 'Could not save file.');
+      Alert.alert(t.error, t.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -135,9 +139,9 @@ export default function TextEditorScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const volumes = await getStorageVolumes().catch(() => []);
       const friendlyPath = getFriendlyPath(`file://${destPath}`, volumes);
-      Alert.alert('Saved', `Saved to ${friendlyPath}`);
+      Alert.alert(t.saved, t.savedTo(friendlyPath));
     } catch {
-      Alert.alert('Error', 'Could not save file.');
+      Alert.alert(t.error, t.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -152,7 +156,7 @@ export default function TextEditorScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }} numberOfLines={1}>
-          {fileName || 'Text Editor'}
+          {fileName || t.txtTitle}
         </Text>
         {filePath ? (
           <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -195,15 +199,15 @@ export default function TextEditorScreen() {
           <View style={{ width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8, backgroundColor: colors.surface }}>
             <Text style={{ fontSize: 22, fontWeight: '900', color: colors.textSecondary, letterSpacing: 1 }}>.TXT</Text>
           </View>
-          <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>Text Editor</Text>
+          <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>{t.txtTitle}</Text>
           <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 20, color: colors.textMuted }}>
-            Open and edit any text file. Changes are saved directly to the original file.
+            {t.txtIntro}
           </Text>
           <TouchableOpacity
             style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8, backgroundColor: colors.blue }}
             onPress={pickFile} activeOpacity={0.85}>
             <Ionicons name="document-text-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Choose Text File</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.txtChoose}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -213,9 +217,9 @@ export default function TextEditorScreen() {
         onClose={() => setSaveAsVisible(false)}
         onSave={(folderPath) => { setSaveAsVisible(false); saveAsFile(folderPath); }}
         defaultPath="/storage/emulated/0/Download"
-        defaultLabel="Download"
-        defaultSubLabel="Default save location"
-        title="Save As"
+        defaultLabel={t.download}
+        defaultSubLabel={t.defaultSaveLocation}
+        title={t.saveAs}
       />
     </SafeAreaView>
   );

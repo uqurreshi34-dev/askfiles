@@ -11,6 +11,8 @@ import { PdfView, resolveContentUri, renderThumbnail } from '@/modules/pdf-viewe
 import { useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useLanguage } from '@/modules/appLanguage';
+import { readersText } from '@/modules/i18n/readersText';
 
 const CARD_HEIGHT = 180;
 
@@ -117,6 +119,8 @@ function PageCard({
 
 export default function PdfViewerScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const t = readersText(lang);
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -160,10 +164,10 @@ export default function PdfViewerScreen() {
         setPageCount(0);
         setTargetPage(0);
       } else {
-        Alert.alert('Error', 'Could not open PDF.');
+        Alert.alert(t.error, t.couldNotOpenPdf);
       }
     }).catch(() => {
-      Alert.alert('Error', 'Could not open PDF.');
+      Alert.alert(t.error, t.couldNotOpenPdf);
     }).finally(() => setLoading(false));
   }, [incomingUri]);
 
@@ -194,7 +198,7 @@ export default function PdfViewerScreen() {
       setPageCount(0);
       setTargetPage(0);
     } catch {
-      Alert.alert('Error', 'Could not open PDF.');
+      Alert.alert(t.error, t.couldNotOpenPdf);
     }
   }
 
@@ -255,7 +259,7 @@ export default function PdfViewerScreen() {
           style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }}
           numberOfLines={1}
         >
-          {fileName || 'PDF Viewer'}
+          {fileName || t.pdfTitle}
         </Text>
 
         {/* Three-dot menu — only shown when a PDF is open */}
@@ -291,7 +295,7 @@ export default function PdfViewerScreen() {
               }}>
                 <ActivityIndicator size="large" color={colors.favRed} />
                 <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500' }}>
-                  Jumping to page {targetPage + 1}...
+                  {t.jumping(targetPage + 1)}
                 </Text>
               </View>
             </View>
@@ -320,7 +324,7 @@ export default function PdfViewerScreen() {
                 {currentPage + 1} / {pageCount}
               </Text>
               <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2, opacity: 0.6 }}>
-                Tip: Convert to images to extract text
+                {t.pdfTip}
               </Text>
             </View>
           )}
@@ -345,7 +349,7 @@ export default function PdfViewerScreen() {
                   <Ionicons name="close" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', textAlign: 'center', color: colors.textPrimary }}>
-                  Pages
+                  {t.pages}
                 </Text>
                 <Text style={{ width: 40, fontSize: 13, color: colors.textMuted, textAlign: 'right' }}>
                   {pageCount}
@@ -377,10 +381,10 @@ export default function PdfViewerScreen() {
             <Text style={{ fontSize: 28, fontWeight: '900', color: colors.favRed, letterSpacing: 1 }}>PDF</Text>
           </View>
           <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>
-            Open a PDF file
+            {t.pdfOpen}
           </Text>
           <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 20, color: colors.textMuted }}>
-            View any PDF document. Works fully offline — your files never leave your device.
+            {t.pdfIntro}
           </Text>
           <TouchableOpacity
             style={{
@@ -394,7 +398,7 @@ export default function PdfViewerScreen() {
               ? <ActivityIndicator size="small" color="#fff" />
               : <>
                   <Ionicons name="document-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Choose PDF File</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.pdfChoose}</Text>
                 </>
             }
           </TouchableOpacity>
