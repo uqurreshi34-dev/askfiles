@@ -8,13 +8,18 @@
  * holds the words, so a fourth language is one more block here.
  *
  * Any other language, or a phone whose language cannot be read, gets English.
+ * The buttons at the top of onboarding let anyone switch between the three.
  */
 import { I18nManager } from 'react-native';
 
 export type OnboardingLang = 'en' | 'ar' | 'hi';
 
-/** Set to 'ar' or 'hi' while testing in development; always null when shipped. */
-const FORCE_LANG: OnboardingLang | null = null;
+/** The language buttons at the top of onboarding, each written in its own language. */
+export const LANGUAGES: readonly { code: OnboardingLang; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'hi', label: 'हिन्दी' },
+];
 
 type SlideText = { title: string; body: string };
 
@@ -123,7 +128,6 @@ const TEXT: Record<OnboardingLang, OnboardingText> = {
 
 /** The phone's language as 'ar', 'hi' or 'en' (anything else). */
 export function deviceLanguage(): OnboardingLang {
-  if (FORCE_LANG) return FORCE_LANG;
   let tag = '';
   try {
     // Android gives e.g. 'ar_EG' or 'hi_IN'.
@@ -136,6 +140,7 @@ export function deviceLanguage(): OnboardingLang {
   return base === 'ar' || base === 'hi' ? base : 'en';
 }
 
-export function onboardingText(): OnboardingText {
-  return TEXT[deviceLanguage()];
+/** The words for a language; with none given, the phone's language. */
+export function onboardingText(lang: OnboardingLang = deviceLanguage()): OnboardingText {
+  return TEXT[lang];
 }

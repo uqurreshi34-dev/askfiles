@@ -13,7 +13,7 @@ import { useColorScheme } from 'react-native';
 import { getColors } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { onboardingText } from '@/modules/onboardingText';
+import { onboardingText, deviceLanguage, LANGUAGES, OnboardingLang } from '@/modules/onboardingText';
 
 
 // Icons and colours only; the words, in the phone's language, come from onboardingText().
@@ -53,7 +53,9 @@ export default function OnboardingScreen() {
   const PORTRAIT_WIDTH = Math.min(width, height);
   const isLandscape = width > height;
   const router = useRouter();
-  const T = onboardingText();
+  // Starts on the phone's language; the buttons at the top switch it.
+  const [lang, setLang] = useState<OnboardingLang>(deviceLanguage);
+  const T = onboardingText(lang);
   const slides = SLIDES.map((s, i) => ({ ...s, ...T.slides[i] }));
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -104,6 +106,21 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   }
 
+  const languagePicker = (
+    <View style={styles.langRow}>
+      {LANGUAGES.map(l => (
+        <TouchableOpacity
+          key={l.code}
+          onPress={() => setLang(l.code)}
+          activeOpacity={0.7}
+          style={[styles.langChip, { backgroundColor: lang === l.code ? '#185FA5' : colors.surface }]}
+        >
+          <Text style={[styles.langChipText, { color: lang === l.code ? '#fff' : colors.textSecondary }]}>{l.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
   const isPermissionSlide = currentIndex === SLIDES.length - 1;
   const slide = slides[currentIndex];
 
@@ -115,6 +132,9 @@ export default function OnboardingScreen() {
         <TouchableOpacity onPress={finish} style={styles.lsSkip}>
           <Text style={[styles.skip, { color: colors.textMuted }]}>{T.skip}</Text>
         </TouchableOpacity>
+
+        {/* Language — top left */}
+        <View style={styles.lsLang}>{languagePicker}</View>
 
         {/* Centre: prev arrow | content | next arrow */}
         <View style={styles.lsBody}>
@@ -186,6 +206,7 @@ export default function OnboardingScreen() {
   // ── PORTRAIT (completely unchanged from original) ──────────────────────────
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
+      {languagePicker}
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -282,4 +303,10 @@ const styles = StyleSheet.create({
   lsFooter: { paddingHorizontal: 24, paddingBottom: 12, alignItems: 'center' },
   lsPermissionRow: { flexDirection: 'row', gap: 12, justifyContent: 'center' },
   lsPageCount: { fontSize: 13, paddingVertical: 8 },
+  lsLang: { position: 'absolute', top: 0, left: 16, zIndex: 10 },
+
+  // Language buttons
+  langRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 8 },
+  langChip: { borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12 },
+  langChipText: { fontSize: 13, fontWeight: '500' },
 });
