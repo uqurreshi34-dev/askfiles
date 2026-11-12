@@ -87,7 +87,7 @@ const AR: CommonText = {
 const HI: CommonText = {
   cancel: 'रद्द करें', delete: 'हटाएँ', ok: 'ठीक है', done: 'हो गया', open: 'खोलें',
   share: 'शेयर करें', info: 'जानकारी', error: 'गड़बड़ी', all: 'सभी',
-  selected: n => `${n} चुने गए`,
+  selected: n => `${n} ${n === 1 ? 'चुना गया' : 'चुने गए'}`,
   working: 'काम हो रहा है...', openingFile: 'फ़ाइल खुल रही है...', movingFile: 'फ़ाइल मूव हो रही है...', movingFiles: 'फ़ाइलें मूव हो रही हैं...',
   moveHere: 'यहाँ मूव करें', moveTo: 'यहाँ मूव करें...', folderEmpty: 'यह फ़ोल्डर खाली है', fileInfo: 'फ़ाइल की जानकारी',
   proFeature: 'Pro फ़ीचर', upgradeToPro: 'Pro में अपग्रेड करें',
