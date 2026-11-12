@@ -401,6 +401,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
+              <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.whatsNew}</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
@@ -415,6 +416,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                   <Text style={[styles.modalRowText, { flex: 1, color: colors.textPrimary }]}>{item.text}</Text>
                 </View>
               ))}
+              </ScrollView>
               <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled}]} activeOpacity={0.7} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}>
                 <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>{t.gotIt}</Text>
               </TouchableOpacity>
