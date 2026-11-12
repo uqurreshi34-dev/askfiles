@@ -14,6 +14,9 @@ import { shouldShowRatePrompt, markRatePromptShown } from '@/hooks/useRatePrompt
 import * as Haptics from 'expo-haptics';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import { BackHandler } from 'react-native';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { converterText } from '@/modules/i18n/converterText';
 
 type OutFormat = 'JPG' | 'PNG' | 'WEBP';
 
@@ -26,6 +29,9 @@ const OUTPUT_FORMATS: { label: string; value: OutFormat; desc: string }[] = [
 export default function FileConverterScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const lang = useLanguage();
+  const c = commonText(lang), t = converterText(lang);
+  const FORMAT_DESC: Record<OutFormat, string> = { JPG: t.descJpg, PNG: t.descPng, WEBP: t.descWebp };
 
   const [sourceUri, setSourceUri] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>('');
@@ -67,7 +73,7 @@ export default function FileConverterScreen() {
       const ext = (asset.fileName ?? asset.uri.split('/').pop() ?? '').split('.').pop()?.toLowerCase() ?? '';
       setSourceExt(ext);
     } catch (e: any) {
-      Alert.alert('Error', 'Could not pick image.');
+      Alert.alert(c.error, t.couldNotPick);
     }
   }
 
@@ -85,13 +91,13 @@ export default function FileConverterScreen() {
       await scanFile(outputPath).catch(() => {});
   
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
+      const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || t.internalStorage;
       Alert.alert(
-        'Converted',
-        `Saved to ${friendlyPath}`,
+        t.converted,
+        t.savedTo(friendlyPath),
         [
-          { text: 'Open', onPress: async () => { try { await openFileNative(outputPath, `image/${ext === 'jpg' ? 'jpeg' : ext}`); } catch {} } },
-          { text: 'Done', style: 'cancel' },
+          { text: t.open, onPress: async () => { try { await openFileNative(outputPath, `image/${ext === 'jpg' ? 'jpeg' : ext}`); } catch {} } },
+          { text: c.done, style: 'cancel' },
         ]
       );
   
@@ -100,7 +106,7 @@ export default function FileConverterScreen() {
       setSourceUri(null);
       setSourceName('');
     } catch (e: any) {
-      Alert.alert('Conversion failed', e?.message ?? 'Could not convert this image.');
+      Alert.alert(t.failed, t.couldNotConvert);
     } finally {
         setConverting(null);
       }
@@ -110,12 +116,12 @@ export default function FileConverterScreen() {
     if (!sourceUri || converting) return;
     setPendingFormat(format);
     Alert.alert(
-      'Save as',
-      `Convert to ${format}`,
+      t.saveAs,
+      t.convertToFmt(format),
       [
-        { text: 'Save to Pictures', onPress: () => saveConverted(format, '/storage/emulated/0/Pictures') },
-        { text: 'Choose location', onPress: () => setPickerVisible(true) },
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.saveToPictures, onPress: () => saveConverted(format, '/storage/emulated/0/Pictures') },
+        { text: t.chooseLocation, onPress: () => setPickerVisible(true) },
+        { text: c.cancel, style: 'cancel' },
       ]
     );
   }
@@ -126,7 +132,7 @@ export default function FileConverterScreen() {
         <TouchableOpacity onPress={() => { if (converting) return; if (sourceUri) { setSourceUri(null); setSourceName(''); setSourceExt(''); } else { router.back(); } }} style={styles.backBtn} disabled={converting !== null}>
           <Ionicons name="arrow-back" size={24} color={converting ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Image Converter</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -136,13 +142,13 @@ export default function FileConverterScreen() {
             <View style={[styles.startIcon, { backgroundColor: colors.favRedBg }]}>
               <Ionicons name="swap-horizontal-outline" size={40} color={colors.favRed} />
             </View>
-            <Text style={[styles.startTitle, { color: colors.textPrimary }]}>Convert an image</Text>
+            <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{t.convertAnImage}</Text>
             <Text style={[styles.startSub, { color: colors.textMuted }]}>
-              Change HEIC, WEBP, PNG or JPG into another format. Works fully offline — your image never leaves your device.
+              {t.intro}
             </Text>
             <TouchableOpacity style={[styles.pickBtn, { backgroundColor: colors.favRed }]} onPress={pickImage} activeOpacity={0.85}>
               <Ionicons name="image-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.pickBtnText}>Choose Image</Text>
+              <Text style={styles.pickBtnText}>{t.chooseImage}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -152,10 +158,10 @@ export default function FileConverterScreen() {
             </View>
             <Text style={[styles.sourceName, { color: colors.textPrimary }]} numberOfLines={1}>{sourceName}</Text>
             <TouchableOpacity onPress={pickImage} disabled={converting !== null} style={{ alignSelf: 'center', marginBottom: 24 }}>
-              <Text style={{ color: colors.favRed, fontSize: 13, fontWeight: '500' }}>Choose a different image</Text>
+              <Text style={{ color: colors.favRed, fontSize: 13, fontWeight: '500' }}>{t.chooseDifferent}</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.convertLabel, { color: colors.textMuted }]}>Convert to</Text>
+            <Text style={[styles.convertLabel, { color: colors.textMuted }]}>{t.convertTo}</Text>
             {OUTPUT_FORMATS.filter(fmt => {
               const src = sourceExt;
               if (fmt.value === 'JPG' && (src === 'jpg' || src === 'jpeg')) return false;
@@ -174,8 +180,8 @@ export default function FileConverterScreen() {
                   <Text style={[styles.formatBadgeText, { color: colors.favRed }]}>{fmt.label}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.formatTitle, { color: colors.textPrimary }]}>Convert to {fmt.label}</Text>
-                  <Text style={[styles.formatDesc, { color: colors.textMuted }]}>{fmt.desc}</Text>
+                  <Text style={[styles.formatTitle, { color: colors.textPrimary }]}>{t.convertToFmt(fmt.label)}</Text>
+                  <Text style={[styles.formatDesc, { color: colors.textMuted }]}>{FORMAT_DESC[fmt.value]}</Text>
                 </View>
                 {converting === fmt.value
                   ? <ActivityIndicator size="small" color={colors.favRed} />
@@ -194,9 +200,9 @@ export default function FileConverterScreen() {
           if (pendingFormat) saveConverted(pendingFormat, folderPath);
         }}
         defaultPath="/storage/emulated/0/Pictures"
-        defaultLabel="Pictures"
-        defaultSubLabel="Default save location"
-        title="Save converted image"
+        defaultLabel={t.pictures}
+        defaultSubLabel={t.defaultSaveLocation}
+        title={t.saveTitle}
       />
     </SafeAreaView>
   );

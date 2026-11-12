@@ -12,6 +12,10 @@ import { readDirectory, countFolder, createDirectory, getShowHidden } from 'file
 import { startWatching, stopWatching, addFileChangeListener } from '@/modules/file-watcher';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { dualText } from '@/modules/i18n/dualText';
 
 export interface FileItem {
   name: string;
@@ -64,6 +68,7 @@ interface PaneRowProps {
 
 const PaneRow = memo(({ item, isSelected, selectMode, folderCount, colors, onPress, onLongPress }: PaneRowProps) => {
   const color = item.isDirectory ? colors.yellow : getFileColor(item.name);
+  const t = dualText(useLanguage());
   return (
     <TouchableOpacity
       style={[
@@ -101,9 +106,9 @@ const PaneRow = memo(({ item, isSelected, selectMode, folderCount, colors, onPre
         </Text>
         <Text style={[styles.meta, { color: colors.textMuted }]}>
           {item.isDirectory
-            ? folderCount === undefined ? 'Folder'
-              : folderCount === 0 ? 'Empty'
-              : `${folderCount} item${folderCount !== 1 ? 's' : ''}`
+            ? folderCount === undefined ? t.folder
+              : folderCount === 0 ? t.empty
+              : t.items(folderCount)
             : `${formatSize(item.size)} · ${formatDate(item.date)}`}
         </Text>
       </View>
@@ -127,6 +132,8 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     onPathChange,
   }, ref) => {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const c = commonText(lang), tf = filesText(lang), t = dualText(lang);
   const startPath = initialPath ?? ROOT_PATH;
   const [currentPath, setCurrentPath] = useState(startPath);
   const [breadcrumbs, setBreadcrumbs] = useState<{ name: string; path: string }[]>([
@@ -155,14 +162,14 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     friendlyPath: (() => {
       const sdVol = volumes.find(v => v.type === 'sdcard' && currentPath.includes(v.path));
       if (sdVol) return currentPath.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(/\/$/, '');
-      return currentPath.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
+      return currentPath.replace('file:///storage/emulated/0/', '').replace(/\/$/, '') || tf.internalStorage;
     })(),
     reload: () => loadDirectory(currentPath),
     invalidateCache: (path?: string) => {
       const target = path ?? currentPath;
       delete dirCache[target];
     },
-  }), [currentPath, volumes]);
+  }), [currentPath, volumes, lang]);
 
   useEffect(() => {
     getStorageVolumes().then(setVolumes);
@@ -272,7 +279,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
   if (!name) return;
   const invalidChars = /[*\\:?"<>|]/;
   if (invalidChars.test(name)) {
-    Alert.alert('Invalid name', 'Folder names cannot contain: * \\ : ? " < > |');
+    Alert.alert(tf.invalidName, tf.folderNameChars);
     return;
   }
   setCreatingFolder(true);
@@ -286,9 +293,9 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
     await loadDirectory(currentPath);
   } catch (e: any) {
     if (e?.message?.includes('EXISTS')) {
-      Alert.alert('Already exists', `A folder named "${name}" already exists here.`);
+      Alert.alert(tf.alreadyExists, tf.folderExistsHere(name));
     } else {
-      Alert.alert('Error', 'Could not create folder.');
+      Alert.alert(c.error, tf.couldNotCreateFolderShort);
     }
   } finally {
     setCreatingFolder(false);
@@ -347,7 +354,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
             style={[styles.folderInput, { backgroundColor: colors.surface, color: colors.textPrimary }]}
             value={newFolderName}
             onChangeText={setNewFolderName}
-            placeholder="Folder name..."
+            placeholder={tf.folderNamePh}
             placeholderTextColor={colors.textMuted}
             autoFocus
             autoCapitalize="none"
@@ -368,11 +375,11 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
         <TouchableOpacity style={{ flex: 1 }} onPress={onActivate} activeOpacity={0.7}>
           {selectMode && selectedUris.size > 0 ? (
             <Text style={[styles.breadcrumb, { color: colors.blue }]} numberOfLines={1}>
-              {selectedUris.size} item{selectedUris.size !== 1 ? 's' : ''} selected
+              {t.selectedTo(selectedUris.size)}
             </Text>
           ) : (
             <Text style={[styles.breadcrumb, { color: colors.textSecondary }]} numberOfLines={1}>
-              {breadcrumbs.slice(-2).map((c, i) => (i > 0 ? '/' : '') + c.name).join('')}
+              {breadcrumbs.slice(-2).map((b, i) => (i > 0 ? '/' : '') + (b.path === ROOT_PATH ? t.storage : b.name)).join('')}
             </Text>
           )}
         </TouchableOpacity>
@@ -400,7 +407,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
           }}
           style={styles.upBtn}
         >
-          <Text style={{ fontSize: 10, fontWeight: '600', color: colors.blue }}>All</Text>
+          <Text style={{ fontSize: 10, fontWeight: '600', color: colors.blue }}>{c.all}</Text>
         </TouchableOpacity>
       )}
 
@@ -471,7 +478,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
         <Ionicons name="search-outline" size={13} color={colors.textMuted} style={{ marginRight: 6 }} />
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
-          placeholder="Filter..."
+          placeholder={t.filterPh}
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -494,7 +501,7 @@ const FilePane = forwardRef<FilePaneHandle, FilePaneProps>(({
       ) : displayItems.length === 0 ? (
         <View style={styles.centered}>
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-            {searchQuery ? 'No matches' : 'Empty folder'}
+            {searchQuery ? t.noMatches : t.emptyFolder}
           </Text>
         </View>
       ) : (

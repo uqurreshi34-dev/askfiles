@@ -13,12 +13,18 @@ import { syncPathReferences } from '@/hooks/usePathSync';
 import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { setSelection, getSelection, clearAll } from 'pane-selection';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { dualText } from '@/modules/i18n/dualText';
 
 
 export default function DualPaneScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const lang = useLanguage();
+  const c = commonText(lang), fw = filesText(lang), t = dualText(lang);
   const [leftInSelectMode, setLeftInSelectMode] = useState(false);
   const [rightInSelectMode, setRightInSelectMode] = useState(false);
 
@@ -73,7 +79,7 @@ export default function DualPaneScreen() {
     
 
     setOperating(true);
-    setOperationLabel(`Copying ${sourceCount} item${sourceCount !== 1 ? 's' : ''}...`);
+    setOperationLabel(t.copyingN(sourceCount));
     setProgress(0);
 
     const dstPaths = sourceFiles.map(f => toPath(dest + f.name));
@@ -82,15 +88,15 @@ export default function DualPaneScreen() {
       const dupeList = existingPaths
         .slice(0, 3)
         .map(p => p.split('/').pop() ?? p)
-        .join(', ') + (existingPaths.length > 3 ? ` and ${existingPaths.length - 3} more` : '');
+        .join(', ');
       const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
         Alert.alert(
-          existingPaths.length === 1 ? 'Already exists' : 'Already exist',
-          `${dupeList} already ${existingPaths.length === 1 ? 'exists' : 'exist'} in the destination.`,
+          existingPaths.length === 1 ? fw.alreadyExists : fw.alreadyExistPlural,
+          fw.dupesExistMsg(dupeList, Math.max(0, existingPaths.length - 3), existingPaths.length),
           [
-            { text: 'Skip existing', onPress: () => resolve('skip') },
-            { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+            { text: fw.skipExisting, onPress: () => resolve('skip') },
+            { text: fw.replace, style: 'destructive', onPress: () => resolve('replace') },
+            { text: c.cancel, style: 'cancel', onPress: () => resolve('cancel') },
           ]
         );
       });
@@ -102,7 +108,7 @@ export default function DualPaneScreen() {
       if (action === 'skip') {
         const filtered = sourceFiles.filter(f => !existingPaths.includes(toPath(dest + f.name)));
         if (filtered.length === 0) {
-          Alert.alert('Nothing to do', 'All selected items already exist at the destination.');
+          Alert.alert(fw.nothingToDo, fw.allSkipped);
           setOperating(false);
           setOperationLabel('');
           return;
@@ -133,7 +139,7 @@ export default function DualPaneScreen() {
       destPaneRef.current?.invalidateCache();
       destPaneRef.current?.reload();
     } catch {
-      Alert.alert('Error', 'Could not copy files.');
+      Alert.alert(c.error, fw.couldNotCopyOrMoveFiles(true));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -153,16 +159,16 @@ export default function DualPaneScreen() {
     const dest = liveDestPath.endsWith('/') ? liveDestPath : liveDestPath + '/';
 
     Alert.alert(
-      'Move files',
-      `Move ${sourceCount} item${sourceCount !== 1 ? 's' : ''} to ${(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}?`,
+      t.moveFiles,
+      t.moveNTo(sourceCount, (hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? fw.internalStorage),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: c.cancel, style: 'cancel' },
         {
-          text: 'Move',
+          text: t.move,
           onPress: async () => {
             const sourceFiles = getSelection(sourcePane);
             setOperating(true);
-            setOperationLabel(`Moving ${sourceCount} item${sourceCount !== 1 ? 's' : ''}...`);
+            setOperationLabel(t.movingN(sourceCount));
             setProgress(0);
             const dstPaths = sourceFiles.map(f => toPath(dest + f.name));
             const existingPaths = await checkDuplicates(dstPaths);
@@ -170,15 +176,15 @@ export default function DualPaneScreen() {
               const dupeList = existingPaths
                 .slice(0, 3)
                 .map(p => p.split('/').pop() ?? p)
-                .join(', ') + (existingPaths.length > 3 ? ` and ${existingPaths.length - 3} more` : '');
+                .join(', ');
               const action = await new Promise<'skip' | 'replace' | 'cancel'>((resolve) => {
                 Alert.alert(
-                  existingPaths.length === 1 ? 'Already exists' : 'Already exist',
-                  `${dupeList} already ${existingPaths.length === 1 ? 'exists' : 'exist'} in the destination.`,
+                  existingPaths.length === 1 ? fw.alreadyExists : fw.alreadyExistPlural,
+                  fw.dupesExistMsg(dupeList, Math.max(0, existingPaths.length - 3), existingPaths.length),
                   [
-                    { text: 'Skip existing', onPress: () => resolve('skip') },
-                    { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
-                    { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
+                    { text: fw.skipExisting, onPress: () => resolve('skip') },
+                    { text: fw.replace, style: 'destructive', onPress: () => resolve('replace') },
+                    { text: c.cancel, style: 'cancel', onPress: () => resolve('cancel') },
                   ]
                 );
               });
@@ -227,7 +233,7 @@ export default function DualPaneScreen() {
               sourcePaneRef.current?.reload();
               destPaneRef.current?.reload();
             } catch {
-              Alert.alert('Error', 'Could not move files.');
+              Alert.alert(c.error, fw.couldNotCopyOrMoveFiles(false));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             } finally {
               sub.remove();
@@ -251,7 +257,7 @@ export default function DualPaneScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Dual Pane</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -323,9 +329,9 @@ export default function DualPaneScreen() {
           }
         ]}>
           <Text style={[styles.selectionLabel, { color: colors.textMuted }]}>
-          {sourceCount} item{sourceCount !== 1 ? 's' : ''} selected
+          {t.selectedTo(sourceCount)}
             {' → '}
-            {(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? 'Internal Storage'}
+            {(hasLeftSelection ? rightRef.current?.friendlyPath : leftRef.current?.friendlyPath) ?? fw.internalStorage}
           </Text>
           <View style={styles.toolbarActions}>
             <TouchableOpacity
@@ -334,7 +340,7 @@ export default function DualPaneScreen() {
               disabled={operating}
             >
               <Ionicons name="close-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>Deselect</Text>
+              <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>{t.deselect}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleCopy}
@@ -342,7 +348,7 @@ export default function DualPaneScreen() {
               disabled={operating}
             >
               <Ionicons name="copy-outline" size={18} color={colors.blue} />
-              <Text style={[styles.toolbarBtnText, { color: colors.blue }]}>Copy here</Text>
+              <Text style={[styles.toolbarBtnText, { color: colors.blue }]}>{fw.copyHere}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleMove}
@@ -350,7 +356,7 @@ export default function DualPaneScreen() {
               disabled={operating}
             >
               <Ionicons name="arrow-forward-outline" size={18} color="#fff" />
-              <Text style={[styles.toolbarBtnText, { color: '#fff' }]}>Move here</Text>
+              <Text style={[styles.toolbarBtnText, { color: '#fff' }]}>{c.moveHere}</Text>
             </TouchableOpacity>
           </View>
         </View>
