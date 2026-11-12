@@ -23,6 +23,7 @@
 
 import RNFS from 'react-native-fs';
 import { moveFileStream } from 'file-reader';
+import { organiseText } from './i18n/organiseText';
 
 /** One file that moved, as absolute paths. */
 export type UndoMove = {
@@ -139,25 +140,16 @@ export async function canUndo(): Promise<boolean> {
 }
 
 function describe(result: Omit<UndoResult, 'summary'>): string {
+  const t = organiseText();
   if (result.restored === 0 && result.skipped === 0 && result.failed === 0) {
-    return 'There was nothing left to put back.';
+    return t.nothingLeft;
   }
 
   const parts = [
-    result.restored > 0
-      ? `Put ${result.restored} file${result.restored === 1 ? '' : 's'} back.`
-      : 'No files were put back.',
-    result.removedFolders > 0
-      ? `Removed ${result.removedFolders} empty folder${
-          result.removedFolders === 1 ? '' : 's'
-        }.`
-      : '',
-    result.skipped > 0
-      ? `Left ${result.skipped} alone, ${
-          result.skipped === 1 ? 'it has' : 'they have'
-        } moved since.`
-      : '',
-    result.failed > 0 ? `Could not move ${result.failed} back.` : '',
+    result.restored > 0 ? t.putBack(result.restored) : t.noneBack,
+    result.removedFolders > 0 ? t.removedEmpty(result.removedFolders) : '',
+    result.skipped > 0 ? t.leftAlone(result.skipped) : '',
+    result.failed > 0 ? t.couldNotMoveBack(result.failed) : '',
   ];
 
   return parts.filter(Boolean).join(' ');
@@ -179,7 +171,7 @@ export async function undoOrganisation(): Promise<UndoResult> {
       skipped: 0,
       failed: 0,
       removedFolders: 0,
-      summary: 'There is nothing to undo.',
+      summary: organiseText().nothingToUndo,
     };
   }
 

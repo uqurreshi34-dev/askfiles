@@ -9,6 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/next';
 import { countFolder, createDirectory } from 'file-reader';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { getFileColor, getFileIcon, isImageFile } from '@/utils/files';
@@ -45,10 +48,13 @@ export default function FolderPickerModal({
   onSave,
   defaultPath,
   defaultLabel,
-  defaultSubLabel = 'Default save location',
-  title = 'Choose location',
+  defaultSubLabel,
+  title,
 }: FolderPickerModalProps) {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const tf = filesText(lang);
   const [currentPath, setCurrentPath] = useState(ROOT);
   const [items, setItems] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -144,7 +150,7 @@ useEffect(() => {
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title ?? tf.chooseLocation}</Text>
           <View style={styles.backBtn} />
         </View>
 
@@ -185,7 +191,7 @@ useEffect(() => {
           <Ionicons name="folder-outline" size={20} color={colors.green} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.defaultLabel, { color: colors.textPrimary }]}>{defaultLabel}</Text>
-            <Text style={[styles.defaultSub, { color: colors.textMuted }]}>{defaultSubLabel}</Text>
+            <Text style={[styles.defaultSub, { color: colors.textMuted }]}>{defaultSubLabel ?? tf.defaultSaveLocation}</Text>
           </View>
           <Ionicons name="checkmark-circle" size={18} color={colors.green} />
         </TouchableOpacity>
@@ -197,7 +203,7 @@ useEffect(() => {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.centered}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>This folder is empty</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{tc.folderEmpty}</Text>
           </View>
         ) : (
           <FlatList
@@ -263,7 +269,7 @@ useEffect(() => {
                 activeOpacity={0.85}
               >
                 <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={styles.saveBtnText}>Save here</Text>
+                <Text style={styles.saveBtnText}>{tf.saveHere}</Text>
               </TouchableOpacity>
             </View>
         </View>
@@ -273,7 +279,7 @@ useEffect(() => {
               onPress={() => { Keyboard.dismiss(); setShowNewFolder(false); setNewFolderName(''); }}>
               <Pressable style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%' }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>New Folder</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{tf.newFolder}</Text>
                   <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowNewFolder(false); setNewFolderName(''); }}>
                     <Ionicons name="close" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
@@ -282,7 +288,7 @@ useEffect(() => {
                   style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, fontSize: 14, color: colors.textPrimary, marginBottom: 16 }}
                   value={newFolderName}
                   onChangeText={setNewFolderName}
-                  placeholder="Folder name..."
+                  placeholder={tf.folderNamePh}
                   placeholderTextColor={colors.textMuted}
                   autoFocus
                   autoCapitalize="none"
@@ -292,7 +298,7 @@ useEffect(() => {
                     if (!name) return;
                     const invalidChars = /[*\\:?"<>|]/;
                     if (invalidChars.test(name)) {
-                      Alert.alert('Invalid name', 'Folder names cannot contain: * \\ : ? " < > |');
+                      Alert.alert(tf.invalidName, tf.folderNameChars);
                       return;
                     }
                     const newPath = toPath(currentPath) + name;
@@ -306,7 +312,7 @@ useEffect(() => {
                       await loadDir(newUri);
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     } catch {
-                      Alert.alert('Error', 'Could not create folder.');
+                      Alert.alert(tc.error, tf.couldNotCreateFolderShort);
                     } finally {
                       setCreatingFolder(false);
                     }
@@ -317,7 +323,7 @@ useEffect(() => {
                     style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: 'center' }}
                     onPress={() => { Keyboard.dismiss(); setShowNewFolder(false); setNewFolderName(''); }}
                   >
-                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>Cancel</Text>
+                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>{tc.cancel}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: newFolderName.trim() ? colors.blue : colors.textDisabled, alignItems: 'center' }}
@@ -335,7 +341,7 @@ useEffect(() => {
                         await loadDir(newUri);
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                       } catch {
-                        Alert.alert('Error', 'Could not create folder.');
+                        Alert.alert(tc.error, tf.couldNotCreateFolderShort);
                       } finally {
                         setCreatingFolder(false);
                       }
@@ -344,7 +350,7 @@ useEffect(() => {
                   >
                     {creatingFolder
                       ? <ActivityIndicator size="small" color="#fff" />
-                      : <Text style={{ fontSize: 14, color: '#fff', fontWeight: '500' }}>Create</Text>
+                      : <Text style={{ fontSize: 14, color: '#fff', fontWeight: '500' }}>{tf.create}</Text>
                     }
                   </TouchableOpacity>
                 </View>

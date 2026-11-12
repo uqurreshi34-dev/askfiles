@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ROOT_PATH } from '@/utils/files';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useLanguage } from '@/modules/appLanguage';
+import { filesText } from '@/modules/i18n/files';
 
 interface Props {
   count: number;
@@ -24,6 +26,9 @@ const COMMON_DESTS = [
 ];
 
 export default function MovePill({ count, busy, toolbarHeight, insetRight, insetLeft, insetBottom, screenHeight, colors, onMove }: Props) {
+  const tf = filesText(useLanguage());
+  // Shortcut names shown in the tray; the folders on disk keep their names.
+  const destLabel = (label: string) => label === 'Docs' ? tf.docs : label === 'Downloads' ? tf.downloads : label;
   const [trayOpen, setTrayOpen] = useState(false);
   const [mode, setMode] = useState<'move' | 'copy'>('move');
   const { bookmarks } = useBookmarks();
@@ -66,7 +71,7 @@ export default function MovePill({ count, busy, toolbarHeight, insetRight, inset
           <View style={{ position: 'absolute', left: insetLeft + 16, right: insetRight + 16, bottom: toolbarHeight + insetBottom, zIndex: 26, backgroundColor: colors.background, borderRadius: 16, borderWidth: 0.5, borderColor: colors.border, padding: 16, marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                {mode === 'move' ? 'Move' : 'Copy'} {count} item{count !== 1 ? 's' : ''} into…
+                {tf.pillTitle(mode === 'move', count)}
               </Text>
               <View style={{ flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, padding: 2 }}>
                 <TouchableOpacity
@@ -74,14 +79,14 @@ export default function MovePill({ count, busy, toolbarHeight, insetRight, inset
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: mode === 'move' ? colors.blue : 'transparent' }}
                 >
                   <Ionicons name="arrow-redo-outline" size={14} color={mode === 'move' ? '#fff' : colors.textSecondary} />
-                  <Text style={{ fontSize: 12, color: mode === 'move' ? '#fff' : colors.textSecondary }}>Move</Text>
+                  <Text style={{ fontSize: 12, color: mode === 'move' ? '#fff' : colors.textSecondary }}>{tf.move}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setMode('copy')}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: mode === 'copy' ? colors.blue : 'transparent' }}
                 >
                   <Ionicons name="copy-outline" size={14} color={mode === 'copy' ? '#fff' : colors.textSecondary} />
-                  <Text style={{ fontSize: 12, color: mode === 'copy' ? '#fff' : colors.textSecondary }}>Copy</Text>
+                  <Text style={{ fontSize: 12, color: mode === 'copy' ? '#fff' : colors.textSecondary }}>{tf.copy}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -99,7 +104,7 @@ export default function MovePill({ count, busy, toolbarHeight, insetRight, inset
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, maxWidth: '100%' }}
                   >
                     <Ionicons name={c.icon as any} size={14} color={c.isBookmark ? colors.blue : colors.textPrimary} />
-                    <Text style={{ fontSize: 13, color: colors.textPrimary }} numberOfLines={1}>{c.label}</Text>
+                    <Text style={{ fontSize: 13, color: colors.textPrimary }} numberOfLines={1}>{destLabel(c.label)}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

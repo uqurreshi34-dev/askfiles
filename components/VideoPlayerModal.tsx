@@ -8,6 +8,9 @@ import { shareFiles, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType, toPath, formatDuration } from '@/utils/files';
 import { useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
 
 interface Props {
     uri: string | null;
@@ -18,6 +21,9 @@ interface Props {
   }
 
   export default function VideoPlayerModal({ uri, onClose, speedPills = false, hidePill = false, hideShare = false }: Props) {
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const tf = filesText(lang);
   const [paused, setPaused] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(false);
   const [speed, setSpeed] = useState(1.0);
@@ -99,8 +105,8 @@ useEffect(() => {
             }}
             onComplete={() => setPaused(true)}
             onError={() => {
-              Alert.alert('Cannot play video', 'This file could not be opened. It may have been moved or deleted.', [
-                { text: 'OK', onPress: onClose },
+              Alert.alert(tf.cannotPlayVideo, tf.fileCouldNotOpen, [
+                { text: tc.ok, onPress: onClose },
               ]);
             }}
             style={StyleSheet.absoluteFill}

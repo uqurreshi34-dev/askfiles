@@ -14,6 +14,9 @@ import {
 } from '@/modules/jarvis';
 import { recordOrganisation, undoOrganisation, UndoMove, clearOrganisation } from '@/modules/organiseUndo';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { organiseText } from '@/modules/i18n/organiseText';
 import { Cancellable } from '@shopify/flash-list';
 
 export type JarvisOrganiseItem = JarvisFolderItem & {
@@ -46,10 +49,10 @@ function buildSummary(plan: JarvisOrganisationPlan) {
   }
 
   const parts = Array.from(counts.entries())
-    .map(([folder, count]) => `${count} into ${folder}`)
+    .map(([folder, count]) => organiseText().intoFolder(count, folder))
     .join('; ');
 
-  return parts || plan.summary || 'No changes proposed.';
+  return parts || plan.summary || organiseText().noChanges;
 }
 
 function queuePathSync(oldPath: string, newPath: string, newName: string) {
@@ -94,6 +97,9 @@ export default function JarvisOrganiseButton({
   onComplete,
 }: Props) {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const to = organiseText(lang);
+  const tc = commonText(lang);
   const [working, setWorking] = useState(false);
 
   async function executePlan(plan: JarvisOrganisationPlan) {
@@ -214,15 +220,11 @@ export default function JarvisOrganiseButton({
       ).catch(() => {});
 
       const details = [
-        moved > 0 ? `Moved ${moved} item${moved !== 1 ? 's' : ''}.` : 'No items moved.',
-        createdFolders.size > 0
-          ? `Created ${createdFolders.size} folder${createdFolders.size !== 1 ? 's' : ''}.`
-          : '',
-        skipped > 0 ? `Skipped ${skipped}.` : '',
-        failedFolders > 0
-          ? `Could not prepare ${failedFolders} destination folder${failedFolders !== 1 ? 's' : ''}.`
-          : '',
-        failed > 0 ? `Failed ${failed}.` : '',
+        moved > 0 ? to.movedN(moved) : to.noneMoved,
+        createdFolders.size > 0 ? to.createdN(createdFolders.size) : '',
+        skipped > 0 ? to.skippedN(skipped) : '',
+        failedFolders > 0 ? to.prepFailedN(failedFolders) : '',
+        failed > 0 ? to.failedN(failed) : '',
       ].filter(Boolean).join(' ');
 
       const recorded = await recordOrganisation(
@@ -238,7 +240,7 @@ export default function JarvisOrganiseButton({
 
       Alert.alert('JARVIS', details, [
         {
-          text: 'Undo',
+          text: to.undo,
           onPress: () => {
             void (async () => {
               setWorking(true);
@@ -259,7 +261,7 @@ export default function JarvisOrganiseButton({
           },
         },
         {
-          text: 'Dismiss',
+          text: to.dismiss,
           style: 'cancel',
            // Clears the record rather than just closing. Nothing reads it
           // today except this prompt, but canUndo() is exported and unused
@@ -270,7 +272,7 @@ export default function JarvisOrganiseButton({
         },
       ], {cancelable: false});
     } catch (error: any) {
-      const message = error?.message || 'I could not finish organising this folder.';
+      const message = error?.message || to.couldNotFinish;
       Alert.alert('JARVIS', message);
     } finally {
       setWorking(false);
@@ -286,7 +288,7 @@ export default function JarvisOrganiseButton({
       const plan = await organiseFolderWithJarvis(currentPath, items);
 
       if (plan.moves.length === 0) {
-        const message = plan.summary || 'This folder is already organised.';
+        const message = plan.summary || to.alreadyOrganised;
         Alert.alert('JARVIS', message);
         setWorking(false);
         return;
@@ -294,29 +296,29 @@ export default function JarvisOrganiseButton({
 
       const summary = buildSummary(plan);
       const newFolders = plan.create_folders.length > 0
-        ? `\nCreate: ${plan.create_folders.join(', ')}`
+        ? `\n${to.create(plan.create_folders.join(', '))}`
         : '';
-      const message = `${summary}.${newFolders}\n\nProceed?`;
+      const message = `${summary}.${newFolders}\n\n${to.proceed}`;
 
       Alert.alert(
-        'JARVIS organisation',
+        to.title,
         message,
         [
           {
-            text: 'Cancel',
+            text: tc.cancel,
             style: 'cancel',
             onPress: () => {
               setWorking(false);
             },
           },
           {
-            text: 'Organise',
+            text: to.organise,
             onPress: () => void executePlan(plan),
           },
         ],
       );
     } catch (error: any) {
-      const message = error?.message || 'I could not organise this folder.';
+      const message = error?.message || to.couldNotOrganise;
       Alert.alert('JARVIS', message);
       setWorking(false);
     }

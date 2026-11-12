@@ -32,6 +32,7 @@ import type {
     JarvisFolderMove,
     JarvisOrganisationPlan,
   } from '@/modules/jarvis';
+  import { organiseText } from '@/modules/i18n/organiseText';
   
   const MAX_NAME_LENGTH = 255;
   
@@ -178,7 +179,8 @@ import type {
   }
   
   function describe(moves: JarvisFolderMove[], created: string[]): string {
-    if (moves.length === 0) return 'This folder is already organised.';
+    const t = organiseText();
+    if (moves.length === 0) return t.alreadyOrganised;
   
     const counts = new Map<string, number>();
   
@@ -188,21 +190,19 @@ import type {
   
     const parts = [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([folder, count]) => `${count} to ${folder}`);
+      .map(([folder, count]) => t.toFolder(count, folder));
   
     const listed =
       parts.length === 1
         ? parts[0]
-        : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+        : `${parts.slice(0, -1).join(', ')} ${t.and} ${parts[parts.length - 1]}`;
   
     const newFolders =
       created.length > 0
-        ? `, creating ${created.length} folder${created.length === 1 ? '' : 's'}`
-        : ', reusing the folders already here';
+        ? t.creatingN(created.length)
+        : t.reusing;
   
-    return `Moving ${moves.length} file${
-      moves.length === 1 ? '' : 's'
-    }: ${listed}${newFolders}.`;
+    return t.movingN(moves.length, listed, newFolders);
   }
   
   /**
@@ -219,8 +219,7 @@ import type {
   ): JarvisOrganisationPlan | null {
     if (isProtectedPath(currentPath)) {
       return {
-        summary:
-          'This is a standard Android folder, so I will leave its structure intact.',
+        summary: organiseText().protectedFolder,
         moves: [],
         create_folders: [],
       };

@@ -6,6 +6,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
 import { useTags, addTag } from '@/hooks/useTags';
 import { useFileTags, addTagToFile, removeTagFromFile } from '@/hooks/useFileTags';
 
@@ -30,6 +33,9 @@ const DEFAULT_ICON = 'pricetag-outline';
 
 export default function TagPickerModal({ visible, item, onClose }: Props) {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const tc = commonText(lang);
+  const tf = filesText(lang);
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const { tags } = useTags();
   const { fileTags } = useFileTags();
@@ -100,7 +106,7 @@ export default function TagPickerModal({ visible, item, onClose }: Props) {
         <Pressable style={styles.overlay} onPress={handleClose}>
           <Pressable style={[styles.modal, { backgroundColor: colors.card, maxHeight: SCREEN_HEIGHT * 0.75 }]}>
             <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>Tags</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>{tf.tags}</Text>
               <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
@@ -134,13 +140,13 @@ export default function TagPickerModal({ visible, item, onClose }: Props) {
               {!showNewTag ? (
                 <TouchableOpacity style={styles.newTagBtn} onPress={() => setShowNewTag(true)}>
                   <Ionicons name="add-circle-outline" size={20} color={colors.purple} />
-                  <Text style={{ fontSize: 15, color: colors.purple }}>New Tag</Text>
+                  <Text style={{ fontSize: 15, color: colors.purple }}>{tf.newTag}</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={{ gap: 10, marginTop: 4 }}>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
-                    placeholder="Tag name..."
+                    placeholder={tf.tagNamePh}
                     placeholderTextColor={colors.textMuted}
                     value={newTagName}
                     onChangeText={setNewTagName}
@@ -186,7 +192,7 @@ export default function TagPickerModal({ visible, item, onClose }: Props) {
                       style={[styles.cancelBtn, { backgroundColor: colors.surface }]}
                       onPress={resetForm}
                     >
-                      <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textSecondary }}>Cancel</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textSecondary }}>{tc.cancel}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.confirmBtn, { backgroundColor: colors.blue }, (!newTagName.trim() || creatingTag) && { opacity: 0.4 }]}
@@ -195,7 +201,7 @@ export default function TagPickerModal({ visible, item, onClose }: Props) {
                     >
                       {creatingTag
                         ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Create &amp; Apply</Text>
+                        : <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{tf.createApply}</Text>
                       }
                     </TouchableOpacity>
                   </View>
