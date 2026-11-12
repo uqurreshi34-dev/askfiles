@@ -37,6 +37,8 @@ import { getMostUsedEnabled, setMostUsedEnabled } from 'file-reader';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useToolsConfig, ToolId } from '@/hooks/useToolsConfig';
 import ToolsGrid, { ToolDef } from '@/components/ToolsGrid';
+import { useLanguage, setLanguage, LANGUAGES } from '@/modules/appLanguage';
+import { homeText } from '@/modules/homeText';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -47,6 +49,8 @@ export default function HomeScreen() {
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
   const { recents, reload } = useRecents();
   const router = useRouter();
+  const lang = useLanguage();
+  const t = homeText(lang);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
@@ -134,12 +138,12 @@ export default function HomeScreen() {
   }, []);
 
   const QUICK_ACCESS = [
-    { id: '1', label: 'Images', color: colors.blueBg, iconColor: colors.blue, icon: 'image-outline', route: '/category?category=images' },
-    { id: '2', label: 'Videos', color: colors.redBrownBg, iconColor: colors.redBrown, icon: 'videocam-outline', route: '/category?category=videos' },
-    { id: '3', label: 'Documents', color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
-    { id: '4', label: 'Downloads', color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
-    { id: '5', label: 'Favourites', color: colors.favRedBg, iconColor: favCount > 0 ? colors.favRed : colors.textMuted, icon: favCount > 0 ? 'heart' : 'heart-outline', route: '/favourites' },
-    { id: '6', label: 'Trash', color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
+    { id: '1', label: t.images, color: colors.blueBg, iconColor: colors.blue, icon: 'image-outline', route: '/category?category=images' },
+    { id: '2', label: t.videos, color: colors.redBrownBg, iconColor: colors.redBrown, icon: 'videocam-outline', route: '/category?category=videos' },
+    { id: '3', label: t.documents, color: colors.purpleBg, iconColor: colors.purple, icon: 'document-outline', route: '/category?category=documents' },
+    { id: '4', label: t.downloads, color: colors.greenBg, iconColor: colors.green, icon: 'download-outline', route: '/category?category=downloads' },
+    { id: '5', label: t.favourites, color: colors.favRedBg, iconColor: favCount > 0 ? colors.favRed : colors.textMuted, icon: favCount > 0 ? 'heart' : 'heart-outline', route: '/favourites' },
+    { id: '6', label: t.trash, color: trashFiles.length > 0 ? colors.trashBg : colors.surface, iconColor: trashFiles.length > 0 ? colors.trashAmber : colors.textMuted, icon: 'trash-outline', route: '/trash' },
   ];
 
   // Helper — fire OCR and index silently in background, never blocks UI
@@ -158,53 +162,53 @@ async function indexScansInBackground(paths: string[]) {
 
 const ALL_TOOLS: Record<string, ToolDef> = {
   'network': {
-    id: 'network', label: 'Network', onPress: () => router.push('/network' as any),
+    id: 'network', label: t.network, onPress: () => router.push('/network' as any),
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.blueBg }]}><Ionicons name="globe-outline" size={26} color={colors.blue} /></View>,
   },
   'large-files': {
-    id: 'large-files', label: 'Large Files', onPress: () => router.push('/large-files'), disabled: !hasMediaAccess,
+    id: 'large-files', label: t.largeFiles, onPress: () => router.push('/large-files'), disabled: !hasMediaAccess,
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.redBrownBg, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="folder-open-outline" size={26} color={colors.redBrown} /></View>,
   },
   'storage': {
-    id: 'storage', label: 'Storage', onPress: () => router.push('/storage-breakdown'), disabled: !hasMediaAccess,
+    id: 'storage', label: t.storage, onPress: () => router.push('/storage-breakdown'), disabled: !hasMediaAccess,
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.purpleBg, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="stats-chart-outline" size={26} color={colors.purple} /></View>,
   },
   'scanner': {
-    id: 'scanner', label: 'Doc Scanner', onPress: async () => {
+    id: 'scanner', label: t.docScanner, onPress: async () => {
       if (scanning) return;
       try {
         const uris = await scanDocument();
         if (uris.length === 0) return;
-        Alert.alert('Save scan as', `${uris.length} page${uris.length > 1 ? 's' : ''} scanned`, [
-          { text: 'Images (JPG)', onPress: () => { setPendingScanUris(uris); setPendingScanFormat('images'); setScanPickerVisible(true); } },
+        Alert.alert(t.saveScanAs, t.pagesScanned(uris.length), [
+          { text: t.imagesJpg, onPress: () => { setPendingScanUris(uris); setPendingScanFormat('images'); setScanPickerVisible(true); } },
           { text: 'PDF', onPress: () => { setPendingScanUris(uris); setPendingScanFormat('pdf'); setScanPickerVisible(true); } },
-          { text: 'Cancel', style: 'cancel' }
+          { text: t.cancel, style: 'cancel' }
         ]);
       } catch (e: any) {
         if (e?.message?.includes('SCAN_CANCELLED')) return;
-        Alert.alert('Scan failed', e?.message ?? 'Could not complete scan');
+        Alert.alert(t.scanFailed, e?.message ?? t.scanFailedMsg);
       }
     },
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>{scanning ? <ActivityIndicator size="small" color={colors.green} /> : <Ionicons name="camera-outline" size={26} color={colors.green} />}</View>,
   },
   'sensitive': {
-    id: 'sensitive', label: 'Sensitive Files', onPress: () => router.push('/sensitive-files'), disabled: !hasMediaAccess,
+    id: 'sensitive', label: t.sensitiveFiles, onPress: () => router.push('/sensitive-files'), disabled: !hasMediaAccess,
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.amberTint, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="shield-outline" size={26} color={colors.amber} /></View>,
   },
   'converter': {
-    id: 'converter', label: 'Image Converter', onPress: () => router.push('/file-converter' as any),
+    id: 'converter', label: t.imageConverter, onPress: () => router.push('/file-converter' as any),
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.favRedBg }]}><Ionicons name="swap-horizontal-outline" size={26} color={colors.favRed} /></View>,
   },
   'csv': {
-    id: 'csv', label: 'CSV Reader', onPress: () => router.push('/csv-reader' as any),
+    id: 'csv', label: t.csvReader, onPress: () => router.push('/csv-reader' as any),
     circle: <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A2200' : '#FFF8E1' }]}><Text style={{ fontSize: 13, fontWeight: '800', color: colors.yellow, letterSpacing: 0.5 }}>CSV</Text></View>,
   },
   'pdf': {
-    id: 'pdf', label: 'PDF Reader', onPress: () => router.push('/pdf-viewer' as any),
+    id: 'pdf', label: t.pdfReader, onPress: () => router.push('/pdf-viewer' as any),
     circle: <View style={[styles.quickCircle, { backgroundColor: dark ? '#2A0000' : '#FFF0F0' }]}><Text style={{ fontSize: 13, fontWeight: '800', color: colors.favRed, letterSpacing: 0.5 }}>PDF</Text></View>,
   },
   'txt': {
-    id: 'txt', label: 'Text Editor', onPress: () => router.push('/text-editor' as any),
+    id: 'txt', label: t.textEditor, onPress: () => router.push('/text-editor' as any),
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.surface }]}><Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5 }}>.TXT</Text></View>,
   },
 };
@@ -269,18 +273,18 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
             <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
-              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
 
               <TouchableOpacity style={styles.modalRow} activeOpacity={0.7} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
                 <Ionicons name="shield-checkmark-outline" size={18} color={colors.purple} style={{ marginRight: 10 }} />
-                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>Privacy Policy</Text>
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>{t.privacyPolicy}</Text>
                 <Ionicons name="open-outline" size={14} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.modalRow} activeOpacity={0.7} onPress={() => Linking.openURL('market://details?id=com.askfiles.mobile')}>
                 <Ionicons name="star-outline" size={18} color={colors.amber} style={{ marginRight: 10 }} />
-                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>Rate App</Text>
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>{t.rateApp}</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
               </TouchableOpacity>
 
@@ -291,8 +295,8 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 onPress={async () => {
                   if (appLockEnabled) {
                     const result = await LocalAuthentication.authenticateAsync({
-                      promptMessage: 'Verify identity to disable app lock',
-                      cancelLabel: 'Cancel',
+                      promptMessage: t.verifyToDisableLock,
+                      cancelLabel: t.cancel,
                       disableDeviceFallback: true,
                     });
                     if (result.success) {
@@ -312,7 +316,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 }}
               >
                 <Ionicons name="lock-closed-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
-                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>App Lock</Text>
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>{t.appLock}</Text>
                 <View style={{ marginLeft: 'auto', width: 44, height: 26, borderRadius: 13, backgroundColor: appLockEnabled ? colors.blue : colors.textDisabled, justifyContent: 'center', paddingHorizontal: 3 }}>
                   <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: appLockEnabled ? 'flex-end' : 'flex-start' }} />
                 </View>
@@ -327,14 +331,30 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 }}
               >
                 <Ionicons name="star-outline" size={18} color={colors.blue} style={{ marginRight: 10 }} />
-                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>Most Used</Text>
+                <Text style={[styles.modalRowText, { color: colors.textPrimary }]}>{t.mostUsed}</Text>
                 <View style={{ marginLeft: 'auto', width: 44, height: 26, borderRadius: 13, backgroundColor: mostUsedEnabled ? colors.blue : colors.textDisabled, justifyContent: 'center', paddingHorizontal: 3 }}>
                   <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: mostUsedEnabled ? 'flex-end' : 'flex-start' }} />
                 </View>
               </TouchableOpacity>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider, marginTop: 8 }]} />
               <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
-                Background
+                {t.language}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {LANGUAGES.map(l => (
+                  <TouchableOpacity
+                    key={l.code}
+                    onPress={() => setLanguage(l.code)}
+                    activeOpacity={0.7}
+                    style={{ borderRadius: 14, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: lang === l.code ? colors.blue : colors.surface }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '500', color: lang === l.code ? '#fff' : colors.textSecondary }}>{l.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
+              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+                {t.background}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
                 {(dark ? DARK_PALETTES : LIGHT_PALETTES).map(p => (
@@ -355,14 +375,14 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                         <Ionicons name="checkmark" size={16} color={dark ? '#fff' : '#111'} />
                       )}
                     </View>
-                    <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>{p.name}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>{t.palette[p.id] ?? p.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
               </ScrollView>
 
               <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled }]} activeOpacity={0.7} onPress={() => setSettingsVisible(false)}>
-                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Close</Text>
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>{t.close}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -381,14 +401,14 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>What's New</Text>
-              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>Version {APP_VERSION}</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.whatsNew}</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               {[
-                { icon: 'sparkles-outline', color: colors.blue, text: 'AI-powered file search — ask in plain English' },
-                { icon: 'shield-checkmark-outline', color: colors.purple, text: 'Vault — lock your private files securely' },
-                { icon: 'copy-outline', color: colors.redBrown, text: 'Duplicate finder — free up storage space' },
-                { icon: 'notifications-outline', color: colors.green, text: 'Daily reminders to keep your storage clean' },
+                { icon: 'sparkles-outline', color: colors.blue, text: t.whatsNewItems[0] },
+                { icon: 'shield-checkmark-outline', color: colors.purple, text: t.whatsNewItems[1] },
+                { icon: 'copy-outline', color: colors.redBrown, text: t.whatsNewItems[2] },
+                { icon: 'notifications-outline', color: colors.green, text: t.whatsNewItems[3] },
               ].map((item, i) => (
                 <View key={i} style={styles.modalRow}>
                   <Ionicons name={item.icon as any} size={18} color={item.color} style={{ marginRight: 10 }} />
@@ -396,7 +416,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 </View>
               ))}
               <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled}]} activeOpacity={0.7} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }}>
-                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Got it</Text>
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>{t.gotIt}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -415,22 +435,22 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => setRatePromptVisible(false)}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Enjoying AskFiles?</Text>
-              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>A quick rating helps a lot ⭐</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.enjoying}</Text>
+              <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.quickRating}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               <TouchableOpacity
                 style={[styles.modalClose, { backgroundColor: colors.blue, marginBottom: 8 }]}
                 activeOpacity={0.7}
                 onPress={() => { setRatePromptVisible(false); Linking.openURL('market://details?id=com.askfiles.mobile'); }}
               >
-                <Text style={[styles.modalCloseText, { color: '#fff' }]}>Rate AskFiles</Text>
+                <Text style={[styles.modalCloseText, { color: '#fff' }]}>{t.rateAskFiles}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalClose, { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.textDisabled }]}
                 activeOpacity={0.7}
                 onPress={() => setRatePromptVisible(false)}
               >
-                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Maybe later</Text>
+                <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>{t.maybeLater}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -458,8 +478,8 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="folder-open-outline" size={18} color={colors.amber} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Full storage access needed</Text>
-                <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>Tap to enable — required for Browse, Documents and file operations</Text>
+                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>{t.fullAccessTitle}</Text>
+                <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>{t.fullAccessSub}</Text>
               </View>
               <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
             </View>
@@ -482,8 +502,8 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <Ionicons name="images-outline" size={18} color={colors.amber} />
       <View style={{ flex: 1 }}>
-        <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>Media access needed</Text>
-        <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>Tap to enable — required for Images, Videos and Storage Breakdown</Text>
+        <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>{t.mediaAccessTitle}</Text>
+        <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>{t.mediaAccessSub}</Text>
       </View>
       <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
     </View>
@@ -495,7 +515,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
           activeOpacity={0.7}
         >
           <Ionicons name="search-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
-          <Text style={[styles.searchText, { color: colors.textMuted }]}>Search files...</Text>
+          <Text style={[styles.searchText, { color: colors.textMuted }]}>{t.searchFiles}</Text>
         </TouchableOpacity>
 
         {/* Section tabs */}
@@ -504,13 +524,13 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: activeSection === 'categories' ? colors.card : 'transparent' }}
             onPress={() => setActiveSection('categories')}
           >
-            <Text style={{ fontSize: 13, fontWeight: '500', color: activeSection === 'categories' ? colors.blue : colors.textMuted }}>Quick Access</Text>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: activeSection === 'categories' ? colors.blue : colors.textMuted }}>{t.quickAccess}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: activeSection === 'tools' ? colors.card : 'transparent' }}
             onPress={() => setActiveSection('tools')}
           >
-            <Text style={{ fontSize: 13, fontWeight: '500', color: activeSection === 'tools' ? colors.blue : colors.textMuted }}>Tools</Text>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: activeSection === 'tools' ? colors.blue : colors.textMuted }}>{t.tools}</Text>
           </TouchableOpacity>
         </View>
 
@@ -533,7 +553,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             </View>
             {pinnedList.length > 0 && (
               <>
-                <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 4, marginBottom: 8 }]}>Pinned</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 4, marginBottom: 8 }]}>{t.pinned}</Text>
                 <View style={styles.quickGrid}>
                 {pinnedList.map((folder) => (
                     <TouchableOpacity
@@ -546,9 +566,9 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                       }}
                       onLongPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        Alert.alert('Unpin folder', `Remove "${folder.name}" from Home?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Unpin', style: 'destructive', onPress: () => {
+                        Alert.alert(t.unpinFolder, t.unpinMsg(folder.name), [
+                          { text: t.cancel, style: 'cancel' },
+                          { text: t.unpin, style: 'destructive', onPress: () => {
                             const updated = pinnedList.filter(f => f.path !== folder.path);
                             setPinnedList(updated);
                             setPinnedFolders(JSON.stringify(updated));
@@ -567,7 +587,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
         )}
         {tags.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 4, marginBottom: 8 }]}>Tags</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 4, marginBottom: 8 }]}>{t.tags}</Text>
             <View style={styles.quickGrid}>
               {tags.map(tag => (
                 <TouchableOpacity
@@ -580,9 +600,9 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                   }}
                   onLongPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    Alert.alert('Delete tag', `Delete "${tag.name}" and remove it from all files?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: async () => {
+                    Alert.alert(t.deleteTag, t.deleteTagMsg(tag.name), [
+                      { text: t.cancel, style: 'cancel' },
+                      { text: t.delete, style: 'destructive', onPress: async () => {
                         await removeTagFromAllFiles(tag.id);
                         await removeTag(tag.id);
                       }},
@@ -616,7 +636,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
     )}
         {mostUsedEnabled && mostUsed.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>Most Used</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 8 }]}>{t.mostUsed}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -666,16 +686,16 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
           </>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
-          <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>Recent</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted, paddingHorizontal: 0, marginBottom: 0 }]}>{t.recent}</Text>
           {recents.length > 0 && (
             <TouchableOpacity onPress={async () => { await clearRecents(); reload(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontSize: 12, color: colors.blue }}>Clear all</Text>
+              <Text style={{ fontSize: 12, color: colors.blue }}>{t.clearAll}</Text>
             </TouchableOpacity>
           )}
         </View>
         <View style={styles.recentsList}>
           {recents.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent files — open something from Browse</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.noRecents}</Text>
           ) : (
             (() => {
               const groups = ['Today', 'Yesterday', 'This week', 'Older'];
@@ -688,12 +708,12 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                 if (!files.length) return [];
                 return [
                   <Text key={`header-${group}`} style={{ fontSize: 11, fontWeight: '500', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, paddingBottom: 4, paddingTop: group === 'Today' ? 0 : 8 }}>
-                    {group}
+                    {t.group[group] ?? group}
                   </Text>,
                   ...files.map(file => {
                     const color = getFileColor(file.name);
                     const ext = file.name.split('.').pop()?.toUpperCase() ?? '?';
-                    const locationRaw = file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).pop() ?? 'Storage';
+                    const locationRaw = file.uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).pop() ?? t.storage;
                     const location = (() => { try { return decodeURIComponent(locationRaw); } catch { return locationRaw; } })();
                     return (
                       <TouchableOpacity
@@ -735,7 +755,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
                         </View>
                         <View style={styles.recentInfo}>
                           <Text style={[styles.recentName, { color: colors.textPrimary }]} numberOfLines={1}>{file.name}</Text>
-                          <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {timeAgo(file.openedAt)} · {location}</Text>
+                          <Text style={[styles.recentMeta, { color: colors.textMuted }]}>{ext} · {t.timeAgo(file.openedAt)} · {location}</Text>
                         </View>
                         {openingUri === file.uri ? (
                           <ActivityIndicator size="small" color={colors.blue} />
@@ -761,14 +781,14 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
           try {
             if (pendingScanFormat === 'images') {
               const saved = await saveScanPages(pendingScanUris, folderPath);
-              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
-              Alert.alert('Saved', `${saved.length} image${saved.length > 1 ? 's' : ''} saved to ${friendlyPath}`);
+              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || t.internalStorage;
+              Alert.alert(t.saved, t.imagesSaved(saved.length, friendlyPath));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               indexScansInBackground(saved);
             } else {
               const path = await saveScanAsPdf(pendingScanUris, folderPath);
-              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || 'Internal Storage';
-              Alert.alert('Saved', `PDF saved to ${friendlyPath}`);
+              const friendlyPath = folderPath.replace('/storage/emulated/0/', '').replace(/\/$/, '') || t.internalStorage;
+              Alert.alert(t.saved, t.pdfSaved(friendlyPath));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               indexScansInBackground([path]);
             }
@@ -778,8 +798,8 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
         }}
         defaultPath="/storage/emulated/0/Documents/Scans"
         defaultLabel="Documents/Scans"
-        defaultSubLabel="Default save location"
-        title="Choose location"
+        defaultSubLabel={t.defaultSaveLocation}
+        title={t.chooseLocation}
       />
       </ScrollView>
       <Modal visible={viewerUri !== null} transparent={false} animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>

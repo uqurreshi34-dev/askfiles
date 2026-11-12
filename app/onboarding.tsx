@@ -13,7 +13,8 @@ import { useColorScheme } from 'react-native';
 import { getColors } from '@/hooks/useTheme';
 import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { onboardingText, deviceLanguage, LANGUAGES, OnboardingLang } from '@/modules/onboardingText';
+import { onboardingText } from '@/modules/onboardingText';
+import { LANGUAGES, useLanguage, setLanguage } from '@/modules/appLanguage';
 
 
 // Icons and colours only; the words, in the phone's language, come from onboardingText().
@@ -53,8 +54,9 @@ export default function OnboardingScreen() {
   const PORTRAIT_WIDTH = Math.min(width, height);
   const isLandscape = width > height;
   const router = useRouter();
-  // Starts on the phone's language; the buttons at the top switch it.
-  const [lang, setLang] = useState<OnboardingLang>(deviceLanguage);
+  // Starts on the phone's language; the buttons at the top switch it, and
+  // the choice carries on into the app.
+  const lang = useLanguage();
   const T = onboardingText(lang);
   const slides = SLIDES.map((s, i) => ({ ...s, ...T.slides[i] }));
   const scrollRef = useRef<ScrollView>(null);
@@ -111,7 +113,7 @@ export default function OnboardingScreen() {
       {LANGUAGES.map(l => (
         <TouchableOpacity
           key={l.code}
-          onPress={() => setLang(l.code)}
+          onPress={() => setLanguage(l.code)}
           activeOpacity={0.7}
           style={[styles.langChip, { backgroundColor: lang === l.code ? '#185FA5' : colors.surface }]}
         >

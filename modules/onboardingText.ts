@@ -8,18 +8,14 @@
  * holds the words, so a fourth language is one more block here.
  *
  * Any other language, or a phone whose language cannot be read, gets English.
- * The buttons at the top of onboarding let anyone switch between the three.
+ * The buttons at the top of onboarding let anyone switch between the three,
+ * and the choice carries on into the app (see appLanguage.ts).
  */
-import { I18nManager } from 'react-native';
+import { AppLang, LANGUAGES, deviceLanguage, getLanguage } from './appLanguage';
 
-export type OnboardingLang = 'en' | 'ar' | 'hi';
-
-/** The language buttons at the top of onboarding, each written in its own language. */
-export const LANGUAGES: readonly { code: OnboardingLang; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'ar', label: 'العربية' },
-  { code: 'hi', label: 'हिन्दी' },
-];
+// Kept so existing imports from this file keep working.
+export type OnboardingLang = AppLang;
+export { LANGUAGES, deviceLanguage };
 
 type SlideText = { title: string; body: string };
 
@@ -126,21 +122,7 @@ const TEXT: Record<OnboardingLang, OnboardingText> = {
   },
 };
 
-/** The phone's language as 'ar', 'hi' or 'en' (anything else). */
-export function deviceLanguage(): OnboardingLang {
-  let tag = '';
-  try {
-    // Android gives e.g. 'ar_EG' or 'hi_IN'.
-    tag = (I18nManager as any).getConstants?.().localeIdentifier ?? '';
-  } catch {}
-  if (!tag) {
-    try { tag = Intl.DateTimeFormat().resolvedOptions().locale ?? ''; } catch {}
-  }
-  const base = tag.toLowerCase().split(/[-_]/)[0];
-  return base === 'ar' || base === 'hi' ? base : 'en';
-}
-
 /** The words for a language; with none given, the phone's language. */
-export function onboardingText(lang: OnboardingLang = deviceLanguage()): OnboardingText {
+export function onboardingText(lang: OnboardingLang = getLanguage()): OnboardingText {
   return TEXT[lang];
 }

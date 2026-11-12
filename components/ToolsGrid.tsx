@@ -11,6 +11,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as Haptics from 'expo-haptics';
 import { ToolId } from '@/hooks/useToolsConfig';
+import { useLanguage } from '@/modules/appLanguage';
+import { homeText } from '@/modules/homeText';
 
 export interface ToolDef {
   id: ToolId;
@@ -200,6 +202,7 @@ export default function ToolsGrid({
   tools, hiddenTools, editMode, onEditMode,
   onReorder, onHide, onRestore, getToolDef, colors,
 }: Props) {
+  const t = homeText(useLanguage());
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const cellWidth = SCREEN_WIDTH / COLS;
 
@@ -235,7 +238,7 @@ export default function ToolsGrid({
             style={{ fontSize: 13, color: colors.textMuted, flex: 1 }}
             numberOfLines={2}
           >
-            Long press to drag · tap × to hide
+            {t.dragHint}
           </Text>
           <TouchableOpacity
             onPress={exitEditMode}
@@ -245,7 +248,7 @@ export default function ToolsGrid({
               flexShrink: 0,
             }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Done</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{t.done}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -259,7 +262,7 @@ export default function ToolsGrid({
             activeOpacity={0.7}
           >
             <Ionicons name="add-circle-outline" size={32} color={colors.textMuted} />
-            <Text style={{ fontSize: 13, color: colors.textMuted }}>Tap to restore tools</Text>
+            <Text style={{ fontSize: 13, color: colors.textMuted }}>{t.tapToRestoreTools}</Text>
           </TouchableOpacity>
         ) : tools.map((item, index) => (
           <DraggableCell
@@ -285,7 +288,7 @@ export default function ToolsGrid({
             fontSize: 11, fontWeight: '500', color: colors.textMuted,
             textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
           }}>
-            Hidden — tap to restore
+            {t.hiddenTapToRestore}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {hiddenTools.map(id => {

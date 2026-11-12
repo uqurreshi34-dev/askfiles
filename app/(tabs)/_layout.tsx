@@ -1,9 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { homeText } from '@/modules/homeText';
 
 export default function TabsLayout() {
   const { dark, colors } = useTheme();
+  const t = homeText(useLanguage());
 
   return (
     <Tabs
@@ -23,28 +26,28 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t.tabHome,
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="browse"
         options={{
-          title: 'Browse',
+          title: t.tabBrowse,
           tabBarIcon: ({ color, size }) => <Ionicons name="folder-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Search',
+          title: t.tabSearch,
           tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="cloud"
         options={{
-          title: 'Cloud',
+          title: t.tabCloud,
           tabBarIcon: ({ color, size }) => <Ionicons name="cloud-outline" size={size} color={color} />,
         }}
       />
