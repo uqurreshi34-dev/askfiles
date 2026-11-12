@@ -20,6 +20,8 @@ import { readDirectory } from 'file-reader';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getMimeType } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { useLanguage } from '@/modules/appLanguage';
+import { netText } from '@/modules/i18n/netText';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,8 @@ const CREDS_KEY = 'smb_credentials';
 
 export default function SmbScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const t = netText(lang);
   const router = useRouter();
 
   // Stage
@@ -107,7 +111,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
 
   async function handleConnect() {
     if (!ip.trim() || !username.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'IP address, username and password are required.');
+      Alert.alert(t.missingFields, t.smbRequired);
       return;
     }
     setConnecting(true);
@@ -117,7 +121,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
       const visible = result.filter(s => !s.endsWith('$'));
 
       if (visible.length === 0) {
-        Alert.alert('No shares found', 'Connected successfully but no accessible shares were found on this device.');
+        Alert.alert(t.noShares, t.noSharesMsg);
         setConnecting(false);
         return;
       }
@@ -138,11 +142,11 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
     } catch (e: any) {
       const msg = (e?.message ?? '').toLowerCase();
       if (msg.includes('auth') || msg.includes('logon') || msg.includes('password') || msg.includes('access') || msg.includes('denied')) {
-        Alert.alert('Sign in failed', 'Wrong username or password.');
+        Alert.alert(t.signInFailed, t.wrongCreds);
       } else if (msg.includes('connect') || msg.includes('timeout') || msg.includes('unreachable') || msg.includes('refused')) {
-        Alert.alert('Cannot connect', 'Could not reach the device. Make sure both devices are on the same WiFi and the IP address is correct.');
+        Alert.alert(t.cannotConnect, t.couldNotReachDevice);
       } else {
-        Alert.alert('Connection failed', 'Something went wrong. Check your details and try again.');
+        Alert.alert(t.connectionFailed, t.somethingWrong);
       }
     } finally {
       setConnecting(false);
@@ -177,7 +181,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
       setItems(sorted);
       setCurrentPath(path);
     } catch (e: any) {
-      Alert.alert('Error', 'Could not open this folder. It may have been moved or you may not have permission.');
+      Alert.alert(t.error, t.couldNotOpenFolder);
     } finally {
       setLoading(false);
     }
@@ -210,11 +214,11 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
     const exists = await RNFS.exists(localPath);
     if (exists) {
       Alert.alert(
-        'File exists',
-        `"${item.name}" already exists in Downloads.`,
+        t.fileExists,
+        t.existsInDownloads(item.name),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Replace', style: 'destructive', onPress: () => startDownload(ip, activeShare, remotePath, localPath, domain, username, password, item.name) },
+          { text: t.cancel, style: 'cancel' },
+          { text: t.replace, style: 'destructive', onPress: () => startDownload(ip, activeShare, remotePath, localPath, domain, username, password, item.name) },
         ]
       );
       return;
@@ -230,9 +234,9 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
       await downloadFile(ip, share, remotePath, localPath, domain, username, password);
       await scanFile(localPath).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Downloaded', `"${fileName}" saved to Downloads.`);
+      Alert.alert(t.downloaded, t.savedToDownloads(fileName));
     } catch (e: any) {
-      Alert.alert('Download failed', 'Could not download the file. Check your connection and try again.');
+      Alert.alert(t.downloadFailed, t.couldNotDownload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       sub.remove();
@@ -253,7 +257,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
       await downloadFile(ip, activeShare, remotePath, cachePath, domain, username, password);
       await openFileNative(cachePath, getMimeType(item.name));
     } catch (e: any) {
-      Alert.alert('Could not open', 'No app available to open this file type, or the download failed.');
+      Alert.alert(t.couldNotOpen, t.noApp);
     } finally {
       sub.remove();
       setOpeningFile(null);
@@ -295,10 +299,10 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
       const remotePath = currentPath ? `${currentPath}/${fileName}` : fileName;
       await uploadFile(srcPath, ip, activeShare, remotePath, domain, username, password);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Uploaded', `"${fileName}" uploaded successfully.`);
+      Alert.alert(t.uploaded, t.uploadedOk(fileName));
       await loadDirectory(currentPath);
     } catch (e: any) {
-      Alert.alert('Upload failed', 'Could not upload the file. Check your connection and try again.');
+      Alert.alert(t.uploadFailed, t.couldNotUpload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
         sub.remove();
@@ -359,7 +363,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
         <View style={styles.fileInfo}>
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
-            {item.isDirectory ? 'Folder' : formatSize(item.size)}
+            {item.isDirectory ? t.folder : formatSize(item.size)}
           </Text>
         </View>
         {item.isDirectory ? (
@@ -387,7 +391,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const headerTitle = stage === 'connect' ? 'SMB' : stage === 'shares' ? 'Shares' : breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse';
+  const headerTitle = stage === 'connect' ? 'SMB' : stage === 'shares' ? t.shares : breadcrumbs[breadcrumbs.length - 1]?.name ?? t.browse;
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -435,7 +439,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
       {stage === 'connect' && (
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <View style={[styles.formCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>IP Address</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.ipAddress}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={ip}
@@ -446,8 +450,8 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
               autoCapitalize="none"
               autoCorrect={false}
             />
-             <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>Find your PC's IP: Windows → Settings → Network → Properties</Text>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Domain (optional)</Text>
+             <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>{t.findIp}</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.domain}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={domain}
@@ -457,31 +461,31 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>Leave blank for home networks</Text>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Username</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>{t.leaveBlank}</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.username}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={username}
               onChangeText={setUsername}
-              placeholder="Account username"
+              placeholder={t.usernamePh}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Password</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.password}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Account password"
+              placeholder={t.passwordPh}
               placeholderTextColor={colors.textSecondary}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>On Windows with a Microsoft account, use your Microsoft password — not your PIN</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>{t.msPassword}</Text>
             <View style={styles.rememberRow}>
-              <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>Remember credentials</Text>
+              <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>{t.remember}</Text>
               <Switch
                 value={remember}
                 onValueChange={setRemember}
@@ -490,7 +494,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
               />
             </View>
             <Text style={[styles.securityNote, { color: colors.textSecondary }]}>
-              Credentials stored securely on device using Android Keystore encryption. Never uploaded anywhere.
+              {t.credsStored}
             </Text>
             <TouchableOpacity
               style={[styles.connectBtn, { backgroundColor: colors.blue }, connecting && { opacity: 0.7 }]}
@@ -499,7 +503,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
             >
               {connecting
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.connectBtnText}>Connect</Text>
+                : <Text style={styles.connectBtnText}>{t.connect}</Text>
               }
             </TouchableOpacity>
           </View>
@@ -514,7 +518,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              {credsRef.current?.ip} · {shares.length} share{shares.length !== 1 ? 's' : ''}
+              {credsRef.current?.ip} · {t.nShares(shares.length)}
             </Text>
           }
           renderItem={({ item }) => (
@@ -528,7 +532,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
               </View>
               <View style={styles.fileInfo}>
                 <Text style={[styles.fileName, { color: colors.textPrimary }]}>{item}</Text>
-                <Text style={[styles.fileMeta, { color: colors.textSecondary }]}>Network share</Text>
+                <Text style={[styles.fileMeta, { color: colors.textSecondary }]}>{t.networkShare}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
             </TouchableOpacity>
@@ -545,7 +549,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
             </View>
           ) : items.length === 0 ? (
             <View style={styles.centered}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>This folder is empty</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.folderEmpty}</Text>
             </View>
           ) : (
             <FlatList
@@ -554,7 +558,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
               renderItem={renderItem}
               ListHeaderComponent={
                 <Text style={[styles.hintText, { color: colors.textMuted }]}>
-                  Tap to open · long-press to save to Downloads
+                  {t.tapOpen}
                 </Text>
               }
               contentContainerStyle={styles.listContent}
@@ -568,7 +572,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.blue} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                Downloading {downloadingFile}{downloadProgress !== null ? ` ${downloadProgress}%` : '...'}
+                {t.downloading(downloadingFile ?? '')}{downloadProgress !== null ? ` ${downloadProgress}%` : '...'}
               </Text>
             </View>
           )}
@@ -577,7 +581,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.green} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                Uploading {uploadingFile}{downloadProgress !== null && downloadProgress > 0 ? ` ${downloadProgress}%` : '...'}
+                {t.uploading(uploadingFile ?? '')}{downloadProgress !== null && downloadProgress > 0 ? ` ${downloadProgress}%` : '...'}
               </Text>
             </View>
           )}
@@ -605,12 +609,12 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
               >
                 <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>Upload from...</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>{t.uploadFrom}</Text>
               <View style={{ width: 36 }} />
             </View>
             <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 4, paddingBottom: 4 }]} numberOfLines={1}>
             {(() => {
-                let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+                let display = pickerPath.replace('file:///storage/emulated/0/', `${t.storage}/`);
                 const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
                 if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
                 const segs = display.split('/').filter(Boolean).map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } });
@@ -645,7 +649,7 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>Empty folder</Text></View>
+            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.emptyFolder}</Text></View>
           ) : (
             <FlatList
               data={pickerItems}
@@ -661,11 +665,11 @@ const [volumes, setVolumes] = useState<{ name: string; path: string; type: strin
                       loadPickerDir(item.uri);
                     } else {
                       Alert.alert(
-                        'Upload file',
-                        `Upload "${item.name}" to the current network folder?`,
+                        t.uploadFile,
+                        t.uploadToNetwork(item.name),
                         [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Upload', onPress: () => handleUpload(item.uri, item.name) },
+                          { text: t.cancel, style: 'cancel' },
+                          { text: t.upload, onPress: () => handleUpload(item.uri, item.name) },
                         ]
                       );
                     }

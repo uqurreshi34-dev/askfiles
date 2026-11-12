@@ -17,6 +17,8 @@ import { connect, listDirectory, downloadFile, uploadFile, disconnect } from 'we
 import { readDirectory } from 'file-reader';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { useLanguage } from '@/modules/appLanguage';
+import { netText } from '@/modules/i18n/netText';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -41,8 +43,8 @@ const CREDS_KEY = 'webdav_credentials';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function friendlyPickerPath(pickerPath: string, volumes: { name: string; path: string; type: string }[]): { prefix: string; current: string } {
-  let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+function friendlyPickerPath(pickerPath: string, volumes: { name: string; path: string; type: string }[], storageLabel: string): { prefix: string; current: string } {
+  let display = pickerPath.replace('file:///storage/emulated/0/', `${storageLabel}/`);
   const sdVol = volumes.find(v => v.type === 'sdcard' && pickerPath.includes(v.path));
   if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
   const segs = display.split('/').filter(Boolean).map(seg => { try { return decodeURIComponent(seg); } catch { return seg; } });
@@ -54,6 +56,8 @@ function friendlyPickerPath(pickerPath: string, volumes: { name: string; path: s
 
 export default function WebDavScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const t = netText(lang);
   const router = useRouter();
 
   const [stage, setStage] = useState<Stage>('connect');
@@ -112,7 +116,7 @@ export default function WebDavScreen() {
 
   async function handleConnect() {
     if (!url.trim() || !username.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Server address, username and password are required.');
+      Alert.alert(t.missingFields, t.webdavRequired);
       return;
     }
     let base = url.trim().replace(/\/$/, '');
@@ -125,11 +129,11 @@ export default function WebDavScreen() {
     if (fullUrl.startsWith('http://')) {
       const proceed = await new Promise<boolean>(resolve =>
         Alert.alert(
-          'Insecure connection',
-          'You are connecting over HTTP. Your credentials may be visible on the network. Use HTTPS for security.',
+          t.insecure,
+          t.insecureMsg,
           [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Continue anyway', onPress: () => resolve(true) },
+            { text: t.cancel, style: 'cancel', onPress: () => resolve(false) },
+            { text: t.continueAnyway, onPress: () => resolve(true) },
           ]
         )
       );
@@ -152,13 +156,13 @@ export default function WebDavScreen() {
     } catch (e: any) {
       const msg = (e?.message ?? '').toLowerCase();
       if (msg.includes('401') || msg.includes('auth') || msg.includes('password') || msg.includes('denied')) {
-        Alert.alert('Sign in failed', 'Wrong username or password.');
+        Alert.alert(t.signInFailed, t.wrongCreds);
       } else if (msg.includes('403')) {
-        Alert.alert('Access denied', 'The server refused access. Check your credentials and permissions.');
+        Alert.alert(t.accessDenied, t.refusedAccess);
       } else if (msg.includes('connect') || msg.includes('timeout') || msg.includes('unreachable') || msg.includes('refused') || msg.includes('failed')) {
-        Alert.alert('Cannot connect', 'Could not reach the server. Make sure the address is correct and the server is reachable.');
+        Alert.alert(t.cannotConnect, t.couldNotReachServer);
       } else {
-        Alert.alert('Connection failed', e?.message ?? 'Something went wrong. Check your details and try again.');
+        Alert.alert(t.connectionFailed, lang === 'en' && e?.message ? e.message : t.somethingWrong);
       }
     } finally {
       setConnecting(false);
@@ -179,7 +183,7 @@ export default function WebDavScreen() {
       setItems(sorted);
       setCurrentPath(path);
     } catch {
-      Alert.alert('Error', 'Could not open this folder. It may have been moved or you may not have permission.');
+      Alert.alert(t.error, t.couldNotOpenFolder);
     } finally {
       setLoading(false);
     }
@@ -214,11 +218,11 @@ export default function WebDavScreen() {
     const exists = await RNFS.exists(localPath);
     if (exists) {
       Alert.alert(
-        'File exists',
-        `"${item.name}" already exists in Downloads.`,
+        t.fileExists,
+        t.existsInDownloads(item.name),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Replace', style: 'destructive', onPress: () => startDownload(item, localPath) },
+          { text: t.cancel, style: 'cancel' },
+          { text: t.replace, style: 'destructive', onPress: () => startDownload(item, localPath) },
         ]
       );
       return;
@@ -233,9 +237,9 @@ export default function WebDavScreen() {
       await downloadFile(remotePath, localPath);
       await scanFile(localPath).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Downloaded', `"${item.name}" saved to Downloads.`);
+      Alert.alert(t.downloaded, t.savedToDownloads(item.name));
     } catch {
-      Alert.alert('Download failed', 'Could not download the file. Check your connection and try again.');
+      Alert.alert(t.downloadFailed, t.couldNotDownload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setDownloadingFile(null);
@@ -250,7 +254,7 @@ export default function WebDavScreen() {
       await downloadFile(remotePath, cachePath);
       await openFileNative(cachePath, getMimeType(item.name));
     } catch {
-      Alert.alert('Could not open', 'No app available to open this file type, or the download failed.');
+      Alert.alert(t.couldNotOpen, t.noApp);
     } finally {
       setOpeningFile(null);
     }
@@ -286,10 +290,10 @@ export default function WebDavScreen() {
       const remotePath = currentPath.endsWith('/') ? `${currentPath}${fileName}` : `${currentPath}/${fileName}`;
       await uploadFile(srcPath, remotePath);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Uploaded', `"${fileName}" uploaded successfully.`);
+      Alert.alert(t.uploaded, t.uploadedOk(fileName));
       await loadDirectory(currentPath);
     } catch {
-      Alert.alert('Upload failed', 'Could not upload the file. Check your connection and try again.');
+      Alert.alert(t.uploadFailed, t.couldNotUpload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setUploadingFile(null);
@@ -345,7 +349,7 @@ export default function WebDavScreen() {
         <View style={styles.fileInfo}>
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
-            {item.isDirectory ? 'Folder' : formatSize(item.size)}
+            {item.isDirectory ? t.folder : formatSize(item.size)}
           </Text>
         </View>
         {item.isDirectory ? (
@@ -363,8 +367,8 @@ export default function WebDavScreen() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  const headerTitle = stage === 'connect' ? 'WebDAV' : breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse';
-  const { prefix: pickerPrefix, current: pickerCurrent } = friendlyPickerPath(pickerPath, volumes);
+  const headerTitle = stage === 'connect' ? 'WebDAV' : breadcrumbs[breadcrumbs.length - 1]?.name ?? t.browse;
+  const { prefix: pickerPrefix, current: pickerCurrent } = friendlyPickerPath(pickerPath, volumes, t.storage);
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -412,7 +416,7 @@ export default function WebDavScreen() {
       {stage === 'connect' && (
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <View style={[styles.formCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Server Address</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.serverAddress}</Text>
             <TextInput
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
                 value={url}
@@ -424,9 +428,9 @@ export default function WebDavScreen() {
                 autoCorrect={false}
             />
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>
-                IP address or hostname of your server
+                {t.serverSub}
             </Text>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Path</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.path}</Text>
             <TextInput
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
                 value={path}
@@ -437,34 +441,34 @@ export default function WebDavScreen() {
                 autoCorrect={false}
             />
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>
-                Nextcloud: /remote.php/dav/files/youremail/ · check your NAS docs for its path
+                {t.nextcloudPath}
             </Text>
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4, marginBottom: 4 }}>
-                Tested with Nextcloud. Most WebDAV servers should work.
+                {t.tested}
             </Text>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Username</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.username}</Text>
             <TextInput
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="Account username"
+                placeholder={t.usernamePh}
                 placeholderTextColor={colors.textSecondary}
                 autoCapitalize="none"
                 autoCorrect={false}
             />
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Password</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.password}</Text>
             <TextInput
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Account password"
+                placeholder={t.passwordPh}
                 placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
             />
             <View style={styles.rememberRow}>
-                <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>Remember credentials</Text>
+                <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>{t.remember}</Text>
                 <Switch
                 value={remember}
                 onValueChange={setRemember}
@@ -473,7 +477,7 @@ export default function WebDavScreen() {
                 />
             </View>
             <Text style={[styles.securityNote, { color: colors.textSecondary }]}>
-                Credentials stored securely on device using Android Keystore encryption. Never uploaded anywhere.
+                {t.credsStored}
             </Text>
             <TouchableOpacity
                 style={[styles.connectBtn, { backgroundColor: colors.blue }, connecting && { opacity: 0.7 }]}
@@ -482,7 +486,7 @@ export default function WebDavScreen() {
             >
                 {connecting
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.connectBtnText}>Connect</Text>
+                : <Text style={styles.connectBtnText}>{t.connect}</Text>
                 }
             </TouchableOpacity>
             </View>
@@ -498,7 +502,7 @@ export default function WebDavScreen() {
             </View>
           ) : items.length === 0 ? (
             <View style={styles.centered}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>This folder is empty</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.folderEmpty}</Text>
             </View>
           ) : (
             <FlatList
@@ -507,7 +511,7 @@ export default function WebDavScreen() {
               renderItem={renderItem}
               ListHeaderComponent={
                 <Text style={[styles.hintText, { color: colors.textMuted }]}>
-                  Tap to open · long-press to save to Downloads
+                  {t.tapOpen}
                 </Text>
               }
               contentContainerStyle={styles.listContent}
@@ -519,14 +523,14 @@ export default function WebDavScreen() {
           {downloadingFile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.blue} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Downloading {downloadingFile}...</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.downloading(downloadingFile ?? '')}...</Text>
             </View>
           )}
 
           {uploadingFile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.green} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Uploading {uploadingFile}...</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.uploading(uploadingFile ?? '')}...</Text>
             </View>
           )}
         </>
@@ -553,7 +557,7 @@ export default function WebDavScreen() {
               >
                 <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>Upload from...</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>{t.uploadFrom}</Text>
               <View style={{ width: 36 }} />
             </View>
             <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 4, paddingBottom: 4 }]} numberOfLines={1}>
@@ -582,7 +586,7 @@ export default function WebDavScreen() {
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>Empty folder</Text></View>
+            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.emptyFolder}</Text></View>
           ) : (
             <FlatList
               data={pickerItems}
@@ -598,11 +602,11 @@ export default function WebDavScreen() {
                       loadPickerDir(item.uri);
                     } else {
                       Alert.alert(
-                        'Upload file',
-                        `Upload "${item.name}" to the current network folder?`,
+                        t.uploadFile,
+                        t.uploadToNetwork(item.name),
                         [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Upload', onPress: () => handleUpload(item.uri, item.name) },
+                          { text: t.cancel, style: 'cancel' },
+                          { text: t.upload, onPress: () => handleUpload(item.uri, item.name) },
                         ]
                       );
                     }

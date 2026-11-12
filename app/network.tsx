@@ -9,6 +9,8 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Haptics from 'expo-haptics';
 import { useWindowDimensions } from 'react-native';
 import { startServer, stopServer, newPassword, FTP_NO_WIFI, type FtpShareInfo } from '@/modules/ftp-server';
+import { useLanguage } from '@/modules/appLanguage';
+import { netText } from '@/modules/i18n/netText';
 
 // Scanning this signs straight in, so the password never has to be typed on the PC.
 function ftpLoginUrl(share: FtpShareInfo): string {
@@ -18,6 +20,8 @@ function ftpLoginUrl(share: FtpShareInfo): string {
 export default function NetworkScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const lang = useLanguage();
+  const t = netText(lang);
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
 
@@ -41,11 +45,11 @@ export default function NetworkScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Network</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <Text style={[styles.sub, { color: colors.textMuted }]}>Connect to a device on your network</Text>
+      <Text style={[styles.sub, { color: colors.textMuted }]}>{t.sub}</Text>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
       {/* SMB */}
@@ -59,9 +63,9 @@ export default function NetworkScreen() {
             <Ionicons name="desktop-outline" size={22} color={colors.blue} />
           </View>
           <View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>SMB — Windows / NAS</Text>
-            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Browse your PC or network drive over WiFi</Text>
-            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Enable file sharing on your PC first</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t.smbTitle}</Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.smbSub1}</Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.smbSub2}</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -78,8 +82,8 @@ export default function NetworkScreen() {
             <Ionicons name="server-outline" size={22} color={colors.green} />
           </View>
           <View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>SFTP — Server / Raspberry Pi</Text>
-            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Connect securely over SSH to any SFTP server</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t.sftpTitle}</Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.sftpSub}</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -96,8 +100,8 @@ export default function NetworkScreen() {
             <Ionicons name="cloud-outline" size={22} color={colors.purple} />
           </View>
           <View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>WebDAV — Nextcloud / NAS</Text>
-            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Connect to any WebDAV server over WiFi or internet</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t.webdavTitle}</Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.webdavSub}</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -122,9 +126,9 @@ export default function NetworkScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             } catch (e: any) {
               if (e?.code === WIFI_NO_NETWORK) {
-                Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+                Alert.alert(t.noWifi, t.connectWifi);
               } else {
-                Alert.alert('Error', e?.message ?? 'Failed to start server');
+                Alert.alert(t.error, lang === 'en' && e?.message ? e.message : t.failedServer);
               }
             }
           }
@@ -139,15 +143,15 @@ export default function NetworkScreen() {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>WiFi Transfer</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t.wifiTransfer}</Text>
             {wifiActive ? (
               <>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Type this in any browser:</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.typeInBrowser}</Text>
                 <Text style={[styles.cardSub, { color: colors.green, fontWeight: '600' }]}>{wifiShare?.url}</Text>
-                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Password: <Text style={{ fontWeight: '600' }}>{wifiShare?.password}</Text> · or tap for QR code</Text>
+                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>{t.password}: <Text style={{ fontWeight: '600' }}>{wifiShare?.password}</Text> {t.orTapQr}</Text>
               </>
             ) : (
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Browse & transfer files from any device on the same WiFi</Text>
+              <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.wifiSub}</Text>
             )}
           </View>
         </View>
@@ -157,7 +161,7 @@ export default function NetworkScreen() {
             style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{t.stop}</Text>
           </TouchableOpacity>
         ) : (
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -187,29 +191,29 @@ export default function NetworkScreen() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>WiFi Transfer</Text>
-            <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Scan with your device camera</Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>{t.wifiTransfer}</Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>{t.scanCamera}</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
               <QRCode value={wifiShare?.loginUrl || 'http://localhost:8080'} size={180} />
             </View>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>Or type in your browser:</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>{t.orTypeBrowser}</Text>
             <Text selectable style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center' }}>{wifiShare?.url}</Text>
-            <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Password: <Text selectable style={{ fontWeight: '600', color: colors.textPrimary }}>{wifiShare?.password}</Text></Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>{t.password}: <Text selectable style={{ fontWeight: '600', color: colors.textPrimary }}>{wifiShare?.password}</Text></Text>
             <TouchableOpacity
               onPress={async () => {
                 try {
                   const password = await newWifiPassword();
                   setWifiShare(prev => (prev ? { ...prev, password, loginUrl: `${prev.url}/login?code=${encodeURIComponent(password)}` } : prev));
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  Alert.alert('Password changed', 'Every browser that was connected has been signed out, and shared file links have stopped working. Use the new password to connect again.');
+                  Alert.alert(t.passwordChanged, t.wifiPwMsg);
                 } catch {
-                  Alert.alert('Error', 'Could not change the password. Try again.');
+                  Alert.alert(t.error, t.couldNotChangePw);
                 }
               }}
               style={{ marginTop: 12, paddingVertical: 6, paddingHorizontal: 12 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>New password</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>{t.newPassword}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -233,9 +237,9 @@ export default function NetworkScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             } catch (e: any) {
               if (e?.code === FTP_NO_WIFI) {
-                Alert.alert('No Wi-Fi', 'Connect to Wi-Fi, or turn on your hotspot, to share files.');
+                Alert.alert(t.noWifi, t.connectWifi);
               } else {
-                Alert.alert('Error', e?.message ?? 'Failed to start FTP server');
+                Alert.alert(t.error, lang === 'en' && e?.message ? e.message : t.failedFtp);
               }
             }
           }
@@ -250,17 +254,17 @@ export default function NetworkScreen() {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>FTP Server</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t.ftpServer}</Text>
             {ftpActive ? (
               <>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Tap for the QR code and Windows Explorer address</Text>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>FileZilla: Host <Text style={{ color: colors.green, fontWeight: '600' }}>{ftpShare?.address}</Text> Port {ftpShare?.port}</Text>
-                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>Username: {ftpShare?.username} · Password: <Text style={{ fontWeight: '600' }}>{ftpShare?.password}</Text></Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.ftpTapQr}</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>FileZilla: {t.host} <Text style={{ color: colors.green, fontWeight: '600' }}>{ftpShare?.address}</Text> {t.port} {ftpShare?.port}</Text>
+                <Text style={[styles.cardSub, { color: colors.green, opacity: 0.7 }]}>{t.username}: {ftpShare?.username} · {t.password}: <Text style={{ fontWeight: '600' }}>{ftpShare?.password}</Text></Text>
               </>
             ) : (
               <>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Mount phone as a network drive</Text>
-                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Works with FileZilla, Windows Explorer & more</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.mountDrive}</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.worksWith}</Text>
               </>
             )}
           </View>
@@ -276,7 +280,7 @@ export default function NetworkScreen() {
             style={{ backgroundColor: colors.deleteRed, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Stop</Text>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{t.stop}</Text>
           </TouchableOpacity>
         ) : (
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -306,16 +310,16 @@ export default function NetworkScreen() {
           >
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>FTP Server</Text>
-          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Open in FileZilla or Windows Explorer</Text>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>{t.ftpServer}</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>{t.openIn}</Text>
           <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
             <QRCode value={ftpShare ? ftpLoginUrl(ftpShare) : 'ftp://localhost:2121'} size={180} />
           </View>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — Host: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpShare?.address}</Text> Port: {ftpShare?.port}</Text>
-          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>Username: {ftpShare?.username} · Password: <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{ftpShare?.password}</Text></Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — {t.host}: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpShare?.address}</Text> {t.port}: {ftpShare?.port}</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>{t.username}: {ftpShare?.username} · {t.password}: <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{ftpShare?.password}</Text></Text>
           {ftpShare && (
             <>
-              <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 12 }}>Windows Explorer — type in the address bar:</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 12 }}>{t.explorerAddr}</Text>
               <Text selectable style={{ fontSize: 12, fontWeight: '600', color: colors.green, textAlign: 'center', marginTop: 2 }}>{ftpLoginUrl(ftpShare)}</Text>
             </>
           )}
@@ -325,15 +329,15 @@ export default function NetworkScreen() {
                 const password = await newPassword();
                 setFtpShare(prev => (prev ? { ...prev, password } : prev));
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert('Password changed', 'Any computer that was connected has been signed out. Use the new password to connect again.');
+                Alert.alert(t.passwordChanged, t.ftpPwMsg);
               } catch {
-                Alert.alert('Error', 'Could not change the password. Try again.');
+                Alert.alert(t.error, t.couldNotChangePw);
               }
             }}
             style={{ marginTop: 12, paddingVertical: 6, paddingHorizontal: 12 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>New password</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>{t.newPassword}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

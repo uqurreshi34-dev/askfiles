@@ -20,6 +20,8 @@ import {
 import * as FileSystem from 'expo-file-system';
 import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { useLanguage } from '@/modules/appLanguage';
+import { netText } from '@/modules/i18n/netText';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ const CREDS_KEY = 'sftp_credentials';
 
 export default function SftpScreen() {
   const { colors } = useTheme();
+  const lang = useLanguage();
+  const t = netText(lang);
   const router = useRouter();
 
   // Stage
@@ -104,7 +108,7 @@ export default function SftpScreen() {
 
   async function handleConnect() {
     if (!host.trim() || !username.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Host, username and password are required.');
+      Alert.alert(t.missingFields, t.sftpRequired);
       return;
     }
     setConnecting(true);
@@ -132,11 +136,11 @@ export default function SftpScreen() {
         }
         const msg = (e?.message ?? '').toLowerCase();
         if (msg.includes('auth') || msg.includes('password') || msg.includes('denied') || msg.includes('credential')) {
-        Alert.alert('Sign in failed', 'Wrong username or password.');
+        Alert.alert(t.signInFailed, t.wrongCreds);
         } else if (msg.includes('connect') || msg.includes('timeout') || msg.includes('unreachable') || msg.includes('refused')) {
-        Alert.alert('Cannot connect', 'Could not reach the server. Make sure both devices are on the same network and the host/port are correct.');
+        Alert.alert(t.cannotConnect, t.couldNotReachSftp);
         } else {
-        Alert.alert('Connection failed', 'Something went wrong. Check your details and try again.');
+        Alert.alert(t.connectionFailed, t.somethingWrong);
         }
       } finally {
       setConnecting(false);
@@ -150,27 +154,27 @@ export default function SftpScreen() {
   async function confirmHostKey() {
     const key = await pendingHostKey().catch(() => null);
     if (!key) {
-      Alert.alert('Connection failed', 'Something went wrong. Check your details and try again.');
+      Alert.alert(t.connectionFailed, t.somethingWrong);
       return;
     }
     const place = key.port === 22 ? key.host : `${key.host}:${key.port}`;
 
     if (key.changed) {
       Alert.alert(
-        'Server identity changed',
-        `${place} is presenting a different key from last time. That is expected after the server is reinstalled, but it can also mean someone is intercepting the connection. Your password was not sent.\n\nNew ${key.type} fingerprint:\n${key.fingerprint}`,
+        t.identityChanged,
+        t.keyChanged(place, key.type, key.fingerprint),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Trust new key', style: 'destructive', onPress: () => trustAndRetry(key) },
+          { text: t.cancel, style: 'cancel' },
+          { text: t.trustNewKey, style: 'destructive', onPress: () => trustAndRetry(key) },
         ],
       );
     } else {
       Alert.alert(
-        'Trust this server?',
-        `This is the first connection to ${place}. Its ${key.type} fingerprint is:\n${key.fingerprint}\n\nTo check it, compare it with the server's ${key.type} key, not another type. AskFiles will remember it and warn you if it ever changes.`,
+        t.trustServer,
+        t.firstKey(place, key.type, key.fingerprint),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Trust', onPress: () => trustAndRetry(key) },
+          { text: t.cancel, style: 'cancel' },
+          { text: t.trust, onPress: () => trustAndRetry(key) },
         ],
       );
     }
@@ -179,7 +183,7 @@ export default function SftpScreen() {
   async function trustAndRetry(key: PendingHostKey) {
     const saved = await trustHostKey(key.host, key.port, key.fingerprint).catch(() => false);
     if (!saved) {
-      Alert.alert('Could not trust server', 'The server key could not be confirmed. Try connecting again.');
+      Alert.alert(t.couldNotTrust, t.keyNotConfirmed);
       return;
     }
     await handleConnect();
@@ -200,7 +204,7 @@ export default function SftpScreen() {
       setItems(sorted);
       setCurrentPath(path);
     } catch (e: any) {
-      Alert.alert('Error', 'Could not open this folder. It may have been moved or you may not have permission.');
+      Alert.alert(t.error, t.couldNotOpenFolder);
     } finally {
       setLoading(false);
     }
@@ -230,11 +234,11 @@ export default function SftpScreen() {
     const exists = await RNFS.exists(localPath);
     if (exists) {
       Alert.alert(
-        'File exists',
-        `"${item.name}" already exists in Downloads.`,
+        t.fileExists,
+        t.existsInDownloads(item.name),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Replace', style: 'destructive', onPress: () => startDownload(remotePath, localPath, item.name) },
+          { text: t.cancel, style: 'cancel' },
+          { text: t.replace, style: 'destructive', onPress: () => startDownload(remotePath, localPath, item.name) },
         ]
       );
       return;
@@ -250,9 +254,9 @@ export default function SftpScreen() {
       await downloadFile(remotePath, localPath);
       await scanFile(localPath).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Downloaded', `"${fileName}" saved to Downloads.`);
+      Alert.alert(t.downloaded, t.savedToDownloads(fileName));
     } catch (e: any) {
-      Alert.alert('Download failed', 'Could not download the file. Check your connection and try again.');
+      Alert.alert(t.downloadFailed, t.couldNotDownload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
         sub.remove();
@@ -269,7 +273,7 @@ export default function SftpScreen() {
       await downloadFile(remotePath, cachePath);
       await openFileNative(cachePath, getMimeType(item.name));
     } catch (e: any) {
-      Alert.alert('Could not open', 'No app available to open this file type, or the download failed.');
+      Alert.alert(t.couldNotOpen, t.noApp);
     } finally {
       setOpeningFile(null);
     }
@@ -313,10 +317,10 @@ export default function SftpScreen() {
       const remotePath = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`;
       await uploadFile(srcPath, remotePath);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Uploaded', `"${fileName}" uploaded successfully.`);
+      Alert.alert(t.uploaded, t.uploadedOk(fileName));
       await loadDirectory(currentPath);
     } catch (e: any) {
-      Alert.alert('Upload failed', 'Could not upload the file. Check your connection and try again.');
+      Alert.alert(t.uploadFailed, t.couldNotUpload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
         sub.remove();
@@ -372,7 +376,7 @@ export default function SftpScreen() {
         <View style={styles.fileInfo}>
           <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
-            {item.isDirectory ? 'Folder' : formatSize(item.size)}
+            {item.isDirectory ? t.folder : formatSize(item.size)}
           </Text>
         </View>
         {item.isDirectory ? (
@@ -395,7 +399,7 @@ export default function SftpScreen() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const headerTitle = stage === 'connect' ? 'SFTP' : breadcrumbs[breadcrumbs.length - 1]?.name ?? 'Browse';
+  const headerTitle = stage === 'connect' ? 'SFTP' : breadcrumbs[breadcrumbs.length - 1]?.name ?? t.browse;
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -443,7 +447,7 @@ export default function SftpScreen() {
       {stage === 'connect' && (
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <View style={[styles.formCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Host</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.host}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={host}
@@ -454,8 +458,8 @@ export default function SftpScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>IP address or hostname of the SFTP server</Text>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Port</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>{t.hostSub}</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.port}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={port}
@@ -466,30 +470,30 @@ export default function SftpScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>Default is 22 — only change if your server uses a different port</Text>
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Username</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>{t.portSub}</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.username}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={username}
               onChangeText={setUsername}
-              placeholder="Account username"
+              placeholder={t.usernamePh}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>Password</Text>
+            <Text style={[styles.formLabel, { color: colors.textSecondary }]}>{t.password}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Account password"
+              placeholder={t.passwordPh}
               placeholderTextColor={colors.textSecondary}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
             />
             <View style={styles.rememberRow}>
-              <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>Remember credentials</Text>
+              <Text style={[styles.rememberLabel, { color: colors.textSecondary }]}>{t.remember}</Text>
               <Switch
                 value={remember}
                 onValueChange={setRemember}
@@ -498,7 +502,7 @@ export default function SftpScreen() {
               />
             </View>
             <Text style={[styles.securityNote, { color: colors.textSecondary }]}>
-              Credentials stored securely on device using Android Keystore encryption. Never uploaded anywhere.
+              {t.credsStored}
             </Text>
             <TouchableOpacity
               style={[styles.connectBtn, { backgroundColor: colors.blue }, connecting && { opacity: 0.7 }]}
@@ -507,7 +511,7 @@ export default function SftpScreen() {
             >
               {connecting
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.connectBtnText}>Connect</Text>
+                : <Text style={styles.connectBtnText}>{t.connect}</Text>
               }
             </TouchableOpacity>
           </View>
@@ -523,7 +527,7 @@ export default function SftpScreen() {
             </View>
           ) : items.length === 0 ? (
             <View style={styles.centered}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>This folder is empty</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.folderEmpty}</Text>
             </View>
           ) : (
             <FlatList
@@ -532,7 +536,7 @@ export default function SftpScreen() {
               renderItem={renderItem}
               ListHeaderComponent={
                 <Text style={[styles.hintText, { color: colors.textMuted }]}>
-                  Tap to open · long-press to save to Downloads
+                  {t.tapOpen}
                 </Text>
               }
               contentContainerStyle={styles.listContent}
@@ -546,7 +550,7 @@ export default function SftpScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.blue} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                Downloading {downloadingFile}{transferProgress !== null && transferProgress > 0 ? ` ${transferProgress}%` : '...'}
+                {t.downloading(downloadingFile ?? '')}{transferProgress !== null && transferProgress > 0 ? ` ${transferProgress}%` : '...'}
               </Text>
             </View>
           )}
@@ -556,7 +560,7 @@ export default function SftpScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
               <ActivityIndicator size="small" color={colors.green} />
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                Uploading {uploadingFile}{transferProgress !== null && transferProgress > 0 ? ` ${transferProgress}%` : '...'}
+                {t.uploading(uploadingFile ?? '')}{transferProgress !== null && transferProgress > 0 ? ` ${transferProgress}%` : '...'}
               </Text>
             </View>
           )}
@@ -584,12 +588,12 @@ export default function SftpScreen() {
               >
                 <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>Upload from...</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>{t.uploadFrom}</Text>
               <View style={{ width: 36 }} />
             </View>
             <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 4, paddingBottom: 4 }]} numberOfLines={1}>
               {(() => {
-                let display = pickerPath.replace('file:///storage/emulated/0/', 'Storage/');
+                let display = pickerPath.replace('file:///storage/emulated/0/', `${t.storage}/`);
                 const sdVol = volumes.find((v: any) => v.type === 'sdcard' && pickerPath.includes(v.path));
                 if (sdVol) display = display.replace(`file://${sdVol.path}/`, `${sdVol.name}/`).replace(`file://${sdVol.path}`, sdVol.name);
                 const segs = display.split('/').filter(Boolean).map((seg: string) => { try { return decodeURIComponent(seg); } catch { return seg; } });
@@ -624,7 +628,7 @@ export default function SftpScreen() {
           {pickerLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.blue} /></View>
           ) : pickerItems.length === 0 ? (
-            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>Empty folder</Text></View>
+            <View style={styles.centered}><Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.emptyFolder}</Text></View>
           ) : (
             <FlatList
               data={pickerItems}
@@ -640,11 +644,11 @@ export default function SftpScreen() {
                       loadPickerDir(item.uri);
                     } else {
                       Alert.alert(
-                        'Upload file',
-                        `Upload "${item.name}" to the current folder?`,
+                        t.uploadFile,
+                        t.uploadToFolder(item.name),
                         [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Upload', onPress: () => handleUpload(item.uri, item.name) },
+                          { text: t.cancel, style: 'cancel' },
+                          { text: t.upload, onPress: () => handleUpload(item.uri, item.name) },
                         ]
                       );
                     }
