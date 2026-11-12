@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/modules/appLanguage';
+import { proText } from '@/modules/i18n/proText';
 
 const PRO_FEATURES = [
   {
@@ -47,6 +49,7 @@ const PRO_FEATURES = [
 export default function CloudScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const tp = proText(useLanguage());
   const { isPro, packages, loading, purchasing, restoring, error, purchasePackage, restorePurchases } = usePro();
 
   if (loading) {
@@ -72,8 +75,8 @@ export default function CloudScreen() {
             <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="checkmark-circle" size={40} color="#2E7D32" />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>You're on Pro 🎉</Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>All features are unlocked. Thank you for supporting AskFiles!</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{tp.onPro}</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>{tp.allUnlocked}</Text>
           </View>
           <View style={[styles.featuresList, { backgroundColor: colors.surfaceAlt }]}>
             {PRO_FEATURES.map((f, i) => {
@@ -90,8 +93,8 @@ export default function CloudScreen() {
                     <Ionicons name={f.icon} size={20} color={colors.blue} />
                   </View>
                   <View style={styles.featureText}>
-                    <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{f.title}</Text>
-                    <Text style={[styles.featureDesc, { color: colors.textMuted }]}>{f.desc}</Text>
+                    <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{tp.card(f.title, f.desc).title}</Text>
+                    <Text style={[styles.featureDesc, { color: colors.textMuted }]}>{tp.card(f.title, f.desc).desc}</Text>
                   </View>
                   {hasRoute ? (
                     <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
@@ -119,8 +122,8 @@ export default function CloudScreen() {
           <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
             <Ionicons name="cloud-outline" size={36} color={colors.blue} />
           </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>AskFiles Pro</Text>
-          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Unlock the full power of your file manager</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{tp.title}</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>{tp.subtitle}</Text>
         </View>
 
         <View style={[styles.featuresList, { backgroundColor: colors.surfaceAlt }]}>
@@ -130,14 +133,14 @@ export default function CloudScreen() {
                 <Ionicons name={f.icon} size={20} color={colors.blue} />
               </View>
               <View style={styles.featureText}>
-                <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{f.title}</Text>
-                <Text style={[styles.featureDesc, { color: colors.textMuted }]}>{f.desc}</Text>
+                <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{tp.card(f.title, f.desc).title}</Text>
+                <Text style={[styles.featureDesc, { color: colors.textMuted }]}>{tp.card(f.title, f.desc).desc}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={styles.errorText}>{tp.error(error)}</Text>}
 
         <TouchableOpacity
           style={styles.upgradeBtn}
@@ -150,9 +153,9 @@ export default function CloudScreen() {
           ) : (
             <>
               <Text style={styles.upgradeBtnText}>
-                Lifetime — {packages.lifetime?.product.priceString ?? '—'}
+                {tp.lifetime(packages.lifetime?.product.priceString ?? '—')}
               </Text>
-              <Text style={styles.upgradeBtnSub}>One-time payment, yours forever</Text>
+              <Text style={styles.upgradeBtnSub}>{tp.lifetimeSub}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -161,12 +164,12 @@ export default function CloudScreen() {
           {restoring ? (
             <ActivityIndicator color={colors.textMuted} size="small" />
           ) : (
-            <Text style={[styles.restoreText, { color: colors.textMuted }]}>Restore purchases</Text>
+            <Text style={[styles.restoreText, { color: colors.textMuted }]}>{tp.restore}</Text>
           )}
         </TouchableOpacity>
 
         <Text style={[styles.legalNote, { color: colors.textMuted }]}>
-          One-time payment via Google Play. No subscription, no recurring charges.
+          {tp.legal}
         </Text>
       </ScrollView>
     </SafeAreaView>
