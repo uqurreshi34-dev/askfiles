@@ -22,8 +22,26 @@ export default function NetworkScreen() {
   const router = useRouter();
   const lang = useLanguage();
   const t = netText(lang);
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const modalWidth = Math.min(280, SCREEN_WIDTH * 0.8);
+  // Landscape: QR on the left, details on the right, so nothing runs off the
+  // top or bottom. The QR shrinks only as far as the screen height needs.
+  const landscape = SCREEN_WIDTH > SCREEN_HEIGHT;
+  const qrSize = landscape ? Math.max(120, Math.min(180, SCREEN_HEIGHT * 0.9 - 72)) : 180;
+  const qrCard = landscape
+    ? { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 16, width: Math.min(560, SCREEN_WIDTH * 0.88), maxHeight: SCREEN_HEIGHT * 0.9 }
+    : { alignItems: 'center' as const, width: modalWidth, maxHeight: SCREEN_HEIGHT * 0.9 };
+  function qrLayout(header: React.ReactNode, qr: React.ReactNode, details: React.ReactNode) {
+    if (!landscape) return <ScrollView contentContainerStyle={{ alignItems: 'center' }} showsVerticalScrollIndicator={false}>{header}{qr}{details}</ScrollView>;
+    return (
+      <>
+        {qr}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ alignItems: 'center', paddingTop: 8 }} persistentScrollbar>
+          {header}{details}
+        </ScrollView>
+      </>
+    );
+  }
 
   const [wifiActive, setWifiActive] = useState(false);
   const [wifiShare, setWifiShare] = useState<WifiShareInfo | null>(null);
@@ -170,20 +188,16 @@ export default function NetworkScreen() {
 
       {/* WiFi QR Modal */}
       <Modal visible={wifiQrVisible} transparent animationType="fade" onRequestClose={() => setWifiQrVisible(false)}>
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}
-          activeOpacity={1}
-          onPress={() => setWifiQrVisible(false)}
-        >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setWifiQrVisible(false)} />
           <View style={{
             backgroundColor: colors.modalCard,
             borderRadius: 16,
             padding: 16,
             paddingBottom: 24,
-            alignItems: 'center',
-            width: modalWidth,
             overflow: 'hidden',
-          }} onStartShouldSetResponder={() => true}>
+            ...qrCard,
+          }}>
             <TouchableOpacity
               onPress={() => setWifiQrVisible(false)}
               style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 4 }}
@@ -191,11 +205,14 @@ export default function NetworkScreen() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
+            {qrLayout(<>
             <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>{t.wifiTransfer}</Text>
             <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>{t.scanCamera}</Text>
+            </>,
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
-              <QRCode value={wifiShare?.loginUrl || 'http://localhost:8080'} size={180} />
-            </View>
+              <QRCode value={wifiShare?.loginUrl || 'http://localhost:8080'} size={qrSize} />
+            </View>,
+            <>
             <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>{t.orTypeBrowser}</Text>
             <Text selectable style={{ fontSize: 14, fontWeight: '600', color: colors.green, textAlign: 'center' }}>{wifiShare?.url}</Text>
             <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>{t.password}: <Text selectable style={{ fontWeight: '600', color: colors.textPrimary }}>{wifiShare?.password}</Text></Text>
@@ -215,8 +232,9 @@ export default function NetworkScreen() {
             >
               <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>{t.newPassword}</Text>
             </TouchableOpacity>
+            </>)}
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
       {/* FTP Server */}
       <TouchableOpacity
@@ -289,20 +307,16 @@ export default function NetworkScreen() {
 
     {/* FTP QR Modal */}
     <Modal visible={ftpQrVisible} transparent animationType="fade" onRequestClose={() => setFtpQrVisible(false)}>
-      <TouchableOpacity
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}
-        activeOpacity={1}
-        onPress={() => setFtpQrVisible(false)}
-      >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setFtpQrVisible(false)} />
         <View style={{
           backgroundColor: colors.modalCard,
           borderRadius: 16,
           padding: 16,
           paddingBottom: 24,
-          alignItems: 'center',
-          width: modalWidth,
           overflow: 'hidden',
-        }} onStartShouldSetResponder={() => true}>
+          ...qrCard,
+        }}>
           <TouchableOpacity
             onPress={() => setFtpQrVisible(false)}
             style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 4 }}
@@ -310,11 +324,14 @@ export default function NetworkScreen() {
           >
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
+          {qrLayout(<>
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>{t.ftpServer}</Text>
           <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>{t.openIn}</Text>
+          </>,
           <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
-            <QRCode value={ftpShare ? ftpLoginUrl(ftpShare) : 'ftp://localhost:2121'} size={180} />
-          </View>
+            <QRCode value={ftpShare ? ftpLoginUrl(ftpShare) : 'ftp://localhost:2121'} size={qrSize} />
+          </View>,
+          <>
           <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginBottom: 4 }}>FileZilla — {t.host}: <Text style={{ fontWeight: '600', color: colors.green }}>{ftpShare?.address}</Text> {t.port}: {ftpShare?.port}</Text>
           <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>{t.username}: {ftpShare?.username} · {t.password}: <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{ftpShare?.password}</Text></Text>
           {ftpShare && (
@@ -339,8 +356,9 @@ export default function NetworkScreen() {
           >
             <Text style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>{t.newPassword}</Text>
           </TouchableOpacity>
+          </>)}
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
     </ScrollView>
     </SafeAreaView>
