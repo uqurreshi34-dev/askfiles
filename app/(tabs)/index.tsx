@@ -6,7 +6,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecents, timeAgo, getDateGroup, removeRecent, clearRecents } from '@/hooks/useRecents';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { scheduleDailyReminder } from '@/hooks/useNotifications';
+import { scheduleDailyReminder, refreshDailyReminder } from '@/hooks/useNotifications';
 import { usePro } from '@/hooks/usePro';
 import { useTrash } from '@/hooks/useTrash';
 import { isAppLockEnabled, disableAppLock, isPinSet, enableAppLock } from '@/hooks/usePin';
@@ -59,6 +59,8 @@ export default function HomeScreen() {
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { isPro } = usePro();
+  // Keep the daily reminder in the chosen language (only if one is already scheduled).
+  useEffect(() => { refreshDailyReminder(isPro); }, [lang, isPro]);
   const [hasAllFilesAccess, setHasAllFilesAccess] = useState(true);
   const [hasMediaAccess, setHasMediaAccess] = useState(true);
   const { files: trashFiles, loadFiles: reloadTrash } = useTrash();
@@ -189,8 +191,10 @@ const ALL_TOOLS: Record<string, ToolDef> = {
           { text: t.cancel, style: 'cancel' }
         ]);
       } catch (e: any) {
-        if (e?.message?.includes('SCAN_CANCELLED')) return;
-        Alert.alert(t.scanFailed, e?.message ?? t.scanFailedMsg);
+        // Backing out of the scanner is not an error: the native side rejects
+        // with code SCAN_CANCELLED and the message 'User cancelled scan'.
+        if (e?.code === 'SCAN_CANCELLED' || e?.message?.includes('SCAN_CANCELLED') || /cancel/i.test(e?.message ?? '')) return;
+        Alert.alert(t.scanFailed, t.scanFailedMsg);
       }
     },
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>{scanning ? <ActivityIndicator size="small" color={colors.green} /> : <Ionicons name="camera-outline" size={26} color={colors.green} />}</View>,

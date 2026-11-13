@@ -9,6 +9,7 @@ import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as set
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
 import RNFS from 'react-native-fs';
+import { serviceText } from '@/modules/i18n/serviceText';
 import { CLOUD_AUTH, redirectUri, rememberSignIn, completeSignIn } from '@/modules/cloudAuth';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -181,14 +182,14 @@ export function useOneDrive() {
 
       setUploadProgress({ current: 0, total: files.length });
       setGlobalUploadProgress('onedrive', { current: 0, total: files.length });
-      startUploadService(`Backing up to OneDrive — 0/${files.length} files`);
+      startUploadService(serviceText().backingUp('OneDrive', 0, files.length));
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         await uploadFileToOneDrive(token, file.name, file.uri);
         setUploadProgress({ current: i + 1, total: files.length });
         setGlobalUploadProgress('onedrive', { current: i + 1, total: files.length });
-        updateUploadService(`Backing up to OneDrive — ${i + 1}/${files.length} files`);
+        updateUploadService(serviceText().backingUp('OneDrive', i + 1, files.length));
       }
       if (scope === 'all') {
         await uploadSettingsOnly(token);
@@ -235,7 +236,7 @@ export function useOneDrive() {
       });
       setRestoreProgress({ current: 0, total: filesToRestore.length });
       setGlobalRestoreProgress('onedrive', { current: 0, total: filesToRestore.length });
-      startUploadService(`Restoring from OneDrive — 0/${filesToRestore.length} files`);
+      startUploadService(serviceText().restoring('OneDrive', 0, filesToRestore.length));
 
       let restored = 0;
       let restoreIndex = 0;
@@ -249,7 +250,7 @@ export function useOneDrive() {
         restoreIndex++;
         setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
         setGlobalRestoreProgress('onedrive', { current: restoreIndex, total: filesToRestore.length });
-        updateUploadService(`Restoring from OneDrive — ${restoreIndex}/${filesToRestore.length} files`);
+        updateUploadService(serviceText().restoring('OneDrive', restoreIndex, filesToRestore.length));
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }

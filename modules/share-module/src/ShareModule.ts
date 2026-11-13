@@ -7,6 +7,7 @@ declare class ShareModuleType {
   printImage(filePath: string): Promise<void>;
   printPdf(filePath: string): Promise<void>;
   copyImageToClipboard(filePath: string, mimeType: string): Promise<void>;
+  setChooserTitles(share: string, openWith: string): void;
 }
 
 const ShareModule = requireNativeModule<ShareModuleType>('ShareModule');
@@ -29,6 +30,11 @@ export async function printImage(filePath: string): Promise<void> {
 
 export async function printPdf(filePath: string): Promise<void> {
   return ShareModule.printPdf(filePath);
+}
+
+/** Headings for the system Share and Open with pickers, in the app's language. */
+export function setChooserTitles(share: string, openWith: string): void {
+  try { ShareModule.setChooserTitles(share, openWith); } catch {}
 }
 
 export async function copyImageToClipboard(filePath: string, mimeType: string = 'image/*'): Promise<void> {

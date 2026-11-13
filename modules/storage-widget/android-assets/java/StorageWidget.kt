@@ -10,6 +10,7 @@ import android.os.Environment
 import android.widget.RemoteViews
 import com.askfiles.mobile.R
 import org.json.JSONArray
+import org.json.JSONObject
 
 class StorageWidget : AppWidgetProvider() {
 
@@ -72,22 +73,46 @@ class StorageWidget : AppWidgetProvider() {
             }
         }
 
-        fun timeAgo(openedAt: Long): String {
+        /**
+         * Words in the app's language, saved by the app (saveWidgetStrings) whenever
+         * the language changes. English is the fallback before the app has run.
+         * Counted keys: base_one (1), base_two (2, Arabic dual), base_few (2-10), base_many (11+).
+         */
+        fun widgetStrings(context: Context): JSONObject? = try {
+            context.getSharedPreferences("askfiles_widget", Context.MODE_PRIVATE)
+                .getString("strings", null)?.let { JSONObject(it) }
+        } catch (e: Exception) { null }
+
+        private fun word(s: JSONObject?, key: String, fallback: String): String =
+            s?.optString(key)?.takeIf { it.isNotEmpty() } ?: fallback
+
+        private fun counted(s: JSONObject?, base: String, n: Long, fallback: String): String {
+            val key = when {
+                n == 1L -> "${base}_one"
+                n == 2L && s?.has("${base}_two") == true -> "${base}_two"
+                n in 2L..10L -> "${base}_few"
+                else -> "${base}_many"
+            }
+            return word(s, key, fallback).replace("{n}", n.toString())
+        }
+
+        fun timeAgo(openedAt: Long, s: JSONObject? = null): String {
             val diff = System.currentTimeMillis() - openedAt
             val minutes = diff / 60000
             val hours = diff / 3600000
             val days = diff / 86400000
             return when {
-                minutes < 1 -> "Just now"
-                minutes < 60 -> "$minutes min ago"
-                hours < 24 -> "$hours hr ago"
-                days == 1L -> "Yesterday"
-                else -> "$days days ago"
+                minutes < 1 -> word(s, "justNow", "Just now")
+                minutes < 60 -> counted(s, "mins", minutes, "$minutes min ago")
+                hours < 24 -> counted(s, "hours", hours, "$hours hr ago")
+                days == 1L -> word(s, "yesterday", "Yesterday")
+                else -> counted(s, "days", days, "$days days ago")
             }
         }
 
         fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
             val views = RemoteViews(context.packageName, R.layout.storage_widget)
+            val s = widgetStrings(context)
 
             // Storage stats
             try {
@@ -116,13 +141,13 @@ class StorageWidget : AppWidgetProvider() {
                 val freeGB = freeBytes.toFloat() / 1_073_741_824f
                 val usedPercent = if (marketedTotal > 0) ((usedBytes.toFloat() / marketedTotal.toFloat()) * 100).toInt() else 0
 
-                views.setTextViewText(R.id.widget_used, "%.1f GB used".format(usedGB))
-                views.setTextViewText(R.id.widget_total, "of %.0f GB".format(totalGB))
-                views.setTextViewText(R.id.widget_free, "%.1f GB available".format(freeGB))
+                views.setTextViewText(R.id.widget_used, word(s, "gbUsed", "{n} GB used").replace("{n}", "%.1f".format(usedGB)))
+                views.setTextViewText(R.id.widget_total, word(s, "gbOf", "of {n} GB").replace("{n}", "%.0f".format(totalGB)))
+                views.setTextViewText(R.id.widget_free, word(s, "gbAvailable", "{n} GB available").replace("{n}", "%.1f".format(freeGB)))
                 views.setTextViewText(R.id.widget_percent, "$usedPercent%")
                 views.setProgressBar(R.id.widget_progress, 100, usedPercent, false)
             } catch (e: Exception) {
-                views.setTextViewText(R.id.widget_used, "Tap to open")
+                views.setTextViewText(R.id.widget_used, word(s, "tapToOpen", "Tap to open"))
                 views.setTextViewText(R.id.widget_total, "AskFiles")
                 views.setTextViewText(R.id.widget_free, "")
                 views.setTextViewText(R.id.widget_percent, "")
@@ -164,7 +189,7 @@ class StorageWidget : AppWidgetProvider() {
                         val openedAt = item.getLong("openedAt")
 
                         views.setTextViewText(nameId, name)
-                        views.setTextViewText(metaId, timeAgo(openedAt))
+                        views.setTextViewText(metaId, timeAgo(openedAt, s))
                         views.setViewVisibility(rowId, android.view.View.VISIBLE)
 
                         // PendingIntent to open file

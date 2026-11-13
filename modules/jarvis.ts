@@ -1,6 +1,7 @@
 import { fetch } from 'expo/fetch';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { planLocally } from '@/modules/organisePlan';
+import { organiseText } from '@/modules/i18n/organiseText';
 
 export type JarvisFolderItem = {
   name: string;
@@ -262,8 +263,7 @@ export async function organiseFolderWithJarvis(
 
   if (!USE_MODEL_FALLBACK) {
     return {
-      summary:
-        'Nothing in here is a type I recognise, sir, so I have left it alone.',
+      summary: organiseText().nothingRecognised,
       moves: [],
       create_folders: [],
     };

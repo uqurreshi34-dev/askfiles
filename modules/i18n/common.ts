@@ -18,6 +18,7 @@ const D = (n: number, one: string, few: string, dual: string) => (n === 2 ? dual
 export type CommonText = {
   cancel: string; delete: string; ok: string; done: string; open: string;
   share: string; info: string; error: string; all: string;
+  shareFiles: string; openWith: string;
   selected: (n: number) => string;
   working: string; openingFile: string; movingFile: string; movingFiles: string;
   moveHere: string; moveTo: string; folderEmpty: string; fileInfo: string;
@@ -42,6 +43,7 @@ export type CommonText = {
 const EN: CommonText = {
   cancel: 'Cancel', delete: 'Delete', ok: 'OK', done: 'Done', open: 'Open',
   share: 'Share', info: 'Info', error: 'Error', all: 'All',
+  shareFiles: 'Share files', openWith: 'Open with',
   selected: n => `${n} selected`,
   working: 'Working...', openingFile: 'Opening file...', movingFile: 'Moving file...', movingFiles: 'Moving files...',
   moveHere: 'Move here', moveTo: 'Move to...', folderEmpty: 'This folder is empty', fileInfo: 'File Info',
@@ -66,6 +68,7 @@ const EN: CommonText = {
 const AR: CommonText = {
   cancel: 'إلغاء', delete: 'حذف', ok: 'حسناً', done: 'تم', open: 'فتح',
   share: 'مشاركة', info: 'معلومات', error: 'خطأ', all: 'الكل',
+  shareFiles: 'مشاركة الملفات', openWith: 'فتح باستخدام',
   selected: n => `تم تحديد ${n}`,
   working: 'جارٍ العمل...', openingFile: 'جارٍ فتح الملف...', movingFile: 'جارٍ نقل الملف...', movingFiles: 'جارٍ نقل الملفات...',
   moveHere: 'انقل هنا', moveTo: 'نقل إلى...', folderEmpty: 'هذا المجلد فارغ', fileInfo: 'معلومات الملف',
@@ -90,6 +93,7 @@ const AR: CommonText = {
 const HI: CommonText = {
   cancel: 'रद्द करें', delete: 'हटाएँ', ok: 'ठीक है', done: 'हो गया', open: 'खोलें',
   share: 'शेयर करें', info: 'जानकारी', error: 'गड़बड़ी', all: 'सभी',
+  shareFiles: 'फ़ाइलें शेयर करें', openWith: 'इसके साथ खोलें',
   selected: n => `${n} ${n === 1 ? 'चुना गया' : 'चुने गए'}`,
   working: 'काम हो रहा है...', openingFile: 'फ़ाइल खुल रही है...', movingFile: 'फ़ाइल मूव हो रही है...', movingFiles: 'फ़ाइलें मूव हो रही हैं...',
   moveHere: 'यहाँ मूव करें', moveTo: 'यहाँ मूव करें...', folderEmpty: 'यह फ़ोल्डर खाली है', fileInfo: 'फ़ाइल की जानकारी',
@@ -158,6 +162,16 @@ const LIST_HI: Record<string, string> = {
   locale: 'hi-IN',
 };
 const LISTS: Record<AppLang, Record<string, string>> = { en: LIST_EN, ar: LIST_AR, hi: LIST_HI };
+
+/** Home-screen widget words: the list's time words plus the storage lines. "{n}" is the number. */
+const WIDGET_EXTRA: Record<AppLang, Record<string, string>> = {
+  en: { gbUsed: '{n} GB used', gbOf: 'of {n} GB', gbAvailable: '{n} GB available', tapToOpen: 'Tap to open' },
+  ar: { gbUsed: '{n} GB مستخدمة', gbOf: 'من {n} GB', gbAvailable: '{n} GB متاحة', tapToOpen: 'اضغط للفتح' },
+  hi: { gbUsed: '{n} GB इस्तेमाल', gbOf: '{n} GB में से', gbAvailable: '{n} GB उपलब्ध', tapToOpen: 'खोलने के लिए टैप करें' },
+};
+export function widgetStrings(lang: AppLang = getLanguage()): Record<string, string> {
+  return { ...listStrings(lang), ...WIDGET_EXTRA[lang] };
+}
 
 export function listStrings(lang: AppLang = getLanguage()): Record<string, string> {
   return LISTS[lang];

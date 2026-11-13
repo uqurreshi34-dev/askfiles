@@ -8,6 +8,7 @@ import { uploadToDropbox, downloadFile } from '@/modules/upload-manager';
 import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as setGlobalRestoreProgress } from '@/hooks/useCloudProgress';
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 import RNFS from 'react-native-fs';
+import { serviceText } from '@/modules/i18n/serviceText';
 import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
 import { CLOUD_AUTH, redirectUri, rememberSignIn, completeSignIn } from '@/modules/cloudAuth';
 
@@ -177,14 +178,14 @@ export function useDropbox() {
 
       setUploadProgress({ current: 0, total: files.length });
       setGlobalUploadProgress('dropbox', { current: 0, total: files.length });
-      startUploadService(`Backing up to Dropbox — 0/${files.length} files`);
+      startUploadService(serviceText().backingUp('Dropbox', 0, files.length));
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         await uploadFileToDropbox(token, file.name, file.uri);
         setUploadProgress({ current: i + 1, total: files.length });
         setGlobalUploadProgress('dropbox', { current: i + 1, total: files.length });
-        updateUploadService(`Backing up to Dropbox — ${i + 1}/${files.length} files`);
+        updateUploadService(serviceText().backingUp('Dropbox', i + 1, files.length));
       }
 
       if (scope === 'all') {
@@ -237,7 +238,7 @@ export function useDropbox() {
       });
       setRestoreProgress({ current: 0, total: filesToRestore.length });
       setGlobalRestoreProgress('dropbox', { current: 0, total: filesToRestore.length });
-      startUploadService(`Restoring from Dropbox — 0/${filesToRestore.length} files`);
+      startUploadService(serviceText().restoring('Dropbox', 0, filesToRestore.length));
 
       let restored = 0;
       let restoreIndex = 0;
@@ -252,7 +253,7 @@ export function useDropbox() {
         restoreIndex++;
         setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
         setGlobalRestoreProgress('dropbox', { current: restoreIndex, total: filesToRestore.length });
-        updateUploadService(`Restoring from Dropbox — ${restoreIndex}/${filesToRestore.length} files`);
+        updateUploadService(serviceText().restoring('Dropbox', restoreIndex, filesToRestore.length));
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }

@@ -22,6 +22,17 @@ class StorageWidgetModule : Module() {
       appCtx.sendBroadcast(intent)
     }
 
+    // Widget words in the app's language; the widget reads them on its next update.
+    AsyncFunction("saveWidgetStrings") { stringsJson: String ->
+      val context = appContext.reactContext ?: return@AsyncFunction
+      val appCtx = context.applicationContext
+      appCtx.getSharedPreferences("askfiles_widget", android.content.Context.MODE_PRIVATE)
+        .edit().putString("strings", stringsJson).apply()
+      val intent = android.content.Intent("com.askfiles.mobile.UPDATE_WIDGET")
+      intent.component = android.content.ComponentName(appCtx, "com.askfiles.mobile.StorageWidget")
+      appCtx.sendBroadcast(intent)
+    }
+
     View(StorageWidgetView::class) {
       Prop("url") { view: StorageWidgetView, url: URL ->
         view.webView.loadUrl(url.toString())

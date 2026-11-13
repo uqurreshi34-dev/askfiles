@@ -26,6 +26,11 @@ class ShareModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ShareModule")
 
+    Function("setChooserTitles") { share: String, openWith: String ->
+      ChooserTitles.share = share
+      ChooserTitles.openWith = openWith
+    }
+
     AsyncFunction("shareFiles") { paths: List<String>, mimeType: String ->
       val activity = appContext.activityProvider?.currentActivity
         ?: throw Exception("No activity available")
@@ -64,7 +69,7 @@ class ShareModule : Module() {
         }
       }
 
-      val chooser = Intent.createChooser(intent, "Share files")
+      val chooser = Intent.createChooser(intent, ChooserTitles.share)
       chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       activity.startActivity(chooser)
     }

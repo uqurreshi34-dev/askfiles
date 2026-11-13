@@ -8,6 +8,7 @@ import { setUploadProgress as setGlobalUploadProgress, setRestoreProgress as set
 import { startUploadService, updateUploadService, stopUploadService } from '@/modules/upload-service';
 import { exportSettings, importSettings, SettingsBundle } from '@/hooks/useSettingsSync';
 import RNFS from 'react-native-fs';
+import { serviceText } from '@/modules/i18n/serviceText';
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const LAST_BACKUP_KEY = 'google_drive_last_backup';
 const DRIVE_FOLDER_NAME = 'AskFiles';
@@ -171,7 +172,7 @@ export function useGoogleDrive() {
 
       setUploadProgress({ current: 0, total: files.length });
       setGlobalUploadProgress('google', { current: 0, total: files.length });
-      startUploadService(`Backing up to Google Drive — 0/${files.length} files`);
+      startUploadService(serviceText().backingUp('Google Drive', 0, files.length));
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -185,7 +186,7 @@ export function useGoogleDrive() {
         await uploadFileToDrive(token, folderId, file.name, file.uri, existingId);
         setUploadProgress({ current: i + 1, total: files.length });
         setGlobalUploadProgress('google', { current: i + 1, total: files.length });
-        updateUploadService(`Backing up to Google Drive — ${i + 1}/${files.length} files`);
+        updateUploadService(serviceText().backingUp('Google Drive', i + 1, files.length));
       }
 
       if (scope === 'all') {
@@ -237,7 +238,7 @@ export function useGoogleDrive() {
       });
       setRestoreProgress({ current: 0, total: filesToRestore.length });
       setGlobalRestoreProgress('google', { current: 0, total: filesToRestore.length });
-      startUploadService(`Restoring from Google Drive — 0/${filesToRestore.length} files`);
+      startUploadService(serviceText().restoring('Google Drive', 0, filesToRestore.length));
 
       let restored = 0;
       let restoreIndex = 0;
@@ -251,7 +252,7 @@ export function useGoogleDrive() {
         restoreIndex++;
         setRestoreProgress({ current: restoreIndex, total: filesToRestore.length });
         setGlobalRestoreProgress('google', { current: restoreIndex, total: filesToRestore.length });
-        updateUploadService(`Restoring from Google Drive — ${restoreIndex}/${filesToRestore.length} files`);
+        updateUploadService(serviceText().restoring('Google Drive', restoreIndex, filesToRestore.length));
 
         const destPath = (() => {
           try { return decodeURIComponent(destUri.replace('file://', '')); }

@@ -14,7 +14,7 @@ const D = (n: number, one: string, few: string, dual: string) => (n === 2 ? dual
 
 export type OrganiseText = {
   title: string; organise: string; undo: string; dismiss: string; proceed: string;
-  noChanges: string; alreadyOrganised: string; protectedFolder: string;
+  noChanges: string; alreadyOrganised: string; protectedFolder: string; nothingRecognised: string;
   couldNotFinish: string; couldNotOrganise: string;
   intoFolder: (n: number, folder: string) => string;
   create: (folders: string) => string;
@@ -37,6 +37,7 @@ const TEXT: Record<AppLang, OrganiseText> = {
   en: {
     title: 'JARVIS organisation', organise: 'Organise', undo: 'Undo', dismiss: 'Dismiss', proceed: 'Proceed?',
     noChanges: 'No changes proposed.', alreadyOrganised: 'This folder is already organised.',
+    nothingRecognised: 'Nothing in here is a type I recognise, sir, so I have left it alone.',
     protectedFolder: 'This is a standard Android folder, so I will leave its structure intact.',
     couldNotFinish: 'I could not finish organising this folder.', couldNotOrganise: 'I could not organise this folder.',
     intoFolder: (n, f) => `${n} into ${f}`,
@@ -57,6 +58,7 @@ const TEXT: Record<AppLang, OrganiseText> = {
   ar: {
     title: 'تنظيم JARVIS', organise: 'تنظيم', undo: 'تراجع', dismiss: 'إغلاق', proceed: 'هل تريد المتابعة؟',
     noChanges: 'لا توجد تغييرات مقترحة.', alreadyOrganised: 'هذا المجلد منظّم بالفعل.',
+    nothingRecognised: 'لا يوجد هنا نوع ملفات أتعرّف عليه، لذا تركته كما هو.',
     protectedFolder: 'هذا مجلد أساسي في Android، لذا سأترك ترتيبه كما هو.',
     couldNotFinish: 'لم أتمكن من إنهاء تنظيم هذا المجلد.', couldNotOrganise: 'لم أتمكن من تنظيم هذا المجلد.',
     intoFolder: (n, f) => `${n} إلى ${f}`,
@@ -77,6 +79,7 @@ const TEXT: Record<AppLang, OrganiseText> = {
   hi: {
     title: 'JARVIS व्यवस्था', organise: 'व्यवस्थित करें', undo: 'अनडू', dismiss: 'बंद करें', proceed: 'आगे बढ़ें?',
     noChanges: 'कोई बदलाव सुझाया नहीं गया।', alreadyOrganised: 'यह फ़ोल्डर पहले से व्यवस्थित है।',
+    nothingRecognised: 'यहाँ ऐसी कोई फ़ाइल नहीं है जिसका प्रकार मैं पहचानता हूँ, इसलिए मैंने इसे नहीं छुआ।',
     protectedFolder: 'यह Android का मानक फ़ोल्डर है, इसलिए मैं इसकी बनावट नहीं बदलूँगा।',
     couldNotFinish: 'मैं इस फ़ोल्डर को पूरी तरह व्यवस्थित नहीं कर सका।', couldNotOrganise: 'मैं इस फ़ोल्डर को व्यवस्थित नहीं कर सका।',
     intoFolder: (n, f) => `${n} → ${f}`,

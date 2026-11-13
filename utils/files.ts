@@ -1,4 +1,6 @@
 import { commonText } from '@/modules/i18n/common';
+import { filesText } from '@/modules/i18n/files';
+import { getLanguage } from '@/modules/appLanguage';
 
 export const ROOT_PATH = 'file:///storage/emulated/0/';
 
@@ -101,7 +103,7 @@ export function getMimeType(name: string): string {
     const sdVolume = volumes.find(v => v.type === 'sdcard' && uri.includes(v.path));
     const raw = sdVolume
       ? uri.replace(`file://${sdVolume.path}/`, `${sdVolume.name}/`).split('/').slice(0, -1).join('/')
-      : uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || 'Internal Storage';
+      : uri.replace('file:///storage/emulated/0/', '').split('/').slice(0, -1).join('/') || filesText(getLanguage()).internalStorage;
       const decoded = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })();
       return decoded.startsWith('/') ? decoded : '/' + decoded;
   }

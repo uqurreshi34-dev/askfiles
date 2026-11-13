@@ -452,7 +452,7 @@ export default function SftpScreen() {
               style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary }]}
               value={host}
               onChangeText={setHost}
-              placeholder="e.g. 192.168.1.100 or myserver.com"
+              placeholder={t.hostPh}
               placeholderTextColor={colors.textSecondary}
               keyboardType="default"
               autoCapitalize="none"

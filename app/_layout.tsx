@@ -13,6 +13,10 @@ import * as QuickActions from 'expo-quick-actions';
 import { useQuickActionRouting } from 'expo-quick-actions/router';
 import * as ExpoInAppUpdates from 'expo-in-app-updates';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useLanguage } from '@/modules/appLanguage';
+import { commonText, widgetStrings } from '@/modules/i18n/common';
+import StorageWidgetModule from '@/modules/storage-widget';
+import { setChooserTitles } from '@/modules/share-module';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,6 +32,14 @@ export default function RootLayout() {
   const [cloudSyncing, setCloudSyncing] = useState(isCloudSyncing());
 
   useQuickActionRouting();
+
+  // The system Share and Open with pickers take their heading from the app language.
+  const lang = useLanguage();
+  useEffect(() => {
+    const c = commonText(lang);
+    setChooserTitles(c.shareFiles, c.openWith);
+    StorageWidgetModule.saveWidgetStrings(JSON.stringify(widgetStrings(lang))).catch(() => {});
+  }, [lang]);
 
   useEffect(() => {
     const { setBackgroundColorAsync } = require('expo-system-ui');

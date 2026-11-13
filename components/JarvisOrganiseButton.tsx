@@ -272,7 +272,7 @@ export default function JarvisOrganiseButton({
         },
       ], {cancelable: false});
     } catch (error: any) {
-      const message = error?.message || to.couldNotFinish;
+      const message = (lang === 'en' && error?.message) || to.couldNotFinish;
       Alert.alert('JARVIS', message);
     } finally {
       setWorking(false);
@@ -318,7 +318,7 @@ export default function JarvisOrganiseButton({
         ],
       );
     } catch (error: any) {
-      const message = error?.message || to.couldNotOrganise;
+      const message = (lang === 'en' && error?.message) || to.couldNotOrganise;
       Alert.alert('JARVIS', message);
       setWorking(false);
     }

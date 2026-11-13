@@ -92,7 +92,7 @@ object OpenIntents {
     }
 
     val launch = if (generic) {
-      Intent.createChooser(view, "Open with").apply {
+      Intent.createChooser(view, ChooserTitles.openWith).apply {
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       }
     } else {

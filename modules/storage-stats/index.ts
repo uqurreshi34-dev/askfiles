@@ -1,4 +1,6 @@
 import { requireNativeModule } from 'expo-modules-core';
+import { filesText } from '@/modules/i18n/files';
+import { getLanguage } from '@/modules/appLanguage';
 
 const StorageStats = requireNativeModule('StorageStats');
 
@@ -22,8 +24,11 @@ export async function showBiometricPrompt(title: string, subtitle: string): Prom
   return StorageStats.showBiometricPrompt(title, subtitle);
 }
 
-export function getStorageVolumes(): Promise<{ name: string; path: string; type: string }[]> {
-  return StorageStats.getStorageVolumes();
+/** Volumes with the internal one named in the app's language (SD card names come from Android). */
+export async function getStorageVolumes(): Promise<{ name: string; path: string; type: string }[]> {
+  const vols: { name: string; path: string; type: string }[] = await StorageStats.getStorageVolumes();
+  const internal = filesText(getLanguage()).internalStorage;
+  return vols.map(v => (v.type === 'internal' ? { ...v, name: internal } : v));
 }
 
 export function getVolumeStats(path: string): Promise<{ total: number; free: number; used: number; error?: string }> {

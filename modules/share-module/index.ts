@@ -1,1 +1,1 @@
-export { shareFiles, openFile, scanFile, printImage, printPdf, copyImageToClipboard } from './src/ShareModule';
+export { shareFiles, openFile, scanFile, printImage, printPdf, copyImageToClipboard, setChooserTitles } from './src/ShareModule';
