@@ -120,28 +120,40 @@ export default function WebDavScreen() {
       return;
     }
     let base = url.trim().replace(/\/$/, '');
-    if (!base.startsWith('http://') && !base.startsWith('https://')) {
-        base = 'http://' + base;
-    }
+    // No scheme typed: try the encrypted https:// first, and only offer
+    // http:// (with the insecure warning) if the server cannot be reached.
+    const bare = !base.startsWith('http://') && !base.startsWith('https://');
+    if (bare) base = 'https://' + base;
     const suffix = path.trim() ? '/' + path.trim().replace(/^\//, '').replace(/\/$/, '') + '/' : '/';
-    const fullUrl = base + suffix;
-  
-    if (fullUrl.startsWith('http://')) {
-      const proceed = await new Promise<boolean>(resolve =>
-        Alert.alert(
-          t.insecure,
-          t.insecureMsg,
-          [
-            { text: t.cancel, style: 'cancel', onPress: () => resolve(false) },
-            { text: t.continueAnyway, onPress: () => resolve(true) },
-          ]
-        )
-      );
-      if (!proceed) return;
-    }
+    let fullUrl = base + suffix;
+
+    const confirmInsecure = () => new Promise<boolean>(resolve =>
+      Alert.alert(
+        t.insecure,
+        t.insecureMsg,
+        [
+          { text: t.cancel, style: 'cancel', onPress: () => resolve(false) },
+          { text: t.continueAnyway, onPress: () => resolve(true) },
+        ]
+      )
+    );
+
+    if (fullUrl.startsWith('http://') && !(await confirmInsecure())) return;
     setConnecting(true);
     try {
-      await connect(fullUrl, username.trim(), password);
+      try {
+        await connect(fullUrl, username.trim(), password);
+      } catch (first: any) {
+        const m = (first?.message ?? '').toLowerCase();
+        const answered = m.includes('401') || m.includes('403') || m.includes('auth') || m.includes('password') || m.includes('denied');
+        // The https server answered (wrong password etc.), or the user chose https: report it.
+        if (!bare || answered) throw first;
+        setConnecting(false);
+        if (!(await confirmInsecure())) return;
+        setConnecting(true);
+        fullUrl = 'http://' + fullUrl.slice('https://'.length);
+        await connect(fullUrl, username.trim(), password);
+      }
       credsRef.current = { url: url.trim(), username: username.trim(), password, path: path.trim() };
       baseUrlRef.current = fullUrl.match(/^https?:\/\/[^/]+/)?.[0] ?? '';
       if (remember) {

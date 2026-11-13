@@ -171,6 +171,7 @@ export default function NetworkScreen() {
             ) : (
               <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.wifiSub}</Text>
             )}
+            <Text style={[styles.cardSub, { color: colors.amber, marginTop: 2 }]}>{t.trustedWifi}</Text>
           </View>
         </View>
         {wifiActive ? (
@@ -207,7 +208,8 @@ export default function NetworkScreen() {
             </TouchableOpacity>
             {qrLayout(<>
             <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>{t.wifiTransfer}</Text>
-            <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>{t.scanCamera}</Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{t.scanCamera}</Text>
+            <Text style={{ fontSize: 11, color: colors.amber, marginBottom: 12, textAlign: 'center' }}>{t.trustedWifi}</Text>
             </>,
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
               <QRCode value={wifiShare?.loginUrl || 'http://localhost:8080'} size={qrSize} />
@@ -285,6 +287,7 @@ export default function NetworkScreen() {
                 <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t.worksWith}</Text>
               </>
             )}
+            <Text style={[styles.cardSub, { color: colors.amber, marginTop: 2 }]}>{t.trustedWifi}</Text>
           </View>
         </View>
         {ftpActive ? (
@@ -326,7 +329,8 @@ export default function NetworkScreen() {
           </TouchableOpacity>
           {qrLayout(<>
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 }}>{t.ftpServer}</Text>
-          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>{t.openIn}</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{t.openIn}</Text>
+          <Text style={{ fontSize: 11, color: colors.amber, marginBottom: 12, textAlign: 'center' }}>{t.trustedWifi}</Text>
           </>,
           <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
             <QRCode value={ftpShare ? ftpLoginUrl(ftpShare) : 'ftp://localhost:2121'} size={qrSize} />
