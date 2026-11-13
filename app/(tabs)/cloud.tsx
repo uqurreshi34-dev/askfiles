@@ -49,7 +49,8 @@ const PRO_FEATURES = [
 export default function CloudScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const tp = proText(useLanguage());
+  const lang = useLanguage();
+  const tp = proText(lang);
   const { isPro, packages, loading, purchasing, restoring, error, purchasePackage, restorePurchases } = usePro();
 
   if (loading) {
@@ -66,7 +67,7 @@ export default function CloudScreen() {
     return (
       <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.topBar}>
+          <View key={`top-${lang}`} style={styles.topBar}>
             <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.homeBtn}>
               <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
@@ -113,7 +114,7 @@ export default function CloudScreen() {
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.topBar}>
+        <View key={`top-${lang}`} style={styles.topBar}>
           <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.homeBtn}>
             <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>

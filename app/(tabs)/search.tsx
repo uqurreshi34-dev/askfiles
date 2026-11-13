@@ -706,7 +706,9 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center' }]}>
+      {/* key: rebuilt when the language changes. Tab screens stay mounted, and Android
+          kept the old text sizes, so icons sat out of line until the screen was reopened. */}
+      <View key={`header-${lang}`} style={[styles.header, { flexDirection: 'row', alignItems: 'center' }]}>
         <TouchableOpacity onPress={() => router.push('/(tabs)')} style={{ width: 40, height: 40, justifyContent: 'center', marginRight: 8 }}>
           <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -721,20 +723,20 @@ export default function SearchScreen() {
           </Text>
         </View>
       )}
-      <View style={[styles.modeToggle, { backgroundColor: colors.surface }]}>
+      <View key={`modes-${lang}`} style={[styles.modeToggle, { backgroundColor: colors.surface }]}>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'search' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
           onPress={() => setMode('search')}
         >
           <Ionicons name="search-outline" size={14} color={mode === 'search' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
-          <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'search' && { color: colors.blue }]}>{ts.search}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'search' && { color: colors.blue }]}>{ts.search}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'ask' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
           onPress={() => setMode('ask')}
         >
           <Ionicons name="sparkles-outline" size={14} color={mode === 'ask' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
-          <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>{ts.askAi}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'ask' && { color: colors.blue }]}>{ts.askAi}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'smart' && [styles.modeBtnActive, { backgroundColor: colors.card }]]}
@@ -744,7 +746,7 @@ export default function SearchScreen() {
           }}
         >
             <Ionicons name="document-text-outline" size={14} color={mode === 'smart' ? colors.blue : colors.textMuted} style={{ marginRight: 4 }} />
-            <Text style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'smart' && { color: colors.blue }]}>{ts.smart}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.modeBtnText, { color: colors.textMuted }, mode === 'smart' && { color: colors.blue }]}>{ts.smart}</Text>
           </TouchableOpacity>
       </View>
 
@@ -1612,9 +1614,10 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   title: { fontSize: 20, fontWeight: '500', letterSpacing: -0.5 },
   modeToggle: { flexDirection: 'row', marginHorizontal: 16, marginVertical: 12, borderRadius: 10, padding: 4 },
-  modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8 },
+  modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, borderRadius: 8 },
   modeBtnActive: {},
-  modeBtnText: { fontSize: 13, fontWeight: '500' },
+  // One line that shrinks to fit: long Arabic and Hindi labels must not wrap and push the icon out.
+  modeBtnText: { fontSize: 13, fontWeight: '500', flexShrink: 1, textAlign: 'center' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12, borderRadius: 10, padding: 12 },
   inputWrapDisabled: { opacity: 0.5 },
   input: { flex: 1, fontSize: 14 },

@@ -575,7 +575,7 @@ export default function VaultScreen() {
             disabled={movingFile || busy}
           >
             <Ionicons name="arrow-redo-outline" size={16} color="#fff" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{t.moveOut}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontSize: 13, fontWeight: '600', color: '#fff', flexShrink: 1 }}>{t.moveOut}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 10, paddingVertical: 10, opacity: movingFile || busy ? 0.5 : 1 }}
@@ -583,7 +583,7 @@ export default function VaultScreen() {
             disabled={movingFile || busy}
           >
             <Ionicons name="trash-outline" size={16} color={colors.deleteRed} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.deleteRed }}>{c.delete}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontSize: 13, fontWeight: '600', color: colors.deleteRed, flexShrink: 1 }}>{c.delete}</Text>
           </TouchableOpacity>
         </View>
       )}

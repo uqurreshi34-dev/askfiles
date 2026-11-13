@@ -1544,7 +1544,9 @@ export default function BrowseScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
+      {/* key: rebuilt when the language changes. Tab screens stay mounted, and Android
+          kept the old text sizes, so icons sat out of line until the screen was reopened. */}
+      <View key={`header-${lang}`} style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerRow}>
         {breadcrumbs.length > 1 ? (
             <TouchableOpacity onPress={() => navigateToBreadcrumb(breadcrumbs.length - 2)} style={styles.backBtn}>
