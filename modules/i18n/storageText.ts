@@ -10,6 +10,7 @@ export type StorageText = {
   info: (total: string, used: string) => string;
   sdInfo: (name: string, total: string, free: string) => string;
   infoEnd: string;
+  freeUpSpace: string; freeUpSpaceSub: string;
 };
 
 const TEXT: Record<AppLang, StorageText> = {
@@ -22,6 +23,7 @@ const TEXT: Record<AppLang, StorageText> = {
     healthy: 'Storage is healthy', consider: 'Consider clearing some space', low: 'Running low on space',
     info: (total, used) => `Your device has ${total} of internal storage. AskFiles shows ${used} used across your files and apps.`,
     sdInfo: (name, total, free) => ` Your ${name} has ${total} total with ${free} free.`,
+    freeUpSpace: 'Free up space', freeUpSpaceSub: 'WhatsApp and Telegram media, old downloads, APKs and more',
     infoEnd: ' Android Settings may show a slightly different figure — this is normal and is due to how the operating system calculates reserved and system space.',
   },
   ar: {
@@ -33,6 +35,7 @@ const TEXT: Record<AppLang, StorageText> = {
     healthy: 'مساحة التخزين بحالة جيدة', consider: 'يُستحسن إخلاء بعض المساحة', low: 'المساحة توشك على النفاد',
     info: (total, used) => `يحتوي جهازك على ${total} من التخزين الداخلي. يعرض AskFiles ${used} مستخدمة لملفاتك وتطبيقاتك.`,
     sdInfo: (name, total, free) => ` تبلغ سعة ${name} ${total} والمتاح منها ${free}.`,
+    freeUpSpace: 'أخلِ بعض المساحة', freeUpSpaceSub: 'وسائط WhatsApp وTelegram والتنزيلات القديمة وملفات APK وغيرها',
     infoEnd: ' قد تُظهر إعدادات Android رقماً مختلفاً قليلاً — هذا طبيعي ويعود إلى طريقة حساب النظام للمساحة المحجوزة ومساحة النظام.',
   },
   hi: {
@@ -44,6 +47,7 @@ const TEXT: Record<AppLang, StorageText> = {
     healthy: 'स्टोरेज ठीक है', consider: 'थोड़ी जगह खाली करना अच्छा रहेगा', low: 'जगह कम हो रही है',
     info: (total, used) => `आपके डिवाइस में ${total} इंटरनल स्टोरेज है। AskFiles आपकी फ़ाइलों और ऐप्स में ${used} इस्तेमाल दिखाता है।`,
     sdInfo: (name, total, free) => ` आपके ${name} में कुल ${total} है, जिसमें ${free} खाली है।`,
+    freeUpSpace: 'जगह खाली करें', freeUpSpaceSub: 'WhatsApp और Telegram मीडिया, पुराने डाउनलोड, APK और भी बहुत कुछ',
     infoEnd: ' Android Settings में थोड़ा अलग आँकड़ा दिख सकता है — यह सामान्य है, क्योंकि सिस्टम रिज़र्व और सिस्टम स्पेस को अलग तरीके से गिनता है।',
   },
 };

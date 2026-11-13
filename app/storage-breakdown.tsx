@@ -133,7 +133,21 @@ export default function StorageBreakdownScreen() {
                 {trend}
               </Text>
             )}
-  
+
+          {/* Straight from 'what is using my space' to 'free some up'. */}
+          <TouchableOpacity
+            style={[styles.cleanerCard, { backgroundColor: colors.amberTint }]}
+            activeOpacity={0.7}
+            onPress={() => router.push('/cleaner' as any)}
+          >
+            <Ionicons name="brush-outline" size={20} color={colors.amber} />
+            <View style={{ flex: 1, marginHorizontal: 12 }}>
+              <Text style={[styles.cleanerTitle, { color: colors.textPrimary }]}>{t.freeUpSpace}</Text>
+              <Text style={[styles.cleanerSub, { color: colors.textSecondary }]}>{t.freeUpSpaceSub}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textDisabled} />
+          </TouchableOpacity>
+
           <View style={[styles.segmentCard, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t.byCategory}</Text>
             <View style={[styles.segmentBar, { backgroundColor: colors.surface }]}>
@@ -192,6 +206,9 @@ export default function StorageBreakdownScreen() {
 }
 
 const styles = StyleSheet.create({
+  cleanerCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 16, borderRadius: 14, padding: 14 },
+  cleanerTitle: { fontSize: 14, fontWeight: '600', textAlign: 'left' },
+  cleanerSub: { fontSize: 12, marginTop: 2, textAlign: 'left' },
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
