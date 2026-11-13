@@ -166,7 +166,7 @@ export default function CleanerGroupScreen() {
           {isImageFile(item.name) ? (
             <Image source={{ uri: item.uri }} style={styles.thumb} resizeMode="cover" />
           ) : isVideoFile(item.name) ? (
-            <VideoThumb uri={item.uri} style={styles.thumb} />
+            <VideoThumb uri={item.uri} style={styles.thumb} placeholder={<Ionicons name="videocam-outline" size={20} color={color} />} />
           ) : (
             <Ionicons name={getFileIcon(item.name) as any} size={20} color={color} />
           )}
@@ -228,9 +228,11 @@ export default function CleanerGroupScreen() {
         renderItem={renderItem}
         extraData={selected}
         getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
-        initialNumToRender={20}
-        maxToRenderPerBatch={20}
-        windowSize={11}
+        // A small render window: video thumbnails are made on first view, so
+        // rows far off screen must not queue ahead of the ones being looked at.
+        initialNumToRender={14}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         removeClippedSubviews
         contentContainerStyle={[styles.list, landscape && styles.narrow]}
         ListFooterComponent={group.count > group.files.length ? (

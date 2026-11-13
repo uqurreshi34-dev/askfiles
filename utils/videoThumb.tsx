@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Image } from 'react-native';
 import { getVideoThumbnail } from '@/modules/media-grid';
 
@@ -7,7 +7,8 @@ export function isVideoFile(name: string): boolean {
   return ['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].includes(ext);
 }
 
-export function VideoThumb({ uri, style }: { uri: string; style: any }) {
+/** placeholder shows until the first frame is ready (generated once, then cached on disk). */
+export function VideoThumb({ uri, style, placeholder = null }: { uri: string; style: any; placeholder?: ReactNode }) {
   const [thumb, setThumb] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,6 +22,6 @@ export function VideoThumb({ uri, style }: { uri: string; style: any }) {
     return () => { cancelled = true; };
   }, [uri]);
 
-  if (!thumb) return null;
+  if (!thumb) return <>{placeholder}</>;
   return <Image source={{ uri: thumb }} style={style} resizeMode="cover" />;
 }
