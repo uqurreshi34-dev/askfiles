@@ -4,7 +4,7 @@ import {
   ScrollView, NativeScrollEvent, NativeSyntheticEvent,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,6 +51,7 @@ export default function OnboardingScreen() {
   const dark = scheme === 'dark';
   const colors = getColors(dark);
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const PORTRAIT_WIDTH = Math.min(width, height);
   const isLandscape = width > height;
   const router = useRouter();
@@ -131,12 +132,14 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Skip — top right */}
-        <TouchableOpacity onPress={finish} style={styles.lsSkip}>
+        <TouchableOpacity onPress={finish} style={[styles.lsSkip, { top: insets.top + 8, right: insets.right + 16 }]}>
           <Text style={[styles.skip, { color: colors.textMuted }]}>{T.skip}</Text>
         </TouchableOpacity>
 
         {/* Language — top left */}
-        <View style={styles.lsLang}>{languagePicker}</View>
+        {/* Absolute items ignore the safe-area padding, so the system bars are added
+            by hand: in landscape the 3-button bar can sit on the left or right. */}
+        <View style={[styles.lsLang, { top: insets.top, left: insets.left + 16 }]}>{languagePicker}</View>
 
         {/* Centre: prev arrow | content | next arrow */}
         <View style={styles.lsBody}>
