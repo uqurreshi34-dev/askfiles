@@ -78,6 +78,7 @@ export type HomeText = {
   imagesJpg: string;
   scanFailed: string;
   scanFailedMsg: string;
+  scanCancelled: string;
   unpinFolder: string;
   unpinMsg: (name: string) => string;
   unpin: string;
@@ -179,6 +180,7 @@ const EN: HomeText = {
   imagesJpg: 'Images (JPG)',
   scanFailed: 'Scan failed',
   scanFailedMsg: 'Could not complete scan',
+  scanCancelled: 'User cancelled scan',
   unpinFolder: 'Unpin folder',
   unpinMsg: name => `Remove "${name}" from Home?`,
   unpin: 'Unpin',
@@ -269,6 +271,7 @@ const AR: HomeText = {
   imagesJpg: 'صور (JPG)',
   scanFailed: 'فشل المسح',
   scanFailedMsg: 'تعذّر إكمال المسح',
+  scanCancelled: 'ألغى المستخدم المسح',
   unpinFolder: 'إلغاء تثبيت المجلد',
   unpinMsg: name => `إزالة «${name}» من الرئيسية؟`,
   unpin: 'إلغاء التثبيت',
@@ -352,6 +355,7 @@ const HI: HomeText = {
   imagesJpg: 'इमेज (JPG)',
   scanFailed: 'स्कैन नहीं हो सका',
   scanFailedMsg: 'स्कैन पूरा नहीं हो सका',
+  scanCancelled: 'यूज़र ने स्कैन रद्द किया',
   unpinFolder: 'फ़ोल्डर अनपिन करें',
   unpinMsg: name => `"${name}" को होम से हटाएँ?`,
   unpin: 'अनपिन करें',

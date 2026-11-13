@@ -191,10 +191,10 @@ const ALL_TOOLS: Record<string, ToolDef> = {
           { text: t.cancel, style: 'cancel' }
         ]);
       } catch (e: any) {
-        // Backing out of the scanner is not an error: the native side rejects
-        // with code SCAN_CANCELLED and the message 'User cancelled scan'.
-        if (e?.code === 'SCAN_CANCELLED' || e?.message?.includes('SCAN_CANCELLED') || /cancel/i.test(e?.message ?? '')) return;
-        Alert.alert(t.scanFailed, t.scanFailedMsg);
+        // The native side rejects with code SCAN_CANCELLED and an English
+        // message, so the message is chosen here in the app's language.
+        const cancelled = e?.code === 'SCAN_CANCELLED' || e?.message?.includes('SCAN_CANCELLED') || /cancel/i.test(e?.message ?? '');
+        Alert.alert(t.scanFailed, cancelled ? t.scanCancelled : t.scanFailedMsg);
       }
     },
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>{scanning ? <ActivityIndicator size="small" color={colors.green} /> : <Ionicons name="camera-outline" size={26} color={colors.green} />}</View>,
