@@ -1,0 +1,76 @@
+No adverts. No account. No tracking. Your files never leave your device.
+
+Find any file on your phone in seconds — even if you can't remember what you called it.
+
+ASK AI ABOUT YOUR FILES:
+Type or say questions in English, Arabic or Hindi — "what's my largest file?", "how much storage do I have left?", "what videos are on my phone?". AskFiles answers instantly using your actual device data.
+
+File contents never leave your phone.
+
+SMART SEARCH — SEARCH INSIDE YOUR DOCUMENTS:
+Search the contents of PDFs, Word, Excel, text files and scans — not just filenames. Type "invoice", "contract" or any keyword and AskFiles finds every document containing that word. No internet. Pure on-device indexing — fast, private and unlimited.
+
+TAGS:
+Colour-coded tags organise files across folders without moving anything. Tag a file once and it appears under that tag wherever it lives. Tags show on your home screen — tap to see everything at once.
+
+SECURE VAULT:
+Lock sensitive files — photos, documents, videos — behind biometric authentication or a PIN. Stored privately on your device, invisible to other apps. Back up your vault to the cloud and restore anytime.
+
+BROWSE & MANAGE:
+Browse every folder on your device. Copy, move, rename and delete with ease. Long-press any file for instant actions — share, move to vault, add to favourites, copy or rename. Swipe to delete, swipe to bookmark.
+
+ONE-TAP ORGANISE:
+Point AskFiles at a messy folder and it sorts it into sensible subfolders — documents, images, audio, archives. Runs entirely on your device. Undo puts everything back exactly as it was.
+
+DUAL PANE:
+Turn your phone or tablet sideways for two folders side by side. Select in one, copy straight to the other — no going back and forth.
+
+STORAGE BREAKDOWN:
+See exactly what's using your storage — images, videos, downloads and documents, broken down clearly. Find large files fast. Honest figures, no guesswork. And it tells you what changed — "Storage is up 1.2 GB since yesterday." Know what filled your phone, not just what's on it.
+
+DUPLICATE FINDER:
+Scan your device for duplicate files wasting space. Review and delete with one tap.
+
+DOCUMENT SCANNER:
+Scan documents, receipts and letters straight from the app. Multi-page scanning with automatic edge detection, crop and rotate, powered by Google's ML Kit. Saved to your Documents/Scans folder.
+
+EXTRACT TEXT FROM IMAGES:
+Point at any photo — receipt, letter, whiteboard, sign — and pull out every readable word. Copy it to your clipboard or use it anywhere. Fully offline.
+
+PDF TOOLS:
+Create PDFs from photos, extract pages as images, and merge multiple PDFs into one — all on your device, no internet needed.
+
+VIDEO SUMMARY:
+Tap any video to see a storyboard of key frames and scene labels — know what's in a clip without playing it.
+
+OPEN & EXTRACT ARCHIVES:
+Extract ZIP and 7z archives, including password-protected files. No separate app needed.
+
+PASSWORD PROTECTED ZIP:
+Create ZIP archives with AES-256 password protection — share files securely over WhatsApp or email.
+
+NETWORK (SMB, SFTP, FTP, WebDAV):
+Browse, upload and download via SMB (Windows sharing), SFTP (SSH), FTP or WebDAV — fast and secure, with encrypted SFTP.
+
+WIFI FILE TRANSFER:
+Move files between any devices on the same WiFi — no cables, no apps, just a browser.
+
+SHARE VIA QR CODE:
+Long-press any file and tap "Share via QR". Any phone, tablet or laptop on the same WiFi scans the code and downloads straight from their browser.
+
+IMAGE CONVERTER:
+Convert images to JPG, PNG or WEBP — fully offline.
+
+HOME SCREEN WIDGET:
+See your storage usage at a glance without opening the app. Always up to date.
+
+PRO — ONE PAYMENT, YOURS FOREVER
+A single purchase unlocks everything:
+· AI-powered file search
+· Smart Search inside documents
+· Secure Vault with biometric protection
+· Cloud backup and restore — Google Drive, OneDrive or Dropbox
+· Duplicate finder
+· Similar Image finder
+
+No subscription. No recurring charges. No adverts, ever.
