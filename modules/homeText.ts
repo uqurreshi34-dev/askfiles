@@ -165,8 +165,8 @@ const EN: HomeText = {
   cancel: 'Cancel',
   whatsNew: "What's New",
   whatsNewItems: [
+    'Cleaner — find WhatsApp and Telegram media, old downloads, APKs and old screenshots, and free up space',
     'Arabic and Hindi — across the whole app, including the widget and reminders. Switch any time in Settings',
-    'Folder organiser — in Browse, tap the sparkle button to sort a messy folder into tidy subfolders, with undo',
     'Free AI answers — tap a question to find your largest image, video or file',
     'Activity log — see what you moved, deleted or put in the Vault',
   ],
@@ -256,8 +256,8 @@ const AR: HomeText = {
   cancel: 'إلغاء',
   whatsNew: 'ما الجديد',
   whatsNewItems: [
+    'المنظّف — اعثر على وسائط WhatsApp وTelegram والتنزيلات القديمة وملفات APK ولقطات الشاشة القديمة، وأخلِ المساحة',
     'العربية والهندية — في التطبيق كله، بما في ذلك أداة الشاشة الرئيسية والتذكيرات. غيّر اللغة متى شئت من الإعدادات',
-    'منظّم المجلدات — في تصفّح، اضغط زر النجمة لترتيب مجلد فوضوي في مجلدات فرعية مرتبة، مع إمكانية التراجع',
     'إجابات مجانية بالذكاء الاصطناعي — اضغط سؤالاً لتعرف أكبر صورة أو فيديو أو ملف لديك',
     'سجل النشاط — اعرف ما نقلته أو حذفته أو وضعته في الخزنة',
   ],
@@ -340,8 +340,8 @@ const HI: HomeText = {
   cancel: 'रद्द करें',
   whatsNew: 'नया क्या है',
   whatsNewItems: [
+    'क्लीनर — WhatsApp और Telegram मीडिया, पुराने डाउनलोड, APK और पुराने स्क्रीनशॉट ढूँढें और जगह खाली करें',
     'अरबी और हिन्दी — पूरे ऐप में, विजेट और रिमाइंडर समेत। सेटिंग्स में कभी भी बदलें',
-    'फ़ोल्डर ऑर्गनाइज़र — ब्राउज़ में स्पार्कल बटन दबाकर बिखरे फ़ोल्डर को साफ़ सब-फ़ोल्डरों में बाँटें, अनडू के साथ',
     'मुफ़्त AI जवाब — अपनी सबसे बड़ी इमेज, वीडियो या फ़ाइल जानने के लिए सवाल पर टैप करें',
     'एक्टिविटी लॉग — देखें आपने क्या मूव किया, हटाया या Vault में रखा',
   ],
