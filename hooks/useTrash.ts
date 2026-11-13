@@ -136,6 +136,53 @@ export function useTrash() {
     }
   }
 
+  /**
+   * Moves many files to Trash in one go (the Cleaner's bulk clean).
+   * The trash listing and its metadata are read and written once, not once
+   * per file, so cost grows with the number of files rather than its square,
+   * and the whole batch is one Activity log entry instead of hundreds.
+   * Returns the URIs that were moved.
+   */
+  async function moveManyToTrash(items: { uri: string; name: string }[], source: string): Promise<Set<string>> {
+    const moved = new Set<string>();
+    if (!items.length) return moved;
+    await ensureTrashDir();
+    const trashPath = decodeURIComponent(TRASH_DIR.replace('file://', ''));
+    const taken = new Set<string>();
+    try { (await RNFS.readDir(trashPath)).forEach(e => taken.add(e.name)); } catch {}
+    const meta = await readMeta();
+    const logged: { name: string; from?: string }[] = [];
+    for (const item of items) {
+      try {
+        let destName = item.name;
+        const dot = item.name.lastIndexOf('.');
+        const base = dot > 0 ? item.name.slice(0, dot) : item.name;
+        const ext = dot > 0 ? item.name.slice(dot) : '';
+        for (let n = 1; taken.has(destName); n++) destName = `${base}(${n})${ext}`;
+        const srcPath = (() => { try { return decodeURIComponent(item.uri.replace('file://', '')); } catch { return item.uri.replace('file://', ''); } })();
+        await RNFS.moveFile(srcPath, `${trashPath}${destName}`);
+        taken.add(destName);
+        meta[destName] = { originalUri: item.uri, deletedAt: Date.now() };
+        moved.add(item.uri);
+        logged.push({ name: item.name, from: readableFolder(item.uri) });
+        scanFile(srcPath).catch(() => {}); // the gallery forgets the old path
+      } catch {}
+    }
+    await writeMeta(meta);
+    await loadFiles();
+    if (logged.length) {
+      await recordActivity({
+        action: 'trashed',
+        name: logged[0].name,
+        from: logged.length === 1 ? logged[0].from : undefined,
+        count: logged.length,
+        source,
+        items: logged,
+      });
+    }
+    return moved;
+  }
+
   async function restoreFile(file: TrashFile, reload = true): Promise<'original' | 'downloads' | null> {
     try {
       const destUri = file.originalUri;
@@ -254,6 +301,7 @@ export function useTrash() {
     files,
     loading,
     moveToTrash,
+    moveManyToTrash,
     restoreFile,
     deletePermanently,
     emptyTrash,

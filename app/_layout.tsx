@@ -134,7 +134,6 @@ export default function RootLayout() {
         <Stack.Screen name="vault" />
         <Stack.Screen name="duplicates" />
         <Stack.Screen name="backup" />
-        <Stack.Screen name="sensitive-files" />
         <Stack.Screen name="trash" />
         <Stack.Screen name="csv-reader" options={{ animation: 'none'}} />
         <Stack.Screen name="pdf-viewer" options={{ animation: 'none' }}/>

@@ -26,15 +26,6 @@ class MediaStoreModule : Module() {
       "application/vnd.oasis.opendocument.presentation",
     )
 
-    private val SENSITIVE_MIME_TYPES = listOf(
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.oasis.opendocument.text",
-      "application/vnd.oasis.opendocument.spreadsheet",
-      "text/plain",
-    )
-
     private val ALL_FILE_MIME_TYPES = listOf(
       "image/jpeg", "image/png", "image/gif", "image/webp",
       "image/heic", "image/heif", "image/bmp",
@@ -447,48 +438,121 @@ class MediaStoreModule : Module() {
       results
     }
 
-    AsyncFunction("querySensitiveFiles") { keywords: List<String> ->
+    /**
+     * Cleaner: finds space that builds up as many small files, which Large
+     * files (over 25 MB) and Duplicate finder (identical copies) both miss.
+     *
+     * Groups:
+     *   whatsappVideo / whatsappImages / whatsappVoice / whatsappDocs
+     *     -- walked from WhatsApp's media folders (new and old locations,
+     *        plus WhatsApp Business). Walked, not queried: WhatsApp's Sent
+     *        folders carry .nomedia, so MediaStore never sees them.
+     *   telegram   -- Telegram's media folders, walked the same way.
+     *   apks       -- installer files anywhere (MediaStore).
+     *   oldDownloads   -- Download folder, untouched for 90+ days, APKs excluded.
+     *   oldScreenshots -- any Screenshots folder, older than 30 days.
+     *
+     * Each file is counted in one group only. Hidden files and folders
+     * (".Statuses", ".nomedia", thumbnails) are skipped. Each group returns
+     * its total and up to 5000 files, largest first.
+     */
+    AsyncFunction("scanCleanup") {
       val context = appContext.reactContext ?: return@AsyncFunction emptyList<Map<String, Any>>()
-      val results = mutableListOf<Map<String, Any>>()
+      val root = "/storage/emulated/0"
+      val now = System.currentTimeMillis()
+      val day = 86_400_000L
+      val seen = HashSet<String>()
+      val groups = LinkedHashMap<String, MutableList<Triple<String, Long, Long>>>()
+      fun add(group: String, path: String, size: Long, modified: Long) {
+        if (size <= 0 || !seen.add(path)) return
+        groups.getOrPut(group) { mutableListOf() }.add(Triple(path, size, modified))
+      }
+      fun walk(dir: File, group: (File) -> String?) {
+        if (!dir.isDirectory) return
+        dir.walkTopDown()
+          .onEnter { !it.name.startsWith('.') }
+          .filter { it.isFile && !it.name.startsWith('.') }
+          .forEach { f -> group(f)?.let { add(it, f.absolutePath, f.length(), f.lastModified()) } }
+      }
+
+      // WhatsApp and WhatsApp Business, new (Android/media) and old locations.
+      val whatsappRoots = listOf(
+        "$root/Android/media/com.whatsapp/WhatsApp/Media",
+        "$root/WhatsApp/Media",
+        "$root/Android/media/com.whatsapp.w4b/WhatsApp Business/Media",
+        "$root/WhatsApp Business/Media",
+      )
+      for (r in whatsappRoots) {
+        walk(File(r)) { f ->
+          val p = f.absolutePath.lowercase()
+          when {
+            p.contains("video") -> "whatsappVideo"
+            p.contains("images") || p.contains("animated gifs") || p.contains("stickers") -> "whatsappImages"
+            p.contains("voice notes") || p.contains("audio") -> "whatsappVoice"
+            p.contains("documents") -> "whatsappDocs"
+            else -> null
+          }
+        }
+      }
+
+      // Telegram, new and old locations.
+      for (r in listOf("$root/Android/media/org.telegram.messenger/Telegram", "$root/Telegram")) {
+        walk(File(r)) { "telegram" }
+      }
+
+      // APKs, old downloads and old screenshots come from MediaStore.
       try {
         val uri = MediaStore.Files.getContentUri("external")
         val projection = arrayOf(
-          MediaStore.Files.FileColumns.DISPLAY_NAME,
-          MediaStore.Files.FileColumns.SIZE,
           MediaStore.Files.FileColumns.DATA,
+          MediaStore.Files.FileColumns.SIZE,
+          MediaStore.Files.FileColumns.DATE_MODIFIED,
+          MediaStore.Files.FileColumns.MIME_TYPE,
         )
-        val keywordClause = keywords.joinToString(" OR ") {
-          "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
-        }
-        val mimeTypes = SENSITIVE_MIME_TYPES
-        val mimeClause = mimeTypes.joinToString(" OR ") {
-          "${MediaStore.Files.FileColumns.MIME_TYPE} = ?"
-        }
-        val selection = "($keywordClause) AND ($mimeClause)"
-        val selectionArgs = (keywords.map { "%$it%" } + mimeTypes).toTypedArray()
-        val cursor = context.contentResolver.query(
-          uri, projection, selection, selectionArgs,
-          "${MediaStore.Files.FileColumns.DISPLAY_NAME} ASC"
-        )
-        cursor?.use {
-          val nameCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-          val sizeCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
-          val dataCol = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-          while (it.moveToNext()) {
-            val name = it.getString(nameCol) ?: continue
-            if (name.startsWith('.')) continue
-            val size = it.getLong(sizeCol)
-            val path = it.getString(dataCol) ?: continue
-            if (path.contains("/.")) continue
-            results.add(mapOf(
-              "name" to name,
-              "size" to size.toDouble(),
-              "uri" to "file://$path",
-            ))
+        val selection = "(${MediaStore.Files.FileColumns.MIME_TYPE} = ? OR ${MediaStore.Files.FileColumns.DATA} LIKE ?" +
+          " OR ${MediaStore.Files.FileColumns.DATA} LIKE ? OR ${MediaStore.Files.FileColumns.DATA} LIKE ?)" +
+          " AND ${MediaStore.Files.FileColumns.SIZE} > 0"
+        val args = arrayOf("application/vnd.android.package-archive", "%.apk", "$root/Download/%", "%/Screenshots/%")
+        context.contentResolver.query(uri, projection, selection, args, null)?.use { c ->
+          val dataCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+          val sizeCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+          val dateCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
+          val mimeCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+          while (c.moveToNext()) {
+            val path = c.getString(dataCol) ?: continue
+            if (path.contains("/.") || path.contains("/Android/data/")) continue
+            val size = c.getLong(sizeCol)
+            val modified = c.getLong(dateCol) * 1000L
+            val mime = c.getString(mimeCol) ?: ""
+            val lower = path.lowercase()
+            when {
+              mime == "application/vnd.android.package-archive" || lower.endsWith(".apk") ->
+                add("apks", path, size, modified)
+              lower.contains("/screenshots/") && mime.startsWith("image/") && now - modified > 30 * day ->
+                add("oldScreenshots", path, size, modified)
+              path.startsWith("$root/Download/") && now - modified > 90 * day ->
+                add("oldDownloads", path, size, modified)
+            }
           }
         }
       } catch (e: Exception) {}
-      results
+
+      groups.map { (id, files) ->
+        val sorted = files.sortedByDescending { it.second }
+        mapOf(
+          "id" to id,
+          "count" to files.size,
+          "bytes" to files.sumOf { it.second }.toDouble(),
+          "files" to sorted.take(5000).map { (path, size, modified) ->
+            mapOf(
+              "name" to path.substringAfterLast('/'),
+              "uri" to "file://$path",
+              "size" to size.toDouble(),
+              "modified" to modified.toDouble(),
+            )
+          },
+        )
+      }
     }
 
     // Counts rather than lists. The screenshot total came from the 500 most

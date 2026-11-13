@@ -39,7 +39,7 @@ export type HomeText = {
   largeFiles: string;
   storage: string;
   docScanner: string;
-  sensitiveFiles: string;
+  cleaner: string;
   imageConverter: string;
   csvReader: string;
   pdfReader: string;
@@ -142,7 +142,7 @@ const EN: HomeText = {
   largeFiles: 'Large Files',
   storage: 'Storage',
   docScanner: 'Doc Scanner',
-  sensitiveFiles: 'Sensitive Files',
+  cleaner: 'Cleaner',
   imageConverter: 'Image Converter',
   csvReader: 'CSV Reader',
   pdfReader: 'PDF Reader',
@@ -223,7 +223,7 @@ const AR: HomeText = {
   largeFiles: 'الملفات الكبيرة',
   storage: 'التخزين',
   docScanner: 'ماسح المستندات',
-  sensitiveFiles: 'الملفات الحساسة',
+  cleaner: 'المنظّف',
   imageConverter: 'محوّل الصور',
   csvReader: 'قارئ CSV',
   pdfReader: 'قارئ PDF',
@@ -314,7 +314,7 @@ const HI: HomeText = {
   largeFiles: 'बड़ी फ़ाइलें',
   storage: 'स्टोरेज',
   docScanner: 'डॉक स्कैनर',
-  sensitiveFiles: 'संवेदनशील फ़ाइलें',
+  cleaner: 'क्लीनर',
   imageConverter: 'इमेज कन्वर्टर',
   csvReader: 'CSV रीडर',
   pdfReader: 'PDF रीडर',

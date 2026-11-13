@@ -68,7 +68,7 @@ const AR: Words = {
   places: { 'Internal storage': 'التخزين الداخلي', 'SD card': 'بطاقة SD', Vault: 'الخزنة', Trash: 'المهملات' },
   sources: {
     Browse: 'التصفح', Categories: 'الفئات', 'Dual pane': 'العرض المزدوج', Duplicates: 'الملفات المكررة',
-    Search: 'البحث', 'Similar images': 'الصور المتشابهة', Trash: 'المهملات', Vault: 'الخزنة',
+    Search: 'البحث', 'Similar images': 'الصور المتشابهة', Trash: 'المهملات', Vault: 'الخزنة', Cleaner: 'المنظّف',
   },
   describe: (e, place) => {
     const total = e.count && e.count > 1 ? e.count : 0;
@@ -107,7 +107,7 @@ const HI: Words = {
   places: { 'Internal storage': 'इंटरनल स्टोरेज', 'SD card': 'SD कार्ड', Vault: 'Vault', Trash: 'ट्रैश' },
   sources: {
     Browse: 'ब्राउज़', Categories: 'कैटेगरी', 'Dual pane': 'डुअल पेन', Duplicates: 'डुप्लिकेट',
-    Search: 'सर्च', 'Similar images': 'मिलती-जुलती इमेज', Trash: 'ट्रैश', Vault: 'Vault',
+    Search: 'सर्च', 'Similar images': 'मिलती-जुलती इमेज', Trash: 'ट्रैश', Vault: 'Vault', Cleaner: 'क्लीनर',
   },
   describe: (e, place) => {
     // Only bulk entries carry a count, so a count here is always 2 or more (plural verb).

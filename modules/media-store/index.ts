@@ -15,10 +15,24 @@ export interface LargestFile {
   uri: string;
 }
 
-export interface SensitiveFile {
+export interface CleanupFile {
   name: string;
-  size: number;
   uri: string;
+  size: number;
+  /** Last modified, epoch milliseconds. */
+  modified: number;
+}
+
+export type CleanupGroupId =
+  | 'whatsappVideo' | 'whatsappImages' | 'whatsappVoice' | 'whatsappDocs'
+  | 'telegram' | 'apks' | 'oldDownloads' | 'oldScreenshots';
+
+export interface CleanupGroup {
+  id: CleanupGroupId;
+  count: number;
+  bytes: number;
+  /** Largest first, at most 5000. */
+  files: CleanupFile[];
 }
 
 export interface FileEntry {
@@ -112,8 +126,9 @@ export async function queryLargestFiles(
   return MediaStore.queryLargestFiles(folderPath, mimePrefix, limit);
 }
 
-export async function querySensitiveFiles(keywords: string[]): Promise<SensitiveFile[]> {
-  return MediaStore.querySensitiveFiles(keywords);
+/** Cleaner scan: messaging-app media, installer files, old downloads and old screenshots. Only groups with files are returned. */
+export async function scanCleanup(): Promise<CleanupGroup[]> {
+  return MediaStore.scanCleanup();
 }
 
 export async function queryAllFiles(): Promise<FileEntry[]> {

@@ -5,8 +5,11 @@ const STORAGE_KEY = 'askfiles-tools-config';
 
 export const ALL_TOOL_IDS = [
   'network', 'large-files', 'storage', 'scanner',
-  'sensitive', 'converter', 'csv', 'pdf', 'txt'
+  'cleaner', 'converter', 'csv', 'pdf', 'txt'
 ] as const;
+
+/** Tools that were replaced: a saved layout keeps the new tool in the old one's place (and hidden state). */
+const RENAMED_TOOLS: Record<string, ToolId> = { sensitive: 'cleaner' };
 
 export type ToolId = typeof ALL_TOOL_IDS[number];
 
@@ -29,6 +32,11 @@ export function useToolsConfig() {
       if (raw) {
         try {
           const parsed = JSON.parse(raw) as ToolsConfig;
+          const known = new Set<string>(ALL_TOOL_IDS);
+          const migrate = (ids: string[]) =>
+            [...new Set(ids.map(id => RENAMED_TOOLS[id] ?? id))].filter(id => known.has(id)) as ToolId[];
+          parsed.order = migrate(parsed.order ?? []);
+          parsed.hidden = migrate(parsed.hidden ?? []);
           const knownIds = new Set(parsed.order);
           const missing = ALL_TOOL_IDS.filter(id => !knownIds.has(id));
           if (missing.length > 0) parsed.order = [...parsed.order, ...missing];

@@ -199,9 +199,9 @@ const ALL_TOOLS: Record<string, ToolDef> = {
     },
     circle: <View style={[styles.quickCircle, { backgroundColor: colors.greenBg }]}>{scanning ? <ActivityIndicator size="small" color={colors.green} /> : <Ionicons name="camera-outline" size={26} color={colors.green} />}</View>,
   },
-  'sensitive': {
-    id: 'sensitive', label: t.sensitiveFiles, onPress: () => router.push('/sensitive-files'), disabled: !hasMediaAccess,
-    circle: <View style={[styles.quickCircle, { backgroundColor: colors.amberTint, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="shield-outline" size={26} color={colors.amber} /></View>,
+  'cleaner': {
+    id: 'cleaner', label: t.cleaner, onPress: () => router.push('/cleaner' as any), disabled: !hasMediaAccess,
+    circle: <View style={[styles.quickCircle, { backgroundColor: colors.amberTint, opacity: hasMediaAccess ? 1 : 0.4 }]}><Ionicons name="brush-outline" size={26} color={colors.amber} /></View>,
   },
   'converter': {
     id: 'converter', label: t.imageConverter, onPress: () => router.push('/file-converter' as any),
