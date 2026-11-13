@@ -6,6 +6,13 @@ const RC_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
 
 let configured = false;
 
+/**
+ * The last Pro status any screen learned. Each screen has its own usePro and
+ * RevenueCat answers asynchronously, so without this every newly opened
+ * screen started as 'not Pro' and showed its lock for a moment.
+ */
+let lastKnownPro: boolean | null = null;
+
 function configure() {
   if (configured) return;
   if (Platform.OS === 'android') {
@@ -19,9 +26,10 @@ export interface ProPackages {
 }
 
 export function usePro() {
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsProState] = useState(lastKnownPro ?? false);
+  const setIsPro = (value: boolean) => { lastKnownPro = value; setIsProState(value); };
   const [packages, setPackages] = useState<ProPackages>({ lifetime: null });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(lastKnownPro === null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);

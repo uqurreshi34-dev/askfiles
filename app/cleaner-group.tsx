@@ -34,7 +34,7 @@ export default function CleanerGroupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: CleanupGroupId }>();
-  const { isPro } = usePro();
+  const { isPro, loading: proLoading } = usePro();
   const { moveManyToTrash } = useTrash();
   const lang = useLanguage();
   const c = commonText(lang), tf = filesText(lang), t = cleanerText(lang);
@@ -202,7 +202,7 @@ export default function CleanerGroupScreen() {
         <TouchableOpacity onPress={selecting ? () => setSelected(allSelected ? new Set() : new Set(files.map(f => f.uri))) : startSelecting} style={[styles.headerBtn, { width: 72, alignItems: 'flex-end' }]} disabled={busy}>
           <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 13, fontWeight: '600', color: colors.blue }}>
             {selecting ? (allSelected ? c.cancel : t.selectAll) : t.select}
-            {!selecting && !isPro ? ' 🔒' : ''}
+            {!selecting && !isPro && !proLoading ? ' 🔒' : ''}
           </Text>
         </TouchableOpacity>
       </View>
