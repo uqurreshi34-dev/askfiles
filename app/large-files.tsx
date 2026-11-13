@@ -166,7 +166,7 @@ export default function LargeFilesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.redBrownBg }]}>
             <Ionicons name="folder-open-outline" size={40} color={colors.redBrown} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{t.findLarge}</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]}>{t.findLarge}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>{t.findLargeSub}</Text>
           <TouchableOpacity style={styles.scanBtn} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
@@ -198,7 +198,7 @@ export default function LargeFilesScreen() {
               </View>
               <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryCount, { color: colors.redBrown }]}>{formatSize(totalSize)}</Text>
+                <Text style={[styles.summaryCount, { color: colors.redBrown }]} numberOfLines={1} adjustsFontSizeToFit>{formatSize(totalSize)}</Text>
                 <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t.totalSize}</Text>
               </View>
               <TouchableOpacity style={styles.rescanBtn} onPress={scan}>
@@ -246,9 +246,10 @@ const styles = StyleSheet.create({
   summaryCount: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
   summaryLabel: { fontSize: 12, marginTop: 2 },
   summaryDivider: { width: 1, height: 40 },
-  rescanBtn: { paddingVertical: 8, paddingHorizontal: 16 },
-  rescanText: { fontSize: 13 },
-  groupLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
+  // Longer Arabic and Hindi labels must not squeeze the size onto two lines.
+  rescanBtn: { paddingVertical: 8, paddingHorizontal: 8, flexShrink: 1, maxWidth: '30%' },
+  rescanText: { fontSize: 13, textAlign: 'center' },
+  groupLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 16, marginBottom: 8, textAlign: 'left' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5 },
   fileIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   thumbnail: { width: 40, height: 40 },

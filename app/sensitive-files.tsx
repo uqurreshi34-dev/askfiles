@@ -146,7 +146,7 @@ export default function SensitiveFilesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.amberTint }]}>
             <Ionicons name="shield-outline" size={40} color={colors.amber} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{t.findSens}</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]}>{t.findSens}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>
             {t.findSensSub}
           </Text>
@@ -272,8 +272,8 @@ const styles = StyleSheet.create({
   scanningSubText: { fontSize: 13 },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
   summaryCard: { borderRadius: 12, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center' },
-  summaryTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
-  summarySub: { fontSize: 12 },
+  summaryTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2, textAlign: 'left' },
+  summarySub: { fontSize: 12, textAlign: 'left' },
   rescanText: { fontSize: 13, fontWeight: '500' },
   cleanTitle: { fontSize: 20, fontWeight: '600' },
   cleanSub: { fontSize: 14 },

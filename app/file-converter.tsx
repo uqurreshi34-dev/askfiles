@@ -142,7 +142,7 @@ export default function FileConverterScreen() {
             <View style={[styles.startIcon, { backgroundColor: colors.favRedBg }]}>
               <Ionicons name="swap-horizontal-outline" size={40} color={colors.favRed} />
             </View>
-            <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{t.convertAnImage}</Text>
+            <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]}>{t.convertAnImage}</Text>
             <Text style={[styles.startSub, { color: colors.textMuted }]}>
               {t.intro}
             </Text>

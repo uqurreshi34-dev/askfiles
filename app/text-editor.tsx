@@ -199,7 +199,7 @@ export default function TextEditorScreen() {
           <View style={{ width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8, backgroundColor: colors.surface }}>
             <Text style={{ fontSize: 22, fontWeight: '900', color: colors.textSecondary, letterSpacing: 1 }}>.TXT</Text>
           </View>
-          <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>{t.txtTitle}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: lang === 'ar' ? 0 : -0.5, color: colors.textPrimary }}>{t.txtTitle}</Text>
           <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 20, color: colors.textMuted }}>
             {t.txtIntro}
           </Text>
