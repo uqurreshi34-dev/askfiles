@@ -413,10 +413,10 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               {[
-                { icon: 'brush-outline', color: colors.amber, text: t.whatsNewItems[0] },
-                { icon: 'language-outline', color: colors.blue, text: t.whatsNewItems[1] },
-                { icon: 'sparkles-outline', color: colors.redBrown, text: t.whatsNewItems[2] },
-                { icon: 'time-outline', color: colors.green, text: t.whatsNewItems[3] },
+                { icon: 'chatbubble-ellipses-outline', color: colors.green, text: t.whatsNewItems[0] },
+                { icon: 'brush-outline', color: colors.amber, text: t.whatsNewItems[1] },
+                { icon: 'language-outline', color: colors.blue, text: t.whatsNewItems[2] },
+                { icon: 'sparkles-outline', color: colors.redBrown, text: t.whatsNewItems[3] },
               ].map((item, i) => (
                 <View key={i} style={styles.modalRow}>
                   <Ionicons name={item.icon as any} size={18} color={item.color} style={{ marginRight: 10 }} />
