@@ -251,6 +251,12 @@ export function answerLocally(question: string, data: AskLocalData, lang?: AppLa
   // here, it got only how full the phone is; the model can weigh it up.
   if (has(list, 'should')) return null;
 
+  // Cleaner questions (WhatsApp, Telegram, APKs, cleaning up) are answered
+  // from the Cleaner's findings by the model, which can also offer a button
+  // into the Cleaner. Answered here, "how much space do WhatsApp videos
+  // take" got the phone's total storage instead.
+  if (has(list, 'whatsapp', 'telegram', 'apk', 'apks', 'installer', 'installers', 'clean', 'cleaner', 'cleanup')) return null;
+
   const asksHowMany = has(list, 'many', 'count', 'number') || list[0] === 'count';
   const asksLargest = has(list, 'largest', 'biggest', 'heaviest');
   const asksSpace =

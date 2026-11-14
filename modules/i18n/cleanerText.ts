@@ -25,6 +25,8 @@ export type CleanerText = {
   moveToTrash: string; deletePermanently: string;
   trashedMsg: (n: number) => string; freedMsg: (size: string) => string; someFailed: string;
   proBulk: string;
+  // Ask AI
+  reviewGroup: (group: string, size: string) => string;
 };
 
 const TEXT: Record<AppLang, CleanerText> = {
@@ -49,6 +51,7 @@ const TEXT: Record<AppLang, CleanerText> = {
     trashedMsg: n => `${n === 1 ? '1 file' : `${n} files`} moved to Trash. Empty Trash to free the space now.`,
     freedMsg: size => `${size} freed.`, someFailed: 'Some files could not be removed.',
     proBulk: 'Selecting many files at once is part of AskFiles Pro. You can still clean files one by one.',
+    reviewGroup: (group, size) => `Review ${group} · ${size}`,
   },
   ar: {
     title: 'المنظّف', scanning: 'جارٍ فحص مساحة التخزين...', mayTakeMoment: 'قد يستغرق ذلك لحظة', rescan: 'افحص مرة أخرى',
@@ -71,6 +74,7 @@ const TEXT: Record<AppLang, CleanerText> = {
     trashedMsg: n => `${ar(n, 'نُقل ملف واحد', 'نُقل ملفان', `نُقلت ${n} ملفات`, `نُقل ${n} ملفاً`)} إلى المهملات. أفرغ المهملات لإخلاء المساحة الآن.`,
     freedMsg: size => `تم إخلاء ${size}.`, someFailed: 'تعذّرت إزالة بعض الملفات.',
     proBulk: 'تحديد عدة ملفات دفعة واحدة جزء من AskFiles Pro. لا يزال بإمكانك تنظيف الملفات واحداً تلو الآخر.',
+    reviewGroup: (group, size) => `راجِع ${group} · ${size}`,
   },
   hi: {
     title: 'क्लीनर', scanning: 'आपका स्टोरेज स्कैन हो रहा है...', mayTakeMoment: 'इसमें थोड़ा समय लग सकता है', rescan: 'फिर से स्कैन करें',
@@ -93,6 +97,7 @@ const TEXT: Record<AppLang, CleanerText> = {
     trashedMsg: n => `${n === 1 ? '1 फ़ाइल ट्रैश में भेजी गई' : `${n} फ़ाइलें ट्रैश में भेजी गईं`}। जगह अभी खाली करने के लिए ट्रैश खाली करें।`,
     freedMsg: size => `${size} जगह खाली हुई।`, someFailed: 'कुछ फ़ाइलें हटाई नहीं जा सकीं।',
     proBulk: 'एक साथ कई फ़ाइलें चुनना AskFiles Pro का हिस्सा है। आप फ़ाइलें एक-एक करके अब भी साफ़ कर सकते हैं।',
+    reviewGroup: (group, size) => `${group} देखें · ${size}`,
   },
 };
 

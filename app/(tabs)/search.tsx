@@ -55,6 +55,8 @@ import { FREE_QUESTIONS, PRO_EXAMPLES, isFreeQuestion, STILL_READING } from '@/m
 import { recentActivity } from '@/modules/activityLog';
 import { storageChange } from '@/modules/storageTrend';
 import { arSpacing, arLs } from '@/utils/arabicText';
+import { ensureCleanerScan, isCleanerQuestion, CLEANER_PENDING, cleanerAiContext, splitCleanerTags, cleanerGroupsForQuestion, cleanerGroup, subscribeCleaner } from '@/modules/cleanerStore';
+import { cleanerText } from '@/modules/i18n/cleanerText';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -67,6 +69,7 @@ const SUGGESTIONS = [
   "What's taking up the most space?",
   'How much storage do I have left?',
   'Should I free up some space?',
+  'What can I clean up?',
 ];
 
 function buildContext(
@@ -89,7 +92,7 @@ Largest documents by size: ${largestFiles.documents.map((f: any) => `${f.name} (
 Largest downloads by size: ${largestFiles.downloads.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Largest files across all storage (use this to answer "what's my largest file"): ${largestFiles.overall.map((f: any) => `${f.name} (${f.size}, in ${f.folder})`).join(', ') || 'none'}.
 Note: 'Other' storage is system and app data the user cannot access — never mention it when answering questions about largest files or folders.
-Note: always use the folder name provided in brackets when stating where a file is located — never guess or assume a file's location based on its type.
+Note: always quote the folder path provided in brackets exactly when stating where a file is located — never guess or assume a file's location based on its type.
   `.trim();
 }
 
@@ -103,6 +106,12 @@ export default function SearchScreen() {
   const { results, setResults, searching, search, removeResult } = useSearch();
   const { answer, thinking, cooldown, ask, reset } = useAskAI();
   const [localAnswer, setLocalAnswer] = useState('');
+  // The question behind the current answer, for the Cleaner buttons under it.
+  const [askedQuestion, setAskedQuestion] = useState('');
+  const [cleanerVersion, setCleanerVersion] = useState(0);
+  // True while a Pro question waits for the Cleaner's findings, before the
+  // request is sent; shown like thinking, and blocks a second tap.
+  const [preparing, setPreparing] = useState(false);
   const router = useRouter();
   const lang = useLanguage();
   const tc = commonText(lang);
@@ -145,6 +154,26 @@ export default function SearchScreen() {
 
   const { fileCounts, storageInfo, folderSizes, mediaContext, largestFiles, documentExtensions, folderBytes, silentReload, loading: storageLoading } = useStorage();
   const { isPro, loading: proLoading } = usePro();
+  const tcl = cleanerText(lang);
+
+  // Opening Ask AI starts the Cleaner scan in the background (once; later
+  // visits reuse it), so its findings are ready by the time a question is sent.
+  // It waits for the storage scan, so the two never compete for the disk.
+  useEffect(() => {
+    if (mode === 'ask' && isPro && !storageLoading) ensureCleanerScan().catch(() => {});
+  }, [mode, isPro, storageLoading]);
+  // A clean elsewhere changes the sizes on the buttons.
+  useEffect(() => subscribeCleaner(() => setCleanerVersion(v => v + 1)), []);
+
+  // The model marks Cleaner groups with [[cleaner:id]]; the tags become
+  // buttons and are never shown. Without tags, the question's own words pick
+  // the groups. Worked out once per answer, not on every render.
+  const aiReply = useMemo(() => splitCleanerTags(answer), [answer]);
+  const cleanerLinks = useMemo(() => {
+    if (!answer || !askedQuestion) return [];
+    const ids = aiReply.ids.length ? aiReply.ids : cleanerGroupsForQuestion(askedQuestion);
+    return ids.map(id => cleanerGroup(id)).filter((g): g is NonNullable<typeof g> => !!g).slice(0, 3);
+  }, [aiReply, answer, askedQuestion, cleanerVersion]);
   // Free users ask the questions answered on the phone; their own, typed or spoken, are Pro.
   const askSuggestions = isPro ? SUGGESTIONS : FREE_QUESTIONS;
   const { addToVault, vaultHas } = useVault();
@@ -561,7 +590,8 @@ export default function SearchScreen() {
 
     // Before the storage scan has found any files, the free questions would
     // be answered from empty lists: "I can't see any files on your device".
-    if (free && (storageLoading || !largestFiles?.overall?.length)) {
+    // The same holds for Pro: an answer from empty lists says 'you have no files'.
+    if (storageLoading || !largestFiles?.overall?.length) {
       setLocalAnswer(ts.stillReading);
       return;
     }
@@ -601,7 +631,27 @@ export default function SearchScreen() {
       return;
     }
 
-    const context = buildContext(storageInfo, fileCounts, folderSizes, largestFiles);
+    if (preparing) return;
+
+    // The Cleaner's findings. The scan was started when Ask AI opened, so it
+    // is usually ready. A clean-up question cannot be answered without it, so
+    // it waits a little longer; any other question waits only a moment.
+    const aboutCleaner = isCleanerQuestion(q);
+    setPreparing(true);
+    let cleaner: Awaited<ReturnType<typeof ensureCleanerScan>> | null = null;
+    try {
+      cleaner = await Promise.race([
+        ensureCleanerScan().catch(() => null),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), aboutCleaner ? 6000 : 1500)),
+      ]);
+    } finally {
+      setPreparing(false);
+    }
+    const cleanerLines = cleanerAiContext(cleaner)
+      || (aboutCleaner ? CLEANER_PENDING : '');
+    const context = buildContext(storageInfo, fileCounts, folderSizes, largestFiles)
+      + (cleanerLines ? `\n${cleanerLines}` : '');
+    setAskedQuestion(q);
     await ask(q, context);
   }
 
@@ -643,6 +693,7 @@ export default function SearchScreen() {
   function handleAskAgain() {
     setAiQuery('');
     setLocalAnswer('');
+    setAskedQuestion('');
     reset();
   }
 
@@ -982,7 +1033,7 @@ export default function SearchScreen() {
             />
             <>
             {aiQuery.length > 0 ? (
-                <TouchableOpacity onPress={() => handleAsk()} disabled={thinking || cooldown > 0} style={{ opacity: (thinking || cooldown > 0) ? 0.4 : 1 }}>
+                <TouchableOpacity onPress={() => handleAsk()} disabled={thinking || preparing || cooldown > 0} style={{ opacity: (thinking || preparing || cooldown > 0) ? 0.4 : 1 }}>
                   {cooldown > 0
                     ? <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted, width: 20, textAlign: 'center' }}>{cooldown}s</Text>
                     : <Ionicons name="send" size={16} color={colors.blue} />
@@ -1033,7 +1084,7 @@ export default function SearchScreen() {
           </View>
           )}
 
-          {thinking ? (
+          {thinking || preparing ? (
             <View style={styles.centered}>
               <ActivityIndicator color={colors.blue} />
               <Text style={[styles.hint, { color: colors.textMuted }]}>{ts.thinking}</Text>
@@ -1045,8 +1096,21 @@ export default function SearchScreen() {
                   <Ionicons name="sparkles-outline" size={16} color={colors.blue} />
                   <Text style={[styles.answerLabel, { color: colors.blue }]}>{ts.askFilesAi}</Text>
                 </View>
-                <Text style={[styles.answerText, { color: colors.textPrimary }]}>{localAnswer || answer}</Text>
+                <Text style={[styles.answerText, { color: colors.textPrimary }]}>{localAnswer || aiReply.text}</Text>
               </View>
+              {!localAnswer && cleanerLinks.map(g => (
+                <TouchableOpacity
+                  key={g.id}
+                  style={[styles.cleanerLink, { backgroundColor: colors.amberTint }]}
+                  onPress={() => router.push({ pathname: '/cleaner-group' as any, params: { id: g.id } })}
+                >
+                  <Ionicons name="brush-outline" size={16} color={colors.amber} style={{ marginRight: 8 }} />
+                  <Text style={[styles.cleanerLinkText, { color: colors.textPrimary }]} numberOfLines={2}>
+                    {tcl.reviewGroup(tcl.groups[g.id], formatSize(g.bytes))}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                </TouchableOpacity>
+              ))}
               <TouchableOpacity style={[styles.askAgainBtn, { backgroundColor: colors.surface }]} onPress={handleAskAgain}>
                 <Ionicons name="sparkles-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
                 <Text style={[styles.askAgainText, { color: colors.textSecondary }]}>{ts.askSomethingElse}</Text>
@@ -1640,6 +1704,8 @@ const styles = StyleSheet.create({
   answerHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   answerLabel: { fontSize: 13, fontWeight: '500' },
   answerText: { fontSize: 14, lineHeight: 22 },
+  cleanerLink: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, padding: 12 },
+  cleanerLinkText: { flex: 1, fontSize: 13, fontWeight: '500', textAlign: 'left', marginRight: 8 },
   askAgainBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, padding: 12 },
   askAgainText: { fontSize: 13, fontWeight: '500' },
   suggestionsLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 4 },
