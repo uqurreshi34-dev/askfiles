@@ -39,6 +39,7 @@ import { useToolsConfig, ToolId } from '@/hooks/useToolsConfig';
 import ToolsGrid, { ToolDef } from '@/components/ToolsGrid';
 import { useLanguage, setLanguage, LANGUAGES } from '@/modules/appLanguage';
 import { homeText } from '@/modules/homeText';
+import { arSpacing } from '@/utils/arabicText';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const PRIVACY_POLICY_URL = 'https://uqurreshi34-dev.github.io/askfiles-privacy/';
@@ -236,7 +237,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
               <Text style={{ fontSize: 7, fontWeight: '700', color: '#fff' }} allowFontScaling={false}>AI</Text>
             </View>
           </View>
-          <Text style={[styles.appName, { color: colors.textPrimary }]}>AskFiles</Text>
+          <Text style={[styles.appName, { color: colors.textPrimary }, arSpacing()]}>AskFiles</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <TouchableOpacity
@@ -280,7 +281,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setSettingsVisible(false)} />
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]}>
             <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled">
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AskFiles</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }, arSpacing()]}>AskFiles</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
 
@@ -408,7 +409,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => { setWhatsNewVisible(false); scheduleDailyReminder(isPro); }} />
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]}>
               <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator persistentScrollbar bounces={false} overScrollMode="never">
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.whatsNew}</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }, arSpacing()]}>{t.whatsNew}</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.version(APP_VERSION)}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               {[
@@ -443,7 +444,7 @@ if (!onboardingChecked) return <View style={{ flex: 1, backgroundColor: colors.b
             onPress={() => setRatePromptVisible(false)}
           >
             <View style={[styles.modalCard, { backgroundColor: colors.modalCard, width: modalWidth }]} onStartShouldSetResponder={() => true}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.enjoying}</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }, arSpacing()]}>{t.enjoying}</Text>
               <Text style={[styles.modalVersion, { color: colors.textMuted }]}>{t.quickRating}</Text>
               <View style={[styles.modalDivider, { backgroundColor: colors.divider }]} />
               <TouchableOpacity

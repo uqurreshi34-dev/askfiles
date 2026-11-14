@@ -13,6 +13,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLanguage } from '@/modules/appLanguage';
 import { readersText } from '@/modules/i18n/readersText';
+import { arLs } from '@/utils/arabicText';
 
 const CARD_HEIGHT = 180;
 
@@ -256,7 +257,7 @@ export default function PdfViewerScreen() {
         </TouchableOpacity>
 
         <Text
-          style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }}
+          style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: arLs(-0.5), color: colors.textPrimary }}
           numberOfLines={1}
         >
           {fileName || t.pdfTitle}
@@ -380,7 +381,7 @@ export default function PdfViewerScreen() {
           }}>
             <Text style={{ fontSize: 28, fontWeight: '900', color: colors.favRed, letterSpacing: 1 }}>PDF</Text>
           </View>
-          <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>
+          <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: arLs(-0.5), color: colors.textPrimary }}>
             {t.pdfOpen}
           </Text>
           <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 20, color: colors.textMuted }}>

@@ -46,6 +46,7 @@ import { useTags } from '@/hooks/useTags';
 import { recordOpen, getStats } from 'file-stats';
 import MovePill from '@/components/MovePill';
 import Thumb from '@/components/Thumb';
+import { arSpacing } from '@/utils/arabicText';
 
 type Category = 'images' | 'videos' | 'documents' | 'downloads';
 
@@ -1306,7 +1307,7 @@ async function handleSsInfo() {
               setSelectedItemsMap(new Map()); }} style={styles.backBtn} disabled={multiPasting || deleting}>
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>
               {tk.selected(category, shownCount)}
             </Text>
             <TouchableOpacity
@@ -1328,7 +1329,7 @@ async function handleSsInfo() {
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{tk.title(category)}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{tk.title(category)}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <TouchableOpacity
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSelectMode(true); setSelectedUris(new Set()); setSelectedItemsMap(new Map()); }}
@@ -2119,7 +2120,7 @@ async function handleSsInfo() {
             >
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]} numberOfLines={1}>
               {pendingMultiItems.current.length > 0
                 ? (multiPasteMode === 'copy' ? tf.copyTo : tc.moveTo)
                 : (pickerMode === 'copy' ? tf.copyTo : tc.moveTo)}
@@ -2325,7 +2326,7 @@ async function handleSsInfo() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
+            <Text style={[styles.qrTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]}>{tf.shareViaQr}</Text>
             <Text style={[styles.qrSub, { color: colors.textMuted }]}>{selectedItem?.name}</Text>
             <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>{tf.scanSameWifi}</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' }}>

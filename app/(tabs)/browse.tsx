@@ -54,6 +54,7 @@ import { TextEditorView } from 'text-editor';
 import FolderPickerModal from '@/components/FolderPickerModal';
 import { MediaViewerView } from '@/modules/media-viewer';
 import JarvisOrganiseButton from '@/components/JarvisOrganiseButton';
+import { arSpacing } from '@/utils/arabicText';
 
 interface FileItem {
   name: string;
@@ -1564,7 +1565,7 @@ export default function BrowseScreen() {
               <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           )}
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]} numberOfLines={1}>
             {(() => { const b = breadcrumbs[breadcrumbs.length - 1]; return !b ? tf.browse : b.path === ROOT_PATH ? tf.storage : b.name; })()}
           </Text>
           <View style={{ flexDirection: 'row' }}>
@@ -2215,7 +2216,7 @@ export default function BrowseScreen() {
               >
                 <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+              <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]} numberOfLines={1}>
               {pendingMultiItems.current.length > 0
                 ? (multiPasteMode === 'copy' ? tf.copyTo : tc.moveTo)
                 : (pickerMode === 'copy' ? tf.copyTo : tc.moveTo)}
@@ -2401,7 +2402,7 @@ export default function BrowseScreen() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
+            <Text style={[styles.qrTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]}>{tf.shareViaQr}</Text>
             <Text style={[styles.qrSub, { color: colors.textMuted }]}>{selectedItem?.name}</Text>
             <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>{tf.scanSameWifi}</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' }}>

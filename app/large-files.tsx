@@ -18,6 +18,7 @@ import { removeFavourite } from '@/hooks/useFavourites';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
 import { DocIndexer } from '@/modules/doc-indexer';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { arSpacing } from '@/utils/arabicText';
 
 interface LargeFile {
   name: string;
@@ -157,7 +158,7 @@ export default function LargeFilesScreen() {
       >
         <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
       </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.largeTitle}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.largeTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -166,7 +167,7 @@ export default function LargeFilesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.redBrownBg }]}>
             <Ionicons name="folder-open-outline" size={40} color={colors.redBrown} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]}>{t.findLarge}</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]}>{t.findLarge}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>{t.findLargeSub}</Text>
           <TouchableOpacity style={styles.scanBtn} onPress={scan} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
@@ -193,12 +194,12 @@ export default function LargeFilesScreen() {
           ListHeaderComponent={
             <View style={[styles.summaryCard, { backgroundColor: colors.surfaceAlt }]}>
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryCount, { color: colors.textPrimary }]}>{files.length}</Text>
+                <Text style={[styles.summaryCount, { color: colors.textPrimary }, arSpacing()]}>{files.length}</Text>
                 <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t.largeFilesLabel(files.length)}</Text>
               </View>
               <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryCount, { color: colors.redBrown }]} numberOfLines={1} adjustsFontSizeToFit>{formatSize(totalSize)}</Text>
+                <Text style={[styles.summaryCount, { color: colors.redBrown }, arSpacing()]} numberOfLines={1} adjustsFontSizeToFit>{formatSize(totalSize)}</Text>
                 <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t.totalSize}</Text>
               </View>
               <TouchableOpacity style={styles.rescanBtn} onPress={scan}>

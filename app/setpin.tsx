@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,12 +6,13 @@ import { useRouter } from 'expo-router';
 import { savePin, enableAppLock, deletePin, disableAppLock } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { useLocalSearchParams } from 'expo-router';
+import { usePortraitLock } from '@/hooks/usePortraitLock';
 import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail'
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { pinText } from '@/modules/i18n/pinText';
+import { arSpacing } from '@/utils/arabicText';
 
 export default function SetPinScreen() {
   const { colors } = useTheme();
@@ -25,10 +26,7 @@ export default function SetPinScreen() {
   const [error, setError] = useState<string | null>(null);
   const [padSize, setPadSize] = useState({ w: 0, h: 0 });
 
-  useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-    return () => { ScreenOrientation.unlockAsync(); };
-  }, []);
+  usePortraitLock();
 
   // Called every time a 4-digit code is completed (by tap or swipe)
   function onComplete(code: string) {
@@ -76,7 +74,7 @@ export default function SetPinScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.setPin}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.setPin}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -84,7 +82,7 @@ export default function SetPinScreen() {
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="keypad-outline" size={36} color={colors.blue} />
         </View>
-        <Text style={[styles.prompt, { color: colors.textPrimary }]}>
+        <Text style={[styles.prompt, { color: colors.textPrimary }, arSpacing()]}>
           {stageIsConfirm ? t.confirmPin : t.enterNew}
         </Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>

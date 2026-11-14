@@ -7,6 +7,7 @@ import {
 import { MediaViewerView } from 'media-viewer';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { usePortraitLock } from '@/hooks/usePortraitLock';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { useVault, VaultFile } from '@/hooks/useVault';
@@ -28,10 +29,10 @@ import FileDetailsModal from '@/components/FileDetailsModal';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { vaultText } from '@/modules/i18n/vaultText';
+import { arSpacing } from '@/utils/arabicText';
 
 
 export default function VaultScreen() {
@@ -81,12 +82,9 @@ export default function VaultScreen() {
     onEdit: () => setPinError(null),
   });
 
-  useEffect(() => {
-    if (!authenticated) {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      return () => { ScreenOrientation.unlockAsync(); };
-    }
-  }, [authenticated]);
+  // The PIN keypad is portrait only, like the other PIN screens; once
+  // unlocked, the Vault turns freely.
+  usePortraitLock(!authenticated);
 
   useEffect(() => { getStorageVolumes().then(setVolumes); }, []);
 
@@ -407,7 +405,7 @@ export default function VaultScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.secureVault}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.secureVault}</Text>
         <View style={{ width: 40 }} />
       </View>
         {!showPinEntry ? (
@@ -415,7 +413,7 @@ export default function VaultScreen() {
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
               <Ionicons name="lock-closed" size={40} color={colors.blue} />
             </View>
-            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>{t.secureVault}</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }, arSpacing()]}>{t.secureVault}</Text>
             <Text style={[styles.lockSub, { color: colors.textMuted }]}>{t.protectedSub}</Text>
             <TouchableOpacity style={styles.authBtn} onPress={() => tryVaultBiometric()} activeOpacity={0.85}>
               <Ionicons name="finger-print-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
@@ -436,7 +434,7 @@ export default function VaultScreen() {
               <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
                 <Ionicons name="keypad-outline" size={40} color={colors.blue} />
               </View>
-              <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>{t.enterPin}</Text>
+              <Text style={[styles.lockTitle, { color: colors.textPrimary }, arSpacing()]}>{t.enterPin}</Text>
               <View style={{ flexDirection: 'row', gap: 16, marginTop: 24, marginBottom: 12 }}>
                 {[0, 1, 2, 3].map(i => (
                   <View key={i} style={[styles.dot, i < pinInput.length && styles.dotFilled, !!pinError && styles.dotError]} />
@@ -496,14 +494,14 @@ export default function VaultScreen() {
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{t.secureVault}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.secureVault}</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.lockScreen} showsVerticalScrollIndicator={false}>
             <View style={[styles.lockIcon, { backgroundColor: colors.blueTint }]}>
               <Ionicons name="shield-checkmark-outline" size={40} color={colors.blue} />
             </View>
-            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>{c.proFeature}</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }, arSpacing()]}>{c.proFeature}</Text>
             <Text style={[styles.lockSub, { color: colors.textMuted }]}>
               {t.proSub}
             </Text>
@@ -524,7 +522,7 @@ export default function VaultScreen() {
         }} style={styles.backBtn} disabled={movingFile || busy}>
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>
           {selectMode ? c.selected(selectedUris.size) : t.vault}
         </Text>
         {!selectMode ? (
@@ -728,7 +726,7 @@ export default function VaultScreen() {
             >
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>{c.moveTo}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]} numberOfLines={1}>{c.moveTo}</Text>
             <View style={{ width: 40 }} />
           </View>
           <Text style={{ fontSize: 12, color: colors.textMuted, paddingHorizontal: 16, paddingBottom: 8 }}>

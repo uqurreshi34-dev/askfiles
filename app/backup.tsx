@@ -17,6 +17,7 @@ import { isCloudSyncing, addCloudSyncListener } from '@/hooks/useCloudSync';
 import { useEffect, useState } from 'react';
 import { getUploadProgress, getRestoreProgress, addProgressListener } from '@/hooks/useCloudProgress';
 import { AppState } from 'react-native';
+import { arSpacing } from '@/utils/arabicText';
 
 export default function BackupScreen() {
   const { colors } = useTheme();
@@ -296,7 +297,7 @@ export default function BackupScreen() {
           <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/cloud')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{bt.cloudBackup}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{bt.cloudBackup}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.centered}>
@@ -312,7 +313,7 @@ export default function BackupScreen() {
         <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/cloud')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{bt.cloudBackup}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{bt.cloudBackup}</Text>
         <View style={{ width: 40 }} />
       </View>
 

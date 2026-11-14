@@ -16,6 +16,7 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import { TextEditorView } from 'text-editor';
 import { useLanguage } from '@/modules/appLanguage';
 import { readersText } from '@/modules/i18n/readersText';
+import { arLs } from '@/utils/arabicText';
 
 export default function TextEditorScreen() {
   const { colors } = useTheme();
@@ -155,7 +156,7 @@ export default function TextEditorScreen() {
           style={{ width: 40, height: 40, justifyContent: 'center' }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }} numberOfLines={1}>
+        <Text style={{ flex: 1, fontSize: 18, fontWeight: '500', textAlign: 'center', letterSpacing: arLs(-0.5), color: colors.textPrimary }} numberOfLines={1}>
           {fileName || t.txtTitle}
         </Text>
         {filePath ? (

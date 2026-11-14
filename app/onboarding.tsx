@@ -15,6 +15,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { onboardingText } from '@/modules/onboardingText';
 import { LANGUAGES, useLanguage, setLanguage } from '@/modules/appLanguage';
+import { arSpacing } from '@/utils/arabicText';
 
 
 // Icons and colours only; the words, in the phone's language, come from onboardingText().
@@ -159,7 +160,7 @@ export default function OnboardingScreen() {
               : <Ionicons name={slide.icon} size={36} color={slide.iconColor} />
             }
           </View>
-            <Text style={[styles.lsTitle, { color: colors.textPrimary }]}>{slide.title}</Text>
+            <Text style={[styles.lsTitle, { color: colors.textPrimary }, arSpacing()]}>{slide.title}</Text>
             <Text style={[styles.lsBodyText, { color: colors.textSecondary }]}>{slide.body}</Text>
           </View>
 
@@ -228,7 +229,7 @@ export default function OnboardingScreen() {
                 : <Ionicons name={s.icon} size={52} color={s.iconColor} />
               }
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{s.title}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{s.title}</Text>
             <Text style={[styles.body, { color: colors.textSecondary }]}>{s.body}</Text>
           </View>
         ))}

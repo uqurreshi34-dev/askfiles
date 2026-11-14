@@ -13,6 +13,7 @@ import {
 } from '@/modules/activityLog';
 import { useLanguage } from '@/modules/appLanguage';
 import { activityText } from '@/modules/i18n/activityText';
+import { arSpacing } from '@/utils/arabicText';
 
 type ActivityWords = ReturnType<typeof activityText>;
 
@@ -144,7 +145,7 @@ export default function ActivityScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.title}</Text>
         {entries.length > 0 ? (
           <TouchableOpacity onPress={handleClear} style={styles.backBtn}>
            <Ionicons name="trash-outline" size={22} color={colors.deleteRed} />

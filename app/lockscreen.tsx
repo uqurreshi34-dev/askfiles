@@ -4,16 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { usePortraitLock } from '@/hooks/usePortraitLock';
 import { verifyPin } from '@/hooks/usePin';
 import { useTheme } from '@/hooks/useTheme';
 import { showBiometricPrompt } from '@/modules/storage-stats';
 import { usePinPad } from '@/hooks/usePinPad';
 import PinTrail from '@/components/PinTrail';
-import * as ScreenOrientation from 'expo-screen-orientation';
-import { useEffect } from 'react';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { pinText } from '@/modules/i18n/pinText';
+import { arSpacing } from '@/utils/arabicText';
 
 export default function LockScreen() {
   const { colors } = useTheme();
@@ -27,10 +27,7 @@ export default function LockScreen() {
   const [error, setError] = useState<string | null>(null);
   const [padSize, setPadSize] = useState({ w: 0, h: 0 });
 
-  useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-    return () => { ScreenOrientation.unlockAsync(); };
-  }, []);
+  usePortraitLock();
 
   async function onComplete(code: string) {
     const correct = await verifyPin(code);
@@ -91,7 +88,7 @@ export default function LockScreen() {
         <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
           <Ionicons name="lock-closed" size={36} color={colors.blue} />
         </View>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.locked}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.locked}</Text>
         <Text style={[styles.sub, { color: colors.textMuted }]}>{t.enterToContinue}</Text>
         <View style={styles.dots}>
           {[0, 1, 2, 3].map(i => (

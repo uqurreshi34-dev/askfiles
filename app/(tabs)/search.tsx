@@ -54,6 +54,7 @@ import { answerLocally } from '@/modules/askLocal';
 import { FREE_QUESTIONS, PRO_EXAMPLES, isFreeQuestion, STILL_READING } from '@/modules/askFree';
 import { recentActivity } from '@/modules/activityLog';
 import { storageChange } from '@/modules/storageTrend';
+import { arSpacing, arLs } from '@/utils/arabicText';
 
 type Mode = 'search' | 'ask' | 'smart';
 
@@ -712,7 +713,7 @@ export default function SearchScreen() {
         <TouchableOpacity onPress={() => router.push('/(tabs)')} style={{ width: 40, height: 40, justifyContent: 'center', marginRight: 8 }}>
           <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{ts.search}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{ts.search}</Text>
       </View>
       {pasting && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
@@ -1212,7 +1213,7 @@ export default function SearchScreen() {
                   <TouchableOpacity onPress={popFolder} style={styles.folderBackBtn}>
                     <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
                   </TouchableOpacity>
-                  <Text style={[styles.folderTitle, { color: colors.textPrimary }]} numberOfLines={1}>{current.name}</Text>
+                  <Text style={[styles.folderTitle, { color: colors.textPrimary }, arSpacing()]} numberOfLines={1}>{current.name}</Text>
                   <View style={{ width: 40 }} />
                 </View>
                 {folderLoading ? (
@@ -1469,7 +1470,7 @@ export default function SearchScreen() {
             >
               <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', color: colors.textPrimary, textAlign: 'center', letterSpacing: -0.5 }} numberOfLines={1}>
+            <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', color: colors.textPrimary, textAlign: 'center', letterSpacing: arLs(-0.5) }} numberOfLines={1}>
               {pickerMode === 'copy' ? tf.copyTo : tc.moveTo}
             </Text>
             <View style={{ width: 40 }} />
@@ -1589,7 +1590,7 @@ export default function SearchScreen() {
             >
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>{tf.shareViaQr}</Text>
+            <Text style={[styles.qrTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]}>{tf.shareViaQr}</Text>
             <Text style={[styles.qrSub, { color: colors.textMuted }]}>{selectedItem?.name}</Text>
             <Text style={[styles.qrSub, { color: colors.textSecondary, marginBottom: 12 }]}>{tf.scanSameWifi}</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' }}>

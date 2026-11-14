@@ -17,6 +17,7 @@ import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { filesText } from '@/modules/i18n/files';
 import { dualText } from '@/modules/i18n/dualText';
+import { arSpacing } from '@/utils/arabicText';
 
 
 export default function DualPaneScreen() {
@@ -257,7 +258,7 @@ export default function DualPaneScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 

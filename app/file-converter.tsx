@@ -17,6 +17,7 @@ import { BackHandler } from 'react-native';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { converterText } from '@/modules/i18n/converterText';
+import { arSpacing } from '@/utils/arabicText';
 
 type OutFormat = 'JPG' | 'PNG' | 'WEBP';
 
@@ -132,7 +133,7 @@ export default function FileConverterScreen() {
         <TouchableOpacity onPress={() => { if (converting) return; if (sourceUri) { setSourceUri(null); setSourceName(''); setSourceExt(''); } else { router.back(); } }} style={styles.backBtn} disabled={converting !== null}>
           <Ionicons name="arrow-back" size={24} color={converting ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -142,7 +143,7 @@ export default function FileConverterScreen() {
             <View style={[styles.startIcon, { backgroundColor: colors.favRedBg }]}>
               <Ionicons name="swap-horizontal-outline" size={40} color={colors.favRed} />
             </View>
-            <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]}>{t.convertAnImage}</Text>
+            <Text style={[styles.startTitle, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]}>{t.convertAnImage}</Text>
             <Text style={[styles.startSub, { color: colors.textMuted }]}>
               {t.intro}
             </Text>

@@ -16,6 +16,7 @@ import { getStorageVolumes } from '@/modules/storage-stats';
 import * as Haptics from 'expo-haptics';
 import { getFileColor, getFileIcon, isImageFile } from '@/utils/files';
 import { isVideoFile, VideoThumb } from '@/utils/videoThumb';
+import { arSpacing } from '@/utils/arabicText';
 
 interface FolderItem {
   name: string;
@@ -150,7 +151,7 @@ useEffect(() => {
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{title ?? tf.chooseLocation}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{title ?? tf.chooseLocation}</Text>
           <View style={styles.backBtn} />
         </View>
 

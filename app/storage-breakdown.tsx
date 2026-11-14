@@ -11,6 +11,7 @@ import { storageChange } from '@/modules/storageTrend';
 import RNFS from 'react-native-fs';
 import { useLanguage } from '@/modules/appLanguage';
 import { storageText } from '@/modules/i18n/storageText';
+import { arSpacing } from '@/utils/arabicText';
 
 interface Category {
   label: string;
@@ -102,7 +103,7 @@ export default function StorageBreakdownScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 

@@ -11,6 +11,7 @@ import { useWindowDimensions } from 'react-native';
 import { startServer, stopServer, newPassword, FTP_NO_WIFI, type FtpShareInfo } from '@/modules/ftp-server';
 import { useLanguage } from '@/modules/appLanguage';
 import { netText } from '@/modules/i18n/netText';
+import { arSpacing } from '@/utils/arabicText';
 
 // Scanning this signs straight in, so the password never has to be typed on the PC.
 function ftpLoginUrl(share: FtpShareInfo): string {
@@ -63,7 +64,7 @@ export default function NetworkScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.title}</Text>
         <View style={{ width: 40 }} />
       </View>
 

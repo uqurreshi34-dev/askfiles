@@ -15,6 +15,7 @@ import { dupText } from '@/modules/i18n/dupText';
 import { usePro } from '@/hooks/usePro';
 import { getFriendlyPath } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
+import { arSpacing } from '@/utils/arabicText';
 
 export default function ImageDuplicatesScreen() {
   const { colors } = useTheme();
@@ -142,14 +143,14 @@ export default function ImageDuplicatesScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{td.imgTitle}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{td.imgTitle}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.startScreen}>
           <View style={[styles.startIcon, { backgroundColor: colors.blueTint }]}>
             <Ionicons name="images-outline" size={40} color={colors.blue} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{tc.proFeature}</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }, arSpacing()]}>{tc.proFeature}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>
             {td.imgProSub}
           </Text>
@@ -172,7 +173,7 @@ export default function ImageDuplicatesScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{td.imgTitle}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{td.imgTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -181,7 +182,7 @@ export default function ImageDuplicatesScreen() {
           <View style={[styles.startIcon, { backgroundColor: colors.blueTint }]}>
             <Ionicons name="images-outline" size={40} color={colors.blue} />
           </View>
-          <Text style={[styles.startTitle, { color: colors.textPrimary }]}>{td.imgFind}</Text>
+          <Text style={[styles.startTitle, { color: colors.textPrimary }, arSpacing()]}>{td.imgFind}</Text>
           <Text style={[styles.startSub, { color: colors.textMuted }]}>
             {td.imgFindSub}
           </Text>
@@ -224,12 +225,12 @@ export default function ImageDuplicatesScreen() {
               ListHeaderComponent={
                 <View style={[styles.summaryCard, { backgroundColor: colors.surfaceAlt }]}>
                   <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryCount, { color: colors.textPrimary }]}>{groups.length}</Text>
+                    <Text style={[styles.summaryCount, { color: colors.textPrimary }, arSpacing()]}>{groups.length}</Text>
                     <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{td.similarGroupsLabel(groups.length)}</Text>
                   </View>
                   <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
                   <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryCount, { color: colors.deleteRed }]}>{formatSize(totalWasted)}</Text>
+                    <Text style={[styles.summaryCount, { color: colors.deleteRed }, arSpacing()]}>{formatSize(totalWasted)}</Text>
                     <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{td.wastedSpace}</Text>
                   </View>
                   <TouchableOpacity style={styles.rescanBtn} onPress={scan}>

@@ -6,6 +6,7 @@ import { usePro } from '@/hooks/usePro';
 import { useTheme } from '@/hooks/useTheme';
 import { useLanguage } from '@/modules/appLanguage';
 import { proText } from '@/modules/i18n/proText';
+import { arSpacing } from '@/utils/arabicText';
 
 const PRO_FEATURES = [
   {
@@ -76,7 +77,7 @@ export default function CloudScreen() {
             <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="checkmark-circle" size={40} color="#2E7D32" />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{tp.onPro}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{tp.onPro}</Text>
             <Text style={[styles.subtitle, { color: colors.textMuted }]}>{tp.allUnlocked}</Text>
           </View>
           <View style={[styles.featuresList, { backgroundColor: colors.surfaceAlt }]}>
@@ -123,7 +124,7 @@ export default function CloudScreen() {
           <View style={[styles.iconWrap, { backgroundColor: colors.blueTint }]}>
             <Ionicons name="cloud-outline" size={36} color={colors.blue} />
           </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{tp.title}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{tp.title}</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>{tp.subtitle}</Text>
         </View>
 

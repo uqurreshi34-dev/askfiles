@@ -25,6 +25,7 @@ import { commonText } from '@/modules/i18n/common';
 import { filesText } from '@/modules/i18n/files';
 import { cleanerText } from '@/modules/i18n/cleanerText';
 import { cleanerGroup, removeCleanedFiles, subscribeCleaner } from '@/modules/cleanerStore';
+import { arSpacing } from '@/utils/arabicText';
 
 const ROW_HEIGHT = 64;
 const SOURCE = 'Cleaner';
@@ -196,7 +197,7 @@ export default function CleanerGroupScreen() {
         <TouchableOpacity onPress={() => (selecting ? stopSelecting() : router.back())} style={styles.headerBtn} disabled={busy}>
           <Ionicons name={selecting ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]} numberOfLines={1}>
+        <Text style={[styles.title, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]} numberOfLines={1}>
           {selecting ? c.selected(selected.size) : t.groups[group.id]}
         </Text>
         <TouchableOpacity onPress={selecting ? () => setSelected(allSelected ? new Set() : new Set(files.map(f => f.uri))) : startSelecting} style={[styles.headerBtn, { width: 72, alignItems: 'flex-end' }]} disabled={busy}>

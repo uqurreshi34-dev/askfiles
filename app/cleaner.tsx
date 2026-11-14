@@ -9,6 +9,7 @@ import { formatSize } from '@/utils/files';
 import { useLanguage } from '@/modules/appLanguage';
 import { cleanerText } from '@/modules/i18n/cleanerText';
 import { cleanerGroups, runCleanerScan, subscribeCleaner } from '@/modules/cleanerStore';
+import { arSpacing } from '@/utils/arabicText';
 
 const GROUP_ICONS: Record<CleanupGroupId, keyof typeof Ionicons.glyphMap> = {
   whatsappVideo: 'videocam-outline',
@@ -65,7 +66,7 @@ export default function CleanerScreen() {
         <TouchableOpacity onPress={() => !scanning && router.back()} style={styles.headerBtn} disabled={scanning}>
           <Ionicons name="arrow-back" size={24} color={scanning ? colors.textDisabled : colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }]}>{t.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, lang === 'ar' && { letterSpacing: 0 }, arSpacing()]}>{t.title}</Text>
         <TouchableOpacity onPress={scan} style={[styles.headerBtn, { alignItems: 'flex-end' }]} disabled={scanning} accessibilityLabel={t.rescan}>
           <Ionicons name="refresh" size={22} color={scanning ? colors.textDisabled : colors.blue} />
         </TouchableOpacity>

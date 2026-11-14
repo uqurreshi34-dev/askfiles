@@ -24,6 +24,7 @@ import { getFriendlyPath } from '@/utils/files';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { useLanguage } from '@/modules/appLanguage';
 import { readersText } from '@/modules/i18n/readersText';
+import { arLs } from '@/utils/arabicText';
  
 const MIN_COL_WIDTH = 90;
 const MAX_COL_WIDTH = 220;
@@ -295,7 +296,7 @@ export default function CsvReaderScreen() {
        <TouchableOpacity onPress={() => { if (csvData) resetState(); else if (router.canGoBack()) router.back(); else router.replace('/(tabs)'); }} style={{ width: 40, height: 40, justifyContent: 'center' }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: -0.5, color: colors.textPrimary }} numberOfLines={1}>
+        <Text style={{ flex: 1, fontSize: 20, fontWeight: '500', textAlign: 'center', letterSpacing: arLs(-0.5), color: colors.textPrimary }} numberOfLines={1}>
           {csvData ? fileName : t.csvTitle}
         </Text>
         {csvData ? (
@@ -319,7 +320,7 @@ export default function CsvReaderScreen() {
             <View style={{ width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8, backgroundColor: dark ? '#2A2200' : '#FFF8E1' }}>
               <Text style={{ fontSize: 28, fontWeight: '900', color: colors.yellow, letterSpacing: 1 }}>CSV</Text>
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: -0.5, color: colors.textPrimary }}>{t.csvOpen}</Text>
+            <Text style={{ fontSize: 22, fontWeight: '600', letterSpacing: arLs(-0.5), color: colors.textPrimary }}>{t.csvOpen}</Text>
             <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 20, color: colors.textMuted }}>
               {t.csvIntro}
             </Text>

@@ -30,6 +30,7 @@ import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { filesText } from '@/modules/i18n/files';
 import { listsText } from '@/modules/i18n/listsText';
+import { arSpacing } from '@/utils/arabicText';
 
 // Minimal shape every list this component renders must satisfy.
 // FavouriteItem and FileTagEntry both already match this.
@@ -233,7 +234,7 @@ export default function FileListViewer<T extends ViewableFile>({
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{title}</Text>
         <View style={{ width: 40 }} />
       </View>
       {files.length === 0 ? (

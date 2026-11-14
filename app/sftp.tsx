@@ -22,6 +22,7 @@ import { scanFile, openFile as openFileNative } from '@/modules/share-module';
 import { getStorageVolumes } from '@/modules/storage-stats';
 import { useLanguage } from '@/modules/appLanguage';
 import { netText } from '@/modules/i18n/netText';
+import { arSpacing } from '@/utils/arabicText';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -410,7 +411,7 @@ export default function SftpScreen() {
           <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>{headerTitle}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]} numberOfLines={1}>{headerTitle}</Text>
           {stage === 'browse' ? (
             <TouchableOpacity
               onPress={() => { setPickerPath('file:///storage/emulated/0/'); loadPickerDir('file:///storage/emulated/0/'); setShowPicker(true); }}
@@ -588,7 +589,7 @@ export default function SftpScreen() {
               >
                 <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>{t.uploadFrom}</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>{t.uploadFrom}</Text>
               <View style={{ width: 36 }} />
             </View>
             <Text style={[styles.pathSegment, { color: colors.textMuted, paddingLeft: 4, paddingBottom: 4 }]} numberOfLines={1}>

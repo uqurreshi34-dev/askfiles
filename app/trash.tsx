@@ -17,6 +17,7 @@ import { Accelerometer } from 'expo-sensors';
 import { useLanguage } from '@/modules/appLanguage';
 import { commonText } from '@/modules/i18n/common';
 import { trashText } from '@/modules/i18n/trashText';
+import { arSpacing } from '@/utils/arabicText';
 
 
 export default function TrashScreen() {
@@ -181,7 +182,7 @@ export default function TrashScreen() {
         }} style={styles.backBtn} disabled={multiRestoring}>
           <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
+        <Text style={[styles.title, { color: colors.textPrimary }, arSpacing()]}>
           {selectMode ? c.selected(selectedUris.size) : t.title}
         </Text>
         {selectMode ? (
