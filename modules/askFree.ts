@@ -25,11 +25,11 @@ export function isFreeQuestion(question: string): boolean {
 
 /**
  * Shown to a free user under the free questions, locked, to show what asking
- * in your own words adds. Each must be one Pro answers well, as these are,
- * on the phone.
+ * in your own words adds. Each must be one Pro answers well: the first by
+ * the model from the Cleaner's findings, the others on the phone.
  */
 export const PRO_EXAMPLES: readonly string[] = [
-  'How many screenshots do I have?',
+  'What can I clean up?',
   "What's taking up the most space?",
   'How much storage do I have left?',
 ];
